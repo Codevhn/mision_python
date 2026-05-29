@@ -1710,6 +1710,7 @@ function exitReview() {
 // NEW FEATURE: BREADCRUMB
 // ============================================================
 function buildBreadcrumb(meta) {
+  if (!$("breadcrumb")) return;
   const catLabel = escapeHtml(meta.type === "course" ? (meta.course_label || meta.course) : (meta.category_label || meta.category));
   const topicLabel = escapeHtml(meta.type === "course" ? (meta.module_label || meta.module) : (meta.topic_label || meta.topic));
   const entryTitle = escapeHtml(meta.title);
