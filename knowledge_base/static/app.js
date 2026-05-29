@@ -643,8 +643,13 @@ function buildTOC() {
 // ============================================================
 function initScratchpad() {
   $("scratchpadTrigger").addEventListener("click", toggleScratchpad);
-  $("scratchpadClose").addEventListener("click", () => $("scratchpad").classList.add("hidden"));
+  $("scratchpadClose").addEventListener("click", () => {
+    $("scratchpad").classList.add("hidden");
+    $("scratchpadTitleRow").classList.add("hidden");
+    $("scratchpadSave").textContent = "save";
+  });
   $("scratchpadSave").addEventListener("click", saveScratchpad);
+  $("scratchpadTitle").addEventListener("keydown", e => { if (e.key === "Enter") saveScratchpad(); });
   makeDraggable($("scratchpad"), $("scratchpadHeader"));
 }
 
@@ -658,8 +663,22 @@ function toggleScratchpad() {
 async function saveScratchpad() {
   const content = $("scratchpadText").value.trim();
   if (!content) { showToast("Nada que guardar", "error"); return; }
-  const title = prompt("Título de la nota:", "Quick Note " + new Date().toLocaleString());
-  if (!title) return;
+
+  // Show inline title row instead of browser prompt
+  const titleRow = $("scratchpadTitleRow");
+  const titleInput = $("scratchpadTitle");
+  if (titleRow.classList.contains("hidden")) {
+    titleRow.classList.remove("hidden");
+    titleInput.value = "";
+    titleInput.focus();
+    // Change save button to confirm
+    $("scratchpadSave").textContent = "confirm";
+    return;
+  }
+
+  const title = titleInput.value.trim() || ("Quick Note " + new Date().toLocaleTimeString());
+  $("scratchpadSave").textContent = "save";
+  titleRow.classList.add("hidden");
 
   const res = await fetch("/api/entry", {
     method: "POST",
