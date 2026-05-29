@@ -695,9 +695,9 @@ input, textarea, select { font-family: inherit; }
   padding: 0;
   font-size: 0.84rem;
   line-height: 1.65;
-  color: inherit;
+  /* NO forzamos color — Prism lo maneja con .token.* */
 }
-/* Prism overrides — mantiene nuestro fondo y borde */
+/* Prism — mantiene nuestro fondo/borde pero deja que coloree */
 .entry-body pre[class*="language-"] {
   background: var(--bg-code) !important;
   border: 1px solid var(--code-border);
@@ -708,7 +708,33 @@ input, textarea, select { font-family: inherit; }
 .entry-body code[class*="language-"] {
   background: none !important;
   text-shadow: none !important;
+  color: unset; /* deja que Prism coloree los tokens */
 }
+/* Forzar que los tokens de Prism no sean pisados */
+.entry-body .token.comment,
+.entry-body .token.prolog,
+.entry-body .token.doctype,
+.entry-body .token.cdata { color: #999 !important; }
+.entry-body .token.punctuation { color: #ccc !important; }
+.entry-body .token.property,
+.entry-body .token.tag,
+.entry-body .token.boolean,
+.entry-body .token.number,
+.entry-body .token.constant,
+.entry-body .token.symbol { color: #f08d49 !important; }
+.entry-body .token.selector,
+.entry-body .token.attr-name,
+.entry-body .token.string,
+.entry-body .token.char,
+.entry-body .token.builtin { color: #7ec699 !important; }
+.entry-body .token.operator,
+.entry-body .token.entity,
+.entry-body .token.url { color: #67cdcc !important; }
+.entry-body .token.keyword { color: #cc99cd !important; }
+.entry-body .token.function { color: #f08d49 !important; }
+.entry-body .token.regex,
+.entry-body .token.important,
+.entry-body .token.variable { color: #e90 !important; }
 /* toolbar copy button */
 div.code-toolbar > .toolbar { opacity: 1; }
 div.code-toolbar > .toolbar .toolbar-item button {
@@ -1822,6 +1848,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .tree-topic-header:hover .tree-topic-play { opacity: 1; color: var(--accent); }
 
+
+/* Desktop: hide mobile-only elements */
+#moreActionsBtn { display: none; }
+.more-actions-dropdown { display: none; }
 
 /* ── COURSES: Sidebar section labels ─────────────────────────────────────── */
 .sidebar-section-label {
