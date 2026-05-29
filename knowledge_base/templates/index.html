@@ -9,7 +9,7 @@
 <body>
 
   <!-- TOP BAR -->
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <div class="topbar-left">
       <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#9776;</button>
       <span class="brand"><span>~</span>/knowledge_base</span>
@@ -17,10 +17,18 @@
     <div class="topbar-center">
       <div class="search-wrap">
         <input type="text" id="searchInput" placeholder="Buscar en todas las entradas…" autocomplete="off" />
-        <div class="search-results" id="searchResults"></div>
+        <div class="search-filters hidden" id="searchFilters">
+          <select id="filterCategory" class="filter-chip">
+            <option value="">all categories</option>
+          </select>
+          <input type="date" id="filterFrom" class="filter-chip" title="From date" />
+          <input type="date" id="filterTo" class="filter-chip" title="To date" />
+        </div>
+        <div class="search-results hidden" id="searchResults"></div>
       </div>
     </div>
     <div class="topbar-right">
+      <button id="statsBtn" class="btn-ghost" title="Stats">∑ stats</button>
       <button id="newEntryBtn" class="btn-primary">+ Nueva entrada</button>
       <button id="themeToggle" class="btn-icon" title="Cambiar tema">[light]</button>
     </div>
@@ -47,18 +55,58 @@
 
       <!-- ENTRY VIEW -->
       <article class="entry-view hidden" id="entryView">
-        <div class="entry-header">
+        <div class="entry-header" id="entryHeader">
           <div class="entry-meta" id="entryMeta"></div>
           <div class="entry-actions">
             <button class="btn-ghost" id="editBtn">~ editar</button>
             <button class="btn-ghost" id="exportMdBtn">↓ .md</button>
             <button class="btn-ghost" id="exportPdfBtn">↓ .pdf</button>
+            <button class="btn-ghost" id="tocBtn">¶ toc</button>
+            <button class="btn-ghost" id="starBtn">☆ star</button>
+            <button class="btn-ghost" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost danger" id="deleteBtn">rm -f</button>
           </div>
         </div>
         <div class="entry-body" id="entryBody"></div>
       </article>
     </main>
+  </div>
+
+  <!-- TOC PANEL -->
+  <div class="toc-panel hidden" id="tocPanel">
+    <div class="toc-panel-header">¶ contents</div>
+    <div class="toc-panel-items" id="tocItems"></div>
+  </div>
+
+  <!-- FOCUS MODE EXIT BUTTON -->
+  <button class="focus-exit hidden" id="focusExit">× exit</button>
+
+  <!-- SCRATCHPAD -->
+  <button class="scratchpad-trigger" id="scratchpadTrigger">+ note</button>
+  <div class="scratchpad hidden" id="scratchpad">
+    <div class="scratchpad-header" id="scratchpadHeader">// quick note</div>
+    <textarea class="scratchpad-textarea" id="scratchpadText" placeholder="write here…"></textarea>
+    <div class="scratchpad-footer">
+      <button class="btn-ghost" id="scratchpadClose">close</button>
+      <button class="btn-primary" id="scratchpadSave">save</button>
+    </div>
+  </div>
+
+  <!-- STATS OVERLAY -->
+  <div class="stats-overlay hidden" id="statsOverlay">
+    <div class="stats-header">
+      <span class="stats-title">∑ knowledge_base --stats</span>
+      <button class="btn-ghost" id="statsClose">× close</button>
+    </div>
+    <div class="stats-body" id="statsBody">
+      <div class="stats-loading">loading stats…</div>
+    </div>
+  </div>
+
+  <!-- CONTEXT MENU (category right-click) -->
+  <div class="context-menu hidden" id="contextMenu">
+    <div class="context-menu-item" id="ctxExportMd">export .md</div>
+    <div class="context-menu-item" id="ctxExportPdf">export .pdf</div>
   </div>
 
   <!-- MODAL: Nueva / Editar entrada -->

@@ -116,11 +116,45 @@ def smart_parse(raw_text):
     return "\n".join(result)
 
 
+def process_alert_blocks(md_text):
+    """Convert GitHub-style alert blockquotes to styled HTML divs before Markdown parsing."""
+    lines = md_text.splitlines()
+    result = []
+    i = 0
+    alert_types = {"TIP": "tip", "WARNING": "warning", "NOTE": "note", "DANGER": "danger"}
+
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r'^>\s*\[!(TIP|WARNING|NOTE|DANGER)\]\s*(.*)$', line, re.IGNORECASE)
+        if m:
+            alert_key = m.group(1).upper()
+            alert_class = alert_types[alert_key]
+            first_content = m.group(2).strip()
+            content_lines = []
+            if first_content:
+                content_lines.append(first_content)
+            i += 1
+            while i < len(lines) and lines[i].startswith('>'):
+                content_lines.append(lines[i][1:].lstrip())
+                i += 1
+            content = " ".join(content_lines)
+            result.append(
+                f'<div class="alert alert-{alert_class}">'
+                f'<span class="alert-label">{alert_key}</span>{content}</div>'
+            )
+        else:
+            result.append(line)
+            i += 1
+
+    return "\n".join(result)
+
+
 def render_markdown(md_text):
+    processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         plugins=["strikethrough", "table", "url"],
     )
-    return renderer(md_text)
+    return renderer(processed)
 
 
 @app.route("/")
@@ -353,6 +387,149 @@ def get_categories():
         cat = meta["category"]
         cats[cat] = meta.get("category_label", cat)
     return jsonify(cats)
+
+
+# ── FEATURE 2: Star toggle ──────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/star", methods=["POST"])
+def toggle_star(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    current = index[entry_id].get("starred", False)
+    index[entry_id]["starred"] = not current
+    save_index(index)
+    return jsonify({"starred": index[entry_id]["starred"]})
+
+
+# ── FEATURE 6: Stats ────────────────────────────────────────────────────────
+@app.route("/api/stats")
+def get_stats():
+    index = load_index()
+    total_entries = len(index)
+    categories = {}
+    topics = set()
+    total_words = 0
+    last_entry = None
+    last_dt = None
+
+    for entry_id, meta in index.items():
+        cat = meta["category"]
+        cat_label = meta.get("category_label", cat)
+        categories[cat] = {"label": cat_label, "count": categories.get(cat, {}).get("count", 0) + 1}
+        topics.add(meta["topic"])
+        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+        if path.exists():
+            total_words += len(path.read_text().split())
+        created = meta.get("created_at", "")
+        if created:
+            try:
+                dt = datetime.fromisoformat(created)
+                if last_dt is None or dt > last_dt:
+                    last_dt = dt
+                    last_entry = {"title": meta["title"], "date": created[:10]}
+            except ValueError:
+                pass
+
+    most_active_cat = max(categories.items(), key=lambda x: x[1]["count"])[1] if categories else None
+    chart = sorted(categories.values(), key=lambda x: x["count"], reverse=True)
+
+    return jsonify({
+        "total_entries": total_entries,
+        "total_categories": len(categories),
+        "total_topics": len(topics),
+        "total_words": total_words,
+        "most_active": most_active_cat,
+        "last_entry": last_entry,
+        "chart": chart,
+    })
+
+
+# ── FEATURE 7: Bulk export by category ─────────────────────────────────────
+@app.route("/api/export/category/<category>/md")
+def export_category_md(category):
+    import zipfile, io
+    index = load_index()
+    buf = io.BytesIO()
+    found = False
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for entry_id, meta in index.items():
+            if meta["category"] == category:
+                path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+                if path.exists():
+                    zf.write(path, arcname=f"{entry_id}.md")
+                    found = True
+    if not found:
+        return jsonify({"error": "No entries found"}), 404
+    buf.seek(0)
+    return send_file(buf, mimetype="application/zip", as_attachment=True,
+                     download_name=f"{category}.zip")
+
+
+@app.route("/api/export/category/<category>/pdf")
+def export_category_pdf(category):
+    if not shutil.which("pandoc"):
+        return jsonify({"error": "pandoc not installed"}), 500
+    index = load_index()
+    combined = []
+    for entry_id, meta in index.items():
+        if meta["category"] == category:
+            path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+            if path.exists():
+                combined.append(f"# {meta['title']}\n\n{path.read_text()}")
+    if not combined:
+        return jsonify({"error": "No entries found"}), 404
+
+    front_matter = f'---\ntitle: "{category}"\nauthor: "Knowledge Base"\ngeometry: margin=2.5cm\nfontsize: 11pt\ncolorlinks: true\n---\n\n'
+    tmp_md = DATA_DIR / f"_cat_{category}_tmp.md"
+    pdf_path = DATA_DIR / f"_cat_{category}.pdf"
+    tmp_md.write_text(front_matter + "\n\n---\n\n".join(combined))
+    result = subprocess.run(
+        ["pandoc", str(tmp_md), "-o", str(pdf_path), "--pdf-engine=xelatex"],
+        capture_output=True, text=True
+    )
+    tmp_md.unlink(missing_ok=True)
+    if result.returncode != 0:
+        return jsonify({"error": result.stderr}), 500
+    return send_file(pdf_path, as_attachment=True, download_name=f"{category}.pdf")
+
+
+# ── FEATURE 8: Extended search with filters ─────────────────────────────────
+@app.route("/api/search/filtered")
+def search_filtered():
+    q = request.args.get("q", "").lower().strip()
+    category_filter = request.args.get("category", "").strip()
+    from_date = request.args.get("from", "").strip()
+    to_date = request.args.get("to", "").strip()
+
+    index = load_index()
+    results = []
+    for entry_id, meta in index.items():
+        # Category filter
+        if category_filter and meta["category"] != category_filter:
+            continue
+        # Date filters
+        created = meta.get("created_at", "")[:10]
+        if from_date and created and created < from_date:
+            continue
+        if to_date and created and created > to_date:
+            continue
+        # Text search (if q provided)
+        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+        if q:
+            if not path.exists():
+                continue
+            content = path.read_text().lower()
+            if q not in content and q not in meta["title"].lower():
+                continue
+        snippet = _extract_snippet(path.read_text(), q) if q and path.exists() else ""
+        results.append({
+            "id": entry_id,
+            "title": meta["title"],
+            "category_label": meta.get("category_label", meta["category"]),
+            "topic_label": meta.get("topic_label", meta["topic"]),
+            "snippet": snippet,
+        })
+    return jsonify(results)
 
 
 if __name__ == "__main__":
