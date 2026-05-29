@@ -492,11 +492,11 @@ input, textarea { font-family: inherit; }
   padding: 8px 12px;
   font-size: 0.875rem;
   outline: none;
-  resize: vertical;
+  resize: none;
   transition: border 0.15s;
 }
 .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
-.form-group textarea { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; }
+.form-group textarea { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; resize: vertical; }
 
 .editor-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
 .tab {
