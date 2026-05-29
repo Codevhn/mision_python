@@ -49,6 +49,21 @@ function bindEvents() {
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
+
+  // Auto-extract title from content
+  $("fieldContent").addEventListener("input", autoExtractTitle);
+  $("fieldContent").addEventListener("paste", () => setTimeout(autoExtractTitle, 50));
+}
+
+function autoExtractTitle() {
+  // Only auto-fill if the title field is empty (don't overwrite what user typed)
+  if ($("fieldTitle").value.trim()) return;
+  const content = $("fieldContent").value;
+  const firstLine = content.trimStart().split("\n")[0];
+  const match = firstLine.match(/^#{1,3}\s+(.+)/);
+  if (match) {
+    $("fieldTitle").value = match[1].trim();
+  }
 }
 
 // ---- THEME ----
