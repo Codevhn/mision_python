@@ -271,11 +271,15 @@ def index():
 def get_tree():
     index = load_index()
     tree = {}
+    cat_labels = {}
+    topic_labels = {}
     for entry_id, meta in index.items():
         if meta.get("type") == "course":
             continue
         cat = meta["category"]
         topic = meta["topic"]
+        cat_labels[cat] = meta.get("category_label") or cat.replace("-", " ").title()
+        topic_labels[f"{cat}/{topic}"] = meta.get("topic_label") or topic.replace("-", " ").title()
         tree.setdefault(cat, {}).setdefault(topic, []).append({
             "id": entry_id,
             "title": meta["title"],
@@ -287,7 +291,20 @@ def get_tree():
     for cat in tree:
         for topic in tree[cat]:
             tree[cat][topic].sort(key=lambda e: (e["order"], e["created_at"]))
-    return jsonify(tree)
+    # Wrap with labels
+    result = {}
+    for cat, topics in tree.items():
+        result[cat] = {
+            "_label": cat_labels.get(cat, cat),
+            "_topics": {
+                topic: {
+                    "_label": topic_labels.get(f"{cat}/{topic}", topic),
+                    "_entries": entries
+                }
+                for topic, entries in topics.items()
+            }
+        }
+    return jsonify(result)
 
 
 @app.route("/api/entry/<entry_id>")

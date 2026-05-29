@@ -193,18 +193,20 @@ function renderTree(tree) {
   }
 
   nav.innerHTML = "";
-  for (const [cat, topics] of Object.entries(tree)) {
+  for (const [cat, catData] of Object.entries(tree)) {
+    // Support both new format {_label, _topics} and legacy flat format
+    const catLabel = catData._label || cat;
+    const topicsMap = catData._topics || catData;
+
     if (!treeState[cat]) treeState[cat] = { open: true, topics: {} };
     const catEl = document.createElement("div");
     catEl.className = "tree-category" + (treeState[cat].open ? " open" : "");
     catEl.dataset.cat = cat;
 
-    const catLabel = Object.values(topics)[0] ? getFirstEntry(topics).category_label || cat : cat;
-
     catEl.innerHTML = `
       <div class="tree-category-header">
         <span class="arrow">▶</span>
-        <span>${escapeHtml(catLabel || cat)}</span>
+        <span>${escapeHtml(catLabel)}</span>
       </div>
       <div class="tree-topics"></div>
     `;
@@ -214,12 +216,15 @@ function renderTree(tree) {
     });
 
     const topicsEl = catEl.querySelector(".tree-topics");
-    for (const [topic, entries] of Object.entries(topics)) {
+    for (const [topic, topicData] of Object.entries(topicsMap)) {
+      if (topic.startsWith("_")) continue;
+      // Support both new {_label, _entries} and legacy array format
+      const topicLabel = topicData._label || topic;
+      const entries = topicData._entries || topicData;
+
       if (!treeState[cat].topics[topic]) treeState[cat].topics[topic] = { open: true };
       const topicEl = document.createElement("div");
       topicEl.className = "tree-topic" + (treeState[cat].topics[topic].open ? " open" : "");
-
-      const topicLabel = entries[0]?.topic_label || topic;
       topicEl.innerHTML = `
         <div class="tree-topic-header">
           <span class="arrow">▶</span>
