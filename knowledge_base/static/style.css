@@ -423,7 +423,26 @@ input, textarea, select { font-family: inherit; }
 [data-theme="light"] .meta-seg-topic::after { border-left-color: #d0e8f5; }
 [data-theme="light"] .meta-seg-date  { background: #d8f0d8; color: #2a6e2a; }
 [data-theme="light"] .meta-seg-date::after { content: none; }
-.entry-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+.entry-actions {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.entry-actions .btn-ghost {
+  border: none;
+  border-right: 1px solid var(--border);
+  font-size: 0.7rem;
+  padding: 5px 12px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  border-radius: 0;
+}
+.entry-actions .btn-ghost:last-child { border-right: none; }
+.entry-actions .btn-ghost:hover { background: var(--bg-hover); color: var(--accent); }
+.entry-actions .btn-ghost.danger { color: var(--danger); }
+.entry-actions .btn-ghost.danger:hover { background: rgba(204,68,68,0.1); color: var(--danger); }
 
 /* ---- MARKDOWN RENDERING ---- */
 .entry-body { line-height: 1.85; color: var(--text); font-size: 0.97rem; }
