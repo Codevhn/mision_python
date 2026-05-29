@@ -199,6 +199,7 @@ function openNewModal() {
   switchTab("write");
   $("saveBtn").dataset.mode = "new";
   $("saveBtn").dataset.id = "";
+  $("saveBtn").textContent = "Guardar entrada";
   $("modalOverlay").classList.remove("hidden");
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
@@ -217,6 +218,7 @@ async function openEditModal() {
   switchTab("write");
   $("saveBtn").dataset.mode = "edit";
   $("saveBtn").dataset.id = currentEntryId;
+  $("saveBtn").textContent = "Actualizar entrada";
   $("modalOverlay").classList.remove("hidden");
 }
 
@@ -241,7 +243,7 @@ async function saveEntry() {
     const res = await fetch(`/api/entry/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ raw_text }),
+      body: JSON.stringify({ raw_text, title, category, topic }),
     });
     if (res.ok) {
       closeModal();
@@ -249,7 +251,7 @@ async function saveEntry() {
       await loadTree();
       loadEntry(id);
     } else {
-      showToast("Error al guardar", "error");
+      showToast("Error al actualizar", "error");
     }
   } else {
     const res = await fetch("/api/entry", {

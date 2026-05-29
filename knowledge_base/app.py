@@ -203,12 +203,39 @@ def update_entry(entry_id):
         return jsonify({"error": "Not found"}), 404
     data = request.json
     raw_text = data.get("raw_text", "").strip()
+    title = data.get("title", "").strip()
+    category = data.get("category", "").strip()
+    topic = data.get("topic", "").strip()
     if not raw_text:
         return jsonify({"error": "Missing content"}), 400
+
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    old_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
     md_content = smart_parse(raw_text)
-    path.write_text(md_content)
+
+    # Update file — if category/topic changed, move the file
+    new_category = slugify(category) if category else meta["category"]
+    new_topic = slugify(topic) if topic else meta["topic"]
+    new_folder = KNOWLEDGE_DIR / new_category / new_topic
+    new_folder.mkdir(parents=True, exist_ok=True)
+    new_path = new_folder / f"{entry_id}.md"
+
+    if old_path != new_path and old_path.exists():
+        old_path.unlink()
+
+    new_path.write_text(md_content)
+
+    # Update index metadata
+    if title:
+        index[entry_id]["title"] = title
+    if category:
+        index[entry_id]["category"] = new_category
+        index[entry_id]["category_label"] = category
+    if topic:
+        index[entry_id]["topic"] = new_topic
+        index[entry_id]["topic_label"] = topic
+
+    save_index(index)
     return jsonify({"message": "Updated"})
 
 
