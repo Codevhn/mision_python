@@ -699,12 +699,32 @@ input, textarea, select { font-family: inherit; }
   padding: 0;
   font-size: 0.84rem;
   line-height: 1.65;
-  color: inherit;
+  color: #cdd3de; /* base text — Prism tokens override this */
 }
-/* Pygments highlight wrapper inside code blocks */
-.entry-body pre code .highlight {
-  background: none !important;
-}
+/* ── PrismJS token colors — !important to beat .entry-body code specificity ── */
+.entry-body .token.comment,
+.entry-body .token.prolog,
+.entry-body .token.cdata        { color: #6a9955 !important; }
+.entry-body .token.punctuation  { color: #cdd3de !important; }
+.entry-body .token.keyword,
+.entry-body .token.bold         { color: #c586c0 !important; font-weight: bold; }
+.entry-body .token.operator,
+.entry-body .token.entity       { color: #9cdcfe !important; }
+.entry-body .token.string,
+.entry-body .token.char,
+.entry-body .token.attr-value   { color: #ce9178 !important; }
+.entry-body .token.number,
+.entry-body .token.boolean      { color: #b5cea8 !important; }
+.entry-body .token.class-name,
+.entry-body .token.function     { color: #dcdcaa !important; }
+.entry-body .token.tag,
+.entry-body .token.attr-name    { color: #4ec9b0 !important; }
+.entry-body .token.variable,
+.entry-body .token.parameter    { color: #9cdcfe !important; }
+.entry-body .token.builtin,
+.entry-body .token.selector     { color: #4ec9b0 !important; }
+.entry-body .token.regex        { color: #d16969 !important; }
+.entry-body .token.important    { color: #f44747 !important; font-weight: bold; }
 
 .entry-body blockquote {
   border-left: 2px solid var(--accent-dim);
