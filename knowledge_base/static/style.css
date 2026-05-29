@@ -376,7 +376,6 @@ input, textarea, select { font-family: inherit; }
   border-bottom: 1px solid var(--border);
   gap: 16px;
   flex-wrap: nowrap;
-  overflow: hidden;
 }
 .entry-meta {
   display: flex;
@@ -423,6 +422,7 @@ input, textarea, select { font-family: inherit; }
   gap: 0;
   flex-shrink: 0;
   border: 1px solid var(--border);
+  position: relative;
 }
 .entry-actions .btn-ghost {
   border: none;
@@ -976,9 +976,9 @@ input, textarea, select { font-family: inherit; }
   /* ENTRY ACTIONS — ocultar botones secundarios, mostrar ··· */
   .entry-actions {
     flex-wrap: nowrap;
-    overflow: hidden;
     gap: 0;
     position: relative;
+    overflow: visible;
   }
   .entry-actions .btn-ghost.secondary-action { display: none; }
   #moreActionsBtn { display: inline-flex !important; }
