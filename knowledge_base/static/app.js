@@ -82,14 +82,14 @@ function autoExtractTitle() {
 function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
-  $("themeToggle").textContent = saved === "dark" ? "☀" : "☽";
+  $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
-  $("themeToggle").textContent = next === "dark" ? "☀" : "☽";
+  $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
 }
 
 // ---- SIDEBAR ----
