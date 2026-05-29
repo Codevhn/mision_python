@@ -629,7 +629,8 @@ input, textarea, select { font-family: inherit; }
 .entry-body li { margin: 5px 0; }
 .entry-body li::marker { color: var(--accent); }
 
-.entry-body code {
+/* inline code only — pre > code is handled by PrismJS */
+.entry-body :not(pre) > code {
   font-family: var(--font-mono);
   font-size: 0.83em;
   background: var(--bg-code);
@@ -638,9 +639,18 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid var(--code-border);
 }
 
-/* Override only PrismJS Dark background → use Tomorrow's #2d2d2d */
+/* PrismJS Dark — solo cambiar fondo y quitar artefactos visuales */
 pre[class*="language-"], :not(pre) > code[class*="language-"] {
   background: #2d2d2d !important;
+  border-color: #2d2d2d !important;  /* borde igual al fondo — invisible */
+  box-shadow: none !important;
+}
+code[class*="language-"],
+pre[class*="language-"] code[class*="language-"] {
+  text-shadow: none !important;  /* quita las líneas entre código */
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
 .entry-body blockquote {
