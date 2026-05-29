@@ -11,10 +11,17 @@ import mistune
 app = Flask(__name__)
 
 BASE_DIR = Path(__file__).parent
-KNOWLEDGE_DIR = BASE_DIR / "knowledge"
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(exist_ok=True)
-KNOWLEDGE_DIR.mkdir(exist_ok=True)
+# Si existe la variable DATA_ROOT (Railway volume), usar esa ruta para datos y notas
+_DATA_ROOT = os.environ.get("DATA_ROOT")
+if _DATA_ROOT:
+    _ROOT = Path(_DATA_ROOT)
+    KNOWLEDGE_DIR = _ROOT / "knowledge"
+    DATA_DIR = _ROOT / "data"
+else:
+    KNOWLEDGE_DIR = BASE_DIR / "knowledge"
+    DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 INDEX_FILE = DATA_DIR / "index.json"
 
 
