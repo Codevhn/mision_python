@@ -370,8 +370,10 @@ input, textarea, select { font-family: inherit; }
   justify-content: space-between;
   margin-bottom: 28px;
   padding-bottom: 14px;
+  padding-right: 2px;
   border-bottom: 1px solid var(--border);
   gap: 16px;
+  flex-wrap: wrap;
 }
 .entry-meta {
   display: flex;
@@ -1292,26 +1294,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   position: relative;
 }
 
-/* ============================================================
-   FEATURE: BREADCRUMB
-   ============================================================ */
-.breadcrumb {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  padding: 6px 0 14px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.breadcrumb-sep { color: var(--accent); }
-.breadcrumb-seg {
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.breadcrumb-seg:hover { color: var(--text); }
-.breadcrumb-seg.last { color: var(--text-muted); cursor: default; }
+/* breadcrumb removed — redundant with Powerline meta bar */
 .breadcrumb-seg.last:hover { color: var(--text-muted); }
 
 /* ============================================================

@@ -657,7 +657,7 @@ def duplicate_entry(entry_id):
     new_path.write_text(path.read_text())
 
     index[new_id] = {
-        "title": "[copy] " + meta["title"],
+        "title": meta["title"] if meta["title"].startswith("[copy]") else "[copy] " + meta["title"],
         "category": meta["category"],
         "category_label": meta.get("category_label", meta["category"]),
         "topic": meta["topic"],
