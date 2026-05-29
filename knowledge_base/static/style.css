@@ -194,6 +194,8 @@ input, textarea, select { font-family: inherit; }
 .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); background: var(--bg-hover); }
 .btn-ghost.danger { color: var(--danger); border-color: var(--danger); }
 .btn-ghost.danger:hover { background: rgba(204,68,68,0.08); }
+.btn-primary.danger { background: var(--danger); border-color: var(--danger); }
+.btn-primary.danger:hover { background: #b03030; border-color: #b03030; }
 
 .btn-icon {
   background: transparent;

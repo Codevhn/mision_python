@@ -456,7 +456,8 @@ async function saveEntry() {
 
 async function deleteEntry() {
   if (!currentEntryId) return;
-  if (!confirm("¿Eliminar esta entrada? Esta acción no se puede deshacer.")) return;
+  const ok = await showConfirm("rm -f entrada", "¿Eliminar esta entrada? Esta acción no se puede deshacer.");
+  if (!ok) return;
   const res = await fetch(`/api/entry/${currentEntryId}`, { method: "DELETE" });
   if (res.ok) {
     currentEntryId = null;
@@ -465,6 +466,24 @@ async function deleteEntry() {
     showToast("Entrada eliminada");
     await loadTree();
   }
+}
+
+function showConfirm(title, msg) {
+  return new Promise(resolve => {
+    $("confirmTitle").textContent = title;
+    $("confirmMsg").textContent = msg;
+    $("confirmOverlay").classList.remove("hidden");
+    const cleanup = (result) => {
+      $("confirmOverlay").classList.add("hidden");
+      $("confirmOk").removeEventListener("click", onOk);
+      $("confirmCancel").removeEventListener("click", onCancel);
+      resolve(result);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    $("confirmOk").addEventListener("click", onOk);
+    $("confirmCancel").addEventListener("click", onCancel);
+  });
 }
 
 // ---- EXPORT ----
