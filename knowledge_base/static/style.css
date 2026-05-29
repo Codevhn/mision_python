@@ -375,7 +375,8 @@ input, textarea, select { font-family: inherit; }
   padding-right: 2px;
   border-bottom: 1px solid var(--border);
   gap: 16px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .entry-meta {
   display: flex;
@@ -385,6 +386,9 @@ input, textarea, select { font-family: inherit; }
   font-size: 0.74rem;
   line-height: 1;
   height: 26px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 .entry-meta strong { display: none; }
 
@@ -695,61 +699,11 @@ input, textarea, select { font-family: inherit; }
   padding: 0;
   font-size: 0.84rem;
   line-height: 1.65;
-  /* NO forzamos color — Prism lo maneja con .token.* */
+  color: inherit;
 }
-/* Prism — mantiene nuestro fondo/borde pero deja que coloree */
-.entry-body pre[class*="language-"] {
-  background: var(--bg-code) !important;
-  border: 1px solid var(--code-border);
-  border-left: 2px solid var(--accent);
-  margin: 14px 0;
-  padding: 16px 18px;
-}
-.entry-body code[class*="language-"] {
+/* Pygments highlight wrapper inside code blocks */
+.entry-body pre code .highlight {
   background: none !important;
-  text-shadow: none !important;
-  color: unset; /* deja que Prism coloree los tokens */
-}
-/* Forzar que los tokens de Prism no sean pisados */
-.entry-body .token.comment,
-.entry-body .token.prolog,
-.entry-body .token.doctype,
-.entry-body .token.cdata { color: #999 !important; }
-.entry-body .token.punctuation { color: #ccc !important; }
-.entry-body .token.property,
-.entry-body .token.tag,
-.entry-body .token.boolean,
-.entry-body .token.number,
-.entry-body .token.constant,
-.entry-body .token.symbol { color: #f08d49 !important; }
-.entry-body .token.selector,
-.entry-body .token.attr-name,
-.entry-body .token.string,
-.entry-body .token.char,
-.entry-body .token.builtin { color: #7ec699 !important; }
-.entry-body .token.operator,
-.entry-body .token.entity,
-.entry-body .token.url { color: #67cdcc !important; }
-.entry-body .token.keyword { color: #cc99cd !important; }
-.entry-body .token.function { color: #f08d49 !important; }
-.entry-body .token.regex,
-.entry-body .token.important,
-.entry-body .token.variable { color: #e90 !important; }
-/* toolbar copy button */
-div.code-toolbar > .toolbar { opacity: 1; }
-div.code-toolbar > .toolbar .toolbar-item button {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 2px 8px;
-  box-shadow: none;
-}
-div.code-toolbar > .toolbar .toolbar-item button:hover {
-  background: var(--accent);
-  color: #fff;
 }
 
 .entry-body blockquote {

@@ -526,11 +526,6 @@ async function loadEntry(id) {
 
   // Wikilinks (async, non-blocking)
   processWikilinks($("entryBody"));
-  if (window.Prism) {
-    // Small delay ensures DOM is settled before highlighting
-    setTimeout(() => Prism.highlightAllUnder($("entryBody")), 50);
-  }
-
   // Render tags bar if entry has tags
   const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
   if (existingTagBar) existingTagBar.remove();
@@ -1384,7 +1379,6 @@ async function openVersionPreview(entryId, timestamp) {
   const ts = timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
   $("versionModalTitle").textContent = `snapshot — ${ts}`;
   $("versionModalBody").innerHTML = data.html;
-  if (window.Prism) Prism.highlightAllUnder($("versionModalBody"));
   $("versionModalOverlay").classList.remove("hidden");
 }
 

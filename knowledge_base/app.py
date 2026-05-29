@@ -7,6 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_file
 import mistune
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name, TextLexer
+from pygments.formatters import HtmlFormatter
+from pygments.util import ClassNotFound
 
 app = Flask(__name__)
 
@@ -220,13 +224,19 @@ def post_process_wikilinks(html):
     return re.sub(r'\[\[(.+?)\]\]', replace_wikilink, html)
 
 
-class PrismRenderer(mistune.HTMLRenderer):
+_pygments_formatter = HtmlFormatter(style="one-dark", nowrap=True, cssclass="highlight")
+
+class PygmentsRenderer(mistune.HTMLRenderer):
     def block_code(self, code, **attrs):
         lang = attrs.get("info", "") or ""
         lang = lang.strip().split()[0] if lang.strip() else ""
-        lang_attr = f' class="language-{lang}"' if lang else ""
         data_lang = f' data-lang="{lang}"' if lang else ""
-        return f'<pre{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
+        try:
+            lexer = get_lexer_by_name(lang) if lang else TextLexer()
+        except ClassNotFound:
+            lexer = TextLexer()
+        highlighted = highlight(code, lexer, _pygments_formatter)
+        return f'<pre{data_lang}><code>{highlighted}</code></pre>\n'
 
 
 def render_markdown(md_text):
@@ -235,12 +245,19 @@ def render_markdown(md_text):
         return chat_html
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
-        renderer=PrismRenderer(),
+        renderer=PygmentsRenderer(),
         plugins=["strikethrough", "table", "url"],
     )
     html = renderer(processed)
     html = post_process_wikilinks(html)
     return html
+
+
+@app.route("/pygments.css")
+def pygments_css():
+    from flask import Response
+    css = HtmlFormatter(style="one-dark", nowrap=True).get_style_defs(".highlight")
+    return Response(css, mimetype="text/css")
 
 
 def _build_pdf_html(title, date, body_html):
