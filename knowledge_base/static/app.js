@@ -7,6 +7,8 @@ const $ = id => document.getElementById(id);
 // ---- State ----
 let currentEntryId = null;
 let treeState = {}; // { cat: { open: bool, topics: { topic: { open: bool } } } }
+let starredMap = {};  // entry_id -> bool
+let pinnedMap = {};   // entry_id -> bool
 
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,6 +16,18 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCategorySuggestions();
   bindEvents();
   applyTheme();
+  initFocusMode();
+  initStarFeature();
+  initTOC();
+  initScratchpad();
+  initStats();
+  initContextMenu();
+  initSearchFilters();
+  initTemplates();
+  initHistory();
+  initDuplicate();
+  initMove();
+  initPin();
 });
 
 function bindEvents() {
@@ -68,7 +82,6 @@ function bindEvents() {
 }
 
 function autoExtractTitle() {
-  // Only auto-fill if the title field is empty (don't overwrite what user typed)
   if ($("fieldTitle").value.trim()) return;
   const content = $("fieldContent").value;
   const firstLine = content.trimStart().split("\n")[0];
@@ -102,6 +115,16 @@ async function loadTree() {
   const res = await fetch("/api/tree");
   const tree = await res.json();
   renderTree(tree);
+  // Restore starred section from starredMap
+  renderStarredSection(
+    Object.fromEntries(
+      Object.entries(starredMap).filter(([, v]) => v).map(([id, starred]) => [id, { starred, title: "" }])
+    )
+  );
+  // Restore pinned section from pinnedMap (merged with localStorage)
+  const localPinned = JSON.parse(localStorage.getItem("kb_pinned") || "{}");
+  Object.assign(pinnedMap, localPinned);
+  renderPinnedSection();
 }
 
 function renderTree(tree) {
@@ -182,6 +205,12 @@ async function loadEntry(id) {
   document.querySelectorAll(".tree-entry").forEach(el => {
     el.classList.toggle("active", el.dataset.id === id);
   });
+  document.querySelectorAll(".tree-starred-entry").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
+  document.querySelectorAll(".tree-pinned-entry").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
 
   const res = await fetch(`/api/entry/${id}`);
   if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
@@ -190,8 +219,22 @@ async function loadEntry(id) {
   $("welcome").classList.add("hidden");
   $("entryView").classList.remove("hidden");
 
+  // Close move panel and history panel on new entry load
+  $("movePanel").classList.add("hidden");
+  $("historyPanel").classList.add("hidden");
+  $("historyBtn").classList.remove("active");
+
   const m = data.meta;
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
+
+  // Render entry body first (so we can count words)
+  $("entryBody").innerHTML = data.html;
+  $("contentArea").scrollTo(0, 0);
+
+  // Word count + reading time
+  const wordCount = getWordCount($("entryBody"));
+  const readMin = Math.max(1, Math.round(wordCount / 200));
+
   $("entryMeta").innerHTML = `
     <span class="meta-seg meta-seg-cat">
       <span class="meta-seg-icon">󰣇</span>
@@ -205,9 +248,39 @@ async function loadEntry(id) {
       <span class="meta-seg-icon"> </span>
       ${date}
     </span>
+    <span class="meta-seg meta-seg-words">
+      <span class="meta-seg-icon">⌨</span>
+      ${wordCount} words
+    </span>
+    <span class="meta-seg meta-seg-readtime">
+      <span class="meta-seg-icon">◷</span>
+      ~${readMin} min
+    </span>
   `;
-  $("entryBody").innerHTML = data.html;
-  $("contentArea").scrollTo(0, 0);
+
+  // Update star button
+  const starred = m.starred || false;
+  starredMap[id] = starred;
+  updateStarBtn(starred);
+
+  // Update pin button
+  const pinned = m.pinned || false;
+  pinnedMap[id] = pinned;
+  localStorage.setItem("kb_pinned", JSON.stringify(pinnedMap));
+  updatePinBtn(pinned);
+
+  // Breadcrumb
+  buildBreadcrumb(m);
+
+  // Build TOC
+  buildTOC();
+
+  // Post-process checkboxes with line indices
+  postProcessCheckboxes(data.markdown, $("entryBody"));
+  attachCheckboxHandlers();
+
+  // Backlinks (async, non-blocking)
+  loadBacklinks(id);
 }
 
 // ---- MODAL ----
@@ -225,6 +298,8 @@ function openNewModal() {
   $("saveBtn").dataset.id = "";
   $("saveBtn").textContent = "Guardar entrada";
   $("modalOverlay").classList.remove("hidden");
+  // Reset template chips
+  document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
 
@@ -254,6 +329,8 @@ async function openEditModal() {
   $("saveBtn").dataset.id = currentEntryId;
   $("saveBtn").textContent = "Actualizar entrada";
   $("modalOverlay").classList.remove("hidden");
+  // Reset template chips on edit
+  document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
 }
 
 function closeModal() {
@@ -333,6 +410,12 @@ function exportEntry(format) {
 
 // ---- SEARCH ----
 async function runSearch(q) {
+  const cat = $("filterCategory").value;
+  const from = $("filterFrom").value;
+  const to = $("filterTo").value;
+  if (cat || from || to) {
+    return runSearchWithFilters(q, cat, from, to);
+  }
   const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
   const results = await res.json();
   const container = $("searchResults");
@@ -438,8 +521,6 @@ function exitFocusMode() {
 // ============================================================
 // FEATURE 2 — STARRED / FAVORITES
 // ============================================================
-let starredMap = {}; // entry_id -> bool
-
 function initStarFeature() {
   $("starBtn").addEventListener("click", toggleStar);
 }
@@ -469,7 +550,6 @@ function renderStarredSection(index) {
   const starred = Object.entries(index).filter(([, meta]) => meta.starred);
   const nav = $("tree");
 
-  // Remove existing starred section
   const existing = nav.querySelector(".tree-starred-section");
   if (existing) existing.remove();
 
@@ -484,113 +564,12 @@ function renderStarredSection(index) {
   starred.forEach(([id, meta]) => {
     const el = document.createElement("div");
     el.className = "tree-starred-entry" + (id === currentEntryId ? " active" : "");
-    el.textContent = "★ " + meta.title;
-    el.title = meta.title;
+    el.textContent = "★ " + (meta.title || id);
+    el.title = meta.title || id;
     el.dataset.id = id;
     el.addEventListener("click", () => loadEntry(id));
     list.appendChild(el);
   });
-}
-
-// Extend loadTree to also fetch index for starred
-const _origLoadTree = loadTree;
-async function loadTreeWithStarred() {
-  const [treeRes, indexRes] = await Promise.all([
-    fetch("/api/tree"),
-    fetch("/api/stats").then(r => r.ok ? r.json() : null).catch(() => null),
-  ]);
-  const tree = await treeRes.json();
-  renderTree(tree);
-
-  // Fetch starred state from per-entry meta via a quick index poll
-  // We re-use /api/tree but need starred field — fetch from search index
-  fetchStarredEntries().then(idx => renderStarredSection(idx));
-}
-
-async function fetchStarredEntries() {
-  // get all entries via search with empty query filtered
-  const res = await fetch("/api/search/filtered?q=");
-  if (!res.ok) return {};
-  const entries = await res.json();
-  // build map, but we need starred field — store it separately
-  return starredMap;
-}
-
-// Override loadTree
-async function loadTree() {
-  const res = await fetch("/api/tree");
-  const tree = await res.json();
-  renderTree(tree);
-  // Refresh starred section using cached starredMap
-  renderStarredSection(
-    Object.fromEntries(
-      Object.entries(starredMap).filter(([, v]) => v).map(([id, starred]) => [id, { starred, title: "" }])
-    )
-  );
-  // Also load the full index to get titles for starred entries
-  loadStarredFromServer();
-}
-
-async function loadStarredFromServer() {
-  const res = await fetch("/api/search/filtered?q=");
-  if (!res.ok) return;
-  // We can't get starred from this endpoint; instead build from a dedicated call
-  // Fallback: call /api/tree which doesn't have starred info.
-  // Best approach: call a new /api/starred or loop entries — instead we store in localStorage
-  // Restore from localStorage
-  const saved = localStorage.getItem("kb_starred");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      // Merge with server state (server is source of truth on reload)
-    } catch (e) {}
-  }
-}
-
-// When loading an entry, update star button
-const _origLoadEntry = loadEntry;
-async function loadEntry(id) {
-  currentEntryId = id;
-  document.querySelectorAll(".tree-entry").forEach(el => {
-    el.classList.toggle("active", el.dataset.id === id);
-  });
-  document.querySelectorAll(".tree-starred-entry").forEach(el => {
-    el.classList.toggle("active", el.dataset.id === id);
-  });
-
-  const res = await fetch(`/api/entry/${id}`);
-  if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
-  const data = await res.json();
-
-  $("welcome").classList.add("hidden");
-  $("entryView").classList.remove("hidden");
-
-  const m = data.meta;
-  const date = m.created_at ? m.created_at.slice(0, 10) : "—";
-  $("entryMeta").innerHTML = `
-    <span class="meta-seg meta-seg-cat">
-      <span class="meta-seg-icon">󰣇</span>
-      ${escapeHtml(m.category_label || m.category)}
-    </span>
-    <span class="meta-seg meta-seg-topic">
-      <span class="meta-seg-icon"> </span>
-      ${escapeHtml(m.topic_label || m.topic)}
-    </span>
-    <span class="meta-seg meta-seg-date">
-      <span class="meta-seg-icon"> </span>
-      ${date}
-    </span>
-  `;
-  $("entryBody").innerHTML = data.html;
-  $("contentArea").scrollTo(0, 0);
-
-  // Update star button
-  const starred = m.starred || false;
-  starredMap[id] = starred;
-  updateStarBtn(starred);
-
-  // Build TOC
-  buildTOC();
 }
 
 // ============================================================
@@ -613,7 +592,6 @@ function buildTOC() {
   const tocItems = $("tocItems");
   const tocPanel = $("tocPanel");
 
-  // Add IDs to headings
   headings.forEach((h, i) => {
     if (!h.id) h.id = "toc-heading-" + i;
   });
@@ -664,14 +642,12 @@ async function saveScratchpad() {
   const content = $("scratchpadText").value.trim();
   if (!content) { showToast("Nada que guardar", "error"); return; }
 
-  // Show inline title row instead of browser prompt
   const titleRow = $("scratchpadTitleRow");
   const titleInput = $("scratchpadTitle");
   if (titleRow.classList.contains("hidden")) {
     titleRow.classList.remove("hidden");
     titleInput.value = "";
     titleInput.focus();
-    // Change save button to confirm
     $("scratchpadSave").textContent = "confirm";
     return;
   }
@@ -847,7 +823,6 @@ function initSearchFilters() {
     }
   });
 
-  // Override search to include filters
   const filterCat = $("filterCategory");
   const filterFrom = $("filterFrom");
   const filterTo = $("filterTo");
@@ -870,7 +845,6 @@ function initSearchFilters() {
   filterFrom.addEventListener("change", runFilteredSearch);
   filterTo.addEventListener("change", runFilteredSearch);
 
-  // Populate category filter
   loadFilterCategories();
 }
 
@@ -878,7 +852,6 @@ async function loadFilterCategories() {
   const res = await fetch("/api/categories");
   const cats = await res.json();
   const sel = $("filterCategory");
-  // Clear existing options except first
   while (sel.options.length > 1) sel.remove(1);
   for (const [slug, label] of Object.entries(cats)) {
     const opt = document.createElement("option");
@@ -923,27 +896,366 @@ async function runSearchWithFilters(q, category, from, to) {
   });
 }
 
-// Override the base runSearch to also respect filters
-const _origRunSearch = runSearch;
-async function runSearch(q) {
-  const cat = $("filterCategory").value;
-  const from = $("filterFrom").value;
-  const to = $("filterTo").value;
-  if (cat || from || to) {
-    return runSearchWithFilters(q, cat, from, to);
+// ============================================================
+// NEW FEATURE: INTERACTIVE CHECKBOXES
+// ============================================================
+function attachCheckboxHandlers() {
+  const body = $("entryBody");
+  if (!body) return;
+  body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener("change", async (e) => {
+      e.preventDefault();
+      if (!currentEntryId) return;
+      const lineIndex = parseInt(cb.dataset.lineIndex, 10);
+      if (isNaN(lineIndex)) return;
+      const checked = cb.checked;
+      const res = await fetch(`/api/entry/${currentEntryId}/checkbox`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ line_index: lineIndex, checked }),
+      });
+      if (!res.ok) {
+        showToast("Error al guardar checkbox", "error");
+        cb.checked = !checked;
+      }
+    });
+  });
+}
+
+function postProcessCheckboxes(markdown, htmlElement) {
+  const lines = markdown.split("\n");
+  const checkboxes = Array.from(htmlElement.querySelectorAll('input[type="checkbox"]'));
+  let cbIndex = 0;
+  for (let i = 0; i < lines.length && cbIndex < checkboxes.length; i++) {
+    const line = lines[i];
+    if (/- \[[ x]\]/i.test(line)) {
+      checkboxes[cbIndex].dataset.lineIndex = i;
+      const li = checkboxes[cbIndex].closest("li");
+      if (li) li.classList.add("task-list-item");
+      cbIndex++;
+    }
   }
-  return _origRunSearch(q);
 }
 
 // ============================================================
-// INIT ALL NEW FEATURES
+// NEW FEATURE: ENTRY TEMPLATES
 // ============================================================
-document.addEventListener("DOMContentLoaded", () => {
-  initFocusMode();
-  initStarFeature();
-  initTOC();
-  initScratchpad();
-  initStats();
-  initContextMenu();
-  initSearchFilters();
-});
+const TEMPLATES = {
+  blank: "",
+  concepto: "# Concepto\n\n## ¿Qué es?\n\n## ¿Para qué sirve?\n\n## Ejemplo\n```bash\n\n```\n\n## Notas importantes\n",
+  comando: "# comando\n\n## Descripción\n\n## Sintaxis\n```bash\ncomando [opciones] [argumentos]\n```\n\n## Opciones útiles\n\n* `-flag` — descripción\n\n## Ejemplos prácticos\n```bash\n\n```\n\n## Errores comunes\n",
+  tutorial: "# Título del tutorial\n\n## Objetivo\n\n## Requisitos previos\n\n## Pasos\n\n### Paso 1\n\n### Paso 2\n\n### Paso 3\n\n## Resultado esperado\n\n## Problemas frecuentes\n",
+  resumen: "# Título\n\n## Ideas principales\n\n* \n* \n* \n\n## Conceptos clave\n\n## Conclusión\n\n## Referencias\n",
+};
+
+function initTemplates() {
+  document.querySelectorAll(".template-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const tpl = chip.dataset.tpl;
+      if (tpl in TEMPLATES) {
+        $("fieldContent").value = TEMPLATES[tpl];
+        document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        $("fieldContent").focus();
+        autoExtractTitle();
+      }
+    });
+  });
+}
+
+// ============================================================
+// NEW FEATURE: VERSION HISTORY
+// ============================================================
+let _historyCurrentTimestamp = null;
+let _historyCurrentMarkdown = null;
+
+function initHistory() {
+  $("historyBtn").addEventListener("click", toggleHistoryPanel);
+  $("versionModalClose").addEventListener("click", closeVersionModal);
+  $("versionModalCancel").addEventListener("click", closeVersionModal);
+  $("versionRestoreBtn").addEventListener("click", restoreVersion);
+  $("versionModalOverlay").addEventListener("click", e => {
+    if (e.target === $("versionModalOverlay")) closeVersionModal();
+  });
+}
+
+function toggleHistoryPanel() {
+  const panel = $("historyPanel");
+  const isHidden = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !isHidden);
+  $("historyBtn").classList.toggle("active", isHidden);
+  if (isHidden && currentEntryId) {
+    loadHistoryPanel(currentEntryId);
+  }
+}
+
+async function loadHistoryPanel(id) {
+  const items = $("historyItems");
+  items.innerHTML = '<div style="padding:10px;color:var(--text-faint);font-size:0.72rem;">loading…</div>';
+  const res = await fetch(`/api/entry/${id}/history`);
+  if (!res.ok) { items.innerHTML = '<div style="padding:10px;color:var(--danger);font-size:0.72rem;">error</div>'; return; }
+  const snapshots = await res.json();
+  if (snapshots.length === 0) {
+    items.innerHTML = '<div style="padding:10px;color:var(--text-faint);font-size:0.72rem;">no versions yet</div>';
+    return;
+  }
+  items.innerHTML = snapshots.map(s => {
+    // Parse timestamp: YYYYMMDDTHHMMSS → YYYY-MM-DD HH:MM:SS
+    const ts = s.timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
+    const kb = (s.size / 1024).toFixed(1);
+    return `<div class="history-item" data-ts="${escapeHtml(s.timestamp)}">
+      <span class="history-item-ts">${escapeHtml(ts)}</span>
+      <span class="history-item-size">${kb} KB</span>
+    </div>`;
+  }).join("");
+  items.querySelectorAll(".history-item").forEach(item => {
+    item.addEventListener("click", () => openVersionPreview(currentEntryId, item.dataset.ts));
+  });
+}
+
+async function openVersionPreview(entryId, timestamp) {
+  const res = await fetch(`/api/entry/${entryId}/history/${timestamp}`);
+  if (!res.ok) { showToast("Error al cargar snapshot", "error"); return; }
+  const data = await res.json();
+  _historyCurrentTimestamp = timestamp;
+  _historyCurrentMarkdown = data.markdown;
+  const ts = timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
+  $("versionModalTitle").textContent = `snapshot — ${ts}`;
+  $("versionModalBody").innerHTML = data.html;
+  $("versionModalOverlay").classList.remove("hidden");
+}
+
+function closeVersionModal() {
+  $("versionModalOverlay").classList.add("hidden");
+  _historyCurrentTimestamp = null;
+  _historyCurrentMarkdown = null;
+}
+
+async function restoreVersion() {
+  if (!currentEntryId || !_historyCurrentMarkdown) return;
+  const res = await fetch(`/api/entry/${currentEntryId}`);
+  const data = await res.json();
+  const m = data.meta;
+  const putRes = await fetch(`/api/entry/${currentEntryId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      raw_text: _historyCurrentMarkdown,
+      title: m.title,
+      category: m.category_label || m.category,
+      topic: m.topic_label || m.topic,
+    }),
+  });
+  if (putRes.ok) {
+    closeVersionModal();
+    $("historyPanel").classList.add("hidden");
+    $("historyBtn").classList.remove("active");
+    showToast("Versión restaurada");
+    await loadTree();
+    loadEntry(currentEntryId);
+  } else {
+    showToast("Error al restaurar", "error");
+  }
+}
+
+// ============================================================
+// NEW FEATURE: BACKLINKS
+// ============================================================
+async function loadBacklinks(id) {
+  const res = await fetch(`/api/entry/${id}/backlinks`);
+  if (!res.ok) return;
+  const backlinks = await res.json();
+  if (backlinks.length === 0) return;
+  const section = document.createElement("div");
+  section.className = "backlinks-section";
+  section.innerHTML = `<div class="backlinks-header">← backlinks (${backlinks.length})</div>` +
+    backlinks.map(bl => `
+      <div class="backlink-item" data-id="${escapeHtml(bl.id)}">
+        <div class="backlink-title">${escapeHtml(bl.title)}</div>
+        <div class="backlink-path">${escapeHtml(bl.category_label)} › ${escapeHtml(bl.topic_label)}</div>
+        <div class="backlink-snippet">${escapeHtml(bl.snippet)}</div>
+      </div>
+    `).join("");
+  section.querySelectorAll(".backlink-item").forEach(item => {
+    item.addEventListener("click", () => loadEntry(item.dataset.id));
+  });
+  $("entryBody").appendChild(section);
+}
+
+// ============================================================
+// NEW FEATURE: WORD COUNT + READING TIME
+// ============================================================
+function getWordCount(htmlElement) {
+  const text = htmlElement.textContent || htmlElement.innerText || "";
+  return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+}
+
+// ============================================================
+// NEW FEATURE: DUPLICATE ENTRY
+// ============================================================
+function initDuplicate() {
+  $("dupBtn").addEventListener("click", duplicateEntry);
+}
+
+async function duplicateEntry() {
+  if (!currentEntryId) return;
+  const res = await fetch(`/api/entry/${currentEntryId}/duplicate`, { method: "POST" });
+  if (!res.ok) { showToast("Error al duplicar", "error"); return; }
+  const data = await res.json();
+  showToast("Entrada duplicada");
+  await loadTree();
+  loadEntry(data.id);
+}
+
+// ============================================================
+// NEW FEATURE: MOVE ENTRY
+// ============================================================
+function initMove() {
+  $("moveBtn").addEventListener("click", toggleMovePanel);
+  $("moveCancelBtn").addEventListener("click", closeMovePanel);
+  $("moveApplyBtn").addEventListener("click", applyMove);
+  loadMoveCatSuggestions();
+}
+
+async function loadMoveCatSuggestions() {
+  const res = await fetch("/api/categories");
+  const cats = await res.json();
+  const dl = $("moveCatSuggestions");
+  dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+}
+
+function toggleMovePanel() {
+  const panel = $("movePanel");
+  if (panel.classList.contains("hidden")) {
+    fetch(`/api/entry/${currentEntryId}`).then(r => r.json()).then(data => {
+      const m = data.meta;
+      $("moveCat").value = m.category_label || m.category;
+      $("moveTopic").value = m.topic_label || m.topic;
+    });
+    panel.classList.remove("hidden");
+    loadMoveCatSuggestions();
+  } else {
+    closeMovePanel();
+  }
+}
+
+function closeMovePanel() {
+  $("movePanel").classList.add("hidden");
+}
+
+async function applyMove() {
+  if (!currentEntryId) return;
+  const cat = $("moveCat").value.trim();
+  const topic = $("moveTopic").value.trim();
+  if (!cat || !topic) { showToast("Completa categoría y tema", "error"); return; }
+
+  const entryRes = await fetch(`/api/entry/${currentEntryId}`);
+  const entryData = await entryRes.json();
+  const m = entryData.meta;
+
+  const res = await fetch(`/api/entry/${currentEntryId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      raw_text: entryData.markdown,
+      title: m.title,
+      category: cat,
+      topic: topic,
+    }),
+  });
+  if (res.ok) {
+    closeMovePanel();
+    showToast("Entrada movida");
+    await loadTree();
+    loadEntry(currentEntryId);
+  } else {
+    showToast("Error al mover", "error");
+  }
+}
+
+// ============================================================
+// NEW FEATURE: PIN ENTRIES
+// ============================================================
+function initPin() {
+  $("pinBtn").addEventListener("click", togglePin);
+}
+
+async function togglePin() {
+  if (!currentEntryId) return;
+  const res = await fetch(`/api/entry/${currentEntryId}/pin`, { method: "POST" });
+  if (!res.ok) return;
+  const data = await res.json();
+  pinnedMap[currentEntryId] = data.pinned;
+  localStorage.setItem("kb_pinned", JSON.stringify(pinnedMap));
+  updatePinBtn(data.pinned);
+  await loadTree();
+}
+
+function updatePinBtn(pinned) {
+  const btn = $("pinBtn");
+  if (pinned) {
+    btn.textContent = "⊟ unpin";
+    btn.classList.add("pinned");
+  } else {
+    btn.textContent = "⊞ pin";
+    btn.classList.remove("pinned");
+  }
+}
+
+function renderPinnedSection() {
+  const nav = $("tree");
+  const existing = nav.querySelector(".tree-pinned-section");
+  if (existing) existing.remove();
+
+  const pinnedEntries = Object.entries(pinnedMap).filter(([, v]) => v);
+  if (pinnedEntries.length === 0) return;
+
+  const section = document.createElement("div");
+  section.className = "tree-pinned-section";
+  section.innerHTML = `<div class="tree-pinned-header">⊞ pinned</div><div class="tree-pinned-list"></div>`;
+
+  // Insert before starred section (or at top)
+  const starredSec = nav.querySelector(".tree-starred-section");
+  if (starredSec) {
+    nav.insertBefore(section, starredSec);
+  } else {
+    nav.insertBefore(section, nav.firstChild);
+  }
+
+  const list = section.querySelector(".tree-pinned-list");
+  for (const [eid] of pinnedEntries) {
+    const el = document.createElement("div");
+    el.className = "tree-pinned-entry" + (eid === currentEntryId ? " active" : "");
+    el.dataset.id = eid;
+    const treeEntry = document.querySelector(`.tree-entry[data-id="${eid}"]`);
+    el.textContent = "⊞ " + (treeEntry ? treeEntry.textContent.replace(/^·\s*/, "") : eid);
+    el.addEventListener("click", () => loadEntry(eid));
+    list.appendChild(el);
+  }
+}
+
+// ============================================================
+// NEW FEATURE: BREADCRUMB
+// ============================================================
+function buildBreadcrumb(meta) {
+  const catLabel = escapeHtml(meta.category_label || meta.category);
+  const topicLabel = escapeHtml(meta.topic_label || meta.topic);
+  const entryTitle = escapeHtml(meta.title);
+  $("breadcrumb").innerHTML = `
+    <span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category)}">${catLabel}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-seg" data-topic="${escapeHtml(meta.topic)}">${topicLabel}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-seg last">${entryTitle}</span>
+  `;
+  $("breadcrumb").querySelectorAll(".breadcrumb-seg[data-cat]").forEach(seg => {
+    seg.addEventListener("click", () => {
+      const cat = seg.dataset.cat;
+      const catEl = document.querySelector(`.tree-category[data-cat="${cat}"]`);
+      if (catEl && !catEl.classList.contains("open")) {
+        catEl.querySelector(".tree-category-header").click();
+      }
+      if (catEl) catEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+}

@@ -259,6 +259,17 @@ def create_entry():
     return jsonify({"id": entry_id, "message": "Saved"})
 
 
+def _save_history_snapshot(entry_id, meta, old_path):
+    """Save a snapshot of the current file before overwriting."""
+    if not old_path.exists():
+        return
+    hist_dir = old_path.parent / ".history"
+    hist_dir.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+    snapshot_path = hist_dir / f"{entry_id}_{ts}.md"
+    snapshot_path.write_text(old_path.read_text())
+
+
 @app.route("/api/entry/<entry_id>", methods=["PUT"])
 def update_entry(entry_id):
     index = load_index()
@@ -274,6 +285,8 @@ def update_entry(entry_id):
 
     meta = index[entry_id]
     old_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    # Save history snapshot before overwriting
+    _save_history_snapshot(entry_id, meta, old_path)
     md_content = smart_parse(raw_text)
 
     # Update file — if category/topic changed, move the file
@@ -529,6 +542,142 @@ def search_filtered():
             "snippet": snippet,
         })
     return jsonify(results)
+
+
+# ── FEATURE: Interactive Checkboxes ────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/checkbox", methods=["PATCH"])
+def toggle_checkbox(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json
+    line_index = data.get("line_index")
+    checked = data.get("checked", False)
+    meta = index[entry_id]
+    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    if not path.exists():
+        return jsonify({"error": "File not found"}), 404
+    lines = path.read_text().splitlines(keepends=True)
+    if line_index < 0 or line_index >= len(lines):
+        return jsonify({"error": "Invalid line index"}), 400
+    line = lines[line_index]
+    if checked:
+        lines[line_index] = re.sub(r'\[ \]', '[x]', line, count=1)
+    else:
+        lines[line_index] = re.sub(r'\[x\]', '[ ]', line, flags=re.IGNORECASE, count=1)
+    path.write_text("".join(lines))
+    return jsonify({"ok": True})
+
+
+# ── FEATURE: Version History ────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/history")
+def get_entry_history(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    hist_dir = path.parent / ".history"
+    if not hist_dir.exists():
+        return jsonify([])
+    snapshots = []
+    for f in sorted(hist_dir.glob(f"{entry_id}_*.md"), reverse=True):
+        # Extract timestamp from filename: entryid_YYYYMMDDTHHMMSS.md
+        stem = f.stem  # e.g. "my-entry_20240101T120000"
+        ts_part = stem[len(entry_id)+1:] if stem.startswith(entry_id + "_") else ""
+        snapshots.append({
+            "timestamp": ts_part,
+            "filename": f.name,
+            "size": f.stat().st_size,
+        })
+    return jsonify(snapshots)
+
+
+@app.route("/api/entry/<entry_id>/history/<timestamp>")
+def get_entry_history_snapshot(entry_id, timestamp):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    hist_dir = path.parent / ".history"
+    snapshot_path = hist_dir / f"{entry_id}_{timestamp}.md"
+    if not snapshot_path.exists():
+        return jsonify({"error": "Snapshot not found"}), 404
+    content = snapshot_path.read_text()
+    html = render_markdown(content)
+    return jsonify({"markdown": content, "html": html, "timestamp": timestamp})
+
+
+# ── FEATURE: Backlinks ──────────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/backlinks")
+def get_backlinks(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    target_title = index[entry_id]["title"].lower()
+    results = []
+    for eid, meta in index.items():
+        if eid == entry_id:
+            continue
+        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{eid}.md"
+        if not path.exists():
+            continue
+        content = path.read_text()
+        if target_title in content.lower():
+            snippet = _extract_snippet(content, target_title)
+            results.append({
+                "id": eid,
+                "title": meta["title"],
+                "category_label": meta.get("category_label", meta["category"]),
+                "topic_label": meta.get("topic_label", meta["topic"]),
+                "snippet": snippet,
+            })
+    return jsonify(results)
+
+
+# ── FEATURE: Duplicate Entry ────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/duplicate", methods=["POST"])
+def duplicate_entry(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    if not path.exists():
+        return jsonify({"error": "File not found"}), 404
+
+    new_id = entry_id + "-copy"
+    counter = 1
+    while new_id in index:
+        new_id = f"{entry_id}-copy-{counter}"
+        counter += 1
+
+    new_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{new_id}.md"
+    new_path.write_text(path.read_text())
+
+    index[new_id] = {
+        "title": "[copy] " + meta["title"],
+        "category": meta["category"],
+        "category_label": meta.get("category_label", meta["category"]),
+        "topic": meta["topic"],
+        "topic_label": meta.get("topic_label", meta["topic"]),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    save_index(index)
+    return jsonify({"id": new_id, "message": "Duplicated"})
+
+
+# ── FEATURE: Pin Entry ──────────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/pin", methods=["POST"])
+def toggle_pin(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    current = index[entry_id].get("pinned", False)
+    index[entry_id]["pinned"] = not current
+    save_index(index)
+    return jsonify({"pinned": index[entry_id]["pinned"]})
 
 
 if __name__ == "__main__":

@@ -62,14 +62,59 @@
             <button class="btn-ghost" id="exportMdBtn">↓ .md</button>
             <button class="btn-ghost" id="exportPdfBtn">↓ .pdf</button>
             <button class="btn-ghost" id="tocBtn">¶ toc</button>
+            <button class="btn-ghost" id="historyBtn">⟲ history</button>
             <button class="btn-ghost" id="starBtn">☆ star</button>
+            <button class="btn-ghost" id="pinBtn">⊞ pin</button>
+            <button class="btn-ghost" id="dupBtn">⎘ dup</button>
+            <button class="btn-ghost" id="moveBtn">⇄ move</button>
             <button class="btn-ghost" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost danger" id="deleteBtn">rm -f</button>
+          </div>
+        </div>
+        <!-- BREADCRUMB -->
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <!-- MOVE PANEL -->
+        <div class="move-panel hidden" id="movePanel">
+          <div class="move-panel-row">
+            <span class="move-label">cat:</span>
+            <input type="text" id="moveCat" list="moveCatSuggestions" placeholder="nueva categoría" />
+            <datalist id="moveCatSuggestions"></datalist>
+          </div>
+          <div class="move-panel-row">
+            <span class="move-label">topic:</span>
+            <input type="text" id="moveTopic" placeholder="nuevo tema" />
+          </div>
+          <div class="move-panel-actions">
+            <button class="btn-ghost" id="moveCancelBtn">cancel</button>
+            <button class="btn-primary" id="moveApplyBtn">apply</button>
           </div>
         </div>
         <div class="entry-body" id="entryBody"></div>
       </article>
     </main>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div class="history-panel hidden" id="historyPanel">
+    <div class="history-panel-header">⟲ version history</div>
+    <div class="history-panel-items" id="historyItems"></div>
+  </div>
+
+  <!-- VERSION PREVIEW MODAL -->
+  <div class="modal-overlay hidden" id="versionModalOverlay">
+    <div class="modal" id="versionModal">
+      <div class="modal-header">
+        <h2 id="versionModalTitle">snapshot</h2>
+        <button class="modal-close" id="versionModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="entry-body" id="versionModalBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="versionModalCancel">cancelar</button>
+        <button class="btn-primary" id="versionRestoreBtn">restore</button>
+      </div>
+    </div>
   </div>
 
   <!-- TOC PANEL -->
@@ -178,6 +223,16 @@
         <div class="form-group">
           <label>Título de la entrada</label>
           <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
+        </div>
+        <div class="form-group" id="templatePickerGroup">
+          <label>Plantilla</label>
+          <div class="template-chips">
+            <button class="template-chip" data-tpl="blank">[blank]</button>
+            <button class="template-chip" data-tpl="concepto">[concepto técnico]</button>
+            <button class="template-chip" data-tpl="comando">[comando linux]</button>
+            <button class="template-chip" data-tpl="tutorial">[tutorial]</button>
+            <button class="template-chip" data-tpl="resumen">[resumen]</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Contenido <span class="label-hint">(pega texto libre, Markdown o mixto)</span></label>
