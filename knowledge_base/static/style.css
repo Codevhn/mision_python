@@ -440,8 +440,8 @@ input, textarea, select { font-family: inherit; }
 
 /* ── QUICK NOTES — nota visual diferenciada ───────────────────────────── */
 .note-entry {
-  background: #0b1a14;
-  border: 1px solid #1f4a2e;
+  background: #111318;
+  border: 1px solid #2a2d3a;
   border-left: 3px solid #3dba6f;
   padding: 28px 32px;
   position: relative;

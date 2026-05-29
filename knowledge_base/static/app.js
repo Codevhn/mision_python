@@ -6,6 +6,7 @@ const $ = id => document.getElementById(id);
 
 // ---- State ----
 let currentEntryId = null;
+let currentEntryMeta = null;
 let treeState = {}; // { cat: { open: bool, topics: { topic: { open: bool } } } }
 let starredMap = {};  // entry_id -> bool
 let pinnedMap = {};   // entry_id -> bool
@@ -282,6 +283,7 @@ async function loadEntry(id) {
   $("historyBtn").classList.remove("active");
 
   const m = data.meta;
+  currentEntryMeta = m;
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
   // Render entry body first (so we can count words)
@@ -458,7 +460,9 @@ async function saveEntry() {
 
 async function deleteEntry() {
   if (!currentEntryId) return;
-  const ok = await showConfirm("rm -f entrada", "¿Eliminar esta entrada? Esta acción no se puede deshacer.");
+  const isNote = currentEntryMeta && (currentEntryMeta.category || "").toLowerCase().replace(" ", "-") === "quick-notes";
+  const label = isNote ? "nota" : "entrada";
+  const ok = await showConfirm(`rm -f ${label}`, `¿Eliminar esta ${label}? Esta acción no se puede deshacer.`);
   if (!ok) return;
   const res = await fetch(`/api/entry/${currentEntryId}`, { method: "DELETE" });
   if (res.ok) {
