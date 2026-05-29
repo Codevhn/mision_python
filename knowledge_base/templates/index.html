@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Base</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#9776;</button>
+      <span class="brand">Knowledge Base</span>
+    </div>
+    <div class="topbar-center">
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="Buscar en todas las entradas…" autocomplete="off" />
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button id="newEntryBtn" class="btn-primary">+ Nueva entrada</button>
+      <button id="themeToggle" class="btn-icon" title="Cambiar tema">☀</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="tree" id="tree">
+        <div class="tree-empty">No hay entradas aún.</div>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content-area" id="contentArea">
+      <div class="welcome" id="welcome">
+        <div class="welcome-inner">
+          <h1>Bienvenido a tu base de conocimiento</h1>
+          <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
+          <button class="btn-primary large" id="welcomeNewBtn">+ Nueva entrada</button>
+        </div>
+      </div>
+
+      <!-- ENTRY VIEW -->
+      <article class="entry-view hidden" id="entryView">
+        <div class="entry-header">
+          <div class="entry-meta" id="entryMeta"></div>
+          <div class="entry-actions">
+            <button class="btn-ghost" id="editBtn">Editar</button>
+            <button class="btn-ghost" id="exportMdBtn">⬇ .md</button>
+            <button class="btn-ghost" id="exportPdfBtn">⬇ PDF</button>
+            <button class="btn-ghost danger" id="deleteBtn">Eliminar</button>
+          </div>
+        </div>
+        <div class="entry-body" id="entryBody"></div>
+      </article>
+    </main>
+  </div>
+
+  <!-- MODAL: Nueva / Editar entrada -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Nueva entrada</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label>Categoría</label>
+            <input type="text" id="fieldCategory" placeholder="Ej: Linux" list="categorySuggestions" />
+            <datalist id="categorySuggestions"></datalist>
+          </div>
+          <div class="form-group">
+            <label>Tema</label>
+            <input type="text" id="fieldTopic" placeholder="Ej: Automatización" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Título de la entrada</label>
+          <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
+        </div>
+        <div class="form-group">
+          <label>Contenido <span class="label-hint">(pega texto libre, Markdown o mixto)</span></label>
+          <div class="editor-tabs">
+            <button class="tab active" data-tab="write">Escribir</button>
+            <button class="tab" data-tab="preview">Vista previa</button>
+          </div>
+          <textarea id="fieldContent" rows="18" placeholder="Pega aquí tu contenido..."></textarea>
+          <div class="preview-pane hidden" id="previewPane"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="cancelBtn">Cancelar</button>
+        <button class="btn-primary" id="saveBtn">Guardar entrada</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
