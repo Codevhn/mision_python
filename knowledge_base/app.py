@@ -741,5 +741,54 @@ def resolve_wikilink():
     return jsonify({"id": None})
 
 
+# ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────
+@app.route("/api/reindex", methods=["POST"])
+def reindex():
+    index = load_index()
+    added = 0
+
+    for md_file in sorted(KNOWLEDGE_DIR.rglob("*.md")):
+        # path: knowledge/<category>/<topic>/<slug>.md
+        parts = md_file.relative_to(KNOWLEDGE_DIR).parts
+        if len(parts) < 3:
+            continue
+
+        cat_slug   = parts[0]
+        topic_slug = parts[1]
+        entry_id   = md_file.stem
+
+        if entry_id in index:
+            continue  # already indexed
+
+        content = md_file.read_text(encoding="utf-8")
+        # extract title from first # heading, fallback to slug
+        title_match = re.search(r"^#\s+(.+)", content, re.MULTILINE)
+        title = title_match.group(1).strip() if title_match else entry_id.replace("-", " ").title()
+
+        # try to get created_at from file mtime
+        mtime = datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
+
+        # history dir for this entry
+        history_dir = md_file.parent / ".history" / entry_id
+        history_dir.mkdir(parents=True, exist_ok=True)
+
+        index[entry_id] = {
+            "title": title,
+            "category": cat_slug,
+            "category_label": cat_slug.replace("-", " ").title(),
+            "topic": topic_slug,
+            "topic_label": topic_slug.replace("-", " ").title(),
+            "created_at": mtime,
+            "starred": False,
+            "pinned": False,
+            "status": "pendiente",
+            "order": 0,
+        }
+        added += 1
+
+    save_index(index)
+    return jsonify({"ok": True, "added": added, "total": len(index)})
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

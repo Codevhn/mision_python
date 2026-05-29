@@ -799,6 +799,17 @@ function makeDraggable(el, handle) {
 // FEATURE 6 — STATS PAGE
 // ============================================================
 function initStats() {
+  $("reindexBtn").addEventListener("click", async () => {
+    showToast("Reindexando archivos…");
+    const res = await fetch("/api/reindex", { method: "POST" });
+    if (res.ok) {
+      const d = await res.json();
+      await loadTree();
+      showToast(`Reindex completo — ${d.added} nuevas, ${d.total} total`);
+    } else {
+      showToast("Error al reindexar", "error");
+    }
+  });
   $("statsBtn").addEventListener("click", openStats);
   $("statsClose").addEventListener("click", () => $("statsOverlay").classList.add("hidden"));
 }
