@@ -285,7 +285,9 @@ async function loadEntry(id) {
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
   // Render entry body first (so we can count words)
+  const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
   $("entryBody").innerHTML = data.html;
+  $("entryBody").classList.toggle("note-entry", isNote);
   $("contentArea").scrollTo(0, 0);
 
   // Set status button from meta
