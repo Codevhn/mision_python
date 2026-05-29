@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knowledge Base</title>
   <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
-  <link rel="stylesheet" href="/pygments.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/prism/prism-tomorrow.min.css" />
+  <link rel="stylesheet" href="/static/prism/prism-toolbar.min.css" />
 </head>
 <body>
 
@@ -331,6 +332,18 @@
   <!-- TOAST -->
   <div class="toast hidden" id="toast"></div>
 
+  <script src="/static/prism/prism-core.min.js"></script>
+  <script src="/static/prism/prism-clike.min.js"></script>
+  <script src="/static/prism/prism-markup.min.js"></script>
+  <script src="/static/prism/prism-bash.min.js"></script>
+  <script src="/static/prism/prism-python.min.js"></script>
+  <script src="/static/prism/prism-javascript.min.js"></script>
+  <script src="/static/prism/prism-java.min.js"></script>
+  <script src="/static/prism/prism-yaml.min.js"></script>
+  <script src="/static/prism/prism-sql.min.js"></script>
+  <script src="/static/prism/prism-json.min.js"></script>
+  <script src="/static/prism/prism-toolbar.min.js"></script>
+  <script src="/static/prism/prism-copy-to-clipboard.min.js"></script>
   <script src="/static/app.js?v={{ v }}"></script>
 </body>
 </html>
