@@ -279,7 +279,7 @@ input, textarea, select { font-family: inherit; }
   padding: 5px 12px 5px 22px;
   font-family: var(--font-mono);
   font-size: 0.74rem;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   user-select: none;
   transition: color 0.12s;
@@ -312,7 +312,7 @@ input, textarea, select { font-family: inherit; }
   padding: 4px 12px 4px 42px;
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
   cursor: pointer;
   border-left: 1px solid var(--border-light);
   margin-left: 22px;
@@ -321,7 +321,7 @@ input, textarea, select { font-family: inherit; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tree-entry::before { content: "· "; color: var(--text-faint); }
+.tree-entry::before { content: "· "; color: var(--text-muted); }
 .tree-entry:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--text-faint); }
 .tree-entry.active {
   color: var(--accent);
