@@ -191,10 +191,20 @@ async function loadEntry(id) {
   $("entryView").classList.remove("hidden");
 
   const m = data.meta;
+  const date = m.created_at ? m.created_at.slice(0, 10) : "—";
   $("entryMeta").innerHTML = `
-    <strong>Categoría:</strong> ${escapeHtml(m.category_label || m.category)} &nbsp;·&nbsp;
-    <strong>Tema:</strong> ${escapeHtml(m.topic_label || m.topic)} &nbsp;·&nbsp;
-    <strong>Creado:</strong> ${m.created_at ? m.created_at.replace("T", " ") : "—"}
+    <span class="meta-seg meta-seg-cat">
+      <span class="meta-seg-icon">󰣇</span>
+      ${escapeHtml(m.category_label || m.category)}
+    </span>
+    <span class="meta-seg meta-seg-topic">
+      <span class="meta-seg-icon"> </span>
+      ${escapeHtml(m.topic_label || m.topic)}
+    </span>
+    <span class="meta-seg meta-seg-date">
+      <span class="meta-seg-icon"> </span>
+      ${date}
+    </span>
   `;
   $("entryBody").innerHTML = data.html;
   $("contentArea").scrollTo(0, 0);
