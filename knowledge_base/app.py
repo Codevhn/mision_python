@@ -157,6 +157,35 @@ def render_markdown(md_text):
     return renderer(processed)
 
 
+def _build_pdf_html(title, date, body_html):
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ font-family: "DejaVu Sans", sans-serif; font-size: 11pt; color: #1a1a1a; margin: 2.5cm; line-height: 1.7; }}
+  h1 {{ font-size: 1.6em; border-bottom: 2px solid #1793d1; padding-bottom: 6px; color: #0e0e0e; margin-top: 0; }}
+  h2 {{ font-size: 1.15em; color: #1793d1; border-left: 3px solid #1793d1; padding-left: 8px; margin-top: 1.4em; }}
+  h3 {{ font-size: 1em; color: #333; margin-top: 1.2em; }}
+  code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.85em; background: #f4f4f4; padding: 1px 5px; border: 1px solid #ddd; }}
+  pre  {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.82em; background: #f4f4f4; border: 1px solid #ccc; border-left: 3px solid #1793d1; padding: 12px; overflow-x: auto; }}
+  pre code {{ background: none; border: none; padding: 0; }}
+  blockquote {{ border-left: 3px solid #aaa; padding: 6px 14px; color: #555; margin: 1em 0; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9em; }}
+  th {{ background: #1793d1; color: #fff; padding: 7px 10px; text-align: left; }}
+  td {{ padding: 6px 10px; border: 1px solid #ddd; }}
+  tr:nth-child(even) td {{ background: #f9f9f9; }}
+  .meta {{ font-size: 0.8em; color: #777; margin-bottom: 2em; font-family: monospace; }}
+  hr {{ border: none; border-top: 1px solid #ddd; margin: 2em 0; }}
+</style>
+</head>
+<body>
+<div class="meta">{date}</div>
+{body_html}
+</body>
+</html>"""
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -347,35 +376,12 @@ def export_pdf(entry_id):
     md_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
     pdf_path = DATA_DIR / f"{entry_id}.pdf"
 
-    if not shutil.which("pandoc"):
-        return jsonify({"error": "pandoc not installed"}), 500
-
+    from weasyprint import HTML as WeasyprintHTML, CSS
     md_content = md_path.read_text()
-    # prepend YAML front matter for pandoc styling
-    front_matter = f"""---
-title: "{meta['title']}"
-author: "Knowledge Base"
-date: "{meta.get('created_at', '')[:10]}"
-geometry: margin=2.5cm
-fontsize: 11pt
-mainfont: "DejaVu Serif"
-monofont: "DejaVu Sans Mono"
-colorlinks: true
----
-
-"""
-    tmp_md = DATA_DIR / f"{entry_id}_tmp.md"
-    tmp_md.write_text(front_matter + md_content)
-
-    result = subprocess.run(
-        ["pandoc", str(tmp_md), "-o", str(pdf_path), "--pdf-engine=xelatex"],
-        capture_output=True, text=True
-    )
-    tmp_md.unlink(missing_ok=True)
-
-    if result.returncode != 0:
-        return jsonify({"error": result.stderr}), 500
-
+    body_html = render_markdown(md_content)
+    date = meta.get("created_at", "")[:10]
+    full_html = _build_pdf_html(meta["title"], date, body_html)
+    WeasyprintHTML(string=full_html).write_pdf(str(pdf_path))
     return send_file(pdf_path, as_attachment=True, download_name=f"{entry_id}.pdf")
 
 
@@ -468,28 +474,21 @@ def export_category_md(category):
 @app.route("/api/export/category/<category>/pdf")
 def export_category_pdf(category):
     if not shutil.which("pandoc"):
-        return jsonify({"error": "pandoc not installed"}), 500
+        pass  # pandoc not required anymore
+    from weasyprint import HTML as WeasyprintHTML
     index = load_index()
-    combined = []
+    combined_html = ""
     for entry_id, meta in index.items():
         if meta["category"] == category:
             path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
             if path.exists():
-                combined.append(f"# {meta['title']}\n\n{path.read_text()}")
-    if not combined:
+                combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(path.read_text()) + "<hr style='page-break-after:always'>"
+    if not combined_html:
         return jsonify({"error": "No entries found"}), 404
 
-    front_matter = f'---\ntitle: "{category}"\nauthor: "Knowledge Base"\ngeometry: margin=2.5cm\nfontsize: 11pt\ncolorlinks: true\n---\n\n'
-    tmp_md = DATA_DIR / f"_cat_{category}_tmp.md"
     pdf_path = DATA_DIR / f"_cat_{category}.pdf"
-    tmp_md.write_text(front_matter + "\n\n---\n\n".join(combined))
-    result = subprocess.run(
-        ["pandoc", str(tmp_md), "-o", str(pdf_path), "--pdf-engine=xelatex"],
-        capture_output=True, text=True
-    )
-    tmp_md.unlink(missing_ok=True)
-    if result.returncode != 0:
-        return jsonify({"error": result.stderr}), 500
+    full_html = _build_pdf_html(category, "", combined_html)
+    WeasyprintHTML(string=full_html).write_pdf(str(pdf_path))
     return send_file(pdf_path, as_attachment=True, download_name=f"{category}.pdf")
 
 
