@@ -914,8 +914,9 @@ input, textarea, select { font-family: inherit; }
   .topbar-center { display: none; }
   .topbar-left { min-width: unset; }
   #reindexBtn, #statsBtn { display: none; }
-  /* theme toggle se mueve al sidebar — se oculta en topbar */
+  /* theme toggle se mueve al sidebar en móvil */
   #themeToggle { display: none; }
+  #themeToggleSidebar { display: inline-flex; }
 
   /* SIDEBAR — drawer oculto por defecto */
   .sidebar {
@@ -1802,6 +1803,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .tree-topic-header:hover .tree-topic-play { opacity: 1; color: var(--accent); }
 
+/* Sidebar theme toggle: solo visible en móvil */
+#themeToggleSidebar { display: none; }
 
 /* Desktop: hide mobile-only elements */
 #moreActionsBtn { display: none; }

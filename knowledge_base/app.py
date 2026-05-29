@@ -289,9 +289,12 @@ def _build_pdf_html(title, date, body_html):
 </html>"""
 
 
+# Cache-busting version derived from build time
+_BUILD_ID = datetime.now().strftime("%Y%m%d%H%M%S")
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", v=_BUILD_ID)
 
 
 @app.route("/api/tree")
