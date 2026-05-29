@@ -149,23 +149,24 @@ def process_alert_blocks(md_text):
     return "\n".join(result)
 
 
-def process_wikilinks(md_text):
-    """Replace [[Entry Title]] with a special span before Markdown parsing."""
+def post_process_wikilinks(html):
+    """Replace [[Entry Title]] patterns in rendered HTML with clickable spans."""
+    # After mistune, wikilinks appear as literal [[...]] text (not escaped in code spans)
     def replace_wikilink(m):
         title = m.group(1)
-        escaped = title.replace('"', '&quot;')
+        escaped = title.replace('"', '&quot;').replace("'", "&#39;")
         return f'<span class="wikilink" data-title="{escaped}">[[{title}]]</span>'
-    return re.sub(r'\[\[(.+?)\]\]', replace_wikilink, md_text)
+    return re.sub(r'\[\[(.+?)\]\]', replace_wikilink, html)
 
 
 def render_markdown(md_text):
-    # Pre-process wikilinks before markdown parsing
-    md_text = process_wikilinks(md_text)
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         plugins=["strikethrough", "table", "url"],
     )
-    return renderer(processed)
+    html = renderer(processed)
+    html = post_process_wikilinks(html)
+    return html
 
 
 def _build_pdf_html(title, date, body_html):

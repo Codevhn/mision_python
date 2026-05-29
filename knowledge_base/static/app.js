@@ -9,6 +9,9 @@ let currentEntryId = null;
 let treeState = {}; // { cat: { open: bool, topics: { topic: { open: bool } } } }
 let starredMap = {};  // entry_id -> bool
 let pinnedMap = {};   // entry_id -> bool
+let statusMap = {};   // entry_id -> status string
+let _reviewEntries = [];
+let _reviewIndex = 0;
 
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,6 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initDuplicate();
   initMove();
   initPin();
+  initStatus();
+  initReview();
 });
 
 function bindEvents() {
@@ -166,22 +171,74 @@ function renderTree(tree) {
         <div class="tree-topic-header">
           <span class="arrow">▶</span>
           <span>${escapeHtml(topicLabel || topic)}</span>
+          <button class="tree-topic-play" title="Review mode">▶</button>
         </div>
         <div class="tree-entries"></div>
       `;
-      topicEl.querySelector(".tree-topic-header").addEventListener("click", () => {
+      topicEl.querySelector(".tree-topic-header").addEventListener("click", e => {
+        if (e.target.classList.contains("tree-topic-play")) return;
         treeState[cat].topics[topic].open = !treeState[cat].topics[topic].open;
         topicEl.classList.toggle("open");
+      });
+      topicEl.querySelector(".tree-topic-play").addEventListener("click", e => {
+        e.stopPropagation();
+        startReview(entries);
       });
 
       const entriesEl = topicEl.querySelector(".tree-entries");
       entries.forEach(entry => {
         const entryEl = document.createElement("div");
         entryEl.className = "tree-entry" + (entry.id === currentEntryId ? " active" : "");
-        entryEl.textContent = entry.title;
         entryEl.title = entry.title;
         entryEl.dataset.id = entry.id;
+        entryEl.draggable = true;
+
+        const status = entry.status || "pendiente";
+        statusMap[entry.id] = status;
+        const dot = document.createElement("span");
+        dot.className = `status-dot status-${status}`;
+        entryEl.appendChild(dot);
+        entryEl.appendChild(document.createTextNode(entry.title));
+
         entryEl.addEventListener("click", () => loadEntry(entry.id));
+
+        // Drag-and-drop for reordering
+        entryEl.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", entry.id);
+          entryEl.classList.add("dragging");
+        });
+        entryEl.addEventListener("dragend", () => {
+          entryEl.classList.remove("dragging");
+          entriesEl.querySelectorAll(".tree-entry").forEach(el => el.classList.remove("drag-over"));
+        });
+        entryEl.addEventListener("dragover", e => {
+          e.preventDefault();
+          entriesEl.querySelectorAll(".tree-entry").forEach(el => el.classList.remove("drag-over"));
+          entryEl.classList.add("drag-over");
+        });
+        entryEl.addEventListener("drop", async e => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData("text/plain");
+          if (draggedId === entry.id) return;
+          const allEntries = Array.from(entriesEl.querySelectorAll(".tree-entry"));
+          const draggedEl = entriesEl.querySelector(`.tree-entry[data-id="${draggedId}"]`);
+          if (!draggedEl) return;
+          const targetIdx = allEntries.indexOf(entryEl);
+          const draggedIdx = allEntries.indexOf(draggedEl);
+          if (draggedIdx < targetIdx) {
+            entriesEl.insertBefore(draggedEl, entryEl.nextSibling);
+          } else {
+            entriesEl.insertBefore(draggedEl, entryEl);
+          }
+          const newOrder = Array.from(entriesEl.querySelectorAll(".tree-entry")).map(el => el.dataset.id);
+          await fetch("/api/entry/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: newOrder }),
+          });
+          entryEl.classList.remove("drag-over");
+        });
+
         entriesEl.appendChild(entryEl);
       });
 
@@ -230,6 +287,11 @@ async function loadEntry(id) {
   // Render entry body first (so we can count words)
   $("entryBody").innerHTML = data.html;
   $("contentArea").scrollTo(0, 0);
+
+  // Set status button from meta
+  const entryStatus = m.status || "pendiente";
+  statusMap[id] = entryStatus;
+  updateStatusBtn($("statusBtn"), entryStatus);
 
   // Word count + reading time
   const wordCount = getWordCount($("entryBody"));
@@ -281,6 +343,9 @@ async function loadEntry(id) {
 
   // Backlinks (async, non-blocking)
   loadBacklinks(id);
+
+  // Wikilinks (async, non-blocking)
+  processWikilinks($("entryBody"));
 }
 
 // ---- MODAL ----
@@ -1232,6 +1297,119 @@ function renderPinnedSection() {
     el.addEventListener("click", () => loadEntry(eid));
     list.appendChild(el);
   }
+}
+
+// ============================================================
+// FEATURE: STUDY STATUS
+// ============================================================
+function initStatus() {
+  $("statusBtn").addEventListener("click", () => cycleStatus(currentEntryId, $("statusBtn"), true));
+}
+
+const STATUS_CYCLE = ["pendiente", "progreso", "dominado"];
+const STATUS_LABELS = { pendiente: "● pend", progreso: "◐ prog", dominado: "✓ done" };
+
+function updateStatusBtn(btn, status) {
+  btn.textContent = STATUS_LABELS[status] || "● pend";
+  btn.className = `btn-ghost status-${status}`;
+}
+
+async function cycleStatus(id, btn, refreshSidebar) {
+  if (!id) return;
+  const current = statusMap[id] || "pendiente";
+  const nextIdx = (STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length;
+  const next = STATUS_CYCLE[nextIdx];
+  const res = await fetch(`/api/entry/${id}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: next }),
+  });
+  if (!res.ok) return;
+  statusMap[id] = next;
+  updateStatusBtn(btn, next);
+  if (refreshSidebar) {
+    // Update the dot in the sidebar without full re-render
+    const dot = document.querySelector(`.tree-entry[data-id="${id}"] .status-dot`);
+    if (dot) {
+      dot.className = `status-dot status-${next}`;
+    }
+  }
+}
+
+// ============================================================
+// FEATURE: WIKI-LINKS
+// ============================================================
+async function processWikilinks(container) {
+  const wikilinks = container.querySelectorAll(".wikilink");
+  for (const el of wikilinks) {
+    const title = el.dataset.title;
+    if (!title) continue;
+    const res = await fetch(`/api/resolve-wikilink?title=${encodeURIComponent(title)}`);
+    const data = await res.json();
+    if (data.id) {
+      el.classList.add("wikilink-found");
+      el.addEventListener("click", () => loadEntry(data.id));
+    } else {
+      el.classList.add("wikilink-missing");
+    }
+  }
+}
+
+// ============================================================
+// FEATURE: REVIEW / STUDY MODE
+// ============================================================
+function initReview() {
+  $("reviewExit").addEventListener("click", exitReview);
+  $("reviewPrev").addEventListener("click", () => navigateReview(-1));
+  $("reviewNext").addEventListener("click", () => navigateReview(1));
+  $("reviewStatusBtn").addEventListener("click", () => {
+    const entry = _reviewEntries[_reviewIndex];
+    if (entry) cycleStatus(entry.id, $("reviewStatusBtn"), true);
+  });
+  document.addEventListener("keydown", e => {
+    if ($("reviewOverlay").classList.contains("hidden")) return;
+    if (e.key === "ArrowLeft")  navigateReview(-1);
+    if (e.key === "ArrowRight") navigateReview(1);
+    if (e.key === "Escape")     exitReview();
+  });
+}
+
+async function startReview(entries) {
+  if (!entries || entries.length === 0) return;
+  _reviewEntries = entries;
+  _reviewIndex = 0;
+  $("reviewOverlay").classList.remove("hidden");
+  await loadReviewEntry();
+}
+
+async function loadReviewEntry() {
+  const entry = _reviewEntries[_reviewIndex];
+  if (!entry) return;
+  $("reviewCounter").textContent = `${_reviewIndex + 1} / ${_reviewEntries.length}`;
+  $("reviewTitle").textContent = entry.title;
+  const body = $("reviewBody");
+  body.classList.add("fading");
+  const res = await fetch(`/api/entry/${entry.id}`);
+  const data = await res.json();
+  body.innerHTML = data.html;
+  body.classList.remove("fading");
+  const status = data.meta.status || "pendiente";
+  statusMap[entry.id] = status;
+  updateStatusBtn($("reviewStatusBtn"), status);
+  processWikilinks(body);
+}
+
+function navigateReview(delta) {
+  const next = _reviewIndex + delta;
+  if (next < 0 || next >= _reviewEntries.length) return;
+  _reviewIndex = next;
+  loadReviewEntry();
+}
+
+function exitReview() {
+  $("reviewOverlay").classList.add("hidden");
+  _reviewEntries = [];
+  _reviewIndex = 0;
 }
 
 // ============================================================

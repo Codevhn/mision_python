@@ -59,6 +59,7 @@
           <div class="entry-meta" id="entryMeta"></div>
           <div class="entry-actions">
             <button class="btn-ghost" id="editBtn">~ editar</button>
+            <button class="btn-ghost" id="statusBtn">● pend</button>
             <button class="btn-ghost" id="exportMdBtn">↓ .md</button>
             <button class="btn-ghost" id="exportPdfBtn">↓ .pdf</button>
             <button class="btn-ghost" id="tocBtn">¶ toc</button>
@@ -246,6 +247,21 @@
         <button class="btn-ghost" id="cancelBtn">Cancelar</button>
         <button class="btn-primary" id="saveBtn">Guardar entrada</button>
       </div>
+    </div>
+  </div>
+
+  <!-- REVIEW OVERLAY -->
+  <div class="review-overlay hidden" id="reviewOverlay">
+    <div class="review-topbar">
+      <span class="review-counter" id="reviewCounter">1 / 5</span>
+      <span class="review-title" id="reviewTitle"></span>
+      <button class="btn-ghost" id="reviewExit">× exit</button>
+    </div>
+    <div class="review-body entry-body" id="reviewBody"></div>
+    <div class="review-controls">
+      <button class="btn-ghost" id="reviewPrev">← prev</button>
+      <button class="btn-ghost" id="reviewStatusBtn">● pend</button>
+      <button class="btn-ghost" id="reviewNext">next →</button>
     </div>
   </div>
 

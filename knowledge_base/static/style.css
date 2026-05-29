@@ -1372,3 +1372,133 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .tree-pinned-entry:hover { background: var(--bg-hover); color: #fff; }
 .tree-pinned-entry.active { background: var(--accent-light); }
 #pinBtn.pinned { color: var(--accent); border-color: var(--accent); }
+
+/* ============================================================
+   FEATURE: STUDY STATUS
+   ============================================================ */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.status-dot.status-pendiente { background: #3a3a3a; }
+.status-dot.status-progreso  { background: #d4a017; }
+.status-dot.status-dominado  { background: #4a9e6a; }
+
+#statusBtn { font-family: var(--font-mono); }
+#statusBtn.status-pendiente { color: var(--text-faint); }
+#statusBtn.status-progreso  { color: #d4a017; border-color: #d4a017; }
+#statusBtn.status-dominado  { color: #4a9e6a; border-color: #4a9e6a; }
+#reviewStatusBtn.status-pendiente { color: var(--text-faint); }
+#reviewStatusBtn.status-progreso  { color: #d4a017; border-color: #d4a017; }
+#reviewStatusBtn.status-dominado  { color: #4a9e6a; border-color: #4a9e6a; }
+
+/* ============================================================
+   FEATURE: MANUAL ORDERING (drag-and-drop)
+   ============================================================ */
+.tree-entry[draggable] { cursor: grab; }
+.tree-entry.drag-over  { border-top: 1px dashed var(--accent); }
+.tree-entry.dragging   { opacity: 0.4; }
+
+/* ============================================================
+   FEATURE: WIKI-LINKS
+   ============================================================ */
+.wikilink {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+.wikilink-found {
+  color: var(--accent);
+  cursor: pointer;
+  border-bottom: 1px dotted var(--accent);
+}
+.wikilink-found:hover { background: var(--accent-light); }
+.wikilink-missing {
+  color: var(--text-faint);
+  border-bottom: 1px dotted var(--text-faint);
+}
+
+/* ============================================================
+   FEATURE: REVIEW / STUDY MODE
+   ============================================================ */
+.review-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+}
+.review-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  z-index: 10;
+  font-family: var(--font-mono);
+}
+.review-counter {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  min-width: 50px;
+}
+.review-title {
+  flex: 1;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.review-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 66px 40px 80px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+  font-size: 1.05rem;
+  line-height: 2;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.review-body.fading { opacity: 0; }
+.review-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-sidebar);
+}
+
+/* topic play button */
+.tree-topic-play {
+  opacity: 0;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.15s, opacity 0.15s;
+  flex-shrink: 0;
+}
+.tree-topic-header:hover .tree-topic-play { opacity: 1; color: var(--accent); }
