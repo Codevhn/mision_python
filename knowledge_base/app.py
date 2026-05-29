@@ -42,6 +42,12 @@ def slugify(text):
     return text
 
 
+def _entry_path(entry_id, meta):
+    if meta.get("type") == "course":
+        return KNOWLEDGE_DIR / "courses" / meta["course"] / meta["module"] / f"{entry_id}.md"
+    return KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+
+
 def smart_parse(raw_text):
     """
     Converts semi-structured or plain text to clean Markdown.
@@ -215,6 +221,8 @@ def get_tree():
     index = load_index()
     tree = {}
     for entry_id, meta in index.items():
+        if meta.get("type") == "course":
+            continue
         cat = meta["category"]
         topic = meta["topic"]
         tree.setdefault(cat, {}).setdefault(topic, []).append({
@@ -237,7 +245,7 @@ def get_entry(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     if not path.exists():
         return jsonify({"error": "File not found"}), 404
     raw = path.read_text()
@@ -311,10 +319,18 @@ def update_entry(entry_id):
         return jsonify({"error": "Missing content"}), 400
 
     meta = index[entry_id]
-    old_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    old_path = _entry_path(entry_id, meta)
     # Save history snapshot before overwriting
     _save_history_snapshot(entry_id, meta, old_path)
     md_content = smart_parse(raw_text)
+
+    if meta.get("type") == "course":
+        # For course entries just update the file in place; skip category/topic move
+        old_path.write_text(md_content)
+        if title:
+            index[entry_id]["title"] = title
+        save_index(index)
+        return jsonify({"message": "Updated"})
 
     # Update file — if category/topic changed, move the file
     new_category = slugify(category) if category else meta["category"]
@@ -348,7 +364,7 @@ def delete_entry(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     if path.exists():
         path.unlink()
     del index[entry_id]
@@ -364,16 +380,18 @@ def search():
     index = load_index()
     results = []
     for entry_id, meta in index.items():
-        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+        path = _entry_path(entry_id, meta)
         if path.exists():
             content = path.read_text().lower()
             if q in content or q in meta["title"].lower():
                 snippet = _extract_snippet(path.read_text(), q)
+                cat_label = meta.get("course_label", meta.get("course", "")) if meta.get("type") == "course" else meta.get("category_label", meta.get("category", ""))
+                topic_label = meta.get("module_label", meta.get("module", "")) if meta.get("type") == "course" else meta.get("topic_label", meta.get("topic", ""))
                 results.append({
                     "id": entry_id,
                     "title": meta["title"],
-                    "category_label": meta.get("category_label", meta["category"]),
-                    "topic_label": meta.get("topic_label", meta["topic"]),
+                    "category_label": cat_label,
+                    "topic_label": topic_label,
                     "snippet": snippet,
                 })
     return jsonify(results)
@@ -403,7 +421,7 @@ def export_md(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     return send_file(path, as_attachment=True, download_name=f"{entry_id}.md")
 
 
@@ -413,7 +431,7 @@ def export_pdf(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    md_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    md_path = _entry_path(entry_id, meta)
     pdf_path = DATA_DIR / f"{entry_id}.pdf"
 
     from weasyprint import HTML as WeasyprintHTML, CSS
@@ -430,6 +448,8 @@ def get_categories():
     index = load_index()
     cats = {}
     for meta in index.values():
+        if meta.get("type") == "course":
+            continue
         cat = meta["category"]
         cats[cat] = meta.get("category_label", cat)
     return jsonify(cats)
@@ -459,11 +479,13 @@ def get_stats():
     last_dt = None
 
     for entry_id, meta in index.items():
+        if meta.get("type") == "course":
+            continue
         cat = meta["category"]
         cat_label = meta.get("category_label", cat)
         categories[cat] = {"label": cat_label, "count": categories.get(cat, {}).get("count", 0) + 1}
         topics.add(meta["topic"])
-        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+        path = _entry_path(entry_id, meta)
         if path.exists():
             total_words += len(path.read_text().split())
         created = meta.get("created_at", "")
@@ -499,8 +521,10 @@ def export_category_md(category):
     found = False
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for entry_id, meta in index.items():
+            if meta.get("type") == "course":
+                continue
             if meta["category"] == category:
-                path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+                path = _entry_path(entry_id, meta)
                 if path.exists():
                     zf.write(path, arcname=f"{entry_id}.md")
                     found = True
@@ -519,8 +543,10 @@ def export_category_pdf(category):
     index = load_index()
     combined_html = ""
     for entry_id, meta in index.items():
+        if meta.get("type") == "course":
+            continue
         if meta["category"] == category:
-            path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+            path = _entry_path(entry_id, meta)
             if path.exists():
                 combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(path.read_text()) + "<hr style='page-break-after:always'>"
     if not combined_html:
@@ -543,6 +569,8 @@ def search_filtered():
     index = load_index()
     results = []
     for entry_id, meta in index.items():
+        if meta.get("type") == "course":
+            continue
         # Category filter
         if category_filter and meta["category"] != category_filter:
             continue
@@ -553,7 +581,7 @@ def search_filtered():
         if to_date and created and created > to_date:
             continue
         # Text search (if q provided)
-        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+        path = _entry_path(entry_id, meta)
         if q:
             if not path.exists():
                 continue
@@ -581,7 +609,7 @@ def toggle_checkbox(entry_id):
     line_index = data.get("line_index")
     checked = data.get("checked", False)
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     if not path.exists():
         return jsonify({"error": "File not found"}), 404
     lines = path.read_text().splitlines(keepends=True)
@@ -603,7 +631,7 @@ def get_entry_history(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     hist_dir = path.parent / ".history"
     if not hist_dir.exists():
         return jsonify([])
@@ -626,7 +654,7 @@ def get_entry_history_snapshot(entry_id, timestamp):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     hist_dir = path.parent / ".history"
     snapshot_path = hist_dir / f"{entry_id}_{timestamp}.md"
     if not snapshot_path.exists():
@@ -647,17 +675,19 @@ def get_backlinks(entry_id):
     for eid, meta in index.items():
         if eid == entry_id:
             continue
-        path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{eid}.md"
+        path = _entry_path(eid, meta)
         if not path.exists():
             continue
         content = path.read_text()
         if target_title in content.lower():
             snippet = _extract_snippet(content, target_title)
+            cat_label = meta.get("course_label", meta.get("course", "")) if meta.get("type") == "course" else meta.get("category_label", meta.get("category", ""))
+            topic_label = meta.get("module_label", meta.get("module", "")) if meta.get("type") == "course" else meta.get("topic_label", meta.get("topic", ""))
             results.append({
                 "id": eid,
                 "title": meta["title"],
-                "category_label": meta.get("category_label", meta["category"]),
-                "topic_label": meta.get("topic_label", meta["topic"]),
+                "category_label": cat_label,
+                "topic_label": topic_label,
                 "snippet": snippet,
             })
     return jsonify(results)
@@ -670,7 +700,7 @@ def duplicate_entry(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
+    path = _entry_path(entry_id, meta)
     if not path.exists():
         return jsonify({"error": "File not found"}), 404
 
@@ -680,17 +710,14 @@ def duplicate_entry(entry_id):
         new_id = f"{entry_id}-copy-{counter}"
         counter += 1
 
-    new_path = KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{new_id}.md"
+    new_path = _entry_path(new_id, meta)
+    new_path.parent.mkdir(parents=True, exist_ok=True)
     new_path.write_text(path.read_text())
 
-    index[new_id] = {
-        "title": meta["title"] if meta["title"].startswith("[copy]") else "[copy] " + meta["title"],
-        "category": meta["category"],
-        "category_label": meta.get("category_label", meta["category"]),
-        "topic": meta["topic"],
-        "topic_label": meta.get("topic_label", meta["topic"]),
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-    }
+    new_meta = dict(meta)
+    new_meta["title"] = meta["title"] if meta["title"].startswith("[copy]") else "[copy] " + meta["title"]
+    new_meta["created_at"] = datetime.now().isoformat(timespec="seconds")
+    index[new_id] = new_meta
     save_index(index)
     return jsonify({"id": new_id, "message": "Duplicated"})
 
@@ -748,6 +775,78 @@ def resolve_wikilink():
     return jsonify({"id": None})
 
 
+@app.route("/api/courses/tree")
+def get_courses_tree():
+    index = load_index()
+    tree = {}
+    for entry_id, meta in index.items():
+        if meta.get("type") != "course":
+            continue
+        course = meta["course"]
+        module = meta["module"]
+        tree.setdefault(course, {
+            "label": meta.get("course_label", course),
+            "modules": {}
+        })
+        tree[course]["modules"].setdefault(module, {
+            "label": meta.get("module_label", module),
+            "entries": []
+        })
+        tree[course]["modules"][module]["entries"].append({
+            "id": entry_id,
+            "title": meta["title"],
+            "status": meta.get("status", "pendiente"),
+            "order": meta.get("order", 0),
+        })
+    for course in tree:
+        for mod in tree[course]["modules"]:
+            tree[course]["modules"][mod]["entries"].sort(
+                key=lambda e: (e["order"], "")
+            )
+    return jsonify(tree)
+
+
+@app.route("/api/courses/entry", methods=["POST"])
+def create_course_entry():
+    data = request.json
+    course = data.get("course", "").strip()
+    module = data.get("module", "").strip()
+    title  = data.get("title", "").strip()
+    raw    = data.get("raw_text", "").strip()
+    if not all([course, module, title, raw]):
+        return jsonify({"error": "Faltan campos"}), 400
+    course_slug = slugify(course)
+    module_slug = slugify(module)
+    entry_id    = slugify(title)
+    index = load_index()
+    base = entry_id
+    n = 1
+    while entry_id in index:
+        entry_id = f"{base}-{n}"; n += 1
+    folder = KNOWLEDGE_DIR / "courses" / course_slug / module_slug
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{entry_id}.md").write_text(raw, encoding="utf-8")
+    history_dir = folder / ".history" / entry_id
+    history_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.utcnow().isoformat()
+    (history_dir / f"{now.replace(':','-')}.md").write_text(raw, encoding="utf-8")
+    index[entry_id] = {
+        "type": "course",
+        "title": title,
+        "course": course_slug,
+        "course_label": course,
+        "module": module_slug,
+        "module_label": module,
+        "created_at": now,
+        "starred": False,
+        "pinned": False,
+        "status": "pendiente",
+        "order": 0,
+    }
+    save_index(index)
+    return jsonify({"id": entry_id})
+
+
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────
 @app.route("/api/reindex", methods=["POST"])
 def reindex():
@@ -755,43 +854,66 @@ def reindex():
     added = 0
 
     for md_file in sorted(KNOWLEDGE_DIR.rglob("*.md")):
-        # path: knowledge/<category>/<topic>/<slug>.md
         parts = md_file.relative_to(KNOWLEDGE_DIR).parts
-        if len(parts) < 3:
+        if ".history" in parts:
             continue
 
-        cat_slug   = parts[0]
-        topic_slug = parts[1]
-        entry_id   = md_file.stem
+        if parts[0] == "courses":
+            if len(parts) != 4:
+                continue
+            course_slug = parts[1]
+            module_slug = parts[2]
+            entry_id = md_file.stem
+            if entry_id in index:
+                continue
+            content = md_file.read_text(encoding="utf-8")
+            title_match = re.search(r"^#\s+(.+)", content, re.MULTILINE)
+            title = title_match.group(1).strip() if title_match else entry_id.replace("-", " ").title()
+            mtime = datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
+            index[entry_id] = {
+                "type": "course", "title": title,
+                "course": course_slug, "course_label": course_slug.replace("-", " ").title(),
+                "module": module_slug, "module_label": module_slug.replace("-", " ").title(),
+                "created_at": mtime, "starred": False, "pinned": False,
+                "status": "pendiente", "order": 0,
+            }
+            added += 1
+        else:
+            if len(parts) != 3:
+                continue
 
-        if entry_id in index:
-            continue  # already indexed
+            cat_slug   = parts[0]
+            topic_slug = parts[1]
+            entry_id   = md_file.stem
 
-        content = md_file.read_text(encoding="utf-8")
-        # extract title from first # heading, fallback to slug
-        title_match = re.search(r"^#\s+(.+)", content, re.MULTILINE)
-        title = title_match.group(1).strip() if title_match else entry_id.replace("-", " ").title()
+            if entry_id in index:
+                continue  # already indexed
 
-        # try to get created_at from file mtime
-        mtime = datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
+            content = md_file.read_text(encoding="utf-8")
+            # extract title from first # heading, fallback to slug
+            title_match = re.search(r"^#\s+(.+)", content, re.MULTILINE)
+            title = title_match.group(1).strip() if title_match else entry_id.replace("-", " ").title()
 
-        # history dir for this entry
-        history_dir = md_file.parent / ".history" / entry_id
-        history_dir.mkdir(parents=True, exist_ok=True)
+            # try to get created_at from file mtime
+            mtime = datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
 
-        index[entry_id] = {
-            "title": title,
-            "category": cat_slug,
-            "category_label": cat_slug.replace("-", " ").title(),
-            "topic": topic_slug,
-            "topic_label": topic_slug.replace("-", " ").title(),
-            "created_at": mtime,
-            "starred": False,
-            "pinned": False,
-            "status": "pendiente",
-            "order": 0,
-        }
-        added += 1
+            # history dir for this entry
+            history_dir = md_file.parent / ".history" / entry_id
+            history_dir.mkdir(parents=True, exist_ok=True)
+
+            index[entry_id] = {
+                "title": title,
+                "category": cat_slug,
+                "category_label": cat_slug.replace("-", " ").title(),
+                "topic": topic_slug,
+                "topic_label": topic_slug.replace("-", " ").title(),
+                "created_at": mtime,
+                "starred": False,
+                "pinned": False,
+                "status": "pendiente",
+                "order": 0,
+            }
+            added += 1
 
     save_index(index)
     return jsonify({"ok": True, "added": added, "total": len(index)})

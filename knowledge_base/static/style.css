@@ -1565,3 +1565,48 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
 }
 .tree-topic-header:hover .tree-topic-play { opacity: 1; color: var(--accent); }
+
+
+/* ── COURSES: Sidebar section labels ─────────────────────────────────────── */
+.sidebar-section-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  padding: 14px 14px 4px;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+.sidebar-section-label:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+/* ── COURSES: Modal type toggle tabs ─────────────────────────────────────── */
+.entry-type-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+.type-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 7px 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.type-tab:first-child { border-right: 1px solid var(--border); }
+.type-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.type-tab:not(.active):hover { background: var(--bg-hover); color: var(--text); }

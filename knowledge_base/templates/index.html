@@ -39,8 +39,13 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section-label">CONOCIMIENTO</div>
       <nav class="tree" id="tree">
         <div class="tree-empty">No hay entradas aún.</div>
+      </nav>
+      <div class="sidebar-section-label" id="coursesSectionLabel">CURSOS</div>
+      <nav class="tree" id="coursesTree">
+        <div class="tree-empty">No hay cursos aún.</div>
       </nav>
     </aside>
 
@@ -166,6 +171,11 @@
         <button class="modal-close" id="modalClose">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="entry-type-toggle">
+          <button class="type-tab active" data-mode="knowledge">Conocimiento</button>
+          <button class="type-tab" data-mode="course">Curso</button>
+        </div>
+        <div id="knowledgeFields">
         <div class="form-row two-col">
           <div class="form-group">
             <label>Categoría</label>
@@ -220,6 +230,20 @@
             <input type="text" id="fieldTopicCustom" placeholder="Escribe el tema personalizado…" class="hidden" style="margin-top:6px;" />
           </div>
         </div>
+        </div><!-- /#knowledgeFields -->
+        <div id="courseFields" class="hidden">
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Curso</label>
+              <input type="text" id="fieldCourse" placeholder="Ej: Python Completo" list="courseSuggestions" />
+              <datalist id="courseSuggestions"></datalist>
+            </div>
+            <div class="form-group">
+              <label>Módulo</label>
+              <input type="text" id="fieldModule" placeholder="Ej: Módulo 1 — Fundamentos" />
+            </div>
+          </div>
+        </div><!-- /#courseFields -->
         <div class="form-group">
           <label>Título de la entrada</label>
           <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />

@@ -8,6 +8,7 @@ const $ = id => document.getElementById(id);
 let currentEntryId = null;
 let currentEntryMeta = null;
 let treeState = {}; // { cat: { open: bool, topics: { topic: { open: bool } } } }
+let coursesTreeState = {};
 let starredMap = {};  // entry_id -> bool
 let pinnedMap = {};   // entry_id -> bool
 let statusMap = {};   // entry_id -> status string
@@ -18,6 +19,7 @@ let _reviewIndex = 0;
 document.addEventListener("DOMContentLoaded", () => {
   loadTree();
   loadCategorySuggestions();
+  loadCourseSuggestions();
   bindEvents();
   applyTheme();
   initFocusMode();
@@ -34,6 +36,20 @@ document.addEventListener("DOMContentLoaded", () => {
   initPin();
   initStatus();
   initReview();
+
+  // Modal type toggle
+  let currentModalMode = "knowledge";
+  window._getModalMode = () => currentModalMode;
+  window._setModalMode = (mode) => { currentModalMode = mode; };
+  document.querySelectorAll(".type-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      currentModalMode = tab.dataset.mode;
+      document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t === tab));
+      $("knowledgeFields").classList.toggle("hidden", currentModalMode === "course");
+      $("courseFields").classList.toggle("hidden", currentModalMode === "knowledge");
+      $("templatePickerGroup").classList.toggle("hidden", currentModalMode === "course");
+    });
+  });
 });
 
 function bindEvents() {
@@ -118,9 +134,11 @@ function toggleSidebar() {
 
 // ---- TREE ----
 async function loadTree() {
-  const res = await fetch("/api/tree");
-  const tree = await res.json();
-  renderTree(tree);
+  const [r1, r2] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree")]);
+  const knowledgeTree = await r1.json();
+  const coursesTree   = await r2.json();
+  renderTree(knowledgeTree);
+  renderCoursesTree(coursesTree);
   // Restore starred section from starredMap
   renderStarredSection(
     Object.fromEntries(
@@ -131,6 +149,7 @@ async function loadTree() {
   const localPinned = JSON.parse(localStorage.getItem("kb_pinned") || "{}");
   Object.assign(pinnedMap, localPinned);
   renderPinnedSection();
+  loadFilterCategories();
 }
 
 function renderTree(tree) {
@@ -257,6 +276,122 @@ function getFirstEntry(topics) {
   return {};
 }
 
+function renderCoursesTree(tree) {
+  const nav = $("coursesTree");
+  const label = $("coursesSectionLabel");
+  if (Object.keys(tree).length === 0) {
+    nav.innerHTML = '<div class="tree-empty">No hay cursos aún.</div>';
+    label.style.display = "none";
+    return;
+  }
+  label.style.display = "";
+  nav.innerHTML = "";
+  for (const [courseSlug, courseData] of Object.entries(tree)) {
+    if (!coursesTreeState[courseSlug]) coursesTreeState[courseSlug] = { open: true, modules: {} };
+    const state = coursesTreeState[courseSlug];
+
+    const catDiv = document.createElement("div");
+    catDiv.className = "tree-category";
+
+    const catHeader = document.createElement("div");
+    catHeader.className = "tree-cat-header tree-category-header";
+    catHeader.innerHTML = `<span class="arrow">${state.open ? "▶" : "▶"}</span> <span>${escapeHtml(courseData.label)}</span>`;
+    catDiv.appendChild(catHeader);
+
+    const modulesDiv = document.createElement("div");
+    modulesDiv.className = "tree-topics";
+    if (!state.open) modulesDiv.style.display = "none";
+
+    catHeader.addEventListener("click", () => {
+      state.open = !state.open;
+      modulesDiv.style.display = state.open ? "" : "none";
+      catDiv.classList.toggle("open", state.open);
+    });
+    if (state.open) catDiv.classList.add("open");
+
+    for (const [moduleSlug, moduleData] of Object.entries(courseData.modules)) {
+      if (!state.modules[moduleSlug]) state.modules[moduleSlug] = { open: true };
+      const modState = state.modules[moduleSlug];
+
+      const topicDiv = document.createElement("div");
+      topicDiv.className = "tree-topic" + (modState.open ? " open" : "");
+
+      const topicHeader = document.createElement("div");
+      topicHeader.className = "tree-topic-header";
+
+      const entries = moduleData.entries;
+      const playBtn = document.createElement("button");
+      playBtn.className = "tree-topic-play";
+      playBtn.title = "Review mode";
+      playBtn.textContent = "▶";
+      playBtn.addEventListener("click", e => { e.stopPropagation(); startReview(entries); });
+
+      topicHeader.innerHTML = `<span class="arrow">▶</span> <span>${escapeHtml(moduleData.label)}</span>`;
+      topicHeader.appendChild(playBtn);
+      topicDiv.appendChild(topicHeader);
+
+      const entriesDiv = document.createElement("div");
+      entriesDiv.className = "tree-entries";
+      entriesDiv.dataset.topic = moduleSlug;
+      entriesDiv.dataset.category = courseSlug;
+      if (!modState.open) entriesDiv.style.display = "none";
+
+      topicHeader.addEventListener("click", e => {
+        if (e.target.classList.contains("tree-topic-play")) return;
+        modState.open = !modState.open;
+        topicDiv.classList.toggle("open", modState.open);
+        entriesDiv.style.display = modState.open ? "" : "none";
+      });
+
+      entries.forEach(entry => {
+        const entryEl = document.createElement("div");
+        entryEl.className = "tree-entry";
+        entryEl.dataset.id = entry.id;
+        entryEl.draggable = true;
+        const dot = document.createElement("span");
+        dot.className = `status-dot status-${entry.status || "pendiente"}`;
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = entry.title;
+        entryEl.appendChild(dot);
+        entryEl.appendChild(nameSpan);
+        if (entry.id === currentEntryId) entryEl.classList.add("active");
+        entryEl.addEventListener("click", () => loadEntry(entry.id));
+        entryEl.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", entry.id);
+          entryEl.classList.add("dragging");
+        });
+        entryEl.addEventListener("dragend", () => entryEl.classList.remove("dragging"));
+        entryEl.addEventListener("dragover", e => { e.preventDefault(); entryEl.classList.add("drag-over"); });
+        entryEl.addEventListener("dragleave", () => entryEl.classList.remove("drag-over"));
+        entryEl.addEventListener("drop", async e => {
+          e.preventDefault();
+          entryEl.classList.remove("drag-over");
+          const draggedId = e.dataTransfer.getData("text/plain");
+          if (draggedId === entry.id) return;
+          const ids = Array.from(entriesDiv.querySelectorAll(".tree-entry")).map(el => el.dataset.id);
+          const from = ids.indexOf(draggedId);
+          const to   = ids.indexOf(entry.id);
+          if (from === -1 || to === -1) return;
+          ids.splice(from, 1); ids.splice(to, 0, draggedId);
+          await fetch("/api/entry/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids }),
+          });
+          await loadTree();
+        });
+        entriesDiv.appendChild(entryEl);
+      });
+
+      topicDiv.appendChild(entriesDiv);
+      modulesDiv.appendChild(topicDiv);
+    }
+
+    catDiv.appendChild(modulesDiv);
+    nav.appendChild(catDiv);
+  }
+}
+
 // ---- ENTRY VIEW ----
 async function loadEntry(id) {
   currentEntryId = id;
@@ -301,14 +436,16 @@ async function loadEntry(id) {
   const wordCount = getWordCount($("entryBody"));
   const readMin = Math.max(1, Math.round(wordCount / 200));
 
+  const catLabel   = m.type === "course" ? (m.course_label  || m.course)  : (m.category_label || m.category);
+  const topicLabel = m.type === "course" ? (m.module_label  || m.module)  : (m.topic_label    || m.topic);
   $("entryMeta").innerHTML = `
     <span class="meta-seg meta-seg-cat">
       <span class="meta-seg-icon">󰣇</span>
-      ${escapeHtml(m.category_label || m.category)}
+      ${escapeHtml(catLabel || "")}
     </span>
     <span class="meta-seg meta-seg-topic">
       <span class="meta-seg-icon"> </span>
-      ${escapeHtml(m.topic_label || m.topic)}
+      ${escapeHtml(topicLabel || "")}
     </span>
     <span class="meta-seg meta-seg-date">
       <span class="meta-seg-icon"> </span>
@@ -369,6 +506,12 @@ function openNewModal() {
   $("modalOverlay").classList.remove("hidden");
   // Reset template chips
   document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
+  // Reset to knowledge mode
+  if (window._setModalMode) window._setModalMode("knowledge");
+  document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
+  $("knowledgeFields").classList.remove("hidden");
+  $("courseFields").classList.add("hidden");
+  $("templatePickerGroup").classList.remove("hidden");
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
 
@@ -379,18 +522,6 @@ async function openEditModal() {
   const m = data.meta;
 
   $("modalTitle").textContent = "Editar entrada";
-  $("fieldCategory").value = m.category_label || m.category;
-  const topicLabel = m.topic_label || m.topic;
-  const selectEl = $("fieldTopic");
-  const optionExists = Array.from(selectEl.options).some(o => o.value === topicLabel);
-  if (optionExists) {
-    selectEl.value = topicLabel;
-    $("fieldTopicCustom").classList.add("hidden");
-  } else {
-    selectEl.value = "Otro";
-    $("fieldTopicCustom").classList.remove("hidden");
-    $("fieldTopicCustom").value = topicLabel;
-  }
   $("fieldTitle").value = m.title;
   $("fieldContent").value = data.markdown;
   switchTab("write");
@@ -400,6 +531,34 @@ async function openEditModal() {
   $("modalOverlay").classList.remove("hidden");
   // Reset template chips on edit
   document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
+
+  if (m.type === "course") {
+    if (window._setModalMode) window._setModalMode("course");
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "course"));
+    $("knowledgeFields").classList.add("hidden");
+    $("courseFields").classList.remove("hidden");
+    $("templatePickerGroup").classList.add("hidden");
+    $("fieldCourse").value = m.course_label || m.course || "";
+    $("fieldModule").value = m.module_label || m.module || "";
+  } else {
+    if (window._setModalMode) window._setModalMode("knowledge");
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
+    $("knowledgeFields").classList.remove("hidden");
+    $("courseFields").classList.add("hidden");
+    $("templatePickerGroup").classList.remove("hidden");
+    $("fieldCategory").value = m.category_label || m.category;
+    const topicLabel = m.topic_label || m.topic;
+    const selectEl = $("fieldTopic");
+    const optionExists = Array.from(selectEl.options).some(o => o.value === topicLabel);
+    if (optionExists) {
+      selectEl.value = topicLabel;
+      $("fieldTopicCustom").classList.add("hidden");
+    } else {
+      selectEl.value = "Otro";
+      $("fieldTopicCustom").classList.remove("hidden");
+      $("fieldTopicCustom").value = topicLabel;
+    }
+  }
 }
 
 function closeModal() {
@@ -414,10 +573,37 @@ function getTopicValue() {
 
 async function saveEntry() {
   const mode = $("saveBtn").dataset.mode;
+  const title = $("fieldTitle").value.trim();
+  const content = $("fieldContent").value.trim();
+  const currentModalMode = window._getModalMode ? window._getModalMode() : "knowledge";
+
+  if (currentModalMode === "course") {
+    const course  = $("fieldCourse").value.trim();
+    const module  = $("fieldModule").value.trim();
+    if (!course || !module || !title || !content) { showToast("Completa todos los campos", "error"); return; }
+    const editingId = mode === "edit" ? $("saveBtn").dataset.id : null;
+    const method = editingId ? "PUT" : "POST";
+    const url    = editingId ? `/api/entry/${editingId}` : "/api/courses/entry";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ course, module, title, raw_text: content }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      closeModal();
+      await loadTree();
+      loadEntry(editingId || d.id);
+      showToast(editingId ? "Actualizado" : "Entrada de curso guardada");
+    } else {
+      showToast("Error al guardar", "error");
+    }
+    return;
+  }
+
   const category = $("fieldCategory").value.trim();
   const topic = getTopicValue();
-  const title = $("fieldTitle").value.trim();
-  const raw_text = $("fieldContent").value.trim();
+  const raw_text = content;
 
   if (!category || !topic || !title || !raw_text) {
     showToast("Completa todos los campos", "error");
@@ -567,6 +753,15 @@ async function loadCategorySuggestions() {
   const cats = await res.json();
   const dl = $("categorySuggestions");
   dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+}
+
+async function loadCourseSuggestions() {
+  const res = await fetch("/api/courses/tree");
+  if (!res.ok) return;
+  const tree = await res.json();
+  const dl = $("courseSuggestions");
+  if (!dl) return;
+  dl.innerHTML = Object.values(tree).map(c => `<option value="${escapeHtml(c.label)}">`).join("");
 }
 
 // ---- UTILS ----
@@ -1452,8 +1647,8 @@ function exitReview() {
 // NEW FEATURE: BREADCRUMB
 // ============================================================
 function buildBreadcrumb(meta) {
-  const catLabel = escapeHtml(meta.category_label || meta.category);
-  const topicLabel = escapeHtml(meta.topic_label || meta.topic);
+  const catLabel = escapeHtml(meta.type === "course" ? (meta.course_label || meta.course) : (meta.category_label || meta.category));
+  const topicLabel = escapeHtml(meta.type === "course" ? (meta.module_label || meta.module) : (meta.topic_label || meta.topic));
   const entryTitle = escapeHtml(meta.title);
   $("breadcrumb").innerHTML = `
     <span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category)}">${catLabel}</span>
