@@ -526,7 +526,10 @@ async function loadEntry(id) {
 
   // Wikilinks (async, non-blocking)
   processWikilinks($("entryBody"));
-  if (window.Prism) Prism.highlightAllUnder($("entryBody"));
+  if (window.Prism) {
+    // Small delay ensures DOM is settled before highlighting
+    setTimeout(() => Prism.highlightAllUnder($("entryBody")), 50);
+  }
 
   // Render tags bar if entry has tags
   const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
