@@ -129,6 +129,54 @@ def smart_parse(raw_text):
     return "\n".join(result)
 
 
+def process_chat_blocks(raw_text):
+    """
+    Detect chat-style notes and convert to HTML chat bubbles.
+    Triggered when text contains 'MI RESPUESTA:' or '> yo:' patterns.
+    Blocks are separated by blank lines; user blocks start with those prefixes.
+    Returns (html_string, is_chat). If not a chat, returns ("", False).
+    """
+    USER_PREFIXES = ("mi respuesta:", "> yo:", "yo:", "[yo]:")
+    text = raw_text.strip()
+    lower = text.lower()
+    if not any(p in lower for p in USER_PREFIXES):
+        return "", False
+
+    # Split into paragraphs (double newline)
+    raw_blocks = re.split(r'\n\s*\n', text)
+    bubbles = []
+    for block in raw_blocks:
+        block = block.strip()
+        if not block:
+            continue
+        low = block.lower()
+        is_user = any(low.startswith(p) for p in USER_PREFIXES)
+        if is_user:
+            # Strip the prefix label
+            for p in USER_PREFIXES:
+                if low.startswith(p):
+                    content = block[len(p):].strip()
+                    break
+            role = "user"
+        else:
+            content = block
+            role = "ai"
+        # Render the block content as markdown
+        rendered = mistune.create_markdown(
+            plugins=["strikethrough", "table", "task_lists"]
+        )(content)
+        bubbles.append((role, rendered))
+
+    if not bubbles:
+        return "", False
+
+    parts = ['<div class="chat-log">']
+    for role, html in bubbles:
+        parts.append(f'<div class="chat-bubble chat-bubble--{role}">{html}</div>')
+    parts.append('</div>')
+    return "\n".join(parts), True
+
+
 def process_alert_blocks(md_text):
     """Convert GitHub-style alert blockquotes to styled HTML divs before Markdown parsing."""
     lines = md_text.splitlines()
@@ -173,6 +221,9 @@ def post_process_wikilinks(html):
 
 
 def render_markdown(md_text):
+    chat_html, is_chat = process_chat_blocks(md_text)
+    if is_chat:
+        return chat_html
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         plugins=["strikethrough", "table", "url"],

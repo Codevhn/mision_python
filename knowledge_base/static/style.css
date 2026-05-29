@@ -438,6 +438,81 @@ input, textarea, select { font-family: inherit; }
 /* ---- MARKDOWN RENDERING ---- */
 .entry-body { line-height: 1.85; color: var(--text); font-size: 0.97rem; }
 
+/* ── CHAT LOG — renderizado tipo mensajes ─────────────────────────────── */
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 0;
+}
+.chat-bubble {
+  max-width: 78%;
+  padding: 12px 16px;
+  line-height: 1.7;
+  font-size: 0.92rem;
+  position: relative;
+}
+.chat-bubble p { margin: 0 0 6px; }
+.chat-bubble p:last-child { margin-bottom: 0; }
+.chat-bubble ul, .chat-bubble ol { padding-left: 18px; margin: 4px 0; }
+.chat-bubble code {
+  font-size: 0.85em;
+  padding: 1px 5px;
+}
+
+/* AI / instructor — izquierda */
+.chat-bubble--ai {
+  align-self: flex-start;
+  background: #161b22;
+  border: 1px solid #2a2d3a;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+}
+.chat-bubble--ai::before {
+  content: "AI";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+/* Usuario — derecha */
+.chat-bubble--user {
+  align-self: flex-end;
+  background: #0f2a1a;
+  border: 1px solid #1f4a2e;
+  border-right: 3px solid #3dba6f;
+  color: #b8d4c0;
+  text-align: left;
+}
+.chat-bubble--user::before {
+  content: "YO";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #3dba6f;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+[data-theme="light"] .chat-bubble--ai {
+  background: #f0f4f8;
+  border-color: #c8d4e0;
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+[data-theme="light"] .chat-bubble--user {
+  background: #e8f5ee;
+  border-color: #b0d8be;
+  border-right-color: #2a9a55;
+  color: #1a3a26;
+}
+/* ─────────────────────────────────────────────────────────────────────── */
+
 /* ── QUICK NOTES — nota visual diferenciada ───────────────────────────── */
 .note-entry {
   background: #111318;
