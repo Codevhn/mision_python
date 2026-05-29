@@ -236,8 +236,13 @@ input, textarea { font-family: inherit; }
 }
 .tree-category.open .tree-category-header .arrow { transform: rotate(90deg); }
 
-.tree-topics { padding-bottom: 4px; }
+.tree-topics { display: none; padding-bottom: 4px; }
+.tree-category.open .tree-topics { display: block; }
+
 .tree-topic { }
+.tree-entries { display: none; }
+.tree-topic.open .tree-entries { display: block; }
+
 .tree-topic-header {
   display: flex;
   align-items: center;
