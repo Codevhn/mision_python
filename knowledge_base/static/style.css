@@ -563,65 +563,30 @@ input, textarea, select { font-family: inherit; }
 }
 /* ─────────────────────────────────────────────────────────────────────── */
 
-/* ── QUICK NOTES — nota visual diferenciada ───────────────────────────── */
+/* ── QUICK NOTES ─────────────────────────────────────────────────────── */
 .note-entry {
-  background: #111318;
-  border: 1px solid #2a2d3a;
-  border-left: 3px solid #3dba6f;
-  padding: 28px 32px;
+  background: var(--bg-surface);
+  border-left: 3px solid var(--accent);
+  padding: 0;
   position: relative;
-  font-size: 0.94rem;
+  font-size: 0.95rem;
 }
 .note-entry::before {
   content: "// quick note";
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: #3dba6f;
-  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-bottom: 20px;
-  opacity: 0.7;
+  padding: 8px 0 18px;
+  opacity: 0.6;
 }
-/* headings dentro de notas */
+/* headings normales — sin forzar color verde */
 .note-entry h1, .note-entry h2, .note-entry h3,
 .note-entry h4, .note-entry h5, .note-entry h6 {
-  color: #5dd98a;
-  font-size: 1rem;
-  margin: 16px 0 6px;
-  font-weight: 600;
+  color: var(--text);
 }
-/* párrafos */
-.note-entry p { color: #b8d4c0; }
-/* listas */
-.note-entry li { color: #a8c8b0; }
-/* inline code */
-.note-entry code {
-  background: #112a1c;
-  color: #57e389;
-  border: 1px solid #1f4a2e;
-}
-/* bloques de código — mantienen resaltado pero con marco verde */
-.note-entry pre {
-  background: #091510;
-  border: 1px solid #1f4a2e;
-  border-left: 3px solid #3dba6f;
-  position: relative;
-}
-.note-entry pre::before {
-  background: #0d2018;
-  color: #3dba6f;
-  border-bottom: 1px solid #1f4a2e;
-}
-/* blockquotes */
-.note-entry blockquote {
-  border-left: 3px solid #2d6b42;
-  background: #0d2018;
-  color: #8abfa0;
-}
-/* links */
-.note-entry a { color: #57e389; }
-.note-entry a:hover { color: #7fffa8; }
 /* ─────────────────────────────────────────────────────────────────────── */
 
 .entry-body h1 {
