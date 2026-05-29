@@ -679,22 +679,51 @@ input, textarea, select { font-family: inherit; }
   scrollbar-width: thin;
 }
 .entry-body pre::before {
-  content: "bash";
+  content: attr(data-lang);
   display: block;
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  color: var(--text-faint);
+  color: var(--accent);
   margin-bottom: 8px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  opacity: 0.8;
 }
 .entry-body pre code {
-  background: none;
+  background: none !important;
   border: none;
   padding: 0;
   font-size: 0.84rem;
-  color: var(--code-text);
   line-height: 1.65;
+  color: inherit;
+}
+/* Prism overrides — mantiene nuestro fondo y borde */
+.entry-body pre[class*="language-"] {
+  background: var(--bg-code) !important;
+  border: 1px solid var(--code-border);
+  border-left: 2px solid var(--accent);
+  margin: 14px 0;
+  padding: 16px 18px;
+}
+.entry-body code[class*="language-"] {
+  background: none !important;
+  text-shadow: none !important;
+}
+/* toolbar copy button */
+div.code-toolbar > .toolbar { opacity: 1; }
+div.code-toolbar > .toolbar .toolbar-item button {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 2px 8px;
+  box-shadow: none;
+}
+div.code-toolbar > .toolbar .toolbar-item button:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .entry-body blockquote {

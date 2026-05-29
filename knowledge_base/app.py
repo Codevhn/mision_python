@@ -220,12 +220,22 @@ def post_process_wikilinks(html):
     return re.sub(r'\[\[(.+?)\]\]', replace_wikilink, html)
 
 
+class PrismRenderer(mistune.HTMLRenderer):
+    def block_code(self, code, **attrs):
+        lang = attrs.get("info", "") or ""
+        lang = lang.strip().split()[0] if lang.strip() else ""
+        lang_attr = f' class="language-{lang}"' if lang else ""
+        data_lang = f' data-lang="{lang}"' if lang else ""
+        return f'<pre{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
+
+
 def render_markdown(md_text):
     chat_html, is_chat = process_chat_blocks(md_text)
     if is_chat:
         return chat_html
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
+        renderer=PrismRenderer(),
         plugins=["strikethrough", "table", "url"],
     )
     html = renderer(processed)
