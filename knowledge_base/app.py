@@ -149,7 +149,18 @@ def process_alert_blocks(md_text):
     return "\n".join(result)
 
 
+def process_wikilinks(md_text):
+    """Replace [[Entry Title]] with a special span before Markdown parsing."""
+    def replace_wikilink(m):
+        title = m.group(1)
+        escaped = title.replace('"', '&quot;')
+        return f'<span class="wikilink" data-title="{escaped}">[[{title}]]</span>'
+    return re.sub(r'\[\[(.+?)\]\]', replace_wikilink, md_text)
+
+
 def render_markdown(md_text):
+    # Pre-process wikilinks before markdown parsing
+    md_text = process_wikilinks(md_text)
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         plugins=["strikethrough", "table", "url"],
@@ -202,7 +213,13 @@ def get_tree():
             "id": entry_id,
             "title": meta["title"],
             "created_at": meta.get("created_at", ""),
+            "status": meta.get("status", "pendiente"),
+            "order": meta.get("order", 0),
         })
+    # Sort entries within each topic by order, then created_at
+    for cat in tree:
+        for topic in tree[cat]:
+            tree[cat][topic].sort(key=lambda e: (e["order"], e["created_at"]))
     return jsonify(tree)
 
 
@@ -253,6 +270,8 @@ def create_entry():
         "topic": slugify(topic),
         "topic_label": topic,
         "created_at": datetime.now().isoformat(timespec="seconds"),
+        "status": "pendiente",
+        "order": 0,
     }
     save_index(index)
 
@@ -678,6 +697,47 @@ def toggle_pin(entry_id):
     index[entry_id]["pinned"] = not current
     save_index(index)
     return jsonify({"pinned": index[entry_id]["pinned"]})
+
+
+# ── FEATURE: Study Status ──────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/status", methods=["POST"])
+def update_status(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json
+    status = data.get("status", "pendiente")
+    if status not in ("pendiente", "progreso", "dominado"):
+        return jsonify({"error": "Invalid status"}), 400
+    index[entry_id]["status"] = status
+    save_index(index)
+    return jsonify({"status": status})
+
+
+# ── FEATURE: Manual Ordering ────────────────────────────────────────────────
+@app.route("/api/entry/reorder", methods=["POST"])
+def reorder_entries():
+    index = load_index()
+    data = request.json
+    ids = data.get("ids", [])
+    for i, entry_id in enumerate(ids):
+        if entry_id in index:
+            index[entry_id]["order"] = i
+    save_index(index)
+    return jsonify({"ok": True})
+
+
+# ── FEATURE: Wiki-link resolution ──────────────────────────────────────────
+@app.route("/api/resolve-wikilink")
+def resolve_wikilink():
+    title = request.args.get("title", "").strip().lower()
+    if not title:
+        return jsonify({"id": None})
+    index = load_index()
+    for entry_id, meta in index.items():
+        if meta["title"].lower() == title:
+            return jsonify({"id": entry_id})
+    return jsonify({"id": None})
 
 
 if __name__ == "__main__":
