@@ -375,7 +375,7 @@ input, textarea, select { font-family: inherit; }
   padding-right: 2px;
   border-bottom: 1px solid var(--border);
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 .entry-meta {
   display: flex;
@@ -387,7 +387,7 @@ input, textarea, select { font-family: inherit; }
   height: 26px;
   min-width: 0;
   flex-shrink: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 .entry-meta strong { display: none; }
 
