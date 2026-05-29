@@ -438,6 +438,52 @@ input, textarea, select { font-family: inherit; }
 /* ---- MARKDOWN RENDERING ---- */
 .entry-body { line-height: 1.85; color: var(--text); font-size: 0.97rem; }
 
+/* ── TAGS ─────────────────────────────────────────────────────────────── */
+.entry-tags-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.entry-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-dim);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.03em;
+}
+.entry-tag:hover { background: var(--accent-dim); color: #fff; }
+
+/* Search results */
+.sr-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
+.sr-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-dim);
+  padding: 1px 6px;
+}
+.sr-tag-match {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Scratchpad tags input */
+#scratchpadTags { width: 140px; }
+/* ─────────────────────────────────────────────────────────────────────── */
+
 /* ── CHAT LOG — renderizado tipo mensajes ─────────────────────────────── */
 .chat-log {
   display: flex;

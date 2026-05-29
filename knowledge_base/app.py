@@ -330,6 +330,9 @@ def create_entry():
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"{entry_id}.md").write_text(md_content)
 
+    raw_tags = data.get("tags", "")
+    tags = [t.strip().lower() for t in raw_tags.split(",") if t.strip()] if raw_tags else []
+
     index[entry_id] = {
         "title": title,
         "category": slugify(category),
@@ -339,6 +342,7 @@ def create_entry():
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "status": "pendiente",
         "order": 0,
+        "tags": tags,
     }
     save_index(index)
 
@@ -434,7 +438,9 @@ def search():
         path = _entry_path(entry_id, meta)
         if path.exists():
             content = path.read_text().lower()
-            if q in content or q in meta["title"].lower():
+            tags = meta.get("tags", [])
+            tag_match = any(q in tag for tag in tags)
+            if q in content or q in meta["title"].lower() or tag_match:
                 snippet = _extract_snippet(path.read_text(), q)
                 cat_label = meta.get("course_label", meta.get("course", "")) if meta.get("type") == "course" else meta.get("category_label", meta.get("category", ""))
                 topic_label = meta.get("module_label", meta.get("module", "")) if meta.get("type") == "course" else meta.get("topic_label", meta.get("topic", ""))
@@ -444,7 +450,10 @@ def search():
                     "category_label": cat_label,
                     "topic_label": topic_label,
                     "snippet": snippet,
+                    "tags": tags,
+                    "tag_match": tag_match,
                 })
+    results.sort(key=lambda r: (0 if r.get("tag_match") else 1))
     return jsonify(results)
 
 

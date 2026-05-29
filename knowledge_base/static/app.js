@@ -487,6 +487,25 @@ async function loadEntry(id) {
 
   // Wikilinks (async, non-blocking)
   processWikilinks($("entryBody"));
+
+  // Render tags bar if entry has tags
+  const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
+  if (existingTagBar) existingTagBar.remove();
+  const tags = m.tags || [];
+  if (tags.length) {
+    const bar = document.createElement("div");
+    bar.className = "entry-tags-bar";
+    bar.innerHTML = tags.map(t =>
+      `<span class="entry-tag" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</span>`
+    ).join("");
+    bar.querySelectorAll(".entry-tag").forEach(chip => {
+      chip.addEventListener("click", () => {
+        $("searchInput").value = chip.dataset.tag;
+        $("searchInput").dispatchEvent(new Event("input"));
+      });
+    });
+    $("entryBody").prepend(bar);
+  }
 }
 
 // ---- MODAL ----
@@ -704,8 +723,9 @@ async function runSearch(q) {
 
   container.innerHTML = results.map(r => `
     <div class="search-result-item" data-id="${r.id}">
-      <div class="sr-title">${escapeHtml(r.title)}</div>
+      <div class="sr-title">${escapeHtml(r.title)}${r.tag_match ? ' <span class="sr-tag-match">tag</span>' : ""}</div>
       <div class="sr-path">${escapeHtml(r.category_label)} › ${escapeHtml(r.topic_label)}</div>
+      ${r.tags && r.tags.length ? `<div class="sr-tags">${r.tags.map(t => `<span class="sr-tag">#${escapeHtml(t)}</span>`).join("")}</div>` : ""}
       <div class="sr-snippet">${escapeHtml(r.snippet)}</div>
     </div>
   `).join("");
@@ -938,7 +958,9 @@ async function saveScratchpad() {
   }
 
   const title = titleInput.value.trim() || ("Quick Note " + new Date().toLocaleTimeString());
+  const tags  = ($("scratchpadTags").value || "").trim();
   $("scratchpadSave").textContent = "save";
+  $("scratchpadTags").value = "";
   titleRow.classList.add("hidden");
 
   const res = await fetch("/api/entry", {
@@ -949,6 +971,7 @@ async function saveScratchpad() {
       topic: "Scratchpad",
       title: title,
       raw_text: content,
+      tags: tags,
     }),
   });
   if (res.ok) {
