@@ -37,9 +37,15 @@
 
   <div class="layout">
 
+    <!-- SIDEBAR OVERLAY (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-section-label">CONOCIMIENTO</div>
+      <div class="sidebar-section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>CONOCIMIENTO</span>
+        <button id="themeToggleSidebar" class="btn-icon" style="font-size:0.7rem;padding:2px 8px;">[light]</button>
+      </div>
       <nav class="tree" id="tree">
         <div class="tree-empty">No hay entradas aún.</div>
       </nav>
@@ -66,16 +72,29 @@
           <div class="entry-actions">
             <button class="btn-ghost" id="editBtn">~ editar</button>
             <button class="btn-ghost" id="statusBtn">● pend</button>
-            <button class="btn-ghost" id="exportMdBtn">↓ .md</button>
-            <button class="btn-ghost" id="exportPdfBtn">↓ .pdf</button>
-            <button class="btn-ghost" id="tocBtn">¶ toc</button>
-            <button class="btn-ghost" id="historyBtn">⟲ history</button>
-            <button class="btn-ghost" id="starBtn">☆ star</button>
-            <button class="btn-ghost" id="pinBtn">⊞ pin</button>
-            <button class="btn-ghost" id="dupBtn">⎘ dup</button>
-            <button class="btn-ghost" id="moveBtn">⇄ move</button>
-            <button class="btn-ghost" id="focusBtn">⊙ focus</button>
+            <button class="btn-ghost secondary-action" id="exportMdBtn">↓ .md</button>
+            <button class="btn-ghost secondary-action" id="exportPdfBtn">↓ .pdf</button>
+            <button class="btn-ghost secondary-action" id="tocBtn">¶ toc</button>
+            <button class="btn-ghost secondary-action" id="historyBtn">⟲ history</button>
+            <button class="btn-ghost secondary-action" id="starBtn">☆ star</button>
+            <button class="btn-ghost secondary-action" id="pinBtn">⊞ pin</button>
+            <button class="btn-ghost secondary-action" id="dupBtn">⎘ dup</button>
+            <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
+            <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost danger" id="deleteBtn">rm -f</button>
+            <!-- Mobile: más acciones -->
+            <button class="btn-ghost" id="moreActionsBtn" style="display:none">⋯</button>
+            <div class="more-actions-dropdown" id="moreActionsDropdown">
+              <button class="btn-ghost" id="moreExportMd">↓ .md</button>
+              <button class="btn-ghost" id="moreExportPdf">↓ .pdf</button>
+              <button class="btn-ghost" id="moreToc">¶ toc</button>
+              <button class="btn-ghost" id="moreHistory">⟲ history</button>
+              <button class="btn-ghost" id="moreStar">☆ star</button>
+              <button class="btn-ghost" id="morePin">⊞ pin</button>
+              <button class="btn-ghost" id="moreDup">⎘ dup</button>
+              <button class="btn-ghost" id="moreMove">⇄ move</button>
+              <button class="btn-ghost" id="moreFocus">⊙ focus</button>
+            </div>
           </div>
         </div>
         <!-- MOVE PANEL -->

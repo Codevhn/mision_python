@@ -56,7 +56,26 @@ function bindEvents() {
   $("newEntryBtn").addEventListener("click", openNewModal);
   $("welcomeNewBtn").addEventListener("click", openNewModal);
   $("themeToggle").addEventListener("click", toggleTheme);
+  $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
+  $("sidebarOverlay").addEventListener("click", closeSidebarMobile);
+
+  // Mobile ··· dropdown
+  $("moreActionsBtn").addEventListener("click", e => {
+    e.stopPropagation();
+    $("moreActionsDropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", () => $("moreActionsDropdown").classList.remove("open"));
+  // Wire duplicate buttons in dropdown to same handlers
+  $("moreExportMd").addEventListener("click",  () => exportEntry("md"));
+  $("moreExportPdf").addEventListener("click", () => exportEntry("pdf"));
+  $("moreToc").addEventListener("click",       () => $("tocBtn").click());
+  $("moreHistory").addEventListener("click",   () => $("historyBtn").click());
+  $("moreStar").addEventListener("click",      () => $("starBtn").click());
+  $("morePin").addEventListener("click",       () => $("pinBtn").click());
+  $("moreDup").addEventListener("click",       () => $("dupBtn").click());
+  $("moreMove").addEventListener("click",      () => $("moveBtn").click());
+  $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("modalClose").addEventListener("click", closeModal);
   $("cancelBtn").addEventListener("click", closeModal);
   $("saveBtn").addEventListener("click", saveEntry);
@@ -118,6 +137,7 @@ function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
   $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = saved === "dark" ? "[light]" : "[dark]";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
@@ -125,11 +145,24 @@ function toggleTheme() {
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
   $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = next === "dark" ? "[light]" : "[dark]";
 }
 
 // ---- SIDEBAR ----
+function isMobile() { return window.innerWidth <= 768; }
+
 function toggleSidebar() {
-  $("sidebar").classList.toggle("collapsed");
+  if (isMobile()) {
+    const open = $("sidebar").classList.toggle("mobile-open");
+    $("sidebarOverlay").classList.toggle("active", open);
+  } else {
+    $("sidebar").classList.toggle("collapsed");
+  }
+}
+
+function closeSidebarMobile() {
+  $("sidebar").classList.remove("mobile-open");
+  $("sidebarOverlay").classList.remove("active");
 }
 
 // ---- TREE ----
@@ -395,6 +428,7 @@ function renderCoursesTree(tree) {
 // ---- ENTRY VIEW ----
 async function loadEntry(id) {
   currentEntryId = id;
+  if (isMobile()) closeSidebarMobile();
   document.querySelectorAll(".tree-entry").forEach(el => {
     el.classList.toggle("active", el.dataset.id === id);
   });
