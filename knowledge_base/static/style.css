@@ -375,54 +375,42 @@ input, textarea, select { font-family: inherit; }
 }
 .entry-meta {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: stretch;
   gap: 0;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   line-height: 1;
+  height: 26px;
 }
 .entry-meta strong { display: none; }
 
-/* Powerline segments */
+/* Powerline segments — clip-path arrow, seamless overlap */
 .meta-seg {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px 4px 8px;
-  position: relative;
+  padding: 0 22px 0 10px;
   white-space: nowrap;
+  position: relative;
+  z-index: 3;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+  margin-right: -1px;
 }
-.meta-seg::after {
-  content: "";
-  position: absolute;
-  right: -8px;
-  top: 0;
-  width: 0; height: 0;
-  border-top: 11px solid transparent;
-  border-bottom: 11px solid transparent;
-  z-index: 1;
+.meta-seg:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  padding-right: 12px;
 }
-.meta-seg-icon {
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
+.meta-seg-icon { font-size: 0.75rem; opacity: 0.8; }
 
-.meta-seg-cat   { background: var(--accent); color: #fff; }
-.meta-seg-cat::after { border-left: 9px solid var(--accent); }
+/* Dark theme colors */
+.meta-seg-cat   { background: var(--accent); color: #fff;     z-index: 5; }
+.meta-seg-topic { background: #1d3545;       color: #7ec8e3;  z-index: 4; }
+.meta-seg-date  { background: #1a2e1a;       color: #5cb85c;  z-index: 3; }
 
-.meta-seg-topic { background: #1e3a4a; color: #89c4e1; margin-left: 8px; }
-.meta-seg-topic::after { border-left: 9px solid #1e3a4a; }
-
-.meta-seg-date  { background: #1e2e1e; color: #6abf6a; margin-left: 8px; }
-.meta-seg-date::after { border-left: 9px solid #1e2e1e; content: none; }
-
+/* Light theme override */
 [data-theme="light"] .meta-seg-cat   { background: var(--accent); color: #fff; }
-[data-theme="light"] .meta-seg-cat::after { border-left-color: var(--accent); }
-[data-theme="light"] .meta-seg-topic { background: #d0e8f5; color: #1a5a80; }
-[data-theme="light"] .meta-seg-topic::after { border-left-color: #d0e8f5; }
-[data-theme="light"] .meta-seg-date  { background: #d8f0d8; color: #2a6e2a; }
-[data-theme="light"] .meta-seg-date::after { content: none; }
+[data-theme="light"] .meta-seg-topic { background: #bcd8ee;       color: #0f4f70; }
+[data-theme="light"] .meta-seg-date  { background: #c5e8c5;       color: #1e5a1e; }
 .entry-actions {
   display: flex;
   gap: 0;
