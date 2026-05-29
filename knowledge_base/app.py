@@ -226,7 +226,8 @@ class PrismRenderer(mistune.HTMLRenderer):
         lang = lang.strip().split()[0] if lang.strip() else ""
         lang_attr = f' class="language-{lang}"' if lang else ""
         data_lang = f' data-lang="{lang}"' if lang else ""
-        return f'<pre{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
+        # class on <pre> too so prism-tomorrow.min.css applies its background/styles
+        return f'<pre{lang_attr}{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
 
 
 def render_markdown(md_text):

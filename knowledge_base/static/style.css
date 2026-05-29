@@ -673,7 +673,8 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid var(--code-border);
 }
 
-.entry-body pre {
+/* Plain code blocks (no language) — our Arch style */
+.entry-body pre:not([class*="language-"]) {
   background: var(--bg-code);
   border: 1px solid var(--code-border);
   border-left: 2px solid var(--accent);
@@ -682,13 +683,20 @@ input, textarea, select { font-family: inherit; }
   margin: 14px 0;
   scrollbar-width: thin;
 }
-.entry-body pre::before {
+/* Language blocks — PrismJS tomorrow controls background/colors */
+.entry-body pre[class*="language-"] {
+  margin: 14px 0;
+  scrollbar-width: thin;
+  border-left: 3px solid var(--accent); /* small Arch touch */
+}
+/* Language label above the block */
+.entry-body pre[data-lang]::before {
   content: attr(data-lang);
   display: block;
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.8;
@@ -699,7 +707,6 @@ input, textarea, select { font-family: inherit; }
   padding: 0;
   font-size: 0.84rem;
   line-height: 1.65;
-  /* color comes from prism-tomorrow.min.css */
 }
 
 .entry-body blockquote {
