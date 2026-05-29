@@ -256,7 +256,9 @@ def render_markdown(md_text):
 @app.route("/pygments.css")
 def pygments_css():
     from flask import Response
-    css = HtmlFormatter(style="one-dark", nowrap=True).get_style_defs(".highlight")
+    # nowrap=True generates bare <span class="c"> etc. without a wrapper div,
+    # so CSS must scope to "code" (not ".highlight") to match those spans.
+    css = HtmlFormatter(style="one-dark", nowrap=True).get_style_defs("code")
     return Response(css, mimetype="text/css")
 
 
