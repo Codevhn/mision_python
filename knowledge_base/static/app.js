@@ -53,6 +53,18 @@ function bindEvents() {
   // Auto-extract title from content
   $("fieldContent").addEventListener("input", autoExtractTitle);
   $("fieldContent").addEventListener("paste", () => setTimeout(autoExtractTitle, 50));
+
+  // Topic custom input toggle
+  $("fieldTopic").addEventListener("change", () => {
+    const custom = $("fieldTopicCustom");
+    if ($("fieldTopic").value === "Otro") {
+      custom.classList.remove("hidden");
+      custom.focus();
+    } else {
+      custom.classList.add("hidden");
+      custom.value = "";
+    }
+  });
 }
 
 function autoExtractTitle() {
@@ -193,6 +205,8 @@ function openNewModal() {
   $("modalTitle").textContent = "Nueva entrada";
   $("fieldCategory").value = "";
   $("fieldTopic").value = "";
+  $("fieldTopicCustom").value = "";
+  $("fieldTopicCustom").classList.add("hidden");
   $("fieldTitle").value = "";
   $("fieldContent").value = "";
   $("previewPane").innerHTML = "";
@@ -212,7 +226,17 @@ async function openEditModal() {
 
   $("modalTitle").textContent = "Editar entrada";
   $("fieldCategory").value = m.category_label || m.category;
-  $("fieldTopic").value = m.topic_label || m.topic;
+  const topicLabel = m.topic_label || m.topic;
+  const selectEl = $("fieldTopic");
+  const optionExists = Array.from(selectEl.options).some(o => o.value === topicLabel);
+  if (optionExists) {
+    selectEl.value = topicLabel;
+    $("fieldTopicCustom").classList.add("hidden");
+  } else {
+    selectEl.value = "Otro";
+    $("fieldTopicCustom").classList.remove("hidden");
+    $("fieldTopicCustom").value = topicLabel;
+  }
   $("fieldTitle").value = m.title;
   $("fieldContent").value = data.markdown;
   switchTab("write");
@@ -226,10 +250,16 @@ function closeModal() {
   $("modalOverlay").classList.add("hidden");
 }
 
+function getTopicValue() {
+  const sel = $("fieldTopic").value;
+  if (sel === "Otro") return $("fieldTopicCustom").value.trim();
+  return sel;
+}
+
 async function saveEntry() {
   const mode = $("saveBtn").dataset.mode;
   const category = $("fieldCategory").value.trim();
-  const topic = $("fieldTopic").value.trim();
+  const topic = getTopicValue();
   const title = $("fieldTitle").value.trim();
   const raw_text = $("fieldContent").value.trim();
 

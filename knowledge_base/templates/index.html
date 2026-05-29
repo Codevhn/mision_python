@@ -77,7 +77,50 @@
           </div>
           <div class="form-group">
             <label>Tema</label>
-            <input type="text" id="fieldTopic" placeholder="Ej: Automatización" />
+            <select id="fieldTopic">
+              <option value="">— Selecciona un tema —</option>
+              <optgroup label="Linux y Sistemas">
+                <option value="Automatización">Automatización</option>
+                <option value="Scripting">Scripting</option>
+                <option value="Bash / Shell">Bash / Shell</option>
+                <option value="Administración de Sistemas">Administración de Sistemas</option>
+                <option value="Permisos y Usuarios">Permisos y Usuarios</option>
+                <option value="Procesos y Concurrencia">Procesos y Concurrencia</option>
+                <option value="Systemd y Servicios">Systemd y Servicios</option>
+                <option value="Gestión de Paquetes">Gestión de Paquetes</option>
+                <option value="Monitoreo y Logging">Monitoreo y Logging</option>
+                <option value="Cron y Tareas Programadas">Cron y Tareas Programadas</option>
+              </optgroup>
+              <optgroup label="Redes y Seguridad">
+                <option value="Redes y Protocolos">Redes y Protocolos</option>
+                <option value="Seguridad / Cybersecurity">Seguridad / Cybersecurity</option>
+                <option value="Firewall y iptables">Firewall y iptables</option>
+                <option value="SSH y Acceso Remoto">SSH y Acceso Remoto</option>
+                <option value="Criptografía">Criptografía</option>
+              </optgroup>
+              <optgroup label="Programación">
+                <option value="Python">Python</option>
+                <option value="Algoritmos y Estructuras de Datos">Algoritmos y Estructuras de Datos</option>
+                <option value="Regex y Patrones">Regex y Patrones</option>
+                <option value="Procesamiento de Texto">Procesamiento de Texto</option>
+                <option value="APIs y Web">APIs y Web</option>
+                <option value="Bases de Datos">Bases de Datos</option>
+              </optgroup>
+              <optgroup label="DevOps y Herramientas">
+                <option value="Git y Control de Versiones">Git y Control de Versiones</option>
+                <option value="Contenedores y Docker">Contenedores y Docker</option>
+                <option value="CI/CD">CI/CD</option>
+                <option value="DevOps">DevOps</option>
+                <option value="Herramientas de Desarrollo">Herramientas de Desarrollo</option>
+                <option value="Arquitectura de Software">Arquitectura de Software</option>
+              </optgroup>
+              <optgroup label="Otros">
+                <option value="Conceptos Generales">Conceptos Generales</option>
+                <option value="Buenas Prácticas">Buenas Prácticas</option>
+                <option value="Otro">Otro (personalizado)</option>
+              </optgroup>
+            </select>
+            <input type="text" id="fieldTopicCustom" placeholder="Escribe el tema personalizado…" class="hidden" style="margin-top:6px;" />
           </div>
         </div>
         <div class="form-group">

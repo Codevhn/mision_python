@@ -218,47 +218,61 @@ input, textarea { font-family: inherit; }
 .tree-category-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px 4px;
-  font-size: 0.7rem;
+  gap: 7px;
+  padding: 10px 14px 6px;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
+  transition: color 0.15s;
 }
-.tree-category-header:hover { color: var(--text-muted); }
+.tree-category-header:hover { color: var(--text); }
 .tree-category-header .arrow {
-  font-size: 0.65rem;
-  transition: transform 0.15s;
+  font-size: 0.6rem;
+  transition: transform 0.22s ease;
   display: inline-block;
 }
 .tree-category.open .tree-category-header .arrow { transform: rotate(90deg); }
 
-.tree-topics { display: none; padding-bottom: 4px; }
-.tree-category.open .tree-topics { display: block; }
+/* Smooth expand animation */
+.tree-topics {
+  overflow: hidden;
+  max-height: 0;
+  padding-bottom: 0;
+  transition: max-height 0.28s ease, padding-bottom 0.28s ease;
+}
+.tree-category.open .tree-topics {
+  max-height: 800px;
+  padding-bottom: 6px;
+}
 
 .tree-topic { }
-.tree-entries { display: none; }
-.tree-topic.open .tree-entries { display: block; }
+.tree-entries {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.22s ease;
+}
+.tree-topic.open .tree-entries { max-height: 600px; }
 
 .tree-topic-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 14px 5px 20px;
-  font-size: 0.8rem;
+  padding: 6px 14px 6px 22px;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
-  transition: color 0.1s;
+  transition: color 0.15s;
 }
 .tree-topic-header:hover { color: var(--text); }
 .tree-topic-header .arrow {
-  font-size: 0.6rem;
-  transition: transform 0.15s;
+  font-size: 0.58rem;
+  transition: transform 0.22s ease;
   display: inline-block;
 }
 .tree-topic.open .tree-topic-header .arrow { transform: rotate(90deg); }
@@ -328,7 +342,7 @@ input, textarea { font-family: inherit; }
 .entry-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* ---- MARKDOWN RENDERING ---- */
-.entry-body { line-height: 1.75; color: var(--text); }
+.entry-body { line-height: 1.85; color: var(--text); font-size: 1.02rem; }
 
 .entry-body h1 {
   font-size: 1.8rem;
@@ -488,6 +502,28 @@ input, textarea { font-family: inherit; }
   letter-spacing: 0.05em;
 }
 .label-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-faint); }
+.form-group select {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.form-group select:focus { border-color: var(--accent); }
+.form-group select option { background: var(--bg-surface); color: var(--text); }
+.form-group select optgroup { color: var(--text-muted); font-weight: 700; }
+
 .form-group input, .form-group textarea {
   width: 100%;
   background: var(--bg-elevated);
