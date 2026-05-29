@@ -566,27 +566,40 @@ input, textarea, select { font-family: inherit; }
 /* ── QUICK NOTES ─────────────────────────────────────────────────────── */
 .note-entry {
   background: var(--bg-surface);
-  border-left: 3px solid var(--accent);
-  padding: 0;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  padding: 24px 28px;
   position: relative;
   font-size: 0.95rem;
+  line-height: 1.8;
 }
 .note-entry::before {
   content: "// quick note";
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--accent);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 8px 0 18px;
-  opacity: 0.6;
+  margin-bottom: 18px;
+  opacity: 0.55;
 }
-/* headings normales — sin forzar color verde */
-.note-entry h1, .note-entry h2, .note-entry h3,
-.note-entry h4, .note-entry h5, .note-entry h6 {
+.note-entry h1, .note-entry h2, .note-entry h3 {
   color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 20px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
 }
+.note-entry h1::before,
+.note-entry h2::before,
+.note-entry h3::before { content: none; }
+.note-entry p { margin: 0 0 10px; color: var(--text); }
+.note-entry li { margin: 3px 0; }
 /* ─────────────────────────────────────────────────────────────────────── */
 
 .entry-body h1 {
@@ -625,8 +638,8 @@ input, textarea, select { font-family: inherit; }
 .entry-body p { margin: 0 0 14px; }
 .entry-body p:last-child { margin-bottom: 0; }
 
-.entry-body ul, .entry-body ol { margin: 6px 0 14px 18px; }
-.entry-body li { margin: 5px 0; }
+.entry-body ul, .entry-body ol { margin: 4px 0 12px 18px; }
+.entry-body li { margin: 2px 0; }
 .entry-body li::marker { color: var(--accent); }
 
 /* inline code only — pre > code is handled by PrismJS */
@@ -639,19 +652,7 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid var(--code-border);
 }
 
-/* PrismJS Dark — solo cambiar fondo y quitar artefactos visuales */
-pre[class*="language-"], :not(pre) > code[class*="language-"] {
-  background: #2d2d2d !important;
-  border-color: #2d2d2d !important;  /* borde igual al fondo — invisible */
-  box-shadow: none !important;
-}
-code[class*="language-"],
-pre[class*="language-"] code[class*="language-"] {
-  text-shadow: none !important;  /* quita las líneas entre código */
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-}
+/* PrismJS Dark — sin overrides, tema 100% original */
 
 .entry-body blockquote {
   border-left: 2px solid var(--accent-dim);
