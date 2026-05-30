@@ -891,6 +891,8 @@ input, textarea, select { font-family: inherit; }
     min-width: unset;
     max-width: 300px;
     box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar.mobile-open { transform: translateX(0); }
   .sidebar.collapsed {
