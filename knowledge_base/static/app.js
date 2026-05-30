@@ -17,6 +17,15 @@ let _reviewIndex = 0;
 
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
+  // Init block editor
+  BlockEditor.init({
+    container:   document.getElementById("blockEditor"),
+    syncTarget:  document.getElementById("fieldContent"),
+    menuEl:      document.getElementById("slashMenu"),
+    onPageCreate: null,
+  });
+  initPageNameModal();
+
   loadTree();
   loadCategorySuggestions();
   loadTopicSuggestions();
@@ -540,6 +549,7 @@ async function loadEntry(id) {
   processWikilinks($("entryBody"));
   // PrismJS syntax highlighting
   if (window.Prism) setTimeout(() => Prism.highlightAllUnder($("entryBody")), 200);
+  loadEntryChildren(id);
   // Render tags bar if entry has tags
   const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
   if (existingTagBar) existingTagBar.remove();
@@ -567,6 +577,7 @@ function openNewModal() {
   $("fieldTopic").value = "";
   $("fieldTitle").value = "";
   $("fieldContent").value = "";
+  BlockEditor.loadMarkdown("");
   $("previewPane").innerHTML = "";
   switchTab("write");
   $("saveBtn").dataset.mode = "new";
@@ -593,6 +604,7 @@ async function openEditModal() {
   $("modalTitle").textContent = "Editar entrada";
   $("fieldTitle").value = m.title;
   $("fieldContent").value = data.markdown;
+  BlockEditor.loadMarkdown(data.markdown);
   switchTab("write");
   $("saveBtn").dataset.mode = "edit";
   $("saveBtn").dataset.id = currentEntryId;
@@ -633,7 +645,7 @@ function getTopicValue() {
 async function saveEntry() {
   const mode = $("saveBtn").dataset.mode;
   const title = $("fieldTitle").value.trim();
-  const content = $("fieldContent").value.trim();
+  const content = BlockEditor.getMarkdown().trim();
   const currentModalMode = window._getModalMode ? window._getModalMode() : "knowledge";
 
   if (currentModalMode === "course") {
@@ -778,11 +790,11 @@ async function runSearch(q) {
 // ---- EDITOR TABS ----
 async function switchTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
-  const textarea = $("fieldContent");
+  const editorWrap = $("blockEditorWrap");
   const preview = $("previewPane");
 
   if (tab === "preview") {
-    const raw = textarea.value.trim();
+    const raw = BlockEditor.getMarkdown().trim();
     if (raw) {
       const res = await fetch("/api/preview", {
         method: "POST",
@@ -791,14 +803,16 @@ async function switchTab(tab) {
       });
       const data = await res.json();
       preview.innerHTML = '<div class="entry-body">' + data.html + "</div>";
+      if (window.Prism) setTimeout(() => Prism.highlightAllUnder(preview), 100);
     } else {
       preview.innerHTML = '<span style="color:var(--text-faint)">Sin contenido aún.</span>';
     }
-    textarea.classList.add("hidden");
+    if (editorWrap) editorWrap.classList.add("hidden");
     preview.classList.remove("hidden");
   } else {
-    textarea.classList.remove("hidden");
+    if (editorWrap) editorWrap.classList.remove("hidden");
     preview.classList.add("hidden");
+    BlockEditor.focusFirst();
   }
 }
 
@@ -1256,10 +1270,10 @@ function initTemplates() {
     chip.addEventListener("click", () => {
       const tpl = chip.dataset.tpl;
       if (tpl in TEMPLATES) {
-        $("fieldContent").value = TEMPLATES[tpl];
+        BlockEditor.loadMarkdown(TEMPLATES[tpl]);
         document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
-        $("fieldContent").focus();
+        BlockEditor.focusFirst();
         autoExtractTitle();
       }
     });
@@ -1269,6 +1283,83 @@ function initTemplates() {
 // ============================================================
 // NEW FEATURE: VERSION HISTORY
 // ============================================================
+// ============================================================
+// SUB-PAGES
+// ============================================================
+let _pendingPageBlockId = null;
+
+function initPageNameModal() {
+  $("pageNameClose").addEventListener("click", closePageNameModal);
+  $("pageNameCancel").addEventListener("click", closePageNameModal);
+  $("pageNameConfirm").addEventListener("click", confirmPageCreate);
+  $("pageNameInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") confirmPageCreate();
+    if (e.key === "Escape") closePageNameModal();
+  });
+
+  window._promptPageName = (blockId) => {
+    _pendingPageBlockId = blockId;
+    $("pageNameInput").value = "";
+    $("pageNameOverlay").classList.remove("hidden");
+    setTimeout(() => $("pageNameInput").focus(), 50);
+  };
+}
+
+function closePageNameModal() {
+  $("pageNameOverlay").classList.add("hidden");
+  _pendingPageBlockId = null;
+}
+
+async function confirmPageCreate() {
+  const name = $("pageNameInput").value.trim();
+  if (!name) return;
+  closePageNameModal();
+
+  // Create a new entry as sub-page of current
+  const parentId = currentEntryId;
+  const res = await fetch("/api/entry", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: name,
+      category: "pages",
+      topic: "subpages",
+      raw_text: "# " + name + "\n\n",
+      parent_id: parentId || null,
+    }),
+  });
+  if (res.ok) {
+    const d = await res.json();
+    BlockEditor.addPageBlock(_pendingPageBlockId, name, d.id);
+    await loadTree();
+    showToast("Sub-página creada");
+  } else {
+    showToast("Error al crear sub-página", "error");
+  }
+}
+
+async function loadEntryChildren(entryId) {
+  const res = await fetch(`/api/entry/${entryId}/children`);
+  if (!res.ok) return;
+  const children = await res.json();
+  const body = $("entryBody");
+  const existing = body.querySelector(".entry-children");
+  if (existing) existing.remove();
+  if (!children.length) return;
+  const div = document.createElement("div");
+  div.className = "entry-children";
+  div.innerHTML = `<div class="entry-children-label">⬡ Sub-páginas</div>` +
+    children.map(c => `
+      <div class="entry-child-link" data-id="${c.id}">
+        <span class="entry-child-icon">⬡</span>
+        <span>${escapeHtml(c.title)}</span>
+      </div>`).join("");
+  div.querySelectorAll(".entry-child-link").forEach(el => {
+    el.addEventListener("click", () => loadEntry(el.dataset.id));
+  });
+  body.appendChild(div);
+}
+
 let _historyCurrentTimestamp = null;
 let _historyCurrentMarkdown = null;
 

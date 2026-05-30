@@ -235,12 +235,17 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Contenido <span class="label-hint">(pega texto libre, Markdown o mixto)</span></label>
+          <label>Contenido <span class="label-hint">— usa <kbd>/</kbd> para insertar bloques</span></label>
           <div class="editor-tabs">
             <button class="tab active" data-tab="write">Escribir</button>
             <button class="tab" data-tab="preview">Vista previa</button>
           </div>
-          <textarea id="fieldContent" rows="18" placeholder="Pega aquí tu contenido..."></textarea>
+          <!-- Block editor (visible in write tab) -->
+          <div id="blockEditorWrap">
+            <div id="blockEditor" class="block-editor"></div>
+          </div>
+          <!-- Hidden textarea keeps markdown value for save/preview -->
+          <textarea id="fieldContent" style="display:none"></textarea>
           <div class="preview-pane hidden" id="previewPane"></div>
         </div>
       </div>
@@ -285,6 +290,29 @@
   <!-- TOAST -->
   <div class="toast hidden" id="toast"></div>
 
+  <!-- SLASH MENU -->
+  <div id="slashMenu" class="slash-menu hidden"></div>
+
+  <!-- PAGE NAME MODAL -->
+  <div class="modal-overlay hidden" id="pageNameOverlay">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h2>⬡ Nueva sub-página</h2>
+        <button class="modal-close" id="pageNameClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nombre de la sub-página</label>
+          <input type="text" id="pageNameInput" placeholder="Ej: Sección 1 — Introducción" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="pageNameCancel">Cancelar</button>
+        <button class="btn-primary" id="pageNameConfirm">Crear página</button>
+      </div>
+    </div>
+  </div>
+
   <script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
   <script src="/static/prism/prism-core.min.js"></script>
   <script src="/static/prism/prism-clike.min.js"></script>
@@ -298,6 +326,7 @@
   <script src="/static/prism/prism-json.min.js"></script>
   <script src="/static/prism/prism-toolbar.min.js"></script>
   <script src="/static/prism/prism-copy-to-clipboard.min.js"></script>
+  <script src="/static/editor.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
 </body>
 </html>

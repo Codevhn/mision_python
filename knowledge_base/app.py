@@ -398,6 +398,7 @@ def create_entry():
     raw_tags = data.get("tags", "")
     tags = [t.strip().lower() for t in raw_tags.split(",") if t.strip()] if raw_tags else []
 
+    parent_id = data.get("parent_id") or None
     index[entry_id] = {
         "title": title,
         "category": slugify(category),
@@ -408,6 +409,7 @@ def create_entry():
         "status": "pendiente",
         "order": 0,
         "tags": tags,
+        "parent_id": parent_id,
     }
     save_index(index)
 
@@ -803,6 +805,18 @@ def get_entry_history_snapshot(entry_id, timestamp):
 
 
 # ── FEATURE: Backlinks ──────────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/children")
+def get_children(entry_id):
+    index = load_index()
+    children = [
+        {"id": eid, "title": m.get("title", eid)}
+        for eid, m in index.items()
+        if m.get("parent_id") == entry_id
+    ]
+    children.sort(key=lambda c: c["title"])
+    return jsonify(children)
+
+
 @app.route("/api/entry/<entry_id>/backlinks")
 def get_backlinks(entry_id):
     index = load_index()
