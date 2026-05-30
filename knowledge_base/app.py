@@ -437,25 +437,27 @@ def update_entry(entry_id):
     title = data.get("title", "").strip()
     category = data.get("category", "").strip()
     topic = data.get("topic", "").strip()
-    if not raw_text:
-        return jsonify({"error": "Missing content"}), 400
 
     meta = index[entry_id]
     old_path = _entry_path(entry_id, meta)
-    # Save history snapshot before overwriting
-    _save_history_snapshot(entry_id, meta, old_path)
-    md_content = smart_parse(raw_text)
-
     if meta.get("type") == "course":
-        course_raw  = data.get("course", "").strip()
-        module_raw  = data.get("module", "").strip()
-        new_course  = slugify(course_raw) if course_raw else meta["course"]
-        new_module  = slugify(module_raw) if module_raw else meta["module"]
-        new_path    = KNOWLEDGE_DIR / "courses" / new_course / new_module / f"{entry_id}.md"
+        course_raw = data.get("course", "").strip()
+        module_raw = data.get("module", "").strip()
+        new_course = slugify(course_raw) if course_raw else meta["course"]
+        new_module = slugify(module_raw) if module_raw else meta["module"]
+        new_path   = KNOWLEDGE_DIR / "courses" / new_course / new_module / f"{entry_id}.md"
         new_path.parent.mkdir(parents=True, exist_ok=True)
-        if old_path != new_path and old_path.exists():
-            old_path.unlink()
-        new_path.write_text(md_content)
+        if raw_text:
+            _save_history_snapshot(entry_id, meta, old_path)
+            if old_path != new_path and old_path.exists():
+                old_path.unlink()
+            new_path.write_text(smart_parse(raw_text))
+        elif old_path != new_path:
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            if old_path.exists():
+                import shutil
+                shutil.copy2(old_path, new_path)
+                old_path.unlink()
         if title:
             index[entry_id]["title"] = title
         if course_raw:
@@ -467,19 +469,23 @@ def update_entry(entry_id):
         save_index(index)
         return jsonify({"message": "Updated"})
 
-    # Update file — if category/topic changed, move the file
+    # Knowledge entry — update file if content provided, move if cat/topic changed
     new_category = slugify(category) if category else meta["category"]
-    new_topic = slugify(topic) if topic else meta["topic"]
-    new_folder = KNOWLEDGE_DIR / new_category / new_topic
+    new_topic    = slugify(topic)    if topic    else meta["topic"]
+    new_folder   = KNOWLEDGE_DIR / new_category / new_topic
     new_folder.mkdir(parents=True, exist_ok=True)
-    new_path = new_folder / f"{entry_id}.md"
+    new_path     = new_folder / f"{entry_id}.md"
 
-    if old_path != new_path and old_path.exists():
+    if raw_text:
+        _save_history_snapshot(entry_id, meta, old_path)
+        if old_path != new_path and old_path.exists():
+            old_path.unlink()
+        new_path.write_text(smart_parse(raw_text))
+    elif old_path != new_path and old_path.exists():
+        import shutil
+        shutil.copy2(old_path, new_path)
         old_path.unlink()
 
-    new_path.write_text(md_content)
-
-    # Update index metadata
     if title:
         index[entry_id]["title"] = title
     if category:
@@ -773,6 +779,27 @@ def update_properties(entry_id):
     props = request.json.get("properties", [])
     index[entry_id]["properties"] = props
     save_index(index)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/entry/<entry_id>/content", methods=["PATCH"])
+def patch_content(entry_id):
+    """Inline auto-save: update file content and optionally title."""
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json
+    meta = index[entry_id]
+    raw_text = data.get("raw_text", "").strip()
+    if raw_text:
+        path = _entry_path(entry_id, meta)
+        _save_history_snapshot(entry_id, meta, path)
+        path.write_text(smart_parse(raw_text))
+    title = data.get("title", "").strip()
+    if title:
+        index[entry_id]["title"] = title
+    if raw_text or title:
+        save_index(index)
     return jsonify({"ok": True})
 
 

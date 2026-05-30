@@ -63,6 +63,12 @@
 
       <!-- ENTRY VIEW -->
       <article class="entry-view hidden" id="entryView">
+        <!-- Inline editable title -->
+        <div class="inline-title-wrap" id="inlineTitleWrap">
+          <h1 class="inline-title" id="inlineTitle" contenteditable="true" spellcheck="false" data-placeholder="Sin título"></h1>
+          <span class="autosave-indicator" id="autosaveIndicator"></span>
+        </div>
+
         <div class="entry-header" id="entryHeader">
           <div class="entry-meta" id="entryMeta"></div>
           <div class="entry-actions">
@@ -293,8 +299,10 @@
   <!-- TOAST -->
   <div class="toast hidden" id="toast"></div>
 
-  <!-- SLASH MENU -->
+  <!-- SLASH MENU (modal editor) -->
   <div id="slashMenu" class="slash-menu hidden"></div>
+  <!-- SLASH MENU (inline entry editor) -->
+  <div id="slashMenuInline" class="slash-menu hidden"></div>
 
   <!-- PAGE NAME MODAL -->
   <div class="modal-overlay hidden" id="pageNameOverlay">

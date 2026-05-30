@@ -7,23 +7,51 @@ const $ = id => document.getElementById(id);
 // ---- State ----
 let currentEntryId = null;
 let currentEntryMeta = null;
-let treeState = {}; // { cat: { open: bool, topics: { topic: { open: bool } } } }
+let treeState = {};
 let coursesTreeState = {};
-let starredMap = {};  // entry_id -> bool
-let pinnedMap = {};   // entry_id -> bool
-let statusMap = {};   // entry_id -> status string
+let starredMap = {};
+let pinnedMap = {};
+let statusMap = {};
 let _reviewEntries = [];
 let _reviewIndex = 0;
+let _inlineEditor = null;  // inline entry editor instance
+let _autoSaveTimer = null;
 
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
-  // Init block editor
+  // Modal block editor (for new entries)
   BlockEditor.init({
     container:   document.getElementById("blockEditor"),
     syncTarget:  document.getElementById("fieldContent"),
     menuEl:      document.getElementById("slashMenu"),
     onPageCreate: null,
   });
+
+  // Inline entry editor (for viewing/editing entries)
+  _inlineEditor = BlockEditor.create({
+    container:  document.getElementById("entryBody"),
+    menuEl:     document.getElementById("slashMenuInline"),
+    onChange:   _scheduleAutoSave,
+    onPageCreate: null,
+  });
+
+  // Inline title auto-save
+  const inlineTitle = document.getElementById("inlineTitle");
+  if (inlineTitle) {
+    inlineTitle.addEventListener("blur", () => {
+      const newTitle = inlineTitle.textContent.trim();
+      if (newTitle && currentEntryId && newTitle !== (currentEntryMeta && currentEntryMeta.title)) {
+        _patchContent({ title: newTitle });
+        if (currentEntryMeta) currentEntryMeta.title = newTitle;
+        // Update sidebar label
+        document.querySelectorAll(`.tree-entry[data-id="${currentEntryId}"] .tree-entry-title`).forEach(el => el.textContent = newTitle);
+      }
+    });
+    inlineTitle.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); inlineTitle.blur(); document.getElementById("entryBody").querySelector(".eb-content")?.focus(); }
+    });
+  }
+
   initPageNameModal();
 
   loadTree();
@@ -481,11 +509,18 @@ async function loadEntry(id) {
   currentEntryMeta = m;
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
-  // Render entry body first (so we can count words)
+  // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
-  $("entryBody").innerHTML = data.html;
   $("entryBody").classList.toggle("note-entry", isNote);
+  _inlineEditor.load(data.markdown);
   $("contentArea").scrollTo(0, 0);
+
+  // Set inline title
+  const titleEl = $("inlineTitle");
+  if (titleEl) {
+    titleEl.textContent = m.title || "";
+    titleEl.classList.toggle("is-empty", !m.title);
+  }
 
   // Set status button from meta
   const entryStatus = m.status || "pendiente";
@@ -574,6 +609,43 @@ async function loadEntry(id) {
   }
 }
 
+// ---- INLINE AUTO-SAVE ----
+function _scheduleAutoSave(md) {
+  clearTimeout(_autoSaveTimer);
+  _setAutosaveStatus("saving");
+  _autoSaveTimer = setTimeout(() => {
+    if (!currentEntryId) return;
+    _patchContent({ raw_text: md });
+  }, 1200);
+}
+
+async function _patchContent(payload) {
+  if (!currentEntryId) return;
+  try {
+    const res = await fetch(`/api/entry/${currentEntryId}/content`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      _setAutosaveStatus("saved");
+    } else {
+      _setAutosaveStatus("error");
+    }
+  } catch {
+    _setAutosaveStatus("error");
+  }
+}
+
+function _setAutosaveStatus(state) {
+  const el = $("autosaveIndicator");
+  if (!el) return;
+  el.className = "autosave-indicator autosave-" + state;
+  if (state === "saving") el.textContent = "● guardando…";
+  else if (state === "saved") { el.textContent = "✓ guardado"; setTimeout(() => { if (el.textContent === "✓ guardado") el.textContent = ""; }, 2000); }
+  else if (state === "error") el.textContent = "✗ error al guardar";
+}
+
 // ---- MODAL ----
 function openNewModal() {
   $("modalTitle").textContent = "Nueva entrada";
@@ -601,28 +673,34 @@ function openNewModal() {
 
 async function openEditModal() {
   if (!currentEntryId) return;
-  const res = await fetch(`/api/entry/${currentEntryId}`);
-  const data = await res.json();
-  const m = data.meta;
+  const m = currentEntryMeta;
+  if (!m) return;
 
-  $("modalTitle").textContent = "Editar entrada";
+  // Edit modal is metadata-only (title, category/topic) — content is inline
+  $("modalTitle").textContent = "Editar información";
   $("fieldTitle").value = m.title;
-  $("fieldContent").value = data.markdown;
-  BlockEditor.loadMarkdown(data.markdown);
-  switchTab("write");
   $("saveBtn").dataset.mode = "edit";
   $("saveBtn").dataset.id = currentEntryId;
-  $("saveBtn").textContent = "Actualizar entrada";
+  $("saveBtn").textContent = "Actualizar";
   $("modalOverlay").classList.remove("hidden");
-  // Reset template chips on edit
-  document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
+
+  // Hide content section — editing is inline
+  const contentGroup = $("blockEditorWrap")?.closest(".form-group");
+  if (contentGroup) contentGroup.style.display = "none";
+  const editorTabs = document.querySelector(".editor-tabs");
+  if (editorTabs) editorTabs.style.display = "none";
+  const previewPane = $("previewPane");
+  if (previewPane) previewPane.classList.add("hidden");
+  $("templatePickerGroup").classList.add("hidden");
+
+  // Hide type toggle — can't change type on existing entry
+  document.querySelector(".entry-type-toggle")?.style && (document.querySelector(".entry-type-toggle").style.display = "none");
 
   if (m.type === "course") {
     if (window._setModalMode) window._setModalMode("course");
     document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "course"));
     $("knowledgeFields").classList.add("hidden");
     $("courseFields").classList.remove("hidden");
-    $("templatePickerGroup").classList.add("hidden");
     $("fieldCourse").value = m.course_label || m.course || "";
     $("fieldModule").value = m.module_label || m.module || "";
     updateModuleSuggestions();
@@ -631,7 +709,6 @@ async function openEditModal() {
     document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
     $("knowledgeFields").classList.remove("hidden");
     $("courseFields").classList.add("hidden");
-    $("templatePickerGroup").classList.remove("hidden");
     $("fieldCategory").value = m.category_label || m.category;
     $("fieldTopic").value = m.topic_label || m.topic || "";
   }
@@ -639,6 +716,13 @@ async function openEditModal() {
 
 function closeModal() {
   $("modalOverlay").classList.add("hidden");
+  // Restore content section (hidden during metadata-only edit)
+  const contentGroup = $("blockEditorWrap")?.closest(".form-group");
+  if (contentGroup) contentGroup.style.display = "";
+  const editorTabs = document.querySelector(".editor-tabs");
+  if (editorTabs) editorTabs.style.display = "";
+  const typeToggle = document.querySelector(".entry-type-toggle");
+  if (typeToggle) typeToggle.style.display = "";
 }
 
 function getTopicValue() {
@@ -680,27 +764,39 @@ async function saveEntry() {
   const topic = getTopicValue();
   const raw_text = content;
 
+  if (mode === "edit") {
+    // Metadata-only update — content is auto-saved inline
+    const id = $("saveBtn").dataset.id;
+    if (!title || !category || !topic) { showToast("Completa los campos", "error"); return; }
+    const res = await fetch(`/api/entry/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, category, topic }),
+    });
+    if (res.ok) {
+      closeModal();
+      showToast("Información actualizada");
+      await loadTree();
+      // Update inline title if changed
+      const titleEl = $("inlineTitle");
+      if (titleEl) titleEl.textContent = title;
+      if (currentEntryMeta) {
+        currentEntryMeta.title = title;
+        currentEntryMeta.category_label = category;
+        currentEntryMeta.topic_label = topic;
+      }
+    } else {
+      showToast("Error al actualizar", "error");
+    }
+    return;
+  }
+
   if (!category || !topic || !title || !raw_text) {
     showToast("Completa todos los campos", "error");
     return;
   }
 
-  if (mode === "edit") {
-    const id = $("saveBtn").dataset.id;
-    const res = await fetch(`/api/entry/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ raw_text, title, category, topic }),
-    });
-    if (res.ok) {
-      closeModal();
-      showToast("Entrada actualizada");
-      await loadTree();
-      loadEntry(id);
-    } else {
-      showToast("Error al actualizar", "error");
-    }
-  } else {
+  {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

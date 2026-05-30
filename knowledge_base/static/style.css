@@ -366,6 +366,50 @@ input, textarea, select { font-family: inherit; }
 
 /* Entry view */
 .entry-view { max-width: 800px; margin: 0 auto; padding: 28px 44px 80px; }
+
+/* Inline title */
+.inline-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.inline-title {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--fg);
+  line-height: 1.2;
+  outline: none;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  margin: 0;
+  flex: 1;
+  word-break: break-word;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+.inline-title:focus {
+  border-bottom-color: var(--accent);
+}
+.inline-title.is-empty::before,
+.inline-title:empty::before {
+  content: attr(data-placeholder);
+  color: var(--fg-muted);
+  opacity: 0.3;
+  pointer-events: none;
+}
+.autosave-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.3s;
+}
+.autosave-saving { color: var(--accent); opacity: 0.7; }
+.autosave-saved  { color: #4ec9b0; opacity: 0.8; }
+.autosave-error  { color: #e05555; }
 .entry-header {
   display: flex;
   align-items: flex-start;
@@ -440,7 +484,13 @@ input, textarea, select { font-family: inherit; }
 .entry-actions .btn-ghost.danger:hover { background: rgba(204,68,68,0.1); color: var(--danger); }
 
 /* ---- MARKDOWN RENDERING ---- */
-.entry-body { line-height: 1.85; color: var(--text); font-size: 1rem; }
+.entry-body {
+  line-height: 1.85;
+  color: var(--text);
+  font-size: 1rem;
+  min-height: 200px;
+  cursor: text;
+}
 
 /* ── TAGS ─────────────────────────────────────────────────────────────── */
 .entry-tags-bar {
