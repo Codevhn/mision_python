@@ -602,6 +602,13 @@ input, textarea, select { font-family: inherit; }
 .note-entry li { margin: 3px 0; }
 /* ─────────────────────────────────────────────────────────────────────── */
 
+.entry-body h1,
+.entry-body h2,
+.entry-body h3,
+.entry-body h4 {
+  scroll-margin-top: calc(var(--topbar-h) + 16px);
+}
+
 .entry-body h1 {
   font-family: var(--font-mono);
   font-size: 1.6rem;
