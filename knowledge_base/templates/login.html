@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>login — knowledge_base</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0e0e0e;
+      --surface:  #161616;
+      --elevated: #1c1c1c;
+      --border:   #2a2a2a;
+      --accent:   #1793d1;
+      --accent2:  #0f6fa0;
+      --text:     #d4d4d4;
+      --muted:    #6b6b6b;
+      --faint:    #3a3a3a;
+      --danger:   #e06c75;
+      --green:    #4ec9b0;
+      --font:     "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* boot lines */
+    .boot-log {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      opacity: 0.35;
+      pointer-events: none;
+      font-size: 0.7rem;
+    }
+    .boot-line { color: var(--muted); }
+    .boot-line .ok  { color: var(--green); }
+    .boot-line .err { color: var(--danger); }
+
+    /* terminal card */
+    .terminal {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 0 0 1px var(--faint), 0 24px 64px rgba(0,0,0,0.6);
+    }
+
+    .term-bar {
+      background: var(--elevated);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .term-dots { display: flex; gap: 6px; }
+    .term-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--faint);
+    }
+    .term-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .term-body { padding: 28px 28px 32px; }
+
+    .prompt-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .prompt-user { color: var(--green); }
+    .prompt-at   { color: var(--muted); }
+    .prompt-host { color: var(--accent); }
+    .prompt-sep  { color: var(--muted); }
+    .prompt-path { color: var(--text); }
+    .prompt-cmd  { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
+
+    .field-group { margin-bottom: 18px; }
+
+    .field-label {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .field-wrap {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      transition: border-color 0.15s;
+    }
+    .field-wrap:focus-within { border-color: var(--accent); }
+
+    .field-prefix {
+      padding: 0 10px;
+      color: var(--accent);
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .field-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      padding: 10px 12px 10px 0;
+      letter-spacing: 0.12em;
+    }
+    .field-wrap input::placeholder { color: var(--faint); letter-spacing: 0; }
+
+    .error-line {
+      font-size: 0.75rem;
+      color: var(--danger);
+      margin-bottom: 14px;
+      padding-left: 2px;
+    }
+    .error-line::before { content: "✗ "; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-family: var(--font);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .submit-btn:hover { background: var(--accent2); }
+    .submit-btn:active { transform: translateY(1px); }
+
+    .term-footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 28px;
+      font-size: 0.65rem;
+      color: var(--faint);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="boot-log" aria-hidden="true">
+    <div class="boot-line">[ <span class="ok">  OK  </span> ] Started Journal Service.</div>
+    <div class="boot-line">[ <span class="ok">  OK  </span> ] Reached target Network.</div>
+    <div class="boot-line">[ <span class="ok">  OK  </span> ] Started knowledge_base.service.</div>
+    <div class="boot-line">[ <span class="ok">  OK  </span> ] Reached target Multi-User System.</div>
+  </div>
+
+  <div class="terminal" role="main">
+    <div class="term-bar">
+      <div class="term-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="term-title">bash — knowledge_base</div>
+    </div>
+
+    <div class="term-body">
+      <div class="prompt-line" aria-hidden="true">
+        <span class="prompt-user">user</span><span class="prompt-at">@</span><span class="prompt-host">arch</span>
+        <span class="prompt-sep">~/</span><span class="prompt-path">knowledge_base</span>
+        <span class="prompt-cmd">$ sudo unlock</span>
+      </div>
+
+      <form method="POST" action="/login" autocomplete="off">
+        <div class="field-group">
+          <label class="field-label" for="password">Contraseña</label>
+          <div class="field-wrap">
+            <span class="field-prefix">▶</span>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="········"
+              autofocus
+              required
+            />
+          </div>
+        </div>
+
+        {% if error %}
+        <div class="error-line">{{ error }}</div>
+        {% endif %}
+
+        <button type="submit" class="submit-btn">Autenticar →</button>
+      </form>
+    </div>
+
+    <div class="term-footer">
+      <span>knowledge_base v1.0</span>
+      <span>arch linux</span>
+    </div>
+  </div>
+
+</body>
+</html>

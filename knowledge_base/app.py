@@ -5,10 +5,25 @@ import subprocess
 import shutil
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
 import mistune
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+
+KB_PASSWORD = os.environ.get("KB_PASSWORD", "")
+
+@app.before_request
+def require_auth():
+    if not KB_PASSWORD:
+        return
+    public = {"/login", "/logout"}
+    if request.path in public or request.path.startswith("/static/"):
+        return
+    if not session.get("authenticated"):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Unauthorized"}), 401
+        return redirect(url_for("login_page"))
 
 BASE_DIR = Path(__file__).parent
 # Si existe la variable DATA_ROOT (Railway volume), usar esa ruta para datos y notas
@@ -275,6 +290,25 @@ def _build_pdf_html(title, date, body_html):
 
 # Cache-busting version derived from build time
 _BUILD_ID = datetime.now().strftime("%Y%m%d%H%M%S")
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    if not KB_PASSWORD:
+        return redirect(url_for("index"))
+    if session.get("authenticated"):
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == KB_PASSWORD:
+            session["authenticated"] = True
+            return redirect(url_for("index"))
+        error = "Contraseña incorrecta."
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login_page"))
 
 @app.route("/")
 def index():
