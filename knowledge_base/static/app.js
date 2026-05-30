@@ -28,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initScratchpad();
   initStats();
   initContextMenu();
-  initSearchFilters();
   initTemplates();
   initHistory();
   initDuplicate();
@@ -182,7 +181,6 @@ async function loadTree() {
   const localPinned = JSON.parse(localStorage.getItem("kb_pinned") || "{}");
   Object.assign(pinnedMap, localPinned);
   renderPinnedSection();
-  loadFilterCategories();
 }
 
 function renderTree(tree) {
@@ -745,12 +743,6 @@ function exportEntry(format) {
 
 // ---- SEARCH ----
 async function runSearch(q) {
-  const cat = $("filterCategory").value;
-  const from = $("filterFrom").value;
-  const to = $("filterTo").value;
-  if (cat || from || to) {
-    return runSearchWithFilters(q, cat, from, to);
-  }
   const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
   const results = await res.json();
   const container = $("searchResults");
@@ -1165,95 +1157,6 @@ function hideContextMenu() {
   _ctxCategory = null;
 }
 
-// ============================================================
-// FEATURE 8 — SEARCH FILTERS
-// ============================================================
-function initSearchFilters() {
-  const input = $("searchInput");
-  const filters = $("searchFilters");
-
-  input.addEventListener("focus", () => filters.classList.remove("hidden"));
-  input.addEventListener("input", () => {
-    if (input.value.trim()) filters.classList.remove("hidden");
-  });
-  document.addEventListener("click", e => {
-    if (!filters.contains(e.target) && e.target !== input) {
-      if (!input.value.trim()) filters.classList.add("hidden");
-    }
-  });
-
-  const filterCat = $("filterCategory");
-  const filterFrom = $("filterFrom");
-  const filterTo = $("filterTo");
-
-  function runFilteredSearch() {
-    const q = input.value.trim();
-    const cat = filterCat.value;
-    const from = filterFrom.value;
-    const to = filterTo.value;
-    if (!q && !cat && !from && !to) {
-      $("searchResults").innerHTML = "";
-      $("searchResults").classList.add("hidden");
-      return;
-    }
-    clearTimeout(input._searchTimer);
-    input._searchTimer = setTimeout(() => runSearchWithFilters(q, cat, from, to), 280);
-  }
-
-  filterCat.addEventListener("change", runFilteredSearch);
-  filterFrom.addEventListener("change", runFilteredSearch);
-  filterTo.addEventListener("change", runFilteredSearch);
-
-  loadFilterCategories();
-}
-
-async function loadFilterCategories() {
-  const res = await fetch("/api/categories");
-  const cats = await res.json();
-  const sel = $("filterCategory");
-  while (sel.options.length > 1) sel.remove(1);
-  for (const [slug, label] of Object.entries(cats)) {
-    const opt = document.createElement("option");
-    opt.value = slug;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  }
-}
-
-async function runSearchWithFilters(q, category, from, to) {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (category) params.set("category", category);
-  if (from) params.set("from", from);
-  if (to) params.set("to", to);
-
-  const res = await fetch(`/api/search/filtered?${params}`);
-  const results = await res.json();
-  const container = $("searchResults");
-  container.classList.remove("hidden");
-
-  if (results.length === 0) {
-    container.innerHTML = '<div class="search-result-item"><span class="sr-snippet">Sin resultados</span></div>';
-    return;
-  }
-
-  container.innerHTML = results.map(r => `
-    <div class="search-result-item" data-id="${r.id}">
-      <div class="sr-title">${escapeHtml(r.title)}</div>
-      <div class="sr-path">${escapeHtml(r.category_label)} › ${escapeHtml(r.topic_label)}</div>
-      ${r.snippet ? `<div class="sr-snippet">${escapeHtml(r.snippet)}</div>` : ""}
-    </div>
-  `).join("");
-
-  container.querySelectorAll(".search-result-item").forEach(el => {
-    el.addEventListener("click", () => {
-      loadEntry(el.dataset.id);
-      $("searchInput").value = "";
-      container.innerHTML = "";
-      container.classList.add("hidden");
-    });
-  });
-}
 
 // ============================================================
 // NEW FEATURE: INTERACTIVE CHECKBOXES
