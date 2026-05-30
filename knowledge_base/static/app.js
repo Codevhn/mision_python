@@ -597,6 +597,7 @@ async function openEditModal() {
     $("templatePickerGroup").classList.add("hidden");
     $("fieldCourse").value = m.course_label || m.course || "";
     $("fieldModule").value = m.module_label || m.module || "";
+    updateModuleSuggestions();
   } else {
     if (window._setModalMode) window._setModalMode("knowledge");
     document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
@@ -807,13 +808,33 @@ async function loadCategorySuggestions() {
   dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
 }
 
+let _coursesTree = {};
+
 async function loadCourseSuggestions() {
   const res = await fetch("/api/courses/tree");
   if (!res.ok) return;
-  const tree = await res.json();
+  _coursesTree = await res.json();
   const dl = $("courseSuggestions");
   if (!dl) return;
-  dl.innerHTML = Object.values(tree).map(c => `<option value="${escapeHtml(c.label)}">`).join("");
+  dl.innerHTML = Object.values(_coursesTree).map(c => `<option value="${escapeHtml(c.label)}">`).join("");
+
+  const courseInput = $("fieldCourse");
+  if (courseInput && !courseInput._moduleListenerAdded) {
+    courseInput._moduleListenerAdded = true;
+    courseInput.addEventListener("input", updateModuleSuggestions);
+    courseInput.addEventListener("change", updateModuleSuggestions);
+  }
+}
+
+function updateModuleSuggestions() {
+  const courseVal = $("fieldCourse").value.trim().toLowerCase();
+  const dl = $("moduleSuggestions");
+  if (!dl) return;
+  const match = Object.values(_coursesTree).find(c => c.label.toLowerCase() === courseVal);
+  if (!match) { dl.innerHTML = ""; return; }
+  dl.innerHTML = Object.values(match.modules)
+    .map(m => `<option value="${escapeHtml(m.label)}">`)
+    .join("");
 }
 
 // ---- UTILS ----
