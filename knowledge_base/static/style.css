@@ -334,7 +334,7 @@ input, textarea, select { font-family: inherit; }
 .content-area {
   flex: 1;
   overflow-y: auto;
-  background: var(--bg-surface);
+  background: var(--bg-elevated);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -365,13 +365,7 @@ input, textarea, select { font-family: inherit; }
 .welcome-inner p::before { content: "# "; }
 
 /* Entry view */
-.entry-view {
-  max-width: 800px;
-  margin: 28px auto 80px;
-  padding: 36px 44px 60px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-}
+.entry-view { max-width: 800px; margin: 0 auto; padding: 28px 44px 80px; }
 .entry-header {
   display: flex;
   align-items: flex-start;
