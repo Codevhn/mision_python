@@ -141,8 +141,28 @@ function toggleTheme() {
 // ---- SIDEBAR ----
 function isMobile() { return window.innerWidth <= 768; }
 
-// Prevent body scroll from blocking sidebar touch scroll on Android
-$("sidebar").addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+// Android Chrome: body overflow:hidden blocks touch scroll on fixed elements.
+// Handle sidebar scroll manually via touch events.
+(function() {
+  const sidebar = $("sidebar");
+  let startY = 0;
+  let startScroll = 0;
+  sidebar.addEventListener("touchstart", e => {
+    startY = e.touches[0].clientY;
+    startScroll = sidebar.scrollTop;
+  }, { passive: true });
+  sidebar.addEventListener("touchmove", e => {
+    const dy = startY - e.touches[0].clientY;
+    sidebar.scrollTop = startScroll + dy;
+    e.stopPropagation();
+    // Only prevent default if sidebar can actually scroll
+    const canScrollUp = sidebar.scrollTop > 0;
+    const canScrollDown = sidebar.scrollTop < (sidebar.scrollHeight - sidebar.clientHeight);
+    if ((dy > 0 && canScrollDown) || (dy < 0 && canScrollUp)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+})();
 
 function toggleSidebar() {
   if (isMobile()) {
