@@ -78,7 +78,7 @@
 
 /* ---- RESET ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; }
+html { font-size: 16px; }
 body {
   font-family: var(--font-body);
   background: var(--bg);
@@ -440,7 +440,7 @@ input, textarea, select { font-family: inherit; }
 .entry-actions .btn-ghost.danger:hover { background: rgba(204,68,68,0.1); color: var(--danger); }
 
 /* ---- MARKDOWN RENDERING ---- */
-.entry-body { line-height: 1.85; color: var(--text); font-size: 0.97rem; }
+.entry-body { line-height: 1.85; color: var(--text); font-size: 1rem; }
 
 /* ── TAGS ─────────────────────────────────────────────────────────────── */
 .entry-tags-bar {
@@ -604,7 +604,7 @@ input, textarea, select { font-family: inherit; }
 
 .entry-body h1 {
   font-family: var(--font-mono);
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--h1-color);
   margin: 0 0 22px;
@@ -616,7 +616,7 @@ input, textarea, select { font-family: inherit; }
 
 .entry-body h2 {
   font-family: var(--font-mono);
-  font-size: 0.98rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--h2-color);
   margin: 32px 0 10px;
@@ -628,7 +628,7 @@ input, textarea, select { font-family: inherit; }
 
 .entry-body h3 {
   font-family: var(--font-mono);
-  font-size: 0.88rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--h3-color);
   margin: 22px 0 8px;
