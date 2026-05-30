@@ -764,6 +764,18 @@ def toggle_checkbox(entry_id):
     return jsonify({"ok": True})
 
 
+# ── FEATURE: Custom Properties ─────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/properties", methods=["PATCH"])
+def update_properties(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    props = request.json.get("properties", [])
+    index[entry_id]["properties"] = props
+    save_index(index)
+    return jsonify({"ok": True})
+
+
 # ── FEATURE: Version History ────────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/history")
 def get_entry_history(entry_id):

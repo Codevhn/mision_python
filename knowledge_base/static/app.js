@@ -549,6 +549,10 @@ async function loadEntry(id) {
   processWikilinks($("entryBody"));
   // PrismJS syntax highlighting
   if (window.Prism) setTimeout(() => Prism.highlightAllUnder($("entryBody")), 200);
+  // Render properties panel
+  if (window.Properties && $("propContainer")) {
+    Properties.render(id, m.properties || [], $("propContainer"), false);
+  }
   loadEntryChildren(id);
   // Render tags bar if entry has tags
   const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
