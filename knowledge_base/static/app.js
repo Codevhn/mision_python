@@ -141,6 +141,9 @@ function toggleTheme() {
 // ---- SIDEBAR ----
 function isMobile() { return window.innerWidth <= 768; }
 
+// Prevent body scroll from blocking sidebar touch scroll on Android
+$("sidebar").addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+
 function toggleSidebar() {
   if (isMobile()) {
     const open = $("sidebar").classList.toggle("mobile-open");
