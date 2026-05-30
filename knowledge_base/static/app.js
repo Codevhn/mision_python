@@ -19,6 +19,7 @@ let _reviewIndex = 0;
 document.addEventListener("DOMContentLoaded", () => {
   loadTree();
   loadCategorySuggestions();
+  loadTopicSuggestions();
   loadCourseSuggestions();
   bindEvents();
   applyTheme();
@@ -109,16 +110,6 @@ function bindEvents() {
   $("fieldContent").addEventListener("paste", () => setTimeout(autoExtractTitle, 50));
 
   // Topic custom input toggle
-  $("fieldTopic").addEventListener("change", () => {
-    const custom = $("fieldTopicCustom");
-    if ($("fieldTopic").value === "Otro") {
-      custom.classList.remove("hidden");
-      custom.focus();
-    } else {
-      custom.classList.add("hidden");
-      custom.value = "";
-    }
-  });
 }
 
 function autoExtractTitle() {
@@ -551,8 +542,6 @@ function openNewModal() {
   $("modalTitle").textContent = "Nueva entrada";
   $("fieldCategory").value = "";
   $("fieldTopic").value = "";
-  $("fieldTopicCustom").value = "";
-  $("fieldTopicCustom").classList.add("hidden");
   $("fieldTitle").value = "";
   $("fieldContent").value = "";
   $("previewPane").innerHTML = "";
@@ -605,17 +594,7 @@ async function openEditModal() {
     $("courseFields").classList.add("hidden");
     $("templatePickerGroup").classList.remove("hidden");
     $("fieldCategory").value = m.category_label || m.category;
-    const topicLabel = m.topic_label || m.topic;
-    const selectEl = $("fieldTopic");
-    const optionExists = Array.from(selectEl.options).some(o => o.value === topicLabel);
-    if (optionExists) {
-      selectEl.value = topicLabel;
-      $("fieldTopicCustom").classList.add("hidden");
-    } else {
-      selectEl.value = "Otro";
-      $("fieldTopicCustom").classList.remove("hidden");
-      $("fieldTopicCustom").value = topicLabel;
-    }
+    $("fieldTopic").value = m.topic_label || m.topic || "";
   }
 }
 
@@ -625,7 +604,6 @@ function closeModal() {
 
 function getTopicValue() {
   const sel = $("fieldTopic").value;
-  if (sel === "Otro") return $("fieldTopicCustom").value.trim();
   return sel;
 }
 
@@ -695,6 +673,7 @@ async function saveEntry() {
       showToast("Entrada guardada");
       await loadTree();
       loadCategorySuggestions();
+      loadTopicSuggestions();
       loadEntry(data.id);
     } else {
       showToast("Error al guardar", "error");
@@ -806,6 +785,24 @@ async function loadCategorySuggestions() {
   const cats = await res.json();
   const dl = $("categorySuggestions");
   dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+}
+
+async function loadTopicSuggestions() {
+  const res = await fetch("/api/tree");
+  if (!res.ok) return;
+  const tree = await res.json();
+  const dl = $("topicSuggestions");
+  if (!dl) return;
+  const topics = new Set();
+  for (const catData of Object.values(tree)) {
+    const topicsMap = catData._topics || catData;
+    for (const [key, topicData] of Object.entries(topicsMap)) {
+      if (key.startsWith("_")) continue;
+      const label = topicData._label || key;
+      topics.add(label);
+    }
+  }
+  dl.innerHTML = [...topics].sort().map(t => `<option value="${escapeHtml(t)}">`).join("");
 }
 
 let _coursesTree = {};
