@@ -618,10 +618,10 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--font-mono);
   font-size: 1.2rem;
   font-weight: 700;
-  color: var(--h2-color);
+  color: var(--accent);
   margin: 32px 0 10px;
-  padding-left: 10px;
-  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
