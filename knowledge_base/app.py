@@ -411,10 +411,23 @@ def update_entry(entry_id):
     md_content = smart_parse(raw_text)
 
     if meta.get("type") == "course":
-        # For course entries just update the file in place; skip category/topic move
-        old_path.write_text(md_content)
+        course_raw  = data.get("course", "").strip()
+        module_raw  = data.get("module", "").strip()
+        new_course  = slugify(course_raw) if course_raw else meta["course"]
+        new_module  = slugify(module_raw) if module_raw else meta["module"]
+        new_path    = KNOWLEDGE_DIR / "courses" / new_course / new_module / f"{entry_id}.md"
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        if old_path != new_path and old_path.exists():
+            old_path.unlink()
+        new_path.write_text(md_content)
         if title:
             index[entry_id]["title"] = title
+        if course_raw:
+            index[entry_id]["course"] = new_course
+            index[entry_id]["course_label"] = course_raw
+        if module_raw:
+            index[entry_id]["module"] = new_module
+            index[entry_id]["module_label"] = module_raw
         save_index(index)
         return jsonify({"message": "Updated"})
 

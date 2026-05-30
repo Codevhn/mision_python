@@ -1761,7 +1761,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* ── COURSES: Sidebar section labels ─────────────────────────────────────── */
 .sidebar-section-label {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--accent);
