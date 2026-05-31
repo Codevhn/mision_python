@@ -51,6 +51,8 @@ window.BlockEditor = (() => {
     let _loading = false;   // true while loading md — prevents onChange feedback loop
     let slashBlockId = null, slashFilter = '', menuIdx = 0;
     let convertMenu = null;
+    let blockMenu   = null;
+    let dragSrcId   = null;
 
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
@@ -244,12 +246,57 @@ window.BlockEditor = (() => {
       wrap.dataset.id   = b.id;
       wrap.dataset.type = b.type;
 
-      // Type badge
-      const badge = document.createElement('span');
-      badge.className = 'eb-badge';
-      badge.title = 'Convertir bloque';
-      badge.addEventListener('mousedown', e => { e.preventDefault(); openConvertMenu(b.id, badge); });
-      wrap.appendChild(badge);
+      // Block controls (drag handle + options) — shown on hover
+      const controls = document.createElement('div');
+      controls.className = 'eb-controls';
+
+      const handle = document.createElement('div');
+      handle.className = 'eb-handle';
+      handle.draggable = true;
+      handle.title = 'Arrastrar para mover';
+      handle.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13.5" r="1.5"/><circle cx="7.5" cy="13.5" r="1.5"/></svg>';
+      handle.addEventListener('dragstart', e => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', b.id);
+        dragSrcId = b.id;
+        setTimeout(() => wrap.classList.add('eb--dragging'), 0);
+      });
+      handle.addEventListener('dragend', () => {
+        wrap.classList.remove('eb--dragging');
+        dragSrcId = null;
+        container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
+      });
+
+      const optsBtn = document.createElement('button');
+      optsBtn.className = 'eb-opts';
+      optsBtn.title = 'Opciones del bloque';
+      optsBtn.innerHTML = '+';
+      optsBtn.addEventListener('mousedown', e => { e.preventDefault(); openBlockMenu(b.id, optsBtn); });
+
+      controls.appendChild(handle);
+      controls.appendChild(optsBtn);
+      wrap.appendChild(controls);
+
+      // Drop zone events on every block
+      wrap.addEventListener('dragover', e => {
+        if (!dragSrcId || dragSrcId === b.id) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
+        wrap.classList.add(e.clientY < rect.top + rect.height / 2 ? 'eb--drag-top' : 'eb--drag-bot');
+      });
+      wrap.addEventListener('dragleave', e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
+      });
+      wrap.addEventListener('drop', e => {
+        if (!dragSrcId || dragSrcId === b.id) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
+        moveBlock(dragSrcId, b.id, before);
+        dragSrcId = null;
+      });
 
       if (b.type === 'divider') {
         const hr = document.createElement('hr');
@@ -562,12 +609,24 @@ window.BlockEditor = (() => {
     function convertBlock(id, newType) {
       const b = _blocks.find(b => b.id === id);
       if (!b) return;
-      b.content = readContent(id) ?? b.content;
+      const isToggleSrc = b.type.startsWith('toggle');
+      const isToggleDst = newType.startsWith('toggle');
+      if (isToggleSrc) {
+        // reading from toggle header
+        const hEl = container.querySelector(`[data-id="${id}"] .eb-toggle-header`);
+        const src = hEl ? (hEl.innerText || '') : (b.header || '');
+        if (isToggleDst) { b.header = src; }
+        else             { b.content = src; b.header = undefined; b.body = undefined; }
+      } else {
+        b.content = readContent(id) ?? b.content;
+        if (isToggleDst) { b.header = b.content; b.body = ''; b.content = undefined; }
+      }
       b.type = newType;
+      if (isToggleDst && b.open === undefined) b.open = true;
       const old = container.querySelector(`[data-id="${id}"]`);
       const newEl = makeEl(b);
       old.replaceWith(newEl);
-      const c = newEl.querySelector('.eb-content');
+      const c = newEl.querySelector('.eb-toggle-header, .eb-content');
       if (c) { c.focus(); placeCursorEnd(c); }
       sync();
     }
@@ -595,6 +654,113 @@ window.BlockEditor = (() => {
       setTimeout(() => document.addEventListener('mousedown', closeConvertMenu, { once: true }), 0);
     }
     function closeConvertMenu() { if (convertMenu) { convertMenu.remove(); convertMenu = null; } }
+
+    // ── BLOCK MENU (options button) ─────────────────────────────
+    function openBlockMenu(blockId, anchor) {
+      closeBlockMenu();
+      const m = document.createElement('div');
+      m.className = 'eb-block-menu';
+      const rect = anchor.getBoundingClientRect();
+      let top  = rect.bottom + 4;
+      let left = rect.left;
+      if (top + 200 > window.innerHeight) top = rect.top - 200;
+      if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
+      m.style.top  = top  + 'px';
+      m.style.left = left + 'px';
+
+      const items = [
+        { label:'Convertir en…', icon:'⇄', sub:true },
+        { label:'Duplicar',      icon:'⎘', action: () => { duplicateBlock(blockId); closeBlockMenu(); } },
+        { sep: true },
+        { label:'Eliminar',      icon:'✕', action: () => { deleteBlock(blockId); closeBlockMenu(); }, danger:true },
+      ];
+
+      m.innerHTML = items.map((it, i) => it.sep
+        ? `<div class="eb-bm-sep"></div>`
+        : `<div class="eb-bm-item${it.danger?' eb-bm-danger':''}${it.sub?' eb-bm-sub':''}" data-idx="${i}">
+             <span class="eb-bm-icon">${it.icon}</span><span>${it.label}</span>${it.sub ? '<span class="eb-bm-arrow">›</span>' : ''}
+           </div>`
+      ).join('');
+
+      m.querySelectorAll('.eb-bm-item').forEach(el => {
+        const i = parseInt(el.dataset.idx);
+        const it = items[i];
+        if (!it) return;
+        if (it.sub) {
+          el.addEventListener('mouseenter', () => openTurnIntoMenu(blockId, el, m));
+        } else if (it.action) {
+          el.addEventListener('mousedown', e => { e.preventDefault(); it.action(); });
+        }
+      });
+
+      document.body.appendChild(m);
+      blockMenu = m;
+      setTimeout(() => document.addEventListener('mousedown', _closeBMOutside), 0);
+    }
+
+    function _closeBMOutside(e) {
+      if (blockMenu && !blockMenu.contains(e.target)) closeBlockMenu();
+    }
+
+    function closeBlockMenu() {
+      if (blockMenu) { blockMenu.remove(); blockMenu = null; }
+      document.removeEventListener('mousedown', _closeBMOutside);
+      closeTurnIntoMenu();
+    }
+
+    let turnIntoMenu = null;
+    function openTurnIntoMenu(blockId, anchor, parent) {
+      closeTurnIntoMenu();
+      const rect = anchor.getBoundingClientRect();
+      const m = document.createElement('div');
+      m.className = 'eb-block-menu eb-turninto-menu';
+      m.style.top  = rect.top  + 'px';
+      m.style.left = (rect.right + 4) + 'px';
+
+      const types = CMDS.filter(c => !['page','divider','table'].includes(c.type));
+      m.innerHTML = types.map(c =>
+        `<div class="eb-bm-item" data-type="${c.type}">
+           <span class="eb-bm-icon">${c.icon}</span><span>${c.label}</span>
+         </div>`
+      ).join('');
+      m.querySelectorAll('.eb-bm-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          convertBlock(blockId, el.dataset.type);
+          closeBlockMenu();
+        });
+      });
+      document.body.appendChild(m);
+      turnIntoMenu = m;
+    }
+    function closeTurnIntoMenu() { if (turnIntoMenu) { turnIntoMenu.remove(); turnIntoMenu = null; } }
+
+    // ── MOVE BLOCK (drag & drop) ────────────────────────────────
+    function moveBlock(srcId, targetId, before) {
+      const si = _blocks.findIndex(b => b.id === srcId);
+      if (si < 0) return;
+      const [sb] = _blocks.splice(si, 1);
+      const ti = _blocks.findIndex(b => b.id === targetId);
+      _blocks.splice(before ? ti : ti + 1, 0, sb);
+      render();
+      sync();
+    }
+
+    // ── DUPLICATE BLOCK ─────────────────────────────────────────
+    function duplicateBlock(id) {
+      const b = _blocks.find(b => b.id === id);
+      if (!b) return;
+      if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page'].includes(b.type)) {
+        b.content = readContent(id) ?? b.content;
+      }
+      const clone = { ...b, id: uid() };
+      const idx = _blocks.findIndex(b => b.id === id);
+      _blocks.splice(idx + 1, 0, clone);
+      const el = container.querySelector(`[data-id="${id}"]`);
+      const newEl = makeEl(clone);
+      el.after(newEl);
+      sync();
+    }
 
     // ── CURSOR UTILS ────────────────────────────────────────────
     function placeCursorEnd(el) {
