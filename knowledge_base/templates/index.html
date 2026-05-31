@@ -78,7 +78,7 @@
       <!-- TEAMSPACE -->
       <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:flex;align-items:center;justify-content:space-between;">
         <span>TEAMSPACE</span>
-        <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Nueva entrada en Teamspace">+</button>
+        <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Crear nuevo teamspace">+</button>
       </div>
       <nav class="tree" id="teamspaceTree">
         <div class="tree-empty">No hay contenido aún.</div>
@@ -341,6 +341,53 @@
   <div id="slashMenu" class="slash-menu hidden"></div>
   <!-- SLASH MENU (inline entry editor) -->
   <div id="slashMenuInline" class="slash-menu hidden"></div>
+
+  <!-- NEW TEAMSPACE MODAL -->
+  <div class="modal-overlay hidden" id="newTeamspaceOverlay">
+    <div class="modal nts-modal">
+      <div class="modal-header">
+        <span>:: Nuevo Teamspace</span>
+        <button class="modal-close" id="ntsClose">×</button>
+      </div>
+      <div class="modal-body" style="padding:24px 28px 8px;">
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px;">
+          Los teamspaces organizan páginas y entradas por proyecto o equipo.
+        </p>
+        <div class="nts-icon-name">
+          <button class="nts-icon-btn" id="ntsIconBtn" title="Cambiar icono">T</button>
+          <input type="text" id="ntsName" placeholder="Nombre del teamspace" autocomplete="off" />
+        </div>
+        <div class="form-group" style="margin-top:16px;">
+          <label>Descripción <span class="label-hint">— opcional</span></label>
+          <textarea id="ntsDesc" rows="3" placeholder="Detalles sobre este teamspace…" style="resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="ntsCancel">Cancelar</button>
+        <button class="btn-primary" id="ntsCreate">Crear teamspace</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW PAGE IN TEAMSPACE MODAL -->
+  <div class="modal-overlay hidden" id="tsPageOverlay">
+    <div class="modal nts-modal">
+      <div class="modal-header">
+        <span id="tsPageHeader">:: Nueva página en <em id="tsPageSpaceName"></em></span>
+        <button class="modal-close" id="tsPageClose">×</button>
+      </div>
+      <div class="modal-body" style="padding:24px 28px 8px;">
+        <div class="form-group">
+          <label>Título</label>
+          <input type="text" id="tsPageTitle" placeholder="Nombre de la página…" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="tsPageCancel">Cancelar</button>
+        <button class="btn-primary" id="tsPageCreate">Crear página</button>
+      </div>
+    </div>
+  </div>
 
   <!-- PAGE NAME MODAL -->
   <div class="modal-overlay hidden" id="pageNameOverlay">

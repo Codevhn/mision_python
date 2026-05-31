@@ -2930,8 +2930,83 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   transition: color 0.12s;
 }
 .ts-new-btn:hover { color: var(--accent); }
-.ts-space-label { color: var(--accent); font-size: 0.72rem; }
-.ts-item {
-  padding-left: 22px !important;
+
+/* Per-teamspace header row */
+.ts-space-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px 5px 6px;
 }
-.ts-item::before { content: '⬡'; margin-right: 5px; font-size: 0.7rem; opacity: 0.5; }
+.ts-space-icon {
+  width: 20px;
+  height: 20px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+.ts-space-label { color: var(--accent); font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-add-page-btn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+.ts-space-header:hover .ts-add-page-btn { opacity: 1; }
+.ts-add-page-btn:hover { color: var(--accent); }
+
+.ts-item {
+  padding-left: 30px !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ts-entry-icon { font-size: 0.65rem; opacity: 0.4; flex-shrink: 0; }
+.ts-empty-hint { padding-left: 30px !important; font-style: italic; }
+
+/* ── NEW TEAMSPACE MODAL ────────────────────────────────── */
+.nts-modal { max-width: 460px; }
+.nts-icon-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nts-icon-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nts-icon-btn:hover { background: var(--accent-light); }
+.nts-icon-name input {
+  flex: 1;
+  font-size: 1rem;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  outline: none;
+}
+.nts-icon-name input:focus { border-color: var(--accent); }

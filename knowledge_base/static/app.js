@@ -96,17 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function bindEvents() {
   $("newEntryBtn").addEventListener("click", openNewModal);
-  $("newTeamspaceEntryBtn").addEventListener("click", () => {
-    openNewModal();
-    // Switch to teamspace tab
-    if (window._setModalMode) window._setModalMode("teamspace");
-    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "teamspace"));
-    $("knowledgeFields").classList.add("hidden");
-    $("courseFields").classList.add("hidden");
-    $("teamspaceFields").classList.remove("hidden");
-    $("templatePickerGroup").classList.add("hidden");
-    setTimeout(() => $("fieldTeamspace").focus(), 60);
-  });
+  // newTeamspaceEntryBtn is now handled by openNewTeamspaceModal defined below
   // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
@@ -538,38 +528,59 @@ function renderTeamspaceTree(tree) {
   const nav = $("teamspaceTree");
   const label = $("teamspaceSectionLabel");
   label.style.display = "flex";
+  nav.innerHTML = "";
   if (!tree || Object.keys(tree).length === 0) {
-    nav.innerHTML = '<div class="tree-empty">No hay contenido aún.</div>';
+    nav.innerHTML = '<div class="tree-empty" style="font-size:0.75rem;padding:4px 12px;color:var(--text-faint);">Sin teamspaces. Pulsa + para crear uno.</div>';
     return;
   }
-  nav.innerHTML = "";
 
   for (const [spaceSlug, spaceData] of Object.entries(tree)) {
     const spaceLabel = spaceData._label || spaceSlug;
     const entries    = spaceData._entries || [];
+    const icon       = spaceData._icon || spaceLabel.charAt(0).toUpperCase();
 
     const spaceDiv = document.createElement("div");
-    spaceDiv.className = "tree-cat";
+    spaceDiv.className = "tree-cat ts-space-block";
 
     const spaceHeader = document.createElement("div");
-    spaceHeader.className = "tree-cat-header";
-    spaceHeader.innerHTML = `<span class="tree-arrow">▸</span><span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>`;
+    spaceHeader.className = "tree-cat-header ts-space-header";
+    spaceHeader.innerHTML = `
+      <span class="tree-arrow">▾</span>
+      <span class="ts-space-icon">${escapeHtml(icon)}</span>
+      <span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>
+      <button class="ts-add-page-btn" data-space="${escapeHtml(spaceSlug)}" data-label="${escapeHtml(spaceLabel)}" title="Nueva página en ${escapeHtml(spaceLabel)}">+</button>
+    `;
     let spaceOpen = true;
-    spaceHeader.addEventListener("click", () => {
+
+    // Click on header (not on + button) → toggle
+    spaceHeader.addEventListener("click", e => {
+      if (e.target.classList.contains("ts-add-page-btn")) return;
       spaceOpen = !spaceOpen;
       spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
       entryList.style.display = spaceOpen ? "" : "none";
+    });
+
+    // "+" button → open new page modal for this space
+    spaceHeader.querySelector(".ts-add-page-btn").addEventListener("click", e => {
+      e.stopPropagation();
+      openTsPageModal(spaceSlug, spaceLabel);
     });
 
     const entryList = document.createElement("div");
     entryList.className = "tree-topic";
     for (const entry of entries) {
       const item = document.createElement("div");
-      item.className = "tree-item ts-item";
+      item.className = "tree-entry ts-item";
       item.dataset.id = entry.id;
-      item.textContent = entry.title;
+      item.innerHTML = `<span class="ts-entry-icon">⬡</span>${escapeHtml(entry.title)}`;
       item.addEventListener("click", () => loadEntry(entry.id));
       entryList.appendChild(item);
+    }
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.className = "tree-empty ts-empty-hint";
+      empty.textContent = "Sin páginas aún";
+      entryList.appendChild(empty);
     }
 
     spaceDiv.appendChild(spaceHeader);
@@ -577,6 +588,87 @@ function renderTeamspaceTree(tree) {
     nav.appendChild(spaceDiv);
   }
 }
+
+// ---- NEW TEAMSPACE MODAL ----
+function openNewTeamspaceModal() {
+  $("ntsName").value = "";
+  $("ntsDesc").value = "";
+  $("ntsIconBtn").textContent = "T";
+  $("newTeamspaceOverlay").classList.remove("hidden");
+  setTimeout(() => $("ntsName").focus(), 50);
+}
+
+$("newTeamspaceEntryBtn").addEventListener("click", openNewTeamspaceModal);
+$("ntsClose").addEventListener("click", () => $("newTeamspaceOverlay").classList.add("hidden"));
+$("ntsCancel").addEventListener("click", () => $("newTeamspaceOverlay").classList.add("hidden"));
+$("newTeamspaceOverlay").addEventListener("click", e => { if (e.target === $("newTeamspaceOverlay")) $("newTeamspaceOverlay").classList.add("hidden"); });
+
+// Icon picker: cycle through letters/emojis on click
+const TS_ICONS = ["T","⚡","🚀","📁","🛠","📚","🔬","💡","🎯","🔧","⬡","◈","▣","◉"];
+let _ntsIconIdx = 0;
+$("ntsIconBtn").addEventListener("click", () => {
+  _ntsIconIdx = (_ntsIconIdx + 1) % TS_ICONS.length;
+  $("ntsIconBtn").textContent = TS_ICONS[_ntsIconIdx];
+});
+
+$("ntsName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("ntsCreate").click(); } });
+
+$("ntsCreate").addEventListener("click", async () => {
+  const name = $("ntsName").value.trim();
+  if (!name) { $("ntsName").focus(); return; }
+  const icon = $("ntsIconBtn").textContent;
+  const desc = $("ntsDesc").value.trim();
+  // Create a teamspace by creating a special index entry
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const content = desc ? `> ${desc}` : "";
+  const res = await fetch("/api/entries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: `${icon} ${name}`, raw_text: content }),
+  });
+  if (res.ok) {
+    $("newTeamspaceOverlay").classList.add("hidden");
+    showToast(`Teamspace "${name}" creado`);
+    await loadTree();
+  } else {
+    showToast("Error al crear teamspace", "error");
+  }
+});
+
+// ---- NEW PAGE IN TEAMSPACE ----
+let _tsPageCurrentSpace = "", _tsPageCurrentLabel = "";
+
+function openTsPageModal(spaceSlug, spaceLabel) {
+  _tsPageCurrentSpace = spaceSlug;
+  _tsPageCurrentLabel = spaceLabel;
+  $("tsPageSpaceName").textContent = spaceLabel;
+  $("tsPageTitle").value = "";
+  $("tsPageOverlay").classList.remove("hidden");
+  setTimeout(() => $("tsPageTitle").focus(), 50);
+}
+
+$("tsPageClose").addEventListener("click", () => $("tsPageOverlay").classList.add("hidden"));
+$("tsPageCancel").addEventListener("click", () => $("tsPageOverlay").classList.add("hidden"));
+$("tsPageOverlay").addEventListener("click", e => { if (e.target === $("tsPageOverlay")) $("tsPageOverlay").classList.add("hidden"); });
+$("tsPageTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("tsPageCreate").click(); } });
+
+$("tsPageCreate").addEventListener("click", async () => {
+  const title = $("tsPageTitle").value.trim();
+  if (!title) { $("tsPageTitle").focus(); return; }
+  const res = await fetch("/api/entries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "" }),
+  });
+  if (res.ok) {
+    const data = await res.json();
+    $("tsPageOverlay").classList.add("hidden");
+    await loadTree();
+    if (data.id) loadEntry(data.id);
+  } else {
+    showToast("Error al crear página", "error");
+  }
+});
 
 // ---- RECENTLY VISITED ----
 const KB_RECENT_KEY = "kb_recent_v2";
