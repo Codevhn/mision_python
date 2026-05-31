@@ -64,21 +64,107 @@ window.BlockEditor = (() => {
              /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
     }
 
-    // ── MARKDOWN TABLE → HTML ────────────────────────────────────
-    function mdTableToHtml(raw) {
+    // ── MARKDOWN TABLE ↔ TABULATOR ─────────────────────────────
+    let _tabCount = 0;
+    function parseMdTable(raw) {
       const rows = raw.split('\n').map(r => r.trim()).filter(r => r.startsWith('|'));
-      if (!rows.length) return '<em style="opacity:.4">tabla vacía</em>';
-      let isHead = true;
-      let html = '<table class="eb-table"><tbody>';
-      for (const row of rows) {
-        if (/^\|[\s\-:|]+\|?\s*$/.test(row)) { isHead = false; continue; }
-        const tag   = isHead ? 'th' : 'td';
-        const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|')
-                        .map(c => `<${tag}>${escHtml(c.trim())}</${tag}>`).join('');
-        html += `<tr>${cells}</tr>`;
-        if (isHead) isHead = false;
-      }
-      return html + '</tbody></table>';
+      if (!rows.length) return { columns: [], data: [] };
+      const parseRow = r => r.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      const headers = parseRow(rows[0]);
+      const dataRows = rows.slice(2).filter(r => !/^\|[\s\-:|]+\|$/.test(r)).map(parseRow);
+      const columns = headers.map((h, i) => ({
+        title: h, field: `c${i}`, editor: 'input', headerWordWrap: true,
+        headerClick: () => {},
+      }));
+      const data = dataRows.map(cells => {
+        const obj = {};
+        headers.forEach((_, i) => obj[`c${i}`] = cells[i] || '');
+        return obj;
+      });
+      return { columns, data };
+    }
+
+    function tabulatorToMd(columns, data) {
+      if (!columns.length) return '';
+      const headers = columns.map(c => c.title || '');
+      const sep = headers.map(() => '---');
+      const rows = data.map(row => columns.map(c => String(row[c.field] || '')));
+      const fmt = cells => '| ' + cells.join(' | ') + ' |';
+      return [fmt(headers), fmt(sep), ...rows.map(fmt)].join('\n');
+    }
+
+    // Parse HTML table (from clipboard/Notion) to markdown table
+    function htmlTableToMd(html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const table = tmp.querySelector('table');
+      if (!table) return null;
+      const rows = Array.from(table.querySelectorAll('tr'));
+      if (!rows.length) return null;
+      const parseRow = tr => Array.from(tr.querySelectorAll('th,td')).map(c => c.innerText.replace(/\n/g, ' ').trim());
+      const allRows = rows.map(parseRow).filter(r => r.length);
+      if (!allRows.length) return null;
+      const headers = allRows[0];
+      const sep = headers.map(() => '---');
+      const dataRows = allRows.slice(1);
+      const fmt = cells => '| ' + cells.join(' | ') + ' |';
+      return [fmt(headers), fmt(sep), ...dataRows.map(fmt)].join('\n');
+    }
+
+    function makeTabulator(container, b, onChange) {
+      const { columns, data } = parseMdTable(b.content || '');
+      const tid = 'tab-' + (++_tabCount);
+      container.id = tid;
+      if (!window.Tabulator) return;
+      const tab = new Tabulator('#' + tid, {
+        data,
+        columns: columns.length ? columns : [
+          { title: 'Col 1', field: 'c0', editor: 'input' },
+          { title: 'Col 2', field: 'c1', editor: 'input' },
+        ],
+        layout: 'fitColumns',
+        height: false,
+        renderVertical: 'basic',
+        movableColumns: true,
+        resizableRows: false,
+        columnHeaderVertAlign: 'top',
+        rowHeight: 36,
+        cellEdited: () => {
+          const cols = tab.getColumnDefinitions();
+          const rows = tab.getData();
+          b.content = tabulatorToMd(cols, rows);
+          onChange();
+        },
+      });
+      container.dataset.tabulatorId = tid;
+      // Right-click header to rename
+      setTimeout(() => {
+        container.querySelectorAll('.tabulator-col-title').forEach((el, i) => {
+          el.title = 'Doble clic para renombrar';
+          el.addEventListener('dblclick', e => {
+            e.stopPropagation();
+            const col = tab.getColumnDefinitions()[i];
+            if (!col) return;
+            const inp = document.createElement('input');
+            inp.value = col.title;
+            inp.style.cssText = 'background:var(--bg-elevated);color:var(--text);border:1px solid var(--accent);padding:2px 6px;font-size:0.8rem;width:100%;';
+            el.innerHTML = '';
+            el.appendChild(inp);
+            inp.focus(); inp.select();
+            const commit = () => {
+              const newTitle = inp.value.trim() || col.title;
+              tab.updateColumnDefinition(col.field, { title: newTitle });
+              const cols = tab.getColumnDefinitions();
+              const rows = tab.getData();
+              b.content = tabulatorToMd(cols, rows);
+              onChange();
+            };
+            inp.addEventListener('blur', commit);
+            inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') { e2.preventDefault(); commit(); } });
+          });
+        });
+      }, 200);
+      return tab;
     }
 
     // ── MD → BLOCKS ─────────────────────────────────────────────
@@ -251,20 +337,52 @@ window.BlockEditor = (() => {
       return parts.join('\n\n');
     }
 
-    // ── RENDER ──────────────────────────────────────────────────
+    // ── VIRTUAL RENDER ──────────────────────────────────────────
+    // Blocks are rendered in chunks via rAF to avoid blocking the UI.
+    // IntersectionObserver lazy-highlights code blocks when they enter viewport.
+    let _vObserver = null;
+    const CHUNK = 40; // blocks per animation frame
+
     function render() {
-      // Clean up nested slash menus before wiping the DOM
       _nestedMenus.forEach(m => m.remove());
       _nestedMenus.clear();
+      // Destroy any existing Tabulator instances
+      container.querySelectorAll('[data-tabulator-id]').forEach(el => {
+        try { Tabulator.findTable('#' + el.id)?.[0]?.destroy(); } catch(_) {}
+      });
+      if (_vObserver) { _vObserver.disconnect(); _vObserver = null; }
       container.innerHTML = '';
-      for (const b of _blocks) container.appendChild(makeEl(b));
+
       if (_blocks.length === 0) {
         _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
         container.appendChild(makeEl(_blocks[0]));
+        return;
       }
-      if (window.Prism) {
-        container.querySelectorAll('.eb-code-pre code[class*="language-"]').forEach(el => Prism.highlightElement(el));
+
+      // Setup IntersectionObserver for lazy PrismJS highlighting
+      if (window.IntersectionObserver) {
+        _vObserver = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const codeEl = entry.target.querySelector('.eb-code-pre code[class*="language-"]');
+            if (codeEl && window.Prism) { Prism.highlightElement(codeEl); }
+            _vObserver.unobserve(entry.target);
+          });
+        }, { rootMargin: '300px 0px' });
       }
+
+      // Chunked rendering
+      let idx = 0;
+      function renderChunk() {
+        const end = Math.min(idx + CHUNK, _blocks.length);
+        for (; idx < end; idx++) {
+          const el = makeEl(_blocks[idx]);
+          container.appendChild(el);
+          if (_vObserver) _vObserver.observe(el);
+        }
+        if (idx < _blocks.length) requestAnimationFrame(renderChunk);
+      }
+      renderChunk();
     }
 
     function applyBlockColor(wrap, b) {
@@ -467,65 +585,59 @@ window.BlockEditor = (() => {
         return wrap;
       }
 
-      // ── TABLE block ────────────────────────────────────────────
+      // ── TABLE block (Tabulator) ─────────────────────────────────
       if (b.type === 'table') {
         const tWrap = document.createElement('div');
-        tWrap.className = 'eb-table-wrap';
-
-        const tView = document.createElement('div');
-        tView.className = 'eb-table-view';
-        tView.innerHTML = mdTableToHtml(b.content || '');
-
-        const tEdit = document.createElement('textarea');
-        tEdit.className = 'eb-table-textarea';
-        tEdit.value = b.content || '';
-        tEdit.rows  = Math.max(4, (b.content || '').split('\n').length + 1);
-        tEdit.spellcheck = false;
-        tEdit.placeholder = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
-        tEdit.style.display = 'none';
-
-        const tEditBtn = document.createElement('button');
-        tEditBtn.className = 'eb-table-btn';
-        tEditBtn.title = 'Editar tabla';
-        tEditBtn.innerHTML = '✎';
-
-        const showView = () => {
-          b.content = tEdit.value;
-          tView.innerHTML = mdTableToHtml(b.content);
-          tEdit.style.display = 'none';
-          tView.style.display = '';
-          tEditBtn.style.opacity = '';
-          sync();
+        tWrap.className = 'eb-table-wrap eb-tabulator-host';
+        // Toolbar: add/remove row and col
+        const toolbar = document.createElement('div');
+        toolbar.className = 'eb-table-toolbar';
+        let _tab = null;
+        const addRow = () => {
+          if (!_tab) return;
+          const cols = _tab.getColumnDefinitions();
+          const row = {}; cols.forEach(c => row[c.field] = '');
+          _tab.addRow(row);
+          const rows = _tab.getData();
+          b.content = tabulatorToMd(cols, rows); sync();
         };
-        const showEdit = () => {
-          tEdit.style.display = 'block';
-          tView.style.display = 'none';
-          tEditBtn.style.opacity = '0';
-          tEdit.focus();
+        const addCol = () => {
+          if (!_tab) return;
+          const cols = _tab.getColumnDefinitions();
+          const newField = `c${cols.length}`;
+          _tab.addColumn({ title: 'Col', field: newField, editor: 'input' });
+          const newCols = _tab.getColumnDefinitions();
+          const rows = _tab.getData();
+          b.content = tabulatorToMd(newCols, rows); sync();
         };
-
-        tEditBtn.addEventListener('click', e => { e.stopPropagation(); showEdit(); });
-        tView.addEventListener('dblclick', showEdit);
-        tEdit.addEventListener('blur', showView);
-        tEdit.addEventListener('input', () => {
-          b.content = tEdit.value;
-          tEdit.rows = Math.max(4, tEdit.value.split('\n').length + 1);
-          sync();
-        });
-        tEdit.addEventListener('keydown', e => {
-          if (e.key === 'Escape') showView();
-          if (e.key === 'Tab') {
-            e.preventDefault();
-            const s = tEdit.selectionStart;
-            tEdit.value = tEdit.value.slice(0, s) + '\t' + tEdit.value.slice(s);
-            tEdit.selectionStart = tEdit.selectionEnd = s + 1;
+        const delRow = () => {
+          if (!_tab) return;
+          const sel = _tab.getSelectedRows();
+          if (sel.length) { sel.forEach(r => r.delete()); }
+          else {
+            const rows = _tab.getRows();
+            if (rows.length > 1) rows[rows.length - 1].delete();
           }
+          const cols = _tab.getColumnDefinitions();
+          b.content = tabulatorToMd(cols, _tab.getData()); sync();
+        };
+
+        toolbar.innerHTML = `
+          <button class="eb-tbl-btn" title="Agregar fila">+ Fila</button>
+          <button class="eb-tbl-btn" title="Agregar columna">+ Col</button>
+          <button class="eb-tbl-btn eb-tbl-danger" title="Eliminar fila seleccionada">− Fila</button>
+        `;
+        toolbar.querySelectorAll('.eb-tbl-btn').forEach((btn, i) => {
+          btn.addEventListener('mousedown', e => { e.preventDefault(); [addRow, addCol, delRow][i](); });
         });
 
-        tWrap.appendChild(tView);
-        tWrap.appendChild(tEdit);
-        tWrap.appendChild(tEditBtn);
+        tWrap.appendChild(toolbar);
         wrap.appendChild(tWrap);
+
+        // Init Tabulator after element is in DOM
+        requestAnimationFrame(() => {
+          _tab = makeTabulator(tWrap, b, sync);
+        });
         return wrap;
       }
 
@@ -1111,14 +1223,10 @@ window.BlockEditor = (() => {
         const b = _blocks.find(b => b.id === blockId);
         if (b) {
           b.type = 'table';
-          b.content = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
+          b.content = '| Col 1 | Col 2 | Col 3 |\n| --- | --- | --- |\n| | | |';
           const old = container.querySelector(`[data-id="${blockId}"]`);
           const newEl = makeEl(b);
           old.replaceWith(newEl);
-          // Auto-open edit mode
-          const tEdit = newEl.querySelector('.eb-table-textarea');
-          const tView = newEl.querySelector('.eb-table-view');
-          if (tEdit && tView) { tEdit.style.display = 'block'; tView.style.display = 'none'; tEdit.focus(); tEdit.select(); }
         }
         sync(); return;
       }
@@ -1177,6 +1285,54 @@ window.BlockEditor = (() => {
     // Global: hide menus on outside click
     document.addEventListener('mousedown', e => {
       if (menuEl && !menuEl.contains(e.target)) hideMenu();
+    });
+
+    // ── PASTE HANDLER: intercept HTML table paste ────────────────
+    container.addEventListener('paste', e => {
+      const html = e.clipboardData?.getData('text/html') || '';
+      if (!html) return;
+
+      // If HTML contains a table, convert it
+      if (/<table[\s>]/i.test(html)) {
+        const md = htmlTableToMd(html);
+        if (md) {
+          e.preventDefault();
+          // Find current focused block
+          const focused = document.activeElement?.closest('[data-id]');
+          const focusedId = focused?.dataset?.id;
+          const focusedBlock = _blocks.find(x => x.id === focusedId);
+          const insertAfter = focusedId || _blocks[_blocks.length - 1]?.id;
+          const nb = { id: uid(), type: 'table', content: md };
+          const idx = _blocks.findIndex(x => x.id === insertAfter);
+          if (idx >= 0) _blocks.splice(idx + 1, 0, nb);
+          else _blocks.push(nb);
+          // If focused block is empty text, remove it
+          if (focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim()) {
+            _blocks.splice(_blocks.findIndex(x => x.id === focusedId), 1);
+          }
+          render(); sync(); return;
+        }
+      }
+
+      // Large text paste: convert to plain text and chunk into blocks
+      const text = e.clipboardData?.getData('text/plain') || '';
+      if (text.split('\n').length > 50) {
+        e.preventDefault();
+        const focused = document.activeElement?.closest('[data-id]');
+        const focusedId = focused?.dataset?.id;
+        const newBlocks = mdToBlocks(text);
+        const idx = _blocks.findIndex(x => x.id === focusedId);
+        if (idx >= 0) {
+          // Replace focused empty block or insert after
+          const focusedBlock = _blocks[idx];
+          const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
+          if (replace) _blocks.splice(idx, 1, ...newBlocks);
+          else _blocks.splice(idx + 1, 0, ...newBlocks);
+        } else {
+          _blocks.push(...newBlocks);
+        }
+        render(); sync();
+      }
     });
 
     // Initial empty state
