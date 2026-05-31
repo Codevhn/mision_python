@@ -49,8 +49,25 @@ window.BlockEditor = (() => {
     function isSpecialLine(l) {
       if (!l) return false;
       return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('> ') ||
-             l === '---' || l.startsWith('```') || /^\d+\. /.test(l) ||
-             /^\[\[.+\]\]$/.test(l.trim());
+             l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
+             /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|');
+    }
+
+    // ── MARKDOWN TABLE → HTML ────────────────────────────────────
+    function mdTableToHtml(raw) {
+      const rows = raw.split('\n').map(r => r.trim()).filter(r => r.startsWith('|'));
+      if (!rows.length) return '<em style="opacity:.4">tabla vacía</em>';
+      let isHead = true;
+      let html = '<table class="eb-table"><tbody>';
+      for (const row of rows) {
+        if (/^\|[\s\-:|]+\|?\s*$/.test(row)) { isHead = false; continue; }
+        const tag   = isHead ? 'th' : 'td';
+        const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|')
+                        .map(c => `<${tag}>${escHtml(c.trim())}</${tag}>`).join('');
+        html += `<tr>${cells}</tr>`;
+        if (isHead) isHead = false;
+      }
+      return html + '</tbody></table>';
     }
 
     // ── MD → BLOCKS ─────────────────────────────────────────────
@@ -93,6 +110,17 @@ window.BlockEditor = (() => {
           const title  = pipe >= 0 ? inner.slice(0, pipe) : inner;
           const pageId = pipe >= 0 ? inner.slice(pipe + 1) : undefined;
           blocks.push({ id:uid(), type:'page', content:title, pageId }); i++; continue;
+        }
+
+        // markdown table — accumulate consecutive | lines
+        if (l.startsWith('|')) {
+          const tableLines = [l];
+          i++;
+          while (i < lines.length && lines[i].trim().startsWith('|')) {
+            tableLines.push(lines[i]); i++;
+          }
+          blocks.push({ id:uid(), type:'table', content:tableLines.join('\n') });
+          continue;
         }
 
         // code fence
@@ -147,10 +175,13 @@ window.BlockEditor = (() => {
           case 'quote': parts.push('> ' + c); break;
           case 'code': {
             const ta = container.querySelector(`[data-id="${b.id}"] .eb-code`);
+            const li = container.querySelector(`[data-id="${b.id}"] .eb-code-lang`);
             const code = ta ? ta.value : c;
-            parts.push('```' + (b.lang || '') + '\n' + code + '\n```');
+            const lang = li ? li.value : (b.lang || '');
+            parts.push('```' + lang + '\n' + code + '\n```');
             break;
           }
+          case 'table':   parts.push(b.content || ''); break;
           case 'divider': parts.push('---'); break;
           // Store pageId in markdown: [[title|page-id]]
           case 'page':    parts.push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
@@ -167,6 +198,12 @@ window.BlockEditor = (() => {
       if (_blocks.length === 0) {
         _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
         container.appendChild(makeEl(_blocks[0]));
+      }
+      // Highlight all code blocks after render
+      if (window.Prism) {
+        container.querySelectorAll('.eb-code-pre code[class*="language-"]').forEach(el => {
+          Prism.highlightElement(el);
+        });
       }
     }
 
@@ -201,19 +238,63 @@ window.BlockEditor = (() => {
         langInput.className = 'eb-code-lang';
         langInput.value = b.lang || '';
         langInput.placeholder = 'lenguaje…';
-        langInput.addEventListener('input', sync);
         header.appendChild(langInput);
+
+        // Copy button in header
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'eb-code-copy';
+        copyBtn.title = 'Copiar código';
+        copyBtn.textContent = 'copy';
+        copyBtn.addEventListener('mousedown', e => e.preventDefault());
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(ta.value).then(() => {
+            copyBtn.textContent = 'copied!';
+            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1500);
+          });
+        });
+        header.appendChild(copyBtn);
         wrap.appendChild(header);
 
+        // Highlighted view (pre/code)
+        const pre = document.createElement('pre');
+        pre.className = 'eb-code-pre';
+        const codeEl = document.createElement('code');
+        const lang = (b.lang || '').trim();
+        if (lang) codeEl.className = `language-${lang}`;
+        codeEl.textContent = b.content || '';
+        pre.appendChild(codeEl);
+
+        // Editable textarea (hidden by default)
         const ta = document.createElement('textarea');
         ta.className = 'eb-code';
         ta.value = b.content || '';
         ta.spellcheck = false;
+        ta.style.display = 'none';
         ta.rows = Math.max(3, (b.content || '').split('\n').length + 1);
+
+        const showPre = () => {
+          const l = (langInput.value || '').trim();
+          codeEl.className = l ? `language-${l}` : '';
+          codeEl.textContent = ta.value;
+          if (window.Prism) Prism.highlightElement(codeEl);
+          pre.style.display = '';
+          ta.style.display = 'none';
+          b.lang = langInput.value;
+          sync();
+        };
+        const showTa = () => {
+          pre.style.display = 'none';
+          ta.style.display = '';
+          ta.focus();
+        };
+
+        pre.addEventListener('click', showTa);
+
         ta.addEventListener('input', () => {
           ta.rows = Math.max(3, ta.value.split('\n').length + 1);
           sync();
         });
+        ta.addEventListener('blur', showPre);
         ta.addEventListener('keydown', e => {
           if (e.key === 'Tab') {
             e.preventDefault();
@@ -221,8 +302,15 @@ window.BlockEditor = (() => {
             ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(s);
             ta.selectionStart = ta.selectionEnd = s + 2;
           }
-          if (e.key === 'Escape') { focusNextBlock(b.id); }
+          if (e.key === 'Escape') { ta.blur(); }
         });
+
+        langInput.addEventListener('change', showPre);
+
+        // Initial highlight
+        if (window.Prism && lang) Prism.highlightElement(codeEl);
+
+        wrap.appendChild(pre);
         wrap.appendChild(ta);
         return wrap;
       }
@@ -248,6 +336,68 @@ window.BlockEditor = (() => {
           if (b.pageId && window._loadEntryById) window._loadEntryById(b.pageId);
         });
         wrap.appendChild(link);
+        return wrap;
+      }
+
+      // ── TABLE block ────────────────────────────────────────────
+      if (b.type === 'table') {
+        const tWrap = document.createElement('div');
+        tWrap.className = 'eb-table-wrap';
+
+        const tView = document.createElement('div');
+        tView.className = 'eb-table-view';
+        tView.innerHTML = mdTableToHtml(b.content || '');
+
+        const tEdit = document.createElement('textarea');
+        tEdit.className = 'eb-table-textarea';
+        tEdit.value = b.content || '';
+        tEdit.rows  = Math.max(4, (b.content || '').split('\n').length + 1);
+        tEdit.spellcheck = false;
+        tEdit.placeholder = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
+        tEdit.style.display = 'none';
+
+        const tEditBtn = document.createElement('button');
+        tEditBtn.className = 'eb-table-btn';
+        tEditBtn.title = 'Editar tabla';
+        tEditBtn.innerHTML = '✎';
+
+        const showView = () => {
+          b.content = tEdit.value;
+          tView.innerHTML = mdTableToHtml(b.content);
+          tEdit.style.display = 'none';
+          tView.style.display = '';
+          tEditBtn.style.opacity = '';
+          sync();
+        };
+        const showEdit = () => {
+          tEdit.style.display = 'block';
+          tView.style.display = 'none';
+          tEditBtn.style.opacity = '0';
+          tEdit.focus();
+        };
+
+        tEditBtn.addEventListener('click', e => { e.stopPropagation(); showEdit(); });
+        tView.addEventListener('dblclick', showEdit);
+        tEdit.addEventListener('blur', showView);
+        tEdit.addEventListener('input', () => {
+          b.content = tEdit.value;
+          tEdit.rows = Math.max(4, tEdit.value.split('\n').length + 1);
+          sync();
+        });
+        tEdit.addEventListener('keydown', e => {
+          if (e.key === 'Escape') showView();
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const s = tEdit.selectionStart;
+            tEdit.value = tEdit.value.slice(0, s) + '\t' + tEdit.value.slice(s);
+            tEdit.selectionStart = tEdit.selectionEnd = s + 1;
+          }
+        });
+
+        tWrap.appendChild(tView);
+        tWrap.appendChild(tEdit);
+        tWrap.appendChild(tEditBtn);
+        wrap.appendChild(tWrap);
         return wrap;
       }
 

@@ -2530,3 +2530,115 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 @media (max-width: 600px) {
   .prop-row { grid-template-columns: 130px 1fr; }
 }
+
+/* ── CODE BLOCK: PrismJS highlight overlay ───────────────── */
+.eb-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.eb-code-copy {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 1px 8px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.eb-code-copy:hover { color: var(--accent); border-color: var(--accent); }
+
+.eb-code-pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  cursor: text;
+  white-space: pre;
+  tab-size: 2;
+  min-height: 48px;
+}
+.eb-code-pre code {
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  white-space: pre;
+}
+/* When no PrismJS class, show plain monochrome */
+.eb-code-pre code:not([class*="language-"]) { color: var(--code-text); }
+
+/* ── TABLE BLOCK ─────────────────────────────────────────── */
+.eb--table { padding: 0; background: transparent; }
+.eb-table-wrap {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+}
+.eb-table-view {
+  width: 100%;
+}
+.eb-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.eb-table th,
+.eb-table td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+.eb-table th {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font-weight: 600;
+}
+.eb-table tr:nth-child(even) td {
+  background: rgba(255,255,255,0.02);
+}
+.eb-table tr:hover td {
+  background: var(--bg-hover);
+}
+[data-theme="light"] .eb-table th { background: #e8e8e8; }
+[data-theme="light"] .eb-table tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .eb-table tr:hover td { background: #ebebeb; }
+
+.eb-table-textarea {
+  width: 100%;
+  background: var(--bg-code);
+  border: 1px dashed var(--accent);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+  tab-size: 4;
+  box-sizing: border-box;
+}
+.eb-table-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.eb-table-wrap:hover .eb-table-btn { opacity: 1; }
+.eb-table-btn:hover { color: var(--accent); border-color: var(--accent); }
