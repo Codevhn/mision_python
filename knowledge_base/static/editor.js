@@ -59,7 +59,7 @@ window.BlockEditor = (() => {
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
       if (!l) return false;
-      return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('> ') ||
+      return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('* ') || l.startsWith('> ') ||
              l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
              /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
     }
@@ -68,29 +68,24 @@ window.BlockEditor = (() => {
     function looksLikeMarkdown(text) {
       const lines = text.split('\n');
       if (lines.length > 3) return true;
-      return lines.some(l => /^#{1,4} |^- |^> |^\d+\. |^```|^\|/.test(l.trim()));
+      return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
 
-    // ── INLINE MARKDOWN RENDERER ────────────────────────────────
-    // Renders inline formatting in a content div after editing.
-    // On focus: restore plain text. On blur: render HTML.
+    // ── INLINE MARKDOWN ─────────────────────────────────────────
+    // WYSIWYG model: rendered HTML stays visible while editing.
+    // We read back plaintext by walking the DOM (htmlToMd).
+
     function renderInline(text) {
-      // Escape HTML entities first
       let h = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-      // inline code: `code` — must run before bold/italic
       h = h.replace(/`([^`\n]+)`/g, '<code class="eb-ic">$1</code>');
-      // bold+italic: ***text***
       h = h.replace(/\*\*\*([^*\n]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-      // bold: **text** or __text__
       h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
       h = h.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
-      // italic: *text* or _text_  (not inside words)
-      h = h.replace(/(?<![a-zA-Z])\*([^*\n]+)\*(?![a-zA-Z])/g, '<em>$1</em>');
-      h = h.replace(/(?<![a-zA-Z])_([^_\n]+)_(?![a-zA-Z])/g, '<em>$1</em>');
-      // line breaks
+      h = h.replace(/(?<![a-zA-Z0-9])\*([^*\n]+)\*(?![a-zA-Z0-9])/g, '<em>$1</em>');
+      h = h.replace(/(?<![a-zA-Z0-9])_([^_\n]+)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
       h = h.replace(/\n/g, '<br>');
       return h;
     }
@@ -99,19 +94,50 @@ window.BlockEditor = (() => {
       return /`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|__[^_]+__|_[^_\n]+_/.test(text);
     }
 
-    // Apply rendering to a content div (call after load and on blur)
-    function applyInlineRender(div, plaintext) {
-      if (!plaintext || !hasInlineMarkdown(plaintext)) return;
-      div.innerHTML = renderInline(plaintext);
-      div.dataset.rendered = '1';
+    // Walk DOM → extract plain markdown text (reverse of renderInline)
+    function htmlToMd(el) {
+      let out = '';
+      for (const node of el.childNodes) {
+        if (node.nodeType === 3) {          // TEXT_NODE
+          out += node.textContent;
+        } else if (node.nodeName === 'CODE') {
+          out += '`' + node.textContent + '`';
+        } else if (node.nodeName === 'STRONG') {
+          const inner = htmlToMd(node);
+          out += '**' + inner + '**';
+        } else if (node.nodeName === 'EM') {
+          out += '*' + htmlToMd(node) + '*';
+        } else if (node.nodeName === 'BR') {
+          out += '\n';
+        } else if (node.nodeName === 'DIV') {  // contenteditable wraps new lines in <div>
+          out += '\n' + htmlToMd(node);
+        } else {
+          out += htmlToMd(node);
+        }
+      }
+      return out;
     }
 
-    // Restore plain text for editing
-    function stripInlineRender(div) {
-      if (!div.dataset.rendered) return;
-      const plain = div.dataset.plaintext || div.innerText.replace(/\n$/, '');
-      div.innerText = plain;
-      delete div.dataset.rendered;
+    // Re-apply inline rendering after editing, preserving cursor if focused
+    function reRenderInline(div) {
+      const plain = htmlToMd(div).replace(/\n$/, '');
+      div.dataset.plaintext = plain;
+      if (plain && hasInlineMarkdown(plain)) {
+        div.innerHTML = renderInline(plain);
+        div.dataset.rendered = '1';
+      } else {
+        // No markdown — keep as plain text but mark clean
+        delete div.dataset.rendered;
+      }
+    }
+
+    function applyInlineRender(div, plaintext) {
+      if (!plaintext) return;
+      div.dataset.plaintext = plaintext;
+      if (hasInlineMarkdown(plaintext)) {
+        div.innerHTML = renderInline(plaintext);
+        div.dataset.rendered = '1';
+      }
     }
 
     // ── MARKDOWN TABLE ↔ TABULATOR ─────────────────────────────
@@ -274,6 +300,7 @@ window.BlockEditor = (() => {
 
         // list
         if (l.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
+        if (l.startsWith('* '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
         if (/^\d+\. /.test(l))      { pushBlock({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, '') }); i++; continue; }
 
         // quote
@@ -804,18 +831,14 @@ window.BlockEditor = (() => {
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
       div.addEventListener('input', () => {
-        // Keep plaintext in sync during editing
-        div.dataset.plaintext = div.innerText.replace(/\n$/, '');
+        div.dataset.plaintext = htmlToMd(div).replace(/\n$/, '');
         onInput(b, div);
       });
       div.addEventListener('focus', () => {
-        stripInlineRender(div);  // show plain text for editing
         wrap.classList.add('eb--focused');
       });
       div.addEventListener('blur', () => {
-        const plain = div.dataset.plaintext || div.innerText.replace(/\n$/, '');
-        div.dataset.plaintext = plain;
-        applyInlineRender(div, plain);  // render inline markdown
+        reRenderInline(div);
         wrap.classList.remove('eb--focused');
         sync();
       });

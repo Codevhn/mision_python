@@ -2024,15 +2024,16 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border: none;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
   padding: 0;
   border-radius: 3px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   transition: color 0.12s, background 0.12s;
 }
 .eb-opts:hover { color: var(--accent); background: var(--bg-elevated); }
