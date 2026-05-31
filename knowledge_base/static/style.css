@@ -2672,27 +2672,32 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-tabulator-host { min-height: 80px; }
 
-/* Table toolbar */
+/* Table toolbar — always visible */
 .eb-table-toolbar {
   display: flex;
+  align-items: center;
   gap: 6px;
-  padding: 4px 0 6px;
-  opacity: 0;
-  transition: opacity 0.15s;
+  padding: 0 0 6px;
+  flex-wrap: wrap;
 }
-.eb--table:hover .eb-table-toolbar { opacity: 1; }
 .eb-tbl-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  padding: 2px 8px;
+  padding: 3px 10px;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
-.eb-tbl-btn:hover { color: var(--accent); border-color: var(--accent); }
-.eb-tbl-danger:hover { color: var(--danger); border-color: var(--danger); }
+.eb-tbl-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
+.eb-tbl-danger:hover { color: var(--danger); border-color: var(--danger); background: rgba(204,68,68,0.08); }
+.eb-tbl-hint {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  margin-left: 4px;
+}
 
 /* Tabulator theme overrides — match Arch dark aesthetic */
 .eb-tabulator-host .tabulator {
@@ -2714,7 +2719,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   color: var(--accent);
   font-weight: 600;
   font-size: 0.8rem;
+  cursor: text;
 }
+/* Hide sort arrows — this is a content table, not a data grid */
+.eb-tabulator-host .tabulator-col-sorter { display: none !important; }
+.eb-tabulator-host .tabulator-sortable .tabulator-col-title { padding-right: 0; }
+/* Pointer cursor on cells to indicate they're clickable/editable */
+.eb-tabulator-host .tabulator-cell { cursor: cell; }
 .eb-tabulator-host .tabulator-row {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-light);

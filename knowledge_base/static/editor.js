@@ -116,18 +116,31 @@ window.BlockEditor = (() => {
       const tid = 'tab-' + (++_tabCount);
       container.id = tid;
       if (!window.Tabulator) return;
+
+      const colDefs = (columns.length ? columns : [
+        { title: 'Col 1', field: 'c0' },
+        { title: 'Col 2', field: 'c1' },
+      ]).map(c => ({
+        ...c,
+        editor: 'input',
+        headerSort: false,        // no sort arrows
+        resizable: true,
+        formatter: (cell) => {
+          const v = cell.getValue();
+          if (!v) return '<span style="opacity:0.25;font-style:italic">...</span>';
+          return String(v);
+        },
+      }));
+
       const tab = new Tabulator('#' + tid, {
-        data,
-        columns: columns.length ? columns : [
-          { title: 'Col 1', field: 'c0', editor: 'input' },
-          { title: 'Col 2', field: 'c1', editor: 'input' },
-        ],
+        data: data.length ? data : [{}],  // always at least one row
+        columns: colDefs,
         layout: 'fitColumns',
         height: false,
         renderVertical: 'basic',
         movableColumns: true,
         resizableRows: false,
-        columnHeaderVertAlign: 'top',
+        headerVisible: true,
         rowHeight: 36,
         cellEdited: () => {
           const cols = tab.getColumnDefinitions();
@@ -137,17 +150,19 @@ window.BlockEditor = (() => {
         },
       });
       container.dataset.tabulatorId = tid;
-      // Right-click header to rename
+
+      // Double-click column header to rename
       setTimeout(() => {
         container.querySelectorAll('.tabulator-col-title').forEach((el, i) => {
-          el.title = 'Doble clic para renombrar';
+          el.title = 'Doble clic para renombrar columna';
+          el.style.cursor = 'text';
           el.addEventListener('dblclick', e => {
             e.stopPropagation();
             const col = tab.getColumnDefinitions()[i];
             if (!col) return;
             const inp = document.createElement('input');
             inp.value = col.title;
-            inp.style.cssText = 'background:var(--bg-elevated);color:var(--text);border:1px solid var(--accent);padding:2px 6px;font-size:0.8rem;width:100%;';
+            inp.style.cssText = 'background:var(--bg-elevated);color:var(--text);border:1px solid var(--accent);padding:2px 6px;font-size:0.8rem;width:100%;box-sizing:border-box;';
             el.innerHTML = '';
             el.appendChild(inp);
             inp.focus(); inp.select();
@@ -163,7 +178,7 @@ window.BlockEditor = (() => {
             inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') { e2.preventDefault(); commit(); } });
           });
         });
-      }, 200);
+      }, 300);
       return tab;
     }
 
@@ -623,9 +638,10 @@ window.BlockEditor = (() => {
         };
 
         toolbar.innerHTML = `
-          <button class="eb-tbl-btn" title="Agregar fila">+ Fila</button>
-          <button class="eb-tbl-btn" title="Agregar columna">+ Col</button>
-          <button class="eb-tbl-btn eb-tbl-danger" title="Eliminar fila seleccionada">− Fila</button>
+          <button class="eb-tbl-btn" title="Agregar fila abajo">+ Fila</button>
+          <button class="eb-tbl-btn" title="Agregar columna">+ Columna</button>
+          <button class="eb-tbl-btn eb-tbl-danger" title="Eliminar última fila">− Fila</button>
+          <span class="eb-tbl-hint">Clic en celda para editar · Doble clic en encabezado para renombrar</span>
         `;
         toolbar.querySelectorAll('.eb-tbl-btn').forEach((btn, i) => {
           btn.addEventListener('mousedown', e => { e.preventDefault(); [addRow, addCol, delRow][i](); });
