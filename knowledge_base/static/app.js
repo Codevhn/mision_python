@@ -570,27 +570,20 @@ async function loadEntry(id) {
   // Breadcrumb
   buildBreadcrumb(m);
 
-  // Build TOC
+  // Build TOC (from markdown headings, not DOM)
   buildTOC();
-
-  // Post-process checkboxes with line indices
-  postProcessCheckboxes(data.markdown, $("entryBody"));
-  attachCheckboxHandlers();
 
   // Backlinks (async, non-blocking)
   loadBacklinks(id);
 
-  // Wikilinks (async, non-blocking)
-  processWikilinks($("entryBody"));
-  // PrismJS syntax highlighting
-  if (window.Prism) setTimeout(() => Prism.highlightAllUnder($("entryBody")), 200);
-  // Render properties panel
+  // Properties panel
   if (window.Properties && $("propContainer")) {
     Properties.render(id, m.properties || [], $("propContainer"), false);
   }
   loadEntryChildren(id);
-  // Render tags bar if entry has tags
-  const existingTagBar = $("entryBody").querySelector(".entry-tags-bar");
+
+  // Tags bar — prepend to entry body
+  const existingTagBar = $("propContainer").querySelector(".entry-tags-bar");
   if (existingTagBar) existingTagBar.remove();
   const tags = m.tags || [];
   if (tags.length) {
@@ -605,7 +598,7 @@ async function loadEntry(id) {
         $("searchInput").dispatchEvent(new Event("input"));
       });
     });
-    $("entryBody").prepend(bar);
+    $("propContainer").after(bar);
   }
 }
 
