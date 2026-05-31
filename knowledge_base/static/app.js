@@ -621,7 +621,7 @@ $("ntsCreate").addEventListener("click", async () => {
   // Create a teamspace by creating a special index entry
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const content = desc ? `> ${desc}` : "";
-  const res = await fetch("/api/entries", {
+  const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: `${icon} ${name}`, raw_text: content }),
@@ -655,7 +655,7 @@ $("tsPageTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.p
 $("tsPageCreate").addEventListener("click", async () => {
   const title = $("tsPageTitle").value.trim();
   if (!title) { $("tsPageTitle").focus(); return; }
-  const res = await fetch("/api/entries", {
+  const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "" }),

@@ -61,6 +61,31 @@ window.BlockEditor = (() => {
     const _nestedMenus = new Map(); // blockId → slash-menu DOM element
     let _selfRef = null;            // set after createInstance returns (for page-create in nested editors)
 
+    // ── UNDO HISTORY ────────────────────────────────────────────
+    const _undoStack = [];
+    const MAX_UNDO = 60;
+    let _lastSavedMd = null;        // avoid duplicate snapshots
+    let _structuralDirty = false;   // true after a structural op, false after typing
+
+    function saveHistory() {
+      const md = blocksToMd();
+      if (md === _lastSavedMd) return;
+      _undoStack.push(md);
+      if (_undoStack.length > MAX_UNDO) _undoStack.shift();
+      _lastSavedMd = md;
+      _structuralDirty = true;
+    }
+
+    function undo() {
+      if (_undoStack.length === 0) return;
+      const prev = _undoStack.pop();
+      _lastSavedMd = prev;
+      _structuralDirty = false;
+      _blocks = mdToBlocks(prev);
+      render();
+      if (onChange) onChange(prev);
+    }
+
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
       if (!l) return false;
@@ -897,6 +922,7 @@ window.BlockEditor = (() => {
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
       div.addEventListener('input', () => {
+        _structuralDirty = false;
         div.dataset.plaintext = htmlToMd(div).replace(/\n$/, '');
         onInput(b, div);
       });
@@ -940,6 +966,7 @@ window.BlockEditor = (() => {
     }
 
     function deleteBlock(id) {
+      saveHistory();
       const idx = _blocks.findIndex(b => b.id === id);
       if (_blocks.length <= 1) { clearBlock(id); return; }
       _blocks.splice(idx, 1);
@@ -961,6 +988,7 @@ window.BlockEditor = (() => {
     }
 
     function convertBlock(id, newType) {
+      saveHistory();
       const b = _blocks.find(b => b.id === id);
       if (!b) return;
       const isToggleSrc = b.type.startsWith('toggle');
@@ -1171,6 +1199,7 @@ window.BlockEditor = (() => {
 
     // ── MOVE BLOCK (drag & drop) ────────────────────────────────
     function moveBlock(srcId, targetId, before) {
+      saveHistory();
       const si = _blocks.findIndex(b => b.id === srcId);
       if (si < 0) return;
       const [sb] = _blocks.splice(si, 1);
@@ -1182,6 +1211,7 @@ window.BlockEditor = (() => {
 
     // ── DUPLICATE BLOCK ─────────────────────────────────────────
     function duplicateBlock(id) {
+      saveHistory();
       const b = _blocks.find(b => b.id === id);
       if (!b) return;
       if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page'].includes(b.type)) {
@@ -1511,6 +1541,7 @@ window.BlockEditor = (() => {
       const text = e.clipboardData?.getData('text/plain') || '';
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
+        saveHistory();
         const focused = document.activeElement?.closest('[data-id]');
         const focusedId = focused?.dataset?.id;
         const newBlocks = mdToBlocks(text);
@@ -1565,7 +1596,7 @@ window.BlockEditor = (() => {
       }
     });
 
-    // Selection keyboard shortcuts (ESC to deselect, Ctrl+C to copy, Ctrl+A to select all)
+    // Selection + undo keyboard shortcuts
     document.addEventListener('keydown', e => {
       const hasFocus = container.contains(document.activeElement);
       if (!hasFocus && _selected.size === 0) return;
@@ -1574,6 +1605,17 @@ window.BlockEditor = (() => {
         const sel = _blocks.filter(b => _selected.has(b.id));
         navigator.clipboard?.writeText(blocksToMd(sel)).catch(() => {});
         return;
+      }
+      // Ctrl+Z undo: structural ops when not typing, always when _structuralDirty
+      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        const inText = document.activeElement?.classList.contains('eb-content') ||
+                       document.activeElement?.classList.contains('eb-toggle-header');
+        if (!inText || _structuralDirty) {
+          e.preventDefault();
+          undo();
+          return;
+        }
+        // else: let browser handle in-block text undo
       }
       if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a' &&
           !document.activeElement?.classList.contains('eb-content') &&
