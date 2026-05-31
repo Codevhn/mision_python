@@ -1988,6 +1988,21 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb:hover .eb-controls { opacity: 1; }
 .eb--focused .eb-controls { opacity: 1; }
 
+/* Controls inline inside toggle row — reset absolute positioning */
+.eb-controls--inline {
+  position: static;
+  flex-shrink: 0;
+  align-self: center;
+}
+.eb--toggle:hover .eb-controls--inline,
+.eb--toggle-h1:hover .eb-controls--inline,
+.eb--toggle-h2:hover .eb-controls--inline,
+.eb--toggle-h3:hover .eb-controls--inline { opacity: 1; }
+.eb--toggle.eb--focused .eb-controls--inline,
+.eb--toggle-h1.eb--focused .eb-controls--inline,
+.eb--toggle-h2.eb--focused .eb-controls--inline,
+.eb--toggle-h3.eb--focused .eb-controls--inline { opacity: 1; }
+
 .eb-handle {
   cursor: grab;
   color: var(--text-faint);
@@ -2018,56 +2033,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   justify-content: center;
   width: 24px;
   height: 24px;
-  transition: color 0.12s, background 0.12s;
-}
-.eb-opts:hover { color: var(--accent); background: var(--bg-elevated); }
-
-/* Drag states */
-.eb--dragging { opacity: 0.35; }
-.eb--drag-top { border-top: 2px solid var(--accent); }
-.eb--drag-bot { border-bottom: 2px solid var(--accent); }
-
-/* Block menu */
-.eb-block-menu {
-  position: fixed;
-  z-index: 9999;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  min-width: 200px;
-  padding: 4px 0;
-  font-family: var(--font-mono);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.1s;
-  padding-top: 3px;
-  user-select: none;
-}
-.eb:hover .eb-controls { opacity: 1; }
-.eb--focused .eb-controls { opacity: 1; }
-
-.eb-handle {
-  cursor: grab;
-  color: var(--text-faint);
-  padding: 2px 3px;
-  border-radius: 2px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  transition: color 0.12s, background 0.12s;
-}
-.eb-handle:hover { color: var(--text-muted); background: var(--bg-elevated); }
-.eb-handle:active { cursor: grabbing; }
-
-.eb-opts {
-  background: none;
-  border: none;
-  color: var(--text-faint);
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  line-height: 1;
   transition: color 0.12s, background 0.12s;
 }
 .eb-opts:hover { color: var(--accent); background: var(--bg-elevated); }
@@ -2748,11 +2713,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--toggle,
 .eb--toggle-h1,
 .eb--toggle-h2,
-.eb--toggle-h3 { padding: 2px 6px 2px 58px; }
-.eb--toggle .eb-controls,
-.eb--toggle-h3 .eb-controls { bottom: auto; height: 32px; }
-.eb--toggle-h2 .eb-controls { bottom: auto; height: 40px; }
-.eb--toggle-h1 .eb-controls { bottom: auto; height: 48px; }
+.eb--toggle-h3 { padding: 2px 6px; }
 .eb-toggle-row {
   display: flex;
   align-items: center;
@@ -2795,9 +2756,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--toggle-h3 .eb-toggle-header { font-size: 1rem; font-weight: 600; color: var(--h3-color); }
 
 .eb-toggle-body-wrap {
-  padding: 2px 0 4px 28px;
+  padding: 2px 0 4px 12px;
   border-left: 2px solid var(--border);
-  margin-left: 20px;
+  margin-left: 52px;
   margin-top: 2px;
   margin-bottom: 4px;
   min-height: 32px;

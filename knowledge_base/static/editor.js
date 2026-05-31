@@ -497,9 +497,13 @@ window.BlockEditor = (() => {
         wrap.classList.add('eb--toggle');
         if (b.type !== 'toggle') wrap.classList.add(`eb--${b.type}`);
 
-        // Toggle row: arrow + header
+        // Toggle row: controls + arrow + header (all on same line like Notion)
         const tRow = document.createElement('div');
         tRow.className = 'eb-toggle-row';
+
+        // Move controls inside the row so they align with the heading
+        controls.classList.add('eb-controls--inline');
+        tRow.appendChild(controls);
 
         const arrow = document.createElement('button');
         arrow.className = 'eb-toggle-arrow';
