@@ -2113,6 +2113,26 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* Also show on hover for better discoverability */
 .eb:hover .eb-content:empty::before { display: block; opacity: 0.5; }
 
+/* Inline code inside blocks */
+.eb-ic {
+  font-family: var(--font-mono);
+  font-size: 0.87em;
+  background: rgba(135, 99, 62, 0.25);
+  color: #e8855a;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(232, 133, 90, 0.2);
+  white-space: nowrap;
+}
+[data-theme="light"] .eb-ic {
+  background: rgba(255, 100, 50, 0.1);
+  color: #cc3d10;
+  border-color: rgba(204, 61, 16, 0.2);
+}
+/* Inline bold/italic */
+.eb-content strong { font-weight: 700; color: inherit; }
+.eb-content em { font-style: italic; opacity: 0.9; }
+
 /* Heading blocks */
 .eb--h1 .eb-content { font-size: 1.6rem; font-weight: 700; font-family: var(--font-mono); color: var(--h1-color); }
 .eb--h2 .eb-content { font-size: 1.2rem; font-weight: 700; font-family: var(--font-mono); color: var(--accent); }

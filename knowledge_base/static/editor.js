@@ -64,6 +64,56 @@ window.BlockEditor = (() => {
              /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
     }
 
+    // Detect if text looks like markdown (should be parsed as blocks)
+    function looksLikeMarkdown(text) {
+      const lines = text.split('\n');
+      if (lines.length > 3) return true;
+      return lines.some(l => /^#{1,4} |^- |^> |^\d+\. |^```|^\|/.test(l.trim()));
+    }
+
+    // ── INLINE MARKDOWN RENDERER ────────────────────────────────
+    // Renders inline formatting in a content div after editing.
+    // On focus: restore plain text. On blur: render HTML.
+    function renderInline(text) {
+      // Escape HTML entities first
+      let h = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      // inline code: `code` — must run before bold/italic
+      h = h.replace(/`([^`\n]+)`/g, '<code class="eb-ic">$1</code>');
+      // bold+italic: ***text***
+      h = h.replace(/\*\*\*([^*\n]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+      // bold: **text** or __text__
+      h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      h = h.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+      // italic: *text* or _text_  (not inside words)
+      h = h.replace(/(?<![a-zA-Z])\*([^*\n]+)\*(?![a-zA-Z])/g, '<em>$1</em>');
+      h = h.replace(/(?<![a-zA-Z])_([^_\n]+)_(?![a-zA-Z])/g, '<em>$1</em>');
+      // line breaks
+      h = h.replace(/\n/g, '<br>');
+      return h;
+    }
+
+    function hasInlineMarkdown(text) {
+      return /`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|__[^_]+__|_[^_\n]+_/.test(text);
+    }
+
+    // Apply rendering to a content div (call after load and on blur)
+    function applyInlineRender(div, plaintext) {
+      if (!plaintext || !hasInlineMarkdown(plaintext)) return;
+      div.innerHTML = renderInline(plaintext);
+      div.dataset.rendered = '1';
+    }
+
+    // Restore plain text for editing
+    function stripInlineRender(div) {
+      if (!div.dataset.rendered) return;
+      const plain = div.dataset.plaintext || div.innerText.replace(/\n$/, '');
+      div.innerText = plain;
+      delete div.dataset.rendered;
+    }
+
     // ── MARKDOWN TABLE ↔ TABULATOR ─────────────────────────────
     let _tabCount = 0;
     function parseMdTable(raw) {
@@ -299,7 +349,8 @@ window.BlockEditor = (() => {
     function readContent(id) {
       const el = container.querySelector(`[data-id="${id}"] .eb-content`);
       if (!el) return null;
-      // Use innerText to preserve \n in multi-line text blocks
+      // When inline-rendered, use stored plain text to avoid reading HTML tags
+      if (el.dataset.rendered && el.dataset.plaintext !== undefined) return el.dataset.plaintext;
       return (typeof el.innerText !== 'undefined') ? el.innerText : el.textContent;
     }
 
@@ -743,14 +794,31 @@ window.BlockEditor = (() => {
       div.contentEditable = 'true';
       div.spellcheck = false;
       div.dataset.placeholder = PLACEHOLDER[b.type] || '';
+      div.dataset.plaintext = b.content || '';
 
-      // Use innerText to correctly render \n as line breaks
-      if (b.content) div.innerText = b.content;
+      // Set initial content and apply inline rendering
+      if (b.content) {
+        div.innerText = b.content;
+        applyInlineRender(div, b.content);
+      }
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
-      div.addEventListener('input',   () => onInput(b, div));
-      div.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
-      div.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
+      div.addEventListener('input', () => {
+        // Keep plaintext in sync during editing
+        div.dataset.plaintext = div.innerText.replace(/\n$/, '');
+        onInput(b, div);
+      });
+      div.addEventListener('focus', () => {
+        stripInlineRender(div);  // show plain text for editing
+        wrap.classList.add('eb--focused');
+      });
+      div.addEventListener('blur', () => {
+        const plain = div.dataset.plaintext || div.innerText.replace(/\n$/, '');
+        div.dataset.plaintext = plain;
+        applyInlineRender(div, plain);  // render inline markdown
+        wrap.classList.remove('eb--focused');
+        sync();
+      });
       wrap.appendChild(div);
       return wrap;
     }
@@ -1330,16 +1398,15 @@ window.BlockEditor = (() => {
         }
       }
 
-      // Large text paste: convert to plain text and chunk into blocks
+      // Markdown paste: detect and parse as blocks even for small content
       const text = e.clipboardData?.getData('text/plain') || '';
-      if (text.split('\n').length > 50) {
+      if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
         const focused = document.activeElement?.closest('[data-id]');
         const focusedId = focused?.dataset?.id;
         const newBlocks = mdToBlocks(text);
         const idx = _blocks.findIndex(x => x.id === focusedId);
         if (idx >= 0) {
-          // Replace focused empty block or insert after
           const focusedBlock = _blocks[idx];
           const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
           if (replace) _blocks.splice(idx, 1, ...newBlocks);
@@ -1348,6 +1415,16 @@ window.BlockEditor = (() => {
           _blocks.push(...newBlocks);
         }
         render(); sync();
+        return;
+      }
+
+      // Plain text paste: update plaintext tracking
+      // Let browser handle it, but sync plaintext after
+      const focused2 = document.activeElement;
+      if (focused2?.classList.contains('eb-content')) {
+        setTimeout(() => {
+          focused2.dataset.plaintext = focused2.innerText.replace(/\n$/, '');
+        }, 0);
       }
     });
 
