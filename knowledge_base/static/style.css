@@ -433,7 +433,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Entry view */
-.entry-view { max-width: 800px; margin: 0 auto; padding: 28px 44px 80px; }
+.entry-view { max-width: 960px; margin: 0 auto; padding: 28px 40px 80px; }
 
 /* Inline title */
 .inline-title-wrap {
@@ -1123,7 +1123,7 @@ body.focus-mode .toc-panel { display: none !important; }
 
 body.focus-mode .layout { margin-top: 0; height: 100vh; }
 body.focus-mode .content-area { display: flex; justify-content: center; padding: 60px 20px 80px; }
-body.focus-mode #entryView { max-width: 720px; width: 100%; }
+body.focus-mode #entryView { max-width: 800px; width: 100%; }
 body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
 
 .focus-exit {
@@ -2042,6 +2042,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--dragging { opacity: 0.35; }
 .eb--drag-top { border-top: 2px solid var(--accent); }
 .eb--drag-bot { border-bottom: 2px solid var(--accent); }
+.eb--selected { background: rgba(35, 131, 226, 0.12) !important; outline: 1px solid rgba(35, 131, 226, 0.35); border-radius: 3px; }
+.eb--drop-end { outline: 2px dashed var(--accent); border-radius: 4px; outline-offset: -2px; }
 
 /* Block menu */
 .eb-block-menu {

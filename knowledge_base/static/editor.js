@@ -4,6 +4,9 @@
 // ============================================================
 window.BlockEditor = (() => {
 
+  // Shared across all editor instances — tracks the block being dragged cross-editor
+  let _crossDrag = null; // { srcEditor, blockId }
+
   const CMDS = [
     { type:'text',      label:'Texto',           desc:'Párrafo normal',            icon:'¶',   keys:['text','texto','p','paragraph'] },
     { type:'h1',        label:'Encabezado 1',    desc:'Título grande',             icon:'H1',  keys:['heading','h1','titulo','title','encabezado'] },
@@ -53,6 +56,8 @@ window.BlockEditor = (() => {
     let convertMenu = null;
     let blockMenu   = null;
     let dragSrcId   = null;
+    let _selected   = new Set();  // selected block IDs
+    let _lastSelIdx = -1;         // last selected block index (for range select)
     const _nestedMenus = new Map(); // blockId → slash-menu DOM element
     let _selfRef = null;            // set after createInstance returns (for page-create in nested editors)
 
@@ -62,6 +67,31 @@ window.BlockEditor = (() => {
       return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('* ') || l.startsWith('> ') ||
              l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
              /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
+    }
+
+    // ── BLOCK SELECTION ─────────────────────────────────────────
+    function clearSelection() {
+      _selected.forEach(id => container.querySelector(`[data-id="${id}"]`)?.classList.remove('eb--selected'));
+      _selected.clear();
+      _lastSelIdx = -1;
+    }
+    function selectBlock(id, additive, range) {
+      const idx = _blocks.findIndex(b => b.id === id);
+      if (!additive && !range) clearSelection();
+      if (range && _lastSelIdx >= 0) {
+        const [from, to] = _lastSelIdx < idx ? [_lastSelIdx, idx] : [idx, _lastSelIdx];
+        for (let i = from; i <= to; i++) {
+          _selected.add(_blocks[i].id);
+          container.querySelector(`[data-id="${_blocks[i].id}"]`)?.classList.add('eb--selected');
+        }
+      } else if (additive && _selected.has(id)) {
+        _selected.delete(id);
+        container.querySelector(`[data-id="${id}"]`)?.classList.remove('eb--selected');
+      } else {
+        _selected.add(id);
+        container.querySelector(`[data-id="${id}"]`)?.classList.add('eb--selected');
+        _lastSelIdx = idx;
+      }
     }
 
     // Detect if text looks like markdown (should be parsed as blocks)
@@ -522,19 +552,26 @@ window.BlockEditor = (() => {
       handle.title = 'Clic para opciones · Arrastrar para mover';
       handle.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13.5" r="1.5"/><circle cx="7.5" cy="13.5" r="1.5"/></svg>';
       handle.addEventListener('dragstart', e => {
-
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', b.id);
         dragSrcId = b.id;
+        _crossDrag = { srcEditor: _selfRef, blockId: b.id };
         setTimeout(() => wrap.classList.add('eb--dragging'), 0);
       });
       handle.addEventListener('dragend', () => {
         wrap.classList.remove('eb--dragging');
         dragSrcId = null;
-        container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
+        _crossDrag = null;
+        container.querySelectorAll('.eb--drag-top, .eb--drag-bot, .eb--drop-end').forEach(el =>
+          el.classList.remove('eb--drag-top', 'eb--drag-bot', 'eb--drop-end'));
       });
-      // Click handle (no drag) → open block menu
-      handle.addEventListener('click', e => { e.preventDefault(); openBlockMenu(b.id, handle); });
+      // Click handle: modifier keys → selection; plain click → block menu
+      handle.addEventListener('click', e => {
+        e.preventDefault();
+        if (e.shiftKey)            { selectBlock(b.id, true, true); }
+        else if (e.ctrlKey || e.metaKey) { selectBlock(b.id, true, false); }
+        else                       { openBlockMenu(b.id, handle); }
+      });
 
       // + button first, then handle — same layout as Notion
       const optsBtn = document.createElement('button');
@@ -547,10 +584,13 @@ window.BlockEditor = (() => {
       controls.appendChild(handle);
       wrap.appendChild(controls);
 
-      // Drop zone events on every block
+      // Drop zone events on every block (same-editor + cross-editor)
       wrap.addEventListener('dragover', e => {
-        if (!dragSrcId || dragSrcId === b.id) return;
+        const sameEd  = dragSrcId  && dragSrcId !== b.id;
+        const crossEd = !dragSrcId && _crossDrag && _crossDrag.srcEditor !== _selfRef;
+        if (!sameEd && !crossEd) return;
         e.preventDefault();
+        e.stopPropagation();
         const rect = wrap.getBoundingClientRect();
         container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
         wrap.classList.add(e.clientY < rect.top + rect.height / 2 ? 'eb--drag-top' : 'eb--drag-bot');
@@ -559,13 +599,30 @@ window.BlockEditor = (() => {
         if (!e.currentTarget.contains(e.relatedTarget)) wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
       });
       wrap.addEventListener('drop', e => {
-        if (!dragSrcId || dragSrcId === b.id) return;
+        const sameEd  = dragSrcId  && dragSrcId !== b.id;
+        const crossEd = !dragSrcId && _crossDrag && _crossDrag.srcEditor !== _selfRef;
+        if (!sameEd && !crossEd) return;
         e.preventDefault();
+        e.stopPropagation();
         const rect = wrap.getBoundingClientRect();
         const before = e.clientY < rect.top + rect.height / 2;
         wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
-        moveBlock(dragSrcId, b.id, before);
-        dragSrcId = null;
+        if (sameEd) {
+          moveBlock(dragSrcId, b.id, before);
+          dragSrcId = null;
+        } else {
+          const { srcEditor, blockId } = _crossDrag;
+          const block = srcEditor._removeBlock(blockId);
+          if (block) {
+            const ti = _blocks.findIndex(x => x.id === b.id);
+            _blocks.splice(before ? ti : ti + 1, 0, block);
+            const targetEl = container.querySelector(`[data-id="${b.id}"]`);
+            const newEl = makeEl(block);
+            before ? targetEl.before(newEl) : targetEl.after(newEl);
+            sync();
+          }
+          _crossDrag = null;
+        }
       });
 
       if (b.type === 'divider') {
@@ -1480,11 +1537,80 @@ window.BlockEditor = (() => {
       }
     });
 
+    // Container-level drag: handles drops in empty space / below all blocks
+    container.addEventListener('dragover', e => {
+      const sameEd  = !!dragSrcId;
+      const crossEd = _crossDrag && _crossDrag.srcEditor !== _selfRef;
+      if (!sameEd && !crossEd) return;
+      if (e.target.closest('[data-id]')) return; // block-level handler takes priority
+      e.preventDefault();
+      container.classList.add('eb--drop-end');
+    });
+    container.addEventListener('dragleave', e => {
+      if (!container.contains(e.relatedTarget)) container.classList.remove('eb--drop-end');
+    });
+    container.addEventListener('drop', e => {
+      container.classList.remove('eb--drop-end');
+      if (e.target.closest('[data-id]')) return; // block-level handler took it
+      if (dragSrcId) {
+        const last = _blocks[_blocks.length - 1];
+        if (last && last.id !== dragSrcId) moveBlock(dragSrcId, last.id, false);
+        dragSrcId = null;
+      } else if (_crossDrag && _crossDrag.srcEditor !== _selfRef) {
+        e.preventDefault();
+        const { srcEditor, blockId } = _crossDrag;
+        const block = srcEditor._removeBlock(blockId);
+        if (block) { _blocks.push(block); container.appendChild(makeEl(block)); sync(); }
+        _crossDrag = null;
+      }
+    });
+
+    // Selection keyboard shortcuts (ESC to deselect, Ctrl+C to copy, Ctrl+A to select all)
+    document.addEventListener('keydown', e => {
+      const hasFocus = container.contains(document.activeElement);
+      if (!hasFocus && _selected.size === 0) return;
+      if (_selected.size > 0 && e.key === 'Escape') { clearSelection(); return; }
+      if (_selected.size > 0 && (e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const sel = _blocks.filter(b => _selected.has(b.id));
+        navigator.clipboard?.writeText(blocksToMd(sel)).catch(() => {});
+        return;
+      }
+      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a' &&
+          !document.activeElement?.classList.contains('eb-content') &&
+          !document.activeElement?.classList.contains('eb-toggle-header')) {
+        e.preventDefault();
+        clearSelection();
+        _blocks.forEach(b => { _selected.add(b.id); container.querySelector(`[data-id="${b.id}"]`)?.classList.add('eb--selected'); });
+        _lastSelIdx = _blocks.length - 1;
+      }
+    });
+
+    // Clicking the container background deselects
+    container.addEventListener('mousedown', e => {
+      if (!e.target.closest('[data-id]')) clearSelection();
+    });
+
     // Initial empty state
     _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
     render();
 
-    _selfRef = { load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst };
+    _selfRef = {
+      load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst,
+      // Cross-editor drag API
+      _removeBlock(id) {
+        const idx = _blocks.findIndex(b => b.id === id);
+        if (idx < 0) return null;
+        const [block] = _blocks.splice(idx, 1);
+        container.querySelector(`[data-id="${id}"]`)?.remove();
+        sync();
+        return block;
+      },
+      _appendBlock(block) {
+        _blocks.push(block);
+        container.appendChild(makeEl(block));
+        sync();
+      },
+    };
     return _selfRef;
   }
 
