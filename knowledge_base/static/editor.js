@@ -5,25 +5,32 @@
 window.BlockEditor = (() => {
 
   const CMDS = [
-    { type:'text',     label:'Texto',          desc:'Párrafo normal',       icon:'¶'   },
-    { type:'h1',       label:'Encabezado 1',   desc:'Título grande',        icon:'H1'  },
-    { type:'h2',       label:'Encabezado 2',   desc:'Título mediano',       icon:'H2'  },
-    { type:'h3',       label:'Encabezado 3',   desc:'Título pequeño',       icon:'H3'  },
-    { type:'h4',       label:'Encabezado 4',   desc:'Título mínimo',        icon:'H4'  },
-    { type:'bullet',   label:'Lista •',        desc:'Lista con viñetas',    icon:'•'   },
-    { type:'numbered', label:'Lista 1.',       desc:'Lista numerada',       icon:'1.'  },
-    { type:'todo',     label:'Tarea',          desc:'Checkbox de tarea',    icon:'☐'   },
-    { type:'code',     label:'Código',         desc:'Bloque de código',     icon:'</>' },
-    { type:'quote',    label:'Cita',           desc:'Blockquote',           icon:'"'   },
-    { type:'divider',  label:'Divisor',        desc:'Línea horizontal',     icon:'—'   },
-    { type:'page',     label:'Sub-página',     desc:'Crear página hija',    icon:'⬡'   },
+    { type:'text',      label:'Texto',           desc:'Párrafo normal',            icon:'¶',   keys:['text','texto','p','paragraph'] },
+    { type:'h1',        label:'Encabezado 1',    desc:'Título grande',             icon:'H1',  keys:['heading','h1','titulo','title','encabezado'] },
+    { type:'h2',        label:'Encabezado 2',    desc:'Título mediano',            icon:'H2',  keys:['heading','h2','titulo','title','encabezado'] },
+    { type:'h3',        label:'Encabezado 3',    desc:'Título pequeño',            icon:'H3',  keys:['heading','h3','titulo','title','encabezado'] },
+    { type:'h4',        label:'Encabezado 4',    desc:'Título mínimo',             icon:'H4',  keys:['heading','h4','titulo','title','encabezado'] },
+    { type:'toggle',    label:'Toggle',          desc:'Bloque desplegable',        icon:'▸',   keys:['toggle','desplegable','collapse','collapsar','t'] },
+    { type:'toggle-h1', label:'Toggle H1',       desc:'Encabezado desplegable 1',  icon:'▸H1', keys:['toggle','heading','h1','desplegable'] },
+    { type:'toggle-h2', label:'Toggle H2',       desc:'Encabezado desplegable 2',  icon:'▸H2', keys:['toggle','heading','h2','desplegable'] },
+    { type:'toggle-h3', label:'Toggle H3',       desc:'Encabezado desplegable 3',  icon:'▸H3', keys:['toggle','heading','h3','desplegable'] },
+    { type:'bullet',    label:'Lista •',         desc:'Lista con viñetas',         icon:'•',   keys:['bullet','list','lista','viñeta','b','ul'] },
+    { type:'numbered',  label:'Lista 1.',        desc:'Lista numerada',            icon:'1.',  keys:['numbered','number','lista','ol','numerada','n'] },
+    { type:'todo',      label:'Tarea',           desc:'Checkbox de tarea',         icon:'☐',   keys:['todo','task','checkbox','tarea','check'] },
+    { type:'table',     label:'Tabla',           desc:'Tabla markdown',            icon:'⊞',   keys:['table','tabla','grid'] },
+    { type:'code',      label:'Código',          desc:'Bloque de código',          icon:'</>',  keys:['code','codigo','snippet','pre','c'] },
+    { type:'quote',     label:'Cita',            desc:'Blockquote',                icon:'"',   keys:['quote','cita','blockquote','q'] },
+    { type:'divider',   label:'Divisor',         desc:'Línea horizontal',          icon:'—',   keys:['divider','divisor','hr','line','separador'] },
+    { type:'page',      label:'Sub-página',      desc:'Crear página hija',         icon:'⬡',   keys:['page','subpage','pagina','link','sub'] },
   ];
 
   const PLACEHOLDER = {
     text:'Escribe algo, o \'/\' para comandos…',
     h1:'Encabezado 1', h2:'Encabezado 2', h3:'Encabezado 3', h4:'Encabezado 4',
+    toggle:'Título del toggle…', 'toggle-h1':'Toggle Encabezado 1',
+    'toggle-h2':'Toggle Encabezado 2', 'toggle-h3':'Toggle Encabezado 3',
     bullet:'Elemento de lista', numbered:'Elemento numerado',
-    todo:'Tarea pendiente',
+    todo:'Tarea pendiente', table:'',
     code:'// código aquí', quote:'Cita…', divider:'', page:'Nombre de la sub-página',
   };
 
@@ -41,16 +48,37 @@ window.BlockEditor = (() => {
     const onChange     = opts.onChange     || null;
 
     let _blocks  = [];
-    let _loading = false;   // true while loading md — prevents onChange feedback loop
+    let _loading = false;
     let slashBlockId = null, slashFilter = '', menuIdx = 0;
     let convertMenu = null;
+    let blockMenu   = null;
+    let dragSrcId   = null;
+    const _nestedMenus = new Map(); // blockId → slash-menu DOM element
+    let _selfRef = null;            // set after createInstance returns (for page-create in nested editors)
 
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
       if (!l) return false;
       return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('> ') ||
-             l === '---' || l.startsWith('```') || /^\d+\. /.test(l) ||
-             /^\[\[.+\]\]$/.test(l.trim());
+             l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
+             /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
+    }
+
+    // ── MARKDOWN TABLE → HTML ────────────────────────────────────
+    function mdTableToHtml(raw) {
+      const rows = raw.split('\n').map(r => r.trim()).filter(r => r.startsWith('|'));
+      if (!rows.length) return '<em style="opacity:.4">tabla vacía</em>';
+      let isHead = true;
+      let html = '<table class="eb-table"><tbody>';
+      for (const row of rows) {
+        if (/^\|[\s\-:|]+\|?\s*$/.test(row)) { isHead = false; continue; }
+        const tag   = isHead ? 'th' : 'td';
+        const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|')
+                        .map(c => `<${tag}>${escHtml(c.trim())}</${tag}>`).join('');
+        html += `<tr>${cells}</tr>`;
+        if (isHead) isHead = false;
+      }
+      return html + '</tbody></table>';
     }
 
     // ── MD → BLOCKS ─────────────────────────────────────────────
@@ -95,13 +123,43 @@ window.BlockEditor = (() => {
           blocks.push({ id:uid(), type:'page', content:title, pageId }); i++; continue;
         }
 
-        // code fence
+        // toggle blocks: :::toggle Header, :::toggle-h1 Header, etc.
+        if (l.startsWith(':::toggle')) {
+          const typeMatch = l.match(/^:::(toggle(?:-h[123])?)\s*(.*)/);
+          const tType   = typeMatch ? typeMatch[1] : 'toggle';
+          const tHeader = typeMatch ? typeMatch[2] : '';
+          const bodyLines = [];
+          i++;
+          let toggleLines = 0;
+          while (i < lines.length && !lines[i].startsWith(':::') && toggleLines < 500) {
+            bodyLines.push(lines[i]); i++; toggleLines++;
+          }
+          if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
+          blocks.push({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
+          continue;
+        }
+
+        // markdown table — accumulate consecutive | lines
+        if (l.startsWith('|')) {
+          const tableLines = [l];
+          i++;
+          while (i < lines.length && lines[i].trim().startsWith('|')) {
+            tableLines.push(lines[i]); i++;
+          }
+          blocks.push({ id:uid(), type:'table', content:tableLines.join('\n') });
+          continue;
+        }
+
+        // code fence — guard: stop at closing ``` OR at most 500 lines to avoid consuming rest of doc
         if (l.startsWith('```')) {
           const lang = l.slice(3).trim();
           const code = [];
           i++;
-          while (i < lines.length && !lines[i].startsWith('```')) { code.push(lines[i]); i++; }
-          if (lines[i] && lines[i].startsWith('```')) i++; // skip closing fence
+          let fenceLines = 0;
+          while (i < lines.length && !lines[i].startsWith('```') && fenceLines < 500) {
+            code.push(lines[i]); i++; fenceLines++;
+          }
+          if (i < lines.length && lines[i].startsWith('```')) i++; // skip closing fence
           blocks.push({ id:uid(), type:'code', content:code.join('\n'), lang });
           continue;
         }
@@ -147,10 +205,24 @@ window.BlockEditor = (() => {
           case 'quote': parts.push('> ' + c); break;
           case 'code': {
             const ta = container.querySelector(`[data-id="${b.id}"] .eb-code`);
+            const li = container.querySelector(`[data-id="${b.id}"] .eb-code-lang`);
             const code = ta ? ta.value : c;
-            parts.push('```' + (b.lang || '') + '\n' + code + '\n```');
+            const lang = li ? li.value : (b.lang || '');
+            parts.push('```' + lang + '\n' + code + '\n```');
             break;
           }
+          case 'toggle':
+          case 'toggle-h1':
+          case 'toggle-h2':
+          case 'toggle-h3': {
+            const hEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-header`);
+            const th = hEl ? (hEl.innerText || '') : (b.header || '');
+            // b.body is kept up-to-date by the nested editor's onChange callback
+            const tb = b.body || '';
+            parts.push(`:::${b.type} ${th}\n${tb}\n:::`);
+            break;
+          }
+          case 'table':   parts.push(b.content || ''); break;
           case 'divider': parts.push('---'); break;
           // Store pageId in markdown: [[title|page-id]]
           case 'page':    parts.push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
@@ -162,11 +234,17 @@ window.BlockEditor = (() => {
 
     // ── RENDER ──────────────────────────────────────────────────
     function render() {
+      // Clean up nested slash menus before wiping the DOM
+      _nestedMenus.forEach(m => m.remove());
+      _nestedMenus.clear();
       container.innerHTML = '';
       for (const b of _blocks) container.appendChild(makeEl(b));
       if (_blocks.length === 0) {
         _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
         container.appendChild(makeEl(_blocks[0]));
+      }
+      if (window.Prism) {
+        container.querySelectorAll('.eb-code-pre code[class*="language-"]').forEach(el => Prism.highlightElement(el));
       }
     }
 
@@ -176,12 +254,61 @@ window.BlockEditor = (() => {
       wrap.dataset.id   = b.id;
       wrap.dataset.type = b.type;
 
-      // Type badge
-      const badge = document.createElement('span');
-      badge.className = 'eb-badge';
-      badge.title = 'Convertir bloque';
-      badge.addEventListener('mousedown', e => { e.preventDefault(); openConvertMenu(b.id, badge); });
-      wrap.appendChild(badge);
+      // Block controls (drag handle + options) — shown on hover
+      const controls = document.createElement('div');
+      controls.className = 'eb-controls';
+
+      const handle = document.createElement('div');
+      handle.className = 'eb-handle';
+      handle.draggable = true;
+      handle.title = 'Clic para opciones · Arrastrar para mover';
+      handle.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13.5" r="1.5"/><circle cx="7.5" cy="13.5" r="1.5"/></svg>';
+      handle.addEventListener('dragstart', e => {
+
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', b.id);
+        dragSrcId = b.id;
+        setTimeout(() => wrap.classList.add('eb--dragging'), 0);
+      });
+      handle.addEventListener('dragend', () => {
+        wrap.classList.remove('eb--dragging');
+        dragSrcId = null;
+        container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
+      });
+      // Click handle (no drag) → open block menu
+      handle.addEventListener('click', e => { e.preventDefault(); openBlockMenu(b.id, handle); });
+
+      // + button first, then handle — same layout as Notion
+      const optsBtn = document.createElement('button');
+      optsBtn.className = 'eb-opts';
+      optsBtn.title = 'Añadir bloque abajo';
+      optsBtn.innerHTML = '+';
+      optsBtn.addEventListener('mousedown', e => { e.preventDefault(); addBlockAfter(b.id, 'text'); });
+
+      controls.appendChild(optsBtn);
+      controls.appendChild(handle);
+      wrap.appendChild(controls);
+
+      // Drop zone events on every block
+      wrap.addEventListener('dragover', e => {
+        if (!dragSrcId || dragSrcId === b.id) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
+        wrap.classList.add(e.clientY < rect.top + rect.height / 2 ? 'eb--drag-top' : 'eb--drag-bot');
+      });
+      wrap.addEventListener('dragleave', e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
+      });
+      wrap.addEventListener('drop', e => {
+        if (!dragSrcId || dragSrcId === b.id) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        wrap.classList.remove('eb--drag-top', 'eb--drag-bot');
+        moveBlock(dragSrcId, b.id, before);
+        dragSrcId = null;
+      });
 
       if (b.type === 'divider') {
         const hr = document.createElement('hr');
@@ -201,19 +328,63 @@ window.BlockEditor = (() => {
         langInput.className = 'eb-code-lang';
         langInput.value = b.lang || '';
         langInput.placeholder = 'lenguaje…';
-        langInput.addEventListener('input', sync);
         header.appendChild(langInput);
+
+        // Copy button in header
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'eb-code-copy';
+        copyBtn.title = 'Copiar código';
+        copyBtn.textContent = 'copy';
+        copyBtn.addEventListener('mousedown', e => e.preventDefault());
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(ta.value).then(() => {
+            copyBtn.textContent = 'copied!';
+            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1500);
+          });
+        });
+        header.appendChild(copyBtn);
         wrap.appendChild(header);
 
+        // Highlighted view (pre/code)
+        const pre = document.createElement('pre');
+        pre.className = 'eb-code-pre';
+        const codeEl = document.createElement('code');
+        const lang = (b.lang || '').trim();
+        if (lang) codeEl.className = `language-${lang}`;
+        codeEl.textContent = b.content || '';
+        pre.appendChild(codeEl);
+
+        // Editable textarea (hidden by default)
         const ta = document.createElement('textarea');
         ta.className = 'eb-code';
         ta.value = b.content || '';
         ta.spellcheck = false;
+        ta.style.display = 'none';
         ta.rows = Math.max(3, (b.content || '').split('\n').length + 1);
+
+        const showPre = () => {
+          const l = (langInput.value || '').trim();
+          codeEl.className = l ? `language-${l}` : '';
+          codeEl.textContent = ta.value;
+          if (window.Prism) Prism.highlightElement(codeEl);
+          pre.style.display = '';
+          ta.style.display = 'none';
+          b.lang = langInput.value;
+          sync();
+        };
+        const showTa = () => {
+          pre.style.display = 'none';
+          ta.style.display = '';
+          ta.focus();
+        };
+
+        pre.addEventListener('click', showTa);
+
         ta.addEventListener('input', () => {
           ta.rows = Math.max(3, ta.value.split('\n').length + 1);
           sync();
         });
+        ta.addEventListener('blur', showPre);
         ta.addEventListener('keydown', e => {
           if (e.key === 'Tab') {
             e.preventDefault();
@@ -221,8 +392,15 @@ window.BlockEditor = (() => {
             ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(s);
             ta.selectionStart = ta.selectionEnd = s + 2;
           }
-          if (e.key === 'Escape') { focusNextBlock(b.id); }
+          if (e.key === 'Escape') { ta.blur(); }
         });
+
+        langInput.addEventListener('change', showPre);
+
+        // Initial highlight
+        if (window.Prism && lang) Prism.highlightElement(codeEl);
+
+        wrap.appendChild(pre);
         wrap.appendChild(ta);
         return wrap;
       }
@@ -248,6 +426,144 @@ window.BlockEditor = (() => {
           if (b.pageId && window._loadEntryById) window._loadEntryById(b.pageId);
         });
         wrap.appendChild(link);
+        return wrap;
+      }
+
+      // ── TABLE block ────────────────────────────────────────────
+      if (b.type === 'table') {
+        const tWrap = document.createElement('div');
+        tWrap.className = 'eb-table-wrap';
+
+        const tView = document.createElement('div');
+        tView.className = 'eb-table-view';
+        tView.innerHTML = mdTableToHtml(b.content || '');
+
+        const tEdit = document.createElement('textarea');
+        tEdit.className = 'eb-table-textarea';
+        tEdit.value = b.content || '';
+        tEdit.rows  = Math.max(4, (b.content || '').split('\n').length + 1);
+        tEdit.spellcheck = false;
+        tEdit.placeholder = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
+        tEdit.style.display = 'none';
+
+        const tEditBtn = document.createElement('button');
+        tEditBtn.className = 'eb-table-btn';
+        tEditBtn.title = 'Editar tabla';
+        tEditBtn.innerHTML = '✎';
+
+        const showView = () => {
+          b.content = tEdit.value;
+          tView.innerHTML = mdTableToHtml(b.content);
+          tEdit.style.display = 'none';
+          tView.style.display = '';
+          tEditBtn.style.opacity = '';
+          sync();
+        };
+        const showEdit = () => {
+          tEdit.style.display = 'block';
+          tView.style.display = 'none';
+          tEditBtn.style.opacity = '0';
+          tEdit.focus();
+        };
+
+        tEditBtn.addEventListener('click', e => { e.stopPropagation(); showEdit(); });
+        tView.addEventListener('dblclick', showEdit);
+        tEdit.addEventListener('blur', showView);
+        tEdit.addEventListener('input', () => {
+          b.content = tEdit.value;
+          tEdit.rows = Math.max(4, tEdit.value.split('\n').length + 1);
+          sync();
+        });
+        tEdit.addEventListener('keydown', e => {
+          if (e.key === 'Escape') showView();
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const s = tEdit.selectionStart;
+            tEdit.value = tEdit.value.slice(0, s) + '\t' + tEdit.value.slice(s);
+            tEdit.selectionStart = tEdit.selectionEnd = s + 1;
+          }
+        });
+
+        tWrap.appendChild(tView);
+        tWrap.appendChild(tEdit);
+        tWrap.appendChild(tEditBtn);
+        wrap.appendChild(tWrap);
+        return wrap;
+      }
+
+      // ── TOGGLE block ────────────────────────────────────────────
+      if (b.type === 'toggle' || b.type === 'toggle-h1' || b.type === 'toggle-h2' || b.type === 'toggle-h3') {
+        const isOpen = b.open !== false;
+        wrap.classList.add('eb--toggle');
+        if (b.type !== 'toggle') wrap.classList.add(`eb--${b.type}`);
+
+        // Toggle row: arrow + header
+        const tRow = document.createElement('div');
+        tRow.className = 'eb-toggle-row';
+
+        const arrow = document.createElement('button');
+        arrow.className = 'eb-toggle-arrow';
+        arrow.innerHTML = isOpen
+          ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4"/></svg>'
+          : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
+        arrow.title = isOpen ? 'Colapsar' : 'Expandir';
+
+        const hDiv = document.createElement('div');
+        hDiv.className = 'eb-toggle-header eb-content';
+        hDiv.contentEditable = 'true';
+        hDiv.spellcheck = false;
+        const hTag = b.type === 'toggle-h1' ? 'h1' : b.type === 'toggle-h2' ? 'h2' : b.type === 'toggle-h3' ? 'h3' : null;
+        hDiv.dataset.placeholder = PLACEHOLDER[b.type] || 'Toggle…';
+        if (b.header) hDiv.innerText = b.header;
+        if (hTag) hDiv.dataset.headingTag = hTag;
+
+        tRow.appendChild(arrow);
+        tRow.appendChild(hDiv);
+        wrap.appendChild(tRow);
+
+        // Body — full nested block editor (collapsible)
+        const body = document.createElement('div');
+        body.className = 'eb-toggle-body-wrap';
+        body.style.display = isOpen ? '' : 'none';
+
+        const nestedContainer = document.createElement('div');
+        nestedContainer.className = 'eb-toggle-nested';
+        body.appendChild(nestedContainer);
+        wrap.appendChild(body);
+
+        // Dedicated slash menu for this nested editor
+        const nestedMenu = document.createElement('div');
+        nestedMenu.className = 'slash-menu hidden';
+        document.body.appendChild(nestedMenu);
+        _nestedMenus.set(b.id, nestedMenu);
+
+        // Create nested editor instance
+        const nestedEd = BlockEditor.create({
+          container: nestedContainer,
+          menuEl:    nestedMenu,
+          onChange:  (md) => { b.body = md; sync(); },
+        });
+        nestedEd.load(b.body || '');
+
+        // Store nested editor on wrap so confirmPageCreate can find it
+        wrap._nestedEditor = nestedEd;
+
+        // Arrow toggle
+        arrow.addEventListener('click', () => {
+          b.open = !b.open;
+          arrow.innerHTML = b.open
+            ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4"/></svg>'
+            : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
+          arrow.title = b.open ? 'Colapsar' : 'Expandir';
+          body.style.display = b.open ? '' : 'none';
+        });
+
+        // Header keydown
+        hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
+        hDiv.addEventListener('input',   () => { b.header = hDiv.innerText; sync(); });
+        hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
+        hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
+
         return wrap;
       }
 
@@ -301,6 +617,9 @@ window.BlockEditor = (() => {
       if (_blocks.length <= 1) { clearBlock(id); return; }
       _blocks.splice(idx, 1);
       const el = container.querySelector(`[data-id="${id}"]`);
+      // Clean up any nested slash menu for this toggle block
+      const nm = _nestedMenus.get(id);
+      if (nm) { nm.remove(); _nestedMenus.delete(id); }
       const prevId = _blocks[Math.max(0, idx - 1)].id;
       el.remove();
       const prevC = container.querySelector(`[data-id="${prevId}"] .eb-content`);
@@ -317,12 +636,24 @@ window.BlockEditor = (() => {
     function convertBlock(id, newType) {
       const b = _blocks.find(b => b.id === id);
       if (!b) return;
-      b.content = readContent(id) ?? b.content;
+      const isToggleSrc = b.type.startsWith('toggle');
+      const isToggleDst = newType.startsWith('toggle');
+      if (isToggleSrc) {
+        // reading from toggle header
+        const hEl = container.querySelector(`[data-id="${id}"] .eb-toggle-header`);
+        const src = hEl ? (hEl.innerText || '') : (b.header || '');
+        if (isToggleDst) { b.header = src; }
+        else             { b.content = src; b.header = undefined; b.body = undefined; }
+      } else {
+        b.content = readContent(id) ?? b.content;
+        if (isToggleDst) { b.header = b.content; b.body = ''; b.content = undefined; }
+      }
       b.type = newType;
+      if (isToggleDst && b.open === undefined) b.open = true;
       const old = container.querySelector(`[data-id="${id}"]`);
       const newEl = makeEl(b);
       old.replaceWith(newEl);
-      const c = newEl.querySelector('.eb-content');
+      const c = newEl.querySelector('.eb-toggle-header, .eb-content');
       if (c) { c.focus(); placeCursorEnd(c); }
       sync();
     }
@@ -335,7 +666,7 @@ window.BlockEditor = (() => {
       const rect = anchor.getBoundingClientRect();
       m.style.top  = (rect.bottom + 4) + 'px';
       m.style.left = rect.left + 'px';
-      m.innerHTML = CMDS.filter(c => c.type !== 'page' && c.type !== 'divider').map(c =>
+      m.innerHTML = CMDS.filter(c => c.type !== 'page' && c.type !== 'divider' && c.type !== 'table').map(c =>
         `<div class="eb-convert-item" data-type="${c.type}"><span>${c.icon}</span>${c.label}</div>`
       ).join('');
       m.querySelectorAll('.eb-convert-item').forEach(el => {
@@ -350,6 +681,113 @@ window.BlockEditor = (() => {
       setTimeout(() => document.addEventListener('mousedown', closeConvertMenu, { once: true }), 0);
     }
     function closeConvertMenu() { if (convertMenu) { convertMenu.remove(); convertMenu = null; } }
+
+    // ── BLOCK MENU (options button) ─────────────────────────────
+    function openBlockMenu(blockId, anchor) {
+      closeBlockMenu();
+      const m = document.createElement('div');
+      m.className = 'eb-block-menu';
+      const rect = anchor.getBoundingClientRect();
+      let top  = rect.bottom + 4;
+      let left = rect.left;
+      if (top + 200 > window.innerHeight) top = rect.top - 200;
+      if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
+      m.style.top  = top  + 'px';
+      m.style.left = left + 'px';
+
+      const items = [
+        { label:'Convertir en…', icon:'⇄', sub:true },
+        { label:'Duplicar',      icon:'⎘', action: () => { duplicateBlock(blockId); closeBlockMenu(); } },
+        { sep: true },
+        { label:'Eliminar',      icon:'✕', action: () => { deleteBlock(blockId); closeBlockMenu(); }, danger:true },
+      ];
+
+      m.innerHTML = items.map((it, i) => it.sep
+        ? `<div class="eb-bm-sep"></div>`
+        : `<div class="eb-bm-item${it.danger?' eb-bm-danger':''}${it.sub?' eb-bm-sub':''}" data-idx="${i}">
+             <span class="eb-bm-icon">${it.icon}</span><span>${it.label}</span>${it.sub ? '<span class="eb-bm-arrow">›</span>' : ''}
+           </div>`
+      ).join('');
+
+      m.querySelectorAll('.eb-bm-item').forEach(el => {
+        const i = parseInt(el.dataset.idx);
+        const it = items[i];
+        if (!it) return;
+        if (it.sub) {
+          el.addEventListener('mouseenter', () => openTurnIntoMenu(blockId, el, m));
+        } else if (it.action) {
+          el.addEventListener('mousedown', e => { e.preventDefault(); it.action(); });
+        }
+      });
+
+      document.body.appendChild(m);
+      blockMenu = m;
+      setTimeout(() => document.addEventListener('mousedown', _closeBMOutside), 0);
+    }
+
+    function _closeBMOutside(e) {
+      if (blockMenu && !blockMenu.contains(e.target)) closeBlockMenu();
+    }
+
+    function closeBlockMenu() {
+      if (blockMenu) { blockMenu.remove(); blockMenu = null; }
+      document.removeEventListener('mousedown', _closeBMOutside);
+      closeTurnIntoMenu();
+    }
+
+    let turnIntoMenu = null;
+    function openTurnIntoMenu(blockId, anchor, parent) {
+      closeTurnIntoMenu();
+      const rect = anchor.getBoundingClientRect();
+      const m = document.createElement('div');
+      m.className = 'eb-block-menu eb-turninto-menu';
+      m.style.top  = rect.top  + 'px';
+      m.style.left = (rect.right + 4) + 'px';
+
+      const types = CMDS.filter(c => !['page','divider','table'].includes(c.type));
+      m.innerHTML = types.map(c =>
+        `<div class="eb-bm-item" data-type="${c.type}">
+           <span class="eb-bm-icon">${c.icon}</span><span>${c.label}</span>
+         </div>`
+      ).join('');
+      m.querySelectorAll('.eb-bm-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          convertBlock(blockId, el.dataset.type);
+          closeBlockMenu();
+        });
+      });
+      document.body.appendChild(m);
+      turnIntoMenu = m;
+    }
+    function closeTurnIntoMenu() { if (turnIntoMenu) { turnIntoMenu.remove(); turnIntoMenu = null; } }
+
+    // ── MOVE BLOCK (drag & drop) ────────────────────────────────
+    function moveBlock(srcId, targetId, before) {
+      const si = _blocks.findIndex(b => b.id === srcId);
+      if (si < 0) return;
+      const [sb] = _blocks.splice(si, 1);
+      const ti = _blocks.findIndex(b => b.id === targetId);
+      _blocks.splice(before ? ti : ti + 1, 0, sb);
+      render();
+      sync();
+    }
+
+    // ── DUPLICATE BLOCK ─────────────────────────────────────────
+    function duplicateBlock(id) {
+      const b = _blocks.find(b => b.id === id);
+      if (!b) return;
+      if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page'].includes(b.type)) {
+        b.content = readContent(id) ?? b.content;
+      }
+      const clone = { ...b, id: uid() };
+      const idx = _blocks.findIndex(b => b.id === id);
+      _blocks.splice(idx + 1, 0, clone);
+      const el = container.querySelector(`[data-id="${id}"]`);
+      const newEl = makeEl(clone);
+      el.after(newEl);
+      sync();
+    }
 
     // ── CURSOR UTILS ────────────────────────────────────────────
     function placeCursorEnd(el) {
@@ -507,11 +945,21 @@ window.BlockEditor = (() => {
     // ── SLASH MENU ───────────────────────────────────────────────
     function visibleCmds() {
       if (!slashFilter) return CMDS;
-      return CMDS.filter(c =>
-        c.label.toLowerCase().includes(slashFilter) ||
-        c.type.toLowerCase().includes(slashFilter)  ||
-        c.desc.toLowerCase().includes(slashFilter)
-      );
+      const f = slashFilter.toLowerCase();
+      const scored = CMDS.map(c => {
+        const type  = c.type.toLowerCase();
+        const label = c.label.toLowerCase();
+        const desc  = c.desc.toLowerCase();
+        const keys  = (c.keys || []);
+        let score = 0;
+        if (type.startsWith(f) || label.startsWith(f))              score = 3;
+        else if (keys.some(k => k === f || k.startsWith(f)))        score = 3;
+        else if (type.includes(f) || label.includes(f))             score = 2;
+        else if (desc.includes(f) || keys.some(k => k.includes(f))) score = 1;
+        return { c, score };
+      }).filter(x => x.score > 0);
+      scored.sort((a, b) => b.score - a.score);
+      return scored.map(x => x.c);
     }
     function showMenu(div) { positionMenu(div); menuEl.classList.remove('hidden'); renderMenu(); }
     function hideMenu()    { menuEl.classList.add('hidden'); slashBlockId = null; slashFilter = ''; menuIdx = 0; }
@@ -552,8 +1000,25 @@ window.BlockEditor = (() => {
       hideMenu();
       if (type === 'divider') { convertBlock(blockId, 'divider'); addBlockAfter(blockId, 'text'); return; }
       if (type === 'page') {
+        // Tell app.js which editor owns this block so addPageBlock goes to the right instance
+        window._activeEditorForPageCreate = _selfRef;
         if (window._promptPageName) window._promptPageName(blockId);
         return;
+      }
+      if (type === 'table') {
+        const b = _blocks.find(b => b.id === blockId);
+        if (b) {
+          b.type = 'table';
+          b.content = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
+          const old = container.querySelector(`[data-id="${blockId}"]`);
+          const newEl = makeEl(b);
+          old.replaceWith(newEl);
+          // Auto-open edit mode
+          const tEdit = newEl.querySelector('.eb-table-textarea');
+          const tView = newEl.querySelector('.eb-table-view');
+          if (tEdit && tView) { tEdit.style.display = 'block'; tView.style.display = 'none'; tEdit.focus(); tEdit.select(); }
+        }
+        sync(); return;
       }
       convertBlock(blockId, type);
     }
@@ -616,7 +1081,8 @@ window.BlockEditor = (() => {
     _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
     render();
 
-    return { load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst };
+    _selfRef = { load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst };
+    return _selfRef;
   }
 
   // ── DEFAULT INSTANCE (modal — backward compat) ───────────────────────────────

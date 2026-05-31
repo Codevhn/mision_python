@@ -86,19 +86,67 @@ document.addEventListener("DOMContentLoaded", () => {
     tab.addEventListener("click", () => {
       currentModalMode = tab.dataset.mode;
       document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t === tab));
-      $("knowledgeFields").classList.toggle("hidden", currentModalMode === "course");
-      $("courseFields").classList.toggle("hidden", currentModalMode === "knowledge");
-      $("templatePickerGroup").classList.toggle("hidden", currentModalMode === "course");
+      $("knowledgeFields").classList.toggle("hidden",  currentModalMode !== "knowledge");
+      $("courseFields").classList.toggle("hidden",     currentModalMode !== "course");
+      $("teamspaceFields").classList.toggle("hidden",  currentModalMode !== "teamspace");
+      $("templatePickerGroup").classList.toggle("hidden", currentModalMode !== "knowledge");
     });
   });
 });
 
 function bindEvents() {
   $("newEntryBtn").addEventListener("click", openNewModal);
+  $("newTeamspaceEntryBtn").addEventListener("click", () => {
+    openNewModal();
+    // Switch to teamspace tab
+    if (window._setModalMode) window._setModalMode("teamspace");
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "teamspace"));
+    $("knowledgeFields").classList.add("hidden");
+    $("courseFields").classList.add("hidden");
+    $("teamspaceFields").classList.remove("hidden");
+    $("templatePickerGroup").classList.add("hidden");
+    setTimeout(() => $("fieldTeamspace").focus(), 60);
+  });
   // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
+
+  // Workspace quick nav
+  $("wsHome").addEventListener("click", e => {
+    e.preventDefault();
+    document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    // Reset any sidebar filters
+    document.querySelectorAll(".tree-entry").forEach(el => el.style.display = "");
+    document.querySelectorAll(".tree-topic").forEach(el => el.style.display = "");
+    document.querySelectorAll(".tree-cat").forEach(el => el.style.display = "");
+    // Go to home screen
+    $("entryView").classList.add("hidden");
+    $("welcome").classList.remove("hidden");
+    renderHome();
+  });
+  $("wsSearch").addEventListener("click", e => {
+    e.preventDefault();
+    $("searchInput").focus();
+    $("searchInput").select();
+  });
+  $("wsStarred").addEventListener("click", e => {
+    e.preventDefault();
+    document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    // Show only starred entries; hide categories/topics with no starred entries
+    const starredIds = new Set(Object.entries(starredMap).filter(([,v]) => v).map(([id]) => id));
+    document.querySelectorAll(".tree-cat").forEach(cat => {
+      const hasStarred = [...cat.querySelectorAll(".tree-entry")].some(e => starredIds.has(e.dataset.id));
+      cat.style.display = hasStarred ? "" : "none";
+      if (hasStarred) {
+        cat.querySelectorAll(".tree-entry").forEach(e => {
+          e.style.display = starredIds.has(e.dataset.id) ? "" : "none";
+        });
+      }
+    });
+  });
   $("sidebarOverlay").addEventListener("click", closeSidebarMobile);
 
   // Mobile ··· dropdown
@@ -168,7 +216,7 @@ function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
   $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = saved === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = saved === "dark" ? "[L]" : "[D]";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
@@ -176,7 +224,7 @@ function toggleTheme() {
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
   $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = next === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = next === "dark" ? "[L]" : "[D]";
 }
 
 // ---- SIDEBAR ----
@@ -221,11 +269,13 @@ function closeSidebarMobile() {
 
 // ---- TREE ----
 async function loadTree() {
-  const [r1, r2] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree")]);
-  const knowledgeTree = await r1.json();
-  const coursesTree   = await r2.json();
+  const [r1, r2, r3] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree")]);
+  const knowledgeTree  = await r1.json();
+  const coursesTree    = await r2.json();
+  const teamspaceTree  = await r3.json();
   renderTree(knowledgeTree);
   renderCoursesTree(coursesTree);
+  renderTeamspaceTree(teamspaceTree);
   // Restore starred section from starredMap
   renderStarredSection(
     Object.fromEntries(
@@ -483,6 +533,51 @@ function renderCoursesTree(tree) {
   }
 }
 
+// ---- TEAMSPACE TREE ----
+function renderTeamspaceTree(tree) {
+  const nav = $("teamspaceTree");
+  const label = $("teamspaceSectionLabel");
+  label.style.display = "flex";
+  if (!tree || Object.keys(tree).length === 0) {
+    nav.innerHTML = '<div class="tree-empty">No hay contenido aún.</div>';
+    return;
+  }
+  nav.innerHTML = "";
+
+  for (const [spaceSlug, spaceData] of Object.entries(tree)) {
+    const spaceLabel = spaceData._label || spaceSlug;
+    const entries    = spaceData._entries || [];
+
+    const spaceDiv = document.createElement("div");
+    spaceDiv.className = "tree-cat";
+
+    const spaceHeader = document.createElement("div");
+    spaceHeader.className = "tree-cat-header";
+    spaceHeader.innerHTML = `<span class="tree-arrow">▸</span><span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>`;
+    let spaceOpen = true;
+    spaceHeader.addEventListener("click", () => {
+      spaceOpen = !spaceOpen;
+      spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
+      entryList.style.display = spaceOpen ? "" : "none";
+    });
+
+    const entryList = document.createElement("div");
+    entryList.className = "tree-topic";
+    for (const entry of entries) {
+      const item = document.createElement("div");
+      item.className = "tree-item ts-item";
+      item.dataset.id = entry.id;
+      item.textContent = entry.title;
+      item.addEventListener("click", () => loadEntry(entry.id));
+      entryList.appendChild(item);
+    }
+
+    spaceDiv.appendChild(spaceHeader);
+    spaceDiv.appendChild(entryList);
+    nav.appendChild(spaceDiv);
+  }
+}
+
 // ---- RECENTLY VISITED ----
 const KB_RECENT_KEY = "kb_recent_v2";
 const KB_RECENT_MAX = 12;
@@ -542,6 +637,9 @@ function renderHome() {
 
 // ---- ENTRY VIEW ----
 async function loadEntry(id) {
+  // CRITICAL: cancel any pending auto-save from the previous entry before switching
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = null;
   currentEntryId = id;
   if (isMobile()) closeSidebarMobile();
   document.querySelectorAll(".tree-entry").forEach(el => {
@@ -670,8 +768,10 @@ async function loadEntry(id) {
 function _scheduleAutoSave(md) {
   clearTimeout(_autoSaveTimer);
   _setAutosaveStatus("saving");
+  const savedId = currentEntryId; // capture at schedule time
   _autoSaveTimer = setTimeout(() => {
-    if (!currentEntryId) return;
+    // Guard: only save if we're still on the same entry
+    if (!currentEntryId || currentEntryId !== savedId) return;
     _patchContent({ raw_text: md });
   }, 1200);
 }
@@ -724,6 +824,7 @@ function openNewModal() {
   document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
   $("knowledgeFields").classList.remove("hidden");
   $("courseFields").classList.add("hidden");
+  $("teamspaceFields").classList.add("hidden");
   $("templatePickerGroup").classList.remove("hidden");
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
@@ -844,6 +945,27 @@ async function saveEntry() {
       }
     } else {
       showToast("Error al actualizar", "error");
+    }
+    return;
+  }
+
+  // Teamspace new entry
+  if (currentModalMode === "teamspace") {
+    const teamspace = $("fieldTeamspace").value.trim() || "General";
+    if (!title) { showToast("Ingresa un título", "error"); return; }
+    const res = await fetch("/api/entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      closeModal();
+      await loadTree();
+      loadEntry(d.id);
+      showToast("Entrada de teamspace guardada");
+    } else {
+      showToast("Error al guardar", "error");
     }
     return;
   }
@@ -1489,7 +1611,9 @@ async function confirmPageCreate() {
   if (res.ok) {
     const d = await res.json();
     // Insert page link block in current entry (stays in place, no scroll)
-    _inlineEditor.addPageBlock(_pendingPageBlockId, name, d.id);
+    const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
+    window._activeEditorForPageCreate = null;
+    targetEditor.addPageBlock(_pendingPageBlockId, name, d.id);
     await loadTree();
     showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
   } else {
@@ -1589,26 +1713,26 @@ function closeVersionModal() {
 
 async function restoreVersion() {
   if (!currentEntryId || !_historyCurrentMarkdown) return;
-  const res = await fetch(`/api/entry/${currentEntryId}`);
-  const data = await res.json();
-  const m = data.meta;
-  const putRes = await fetch(`/api/entry/${currentEntryId}`, {
-    method: "PUT",
+  // Cancel any pending auto-save that could overwrite the restored content
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = null;
+  // Use PATCH /content to write markdown directly (bypasses smart_parse)
+  const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      raw_text: _historyCurrentMarkdown,
-      title: m.title,
-      category: m.category_label || m.category,
-      topic: m.topic_label || m.topic,
-    }),
+    body: JSON.stringify({ raw_text: _historyCurrentMarkdown, restore: true }),
   });
   if (putRes.ok) {
     closeVersionModal();
     $("historyPanel").classList.add("hidden");
     $("historyBtn").classList.remove("active");
     showToast("Versión restaurada");
-    await loadTree();
-    loadEntry(currentEntryId);
+    // Small delay to ensure file is written before re-fetch
+    await new Promise(r => setTimeout(r, 80));
+    await loadEntry(currentEntryId);
+    // Scroll entry body to top after restore
+    const area = $("contentArea");
+    if (area) area.scrollTop = 0;
   } else {
     showToast("Error al restaurar", "error");
   }

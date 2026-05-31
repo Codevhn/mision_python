@@ -38,16 +38,49 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-section-label" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>CONOCIMIENTO</span>
-        <button id="themeToggleSidebar" class="btn-icon" style="font-size:0.7rem;padding:2px 8px;">[light]</button>
+
+      <!-- WORKSPACE HEADER -->
+      <div class="workspace-header" id="workspaceHeader">
+        <div class="workspace-avatar">KB</div>
+        <div class="workspace-info">
+          <span class="workspace-name">knowledge_base</span>
+          <span class="workspace-plan">personal</span>
+        </div>
+        <button id="themeToggleSidebar" class="btn-icon ws-theme-btn" title="Cambiar tema">[L]</button>
       </div>
+
+      <!-- WORKSPACE QUICK NAV -->
+      <nav class="workspace-nav">
+        <a class="workspace-nav-item" id="wsHome" href="#">
+          <span class="ws-icon">⌂</span><span>Inicio</span>
+        </a>
+        <a class="workspace-nav-item" id="wsStarred" href="#">
+          <span class="ws-icon">☆</span><span>Favoritos</span>
+        </a>
+        <a class="workspace-nav-item" id="wsSearch" href="#">
+          <span class="ws-icon">⌕</span><span>Buscar</span>
+        </a>
+        <a class="workspace-nav-item" href="/logout" style="text-decoration:none">
+          <span class="ws-icon">⏻</span><span>Salir</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section-label">CONOCIMIENTO</div>
       <nav class="tree" id="tree">
         <div class="tree-empty">No hay entradas aún.</div>
       </nav>
       <div class="sidebar-section-label" id="coursesSectionLabel">CURSOS</div>
       <nav class="tree" id="coursesTree">
         <div class="tree-empty">No hay cursos aún.</div>
+      </nav>
+
+      <!-- TEAMSPACE -->
+      <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>TEAMSPACE</span>
+        <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Nueva entrada en Teamspace">+</button>
+      </div>
+      <nav class="tree" id="teamspaceTree">
+        <div class="tree-empty">No hay contenido aún.</div>
       </nav>
     </aside>
 
@@ -196,6 +229,7 @@
         <div class="entry-type-toggle">
           <button class="type-tab active" data-mode="knowledge">Conocimiento</button>
           <button class="type-tab" data-mode="course">Curso</button>
+          <button class="type-tab" data-mode="teamspace">Teamspace</button>
         </div>
         <div id="knowledgeFields">
         <div class="form-row two-col">
@@ -225,6 +259,13 @@
             </div>
           </div>
         </div><!-- /#courseFields -->
+        <div id="teamspaceFields" class="hidden">
+          <div class="form-group">
+            <label>Teamspace</label>
+            <input type="text" id="fieldTeamspace" placeholder="Ej: General, Proyectos, Devops…" list="teamspaceSuggestions" />
+            <datalist id="teamspaceSuggestions"></datalist>
+          </div>
+        </div><!-- /#teamspaceFields -->
         <div class="form-group">
           <label>Título de la entrada</label>
           <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
