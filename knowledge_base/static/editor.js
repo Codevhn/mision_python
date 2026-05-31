@@ -130,7 +130,10 @@ window.BlockEditor = (() => {
           const tHeader = typeMatch ? typeMatch[2] : '';
           const bodyLines = [];
           i++;
-          while (i < lines.length && !lines[i].startsWith(':::')) { bodyLines.push(lines[i]); i++; }
+          let toggleLines = 0;
+          while (i < lines.length && !lines[i].startsWith(':::') && toggleLines < 500) {
+            bodyLines.push(lines[i]); i++; toggleLines++;
+          }
           if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
           blocks.push({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
           continue;
@@ -147,13 +150,16 @@ window.BlockEditor = (() => {
           continue;
         }
 
-        // code fence
+        // code fence — guard: stop at closing ``` OR at most 500 lines to avoid consuming rest of doc
         if (l.startsWith('```')) {
           const lang = l.slice(3).trim();
           const code = [];
           i++;
-          while (i < lines.length && !lines[i].startsWith('```')) { code.push(lines[i]); i++; }
-          if (lines[i] && lines[i].startsWith('```')) i++; // skip closing fence
+          let fenceLines = 0;
+          while (i < lines.length && !lines[i].startsWith('```') && fenceLines < 500) {
+            code.push(lines[i]); i++; fenceLines++;
+          }
+          if (i < lines.length && lines[i].startsWith('```')) i++; // skip closing fence
           blocks.push({ id:uid(), type:'code', content:code.join('\n'), lang });
           continue;
         }

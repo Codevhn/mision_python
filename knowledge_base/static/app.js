@@ -1719,7 +1719,12 @@ async function restoreVersion() {
     $("historyPanel").classList.add("hidden");
     $("historyBtn").classList.remove("active");
     showToast("Versión restaurada");
-    loadEntry(currentEntryId);
+    // Small delay to ensure file is written before re-fetch
+    await new Promise(r => setTimeout(r, 80));
+    await loadEntry(currentEntryId);
+    // Scroll entry body to top after restore
+    const area = $("contentArea");
+    if (area) area.scrollTop = 0;
   } else {
     showToast("Error al restaurar", "error");
   }
