@@ -637,6 +637,9 @@ function renderHome() {
 
 // ---- ENTRY VIEW ----
 async function loadEntry(id) {
+  // CRITICAL: cancel any pending auto-save from the previous entry before switching
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = null;
   currentEntryId = id;
   if (isMobile()) closeSidebarMobile();
   document.querySelectorAll(".tree-entry").forEach(el => {
@@ -765,8 +768,10 @@ async function loadEntry(id) {
 function _scheduleAutoSave(md) {
   clearTimeout(_autoSaveTimer);
   _setAutosaveStatus("saving");
+  const savedId = currentEntryId; // capture at schedule time
   _autoSaveTimer = setTimeout(() => {
-    if (!currentEntryId) return;
+    // Guard: only save if we're still on the same entry
+    if (!currentEntryId || currentEntryId !== savedId) return;
     _patchContent({ raw_text: md });
   }, 1200);
 }
@@ -1708,6 +1713,9 @@ function closeVersionModal() {
 
 async function restoreVersion() {
   if (!currentEntryId || !_historyCurrentMarkdown) return;
+  // Cancel any pending auto-save that could overwrite the restored content
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = null;
   // Use PATCH /content to write markdown directly (bypasses smart_parse)
   const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
     method: "PATCH",
