@@ -82,6 +82,17 @@ window.BlockEditor = (() => {
     }
 
     // ── MD → BLOCKS ─────────────────────────────────────────────
+    const COLOR_NAMES = {
+      default:'', gray:'#9b9b9b', brown:'#8b6756', orange:'#d9730d', yellow:'#cb912f',
+      green:'#4a9e6a', blue:'#2e7fd6', purple:'#9065b0', pink:'#c4385b', red:'#cc4444'
+    };
+    const BG_NAMES = {
+      default:'', gray:'rgba(120,120,120,0.15)', brown:'rgba(139,103,86,0.15)',
+      orange:'rgba(217,115,13,0.15)', yellow:'rgba(203,145,47,0.15)',
+      green:'rgba(74,158,106,0.15)', blue:'rgba(46,127,214,0.15)',
+      purple:'rgba(144,101,176,0.15)', pink:'rgba(196,56,91,0.15)', red:'rgba(204,68,68,0.15)'
+    };
+
     function mdToBlocks(md) {
       if (!md || !md.trim()) return [{ id:uid(), type:'text', content:'', checked:false }];
       const blocks = [];
@@ -89,30 +100,36 @@ window.BlockEditor = (() => {
       let i = 0;
 
       while (i < lines.length) {
-        const l = lines[i];
+        let l = lines[i];
+
+        // color annotation: <!-- color:X bgColor:Y -->
+        let blockColor = '', blockBgColor = '';
+        const colorMatch = l.match(/^<!--\s*color:(\w+)(?:\s+bgColor:(\w+))?\s*-->$/);
+        if (colorMatch) { blockColor = colorMatch[1]; blockBgColor = colorMatch[2] || ''; i++; if (i >= lines.length) break; l = lines[i]; }
+        const pushBlock = (b) => { if (blockColor) b.color = blockColor; if (blockBgColor) b.bgColor = blockBgColor; blocks.push(b); };
 
         // blank line → skip
         if (!l.trim()) { i++; continue; }
 
         // headings
-        if (l.startsWith('#### '))  { blocks.push({ id:uid(), type:'h4', content:l.slice(5) }); i++; continue; }
-        if (l.startsWith('### '))   { blocks.push({ id:uid(), type:'h3', content:l.slice(4) }); i++; continue; }
-        if (l.startsWith('## '))    { blocks.push({ id:uid(), type:'h2', content:l.slice(3) }); i++; continue; }
-        if (l.startsWith('# '))     { blocks.push({ id:uid(), type:'h1', content:l.slice(2) }); i++; continue; }
+        if (l.startsWith('#### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(5) }); i++; continue; }
+        if (l.startsWith('### '))   { pushBlock({ id:uid(), type:'h3', content:l.slice(4) }); i++; continue; }
+        if (l.startsWith('## '))    { pushBlock({ id:uid(), type:'h2', content:l.slice(3) }); i++; continue; }
+        if (l.startsWith('# '))     { pushBlock({ id:uid(), type:'h1', content:l.slice(2) }); i++; continue; }
 
         // todo
-        if (l.startsWith('- [x] ')) { blocks.push({ id:uid(), type:'todo', content:l.slice(6), checked:true  }); i++; continue; }
-        if (l.startsWith('- [ ] ')) { blocks.push({ id:uid(), type:'todo', content:l.slice(6), checked:false }); i++; continue; }
+        if (l.startsWith('- [x] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:true  }); i++; continue; }
+        if (l.startsWith('- [ ] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:false }); i++; continue; }
 
         // list
-        if (l.startsWith('- '))     { blocks.push({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
-        if (/^\d+\. /.test(l))      { blocks.push({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, '') }); i++; continue; }
+        if (l.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
+        if (/^\d+\. /.test(l))      { pushBlock({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, '') }); i++; continue; }
 
         // quote
-        if (l.startsWith('> '))     { blocks.push({ id:uid(), type:'quote',   content:l.slice(2) }); i++; continue; }
+        if (l.startsWith('> '))     { pushBlock({ id:uid(), type:'quote',   content:l.slice(2) }); i++; continue; }
 
         // divider
-        if (l === '---' || l === '***') { blocks.push({ id:uid(), type:'divider', content:'' }); i++; continue; }
+        if (l === '---' || l === '***') { pushBlock({ id:uid(), type:'divider', content:'' }); i++; continue; }
 
         // page link: [[title]] or [[title|entry-id]]
         if (/^\[\[.+\]\]$/.test(l.trim())) {
@@ -120,7 +137,7 @@ window.BlockEditor = (() => {
           const pipe  = inner.lastIndexOf('|');
           const title  = pipe >= 0 ? inner.slice(0, pipe) : inner;
           const pageId = pipe >= 0 ? inner.slice(pipe + 1) : undefined;
-          blocks.push({ id:uid(), type:'page', content:title, pageId }); i++; continue;
+          pushBlock({ id:uid(), type:'page', content:title, pageId }); i++; continue;
         }
 
         // toggle blocks: :::toggle Header, :::toggle-h1 Header, etc.
@@ -135,7 +152,7 @@ window.BlockEditor = (() => {
             bodyLines.push(lines[i]); i++; toggleLines++;
           }
           if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
-          blocks.push({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
+          pushBlock({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
           continue;
         }
 
@@ -146,7 +163,7 @@ window.BlockEditor = (() => {
           while (i < lines.length && lines[i].trim().startsWith('|')) {
             tableLines.push(lines[i]); i++;
           }
-          blocks.push({ id:uid(), type:'table', content:tableLines.join('\n') });
+          pushBlock({ id:uid(), type:'table', content:tableLines.join('\n') });
           continue;
         }
 
@@ -160,7 +177,7 @@ window.BlockEditor = (() => {
             code.push(lines[i]); i++; fenceLines++;
           }
           if (i < lines.length && lines[i].startsWith('```')) i++; // skip closing fence
-          blocks.push({ id:uid(), type:'code', content:code.join('\n'), lang });
+          pushBlock({ id:uid(), type:'code', content:code.join('\n'), lang });
           continue;
         }
 
@@ -171,7 +188,7 @@ window.BlockEditor = (() => {
           paraLines.push(lines[i]);
           i++;
         }
-        blocks.push({ id:uid(), type:'text', content:paraLines.join('\n') });
+        pushBlock({ id:uid(), type:'text', content:paraLines.join('\n') });
       }
 
       return blocks.length ? blocks : [{ id:uid(), type:'text', content:'', checked:false }];
@@ -188,27 +205,31 @@ window.BlockEditor = (() => {
     function blocksToMd() {
       const parts = [];
       for (const b of _blocks) {
+        const colorPrefix = (b.color && b.color !== 'default') || (b.bgColor && b.bgColor !== 'default')
+          ? `<!-- color:${b.color||'default'}${b.bgColor ? ' bgColor:'+b.bgColor : ''} -->\n`
+          : '';
         const c = (readContent(b.id) ?? b.content ?? '').replace(/\n$/, ''); // trim trailing \n
+        const push = (raw) => parts.push(colorPrefix + raw);
         switch (b.type) {
-          case 'h1': parts.push('# '  + c); break;
-          case 'h2': parts.push('## ' + c); break;
-          case 'h3': parts.push('### '+ c); break;
-          case 'h4': parts.push('#### '+ c); break;
-          case 'bullet':   parts.push('- ' + c); break;
-          case 'numbered': parts.push('1. ' + c); break;
+          case 'h1': push('# '  + c); break;
+          case 'h2': push('## ' + c); break;
+          case 'h3': push('### '+ c); break;
+          case 'h4': push('#### '+ c); break;
+          case 'bullet':   push('- ' + c); break;
+          case 'numbered': push('1. ' + c); break;
           case 'todo': {
             const cb = container.querySelector(`[data-id="${b.id}"] input[type=checkbox]`);
             const chk = cb ? cb.checked : (b.checked || false);
-            parts.push(`- [${chk ? 'x' : ' '}] ${c}`);
+            push(`- [${chk ? 'x' : ' '}] ${c}`);
             break;
           }
-          case 'quote': parts.push('> ' + c); break;
+          case 'quote': push('> ' + c); break;
           case 'code': {
             const ta = container.querySelector(`[data-id="${b.id}"] .eb-code`);
             const li = container.querySelector(`[data-id="${b.id}"] .eb-code-lang`);
             const code = ta ? ta.value : c;
             const lang = li ? li.value : (b.lang || '');
-            parts.push('```' + lang + '\n' + code + '\n```');
+            push('```' + lang + '\n' + code + '\n```');
             break;
           }
           case 'toggle':
@@ -217,16 +238,14 @@ window.BlockEditor = (() => {
           case 'toggle-h3': {
             const hEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-header`);
             const th = hEl ? (hEl.innerText || '') : (b.header || '');
-            // b.body is kept up-to-date by the nested editor's onChange callback
             const tb = b.body || '';
-            parts.push(`:::${b.type} ${th}\n${tb}\n:::`);
+            push(`:::${b.type} ${th}\n${tb}\n:::`);
             break;
           }
-          case 'table':   parts.push(b.content || ''); break;
-          case 'divider': parts.push('---'); break;
-          // Store pageId in markdown: [[title|page-id]]
-          case 'page':    parts.push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
-          default: if (c.trim()) parts.push(c);
+          case 'table':   push(b.content || ''); break;
+          case 'divider': push('---'); break;
+          case 'page':    push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
+          default: if (c.trim()) push(c);
         }
       }
       return parts.join('\n\n');
@@ -248,11 +267,30 @@ window.BlockEditor = (() => {
       }
     }
 
+    function applyBlockColor(wrap, b) {
+      const col = b.color && b.color !== 'default' ? COLOR_NAMES[b.color] : '';
+      const bg  = b.bgColor && b.bgColor !== 'default' ? BG_NAMES[b.bgColor] : '';
+      wrap.style.color = col || '';
+      wrap.style.background = bg || '';
+      wrap.style.borderRadius = bg ? '3px' : '';
+    }
+
+    function setBlockColor(blockId, color, bgColor) {
+      const b = _blocks.find(x => x.id === blockId);
+      if (!b) return;
+      if (color !== undefined) b.color = color;
+      if (bgColor !== undefined) b.bgColor = bgColor;
+      const wrap = container.querySelector(`[data-id="${blockId}"]`);
+      if (wrap) applyBlockColor(wrap, b);
+      sync();
+    }
+
     function makeEl(b) {
       const wrap = document.createElement('div');
       wrap.className = `eb eb--${b.type}`;
       wrap.dataset.id   = b.id;
       wrap.dataset.type = b.type;
+      applyBlockColor(wrap, b);
 
       // Block controls (drag handle + options) — shown on hover
       const controls = document.createElement('div');
@@ -700,7 +738,8 @@ window.BlockEditor = (() => {
       m.style.left = left + 'px';
 
       const items = [
-        { label:'Convertir en…', icon:'⇄', sub:true },
+        { label:'Convertir en…', icon:'⇄', sub:'turn' },
+        { label:'Color',          icon:'🎨', sub:'color' },
         { label:'Duplicar',      icon:'⎘', action: () => { duplicateBlock(blockId); closeBlockMenu(); } },
         { sep: true },
         { label:'Eliminar',      icon:'✕', action: () => { deleteBlock(blockId); closeBlockMenu(); }, danger:true },
@@ -717,8 +756,10 @@ window.BlockEditor = (() => {
         const i = parseInt(el.dataset.idx);
         const it = items[i];
         if (!it) return;
-        if (it.sub) {
-          el.addEventListener('mouseenter', () => openTurnIntoMenu(blockId, el, m));
+        if (it.sub === 'turn') {
+          el.addEventListener('mouseenter', () => { closeColorMenu(); openTurnIntoMenu(blockId, el, m); });
+        } else if (it.sub === 'color') {
+          el.addEventListener('mouseenter', () => { closeTurnIntoMenu(); openColorMenu(blockId, el, m); });
         } else if (it.action) {
           el.addEventListener('mousedown', e => { e.preventDefault(); it.action(); });
         }
@@ -737,6 +778,63 @@ window.BlockEditor = (() => {
       if (blockMenu) { blockMenu.remove(); blockMenu = null; }
       document.removeEventListener('mousedown', _closeBMOutside);
       closeTurnIntoMenu();
+      closeColorMenu();
+    }
+
+    let colorMenu = null;
+    function closeColorMenu() { if (colorMenu) { colorMenu.remove(); colorMenu = null; } }
+
+    function openColorMenu(blockId, anchor, parent) {
+      closeColorMenu();
+      const rect = anchor.getBoundingClientRect();
+      const m = document.createElement('div');
+      m.className = 'eb-block-menu eb-color-menu';
+      m.style.left = (rect.right + 4) + 'px';
+      m.style.top  = rect.top + 'px';
+
+      const colors = ['default','gray','brown','orange','yellow','green','blue','purple','pink','red'];
+      const colorLabels = { default:'Default', gray:'Gris', brown:'Marrón', orange:'Naranja',
+        yellow:'Amarillo', green:'Verde', blue:'Azul', purple:'Morado', pink:'Rosa', red:'Rojo' };
+
+      const b = _blocks.find(x => x.id === blockId);
+      const curColor  = b?.color  || 'default';
+      const curBgColor = b?.bgColor || 'default';
+
+      m.innerHTML = `
+        <div class="eb-bm-section">Color de texto</div>
+        ${colors.map(c => `
+          <div class="eb-bm-item eb-color-item" data-color="${c}" data-kind="color">
+            <span class="eb-color-dot" style="background:${c==='default'?'transparent':COLOR_NAMES[c]};border:${c==='default'?'1px solid var(--border)':'none'}"></span>
+            <span>${colorLabels[c]}</span>
+            ${curColor===c?'<span class="eb-bm-arrow" style="margin-left:auto">✓</span>':''}
+          </div>`).join('')}
+        <div class="eb-bm-sep"></div>
+        <div class="eb-bm-section">Color de fondo</div>
+        ${colors.map(c => `
+          <div class="eb-bm-item eb-color-item" data-color="${c}" data-kind="bgColor">
+            <span class="eb-color-dot" style="background:${c==='default'?'transparent':BG_NAMES[c]};border:${c==='default'?'1px solid var(--border)':'none'}"></span>
+            <span>${colorLabels[c]} fondo</span>
+            ${curBgColor===c?'<span class="eb-bm-arrow" style="margin-left:auto">✓</span>':''}
+          </div>`).join('')}
+      `;
+
+      m.querySelectorAll('.eb-color-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          const kind = el.dataset.kind;
+          const val  = el.dataset.color;
+          if (kind === 'color') setBlockColor(blockId, val, undefined);
+          else setBlockColor(blockId, undefined, val);
+          closeBlockMenu();
+        });
+      });
+
+      document.body.appendChild(m);
+      colorMenu = m;
+      // Flip if off-screen
+      const mr = m.getBoundingClientRect();
+      if (mr.right > window.innerWidth) m.style.left = (rect.left - mr.width - 4) + 'px';
+      if (mr.bottom > window.innerHeight) m.style.top = (window.innerHeight - mr.height - 8) + 'px';
     }
 
     let turnIntoMenu = null;

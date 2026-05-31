@@ -2074,6 +2074,23 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-bm-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .eb-turninto-menu { min-width: 220px; }
 
+/* Color submenu */
+.eb-color-menu { min-width: 200px; }
+.eb-bm-section {
+  padding: 6px 14px 3px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.eb-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
 /* Editable content */
 .eb-content {
   flex: 1;
@@ -2089,7 +2106,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   content: attr(data-placeholder);
   color: var(--text-faint);
   pointer-events: none;
+  display: none;
 }
+/* Show placeholder only on the focused block */
+.eb-content:focus:empty::before { display: block; }
+/* Also show on hover for better discoverability */
+.eb:hover .eb-content:empty::before { display: block; opacity: 0.5; }
 
 /* Heading blocks */
 .eb--h1 .eb-content { font-size: 1.6rem; font-weight: 700; font-family: var(--font-mono); color: var(--h1-color); }
