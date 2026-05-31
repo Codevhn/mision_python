@@ -117,19 +117,35 @@ function bindEvents() {
     e.preventDefault();
     document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
     e.currentTarget.classList.add("active");
-    document.querySelectorAll(".tree-item").forEach(el => el.style.display = "");
+    // Reset any sidebar filters
+    document.querySelectorAll(".tree-entry").forEach(el => el.style.display = "");
+    document.querySelectorAll(".tree-topic").forEach(el => el.style.display = "");
+    document.querySelectorAll(".tree-cat").forEach(el => el.style.display = "");
+    // Go to home screen
+    $("entryView").classList.add("hidden");
+    $("welcome").classList.remove("hidden");
     renderHome();
   });
-  $("wsSearch").addEventListener("click", e => { e.preventDefault(); $("searchInput").focus(); });
+  $("wsSearch").addEventListener("click", e => {
+    e.preventDefault();
+    $("searchInput").focus();
+    $("searchInput").select();
+  });
   $("wsStarred").addEventListener("click", e => {
     e.preventDefault();
-    // Filter sidebar to starred entries
-    document.querySelectorAll(".tree-item").forEach(el => {
-      el.style.display = el.dataset.starred === "true" ? "" : "none";
-    });
     document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
     e.currentTarget.classList.add("active");
-    // Click wsHome to reset
+    // Show only starred entries; hide categories/topics with no starred entries
+    const starredIds = new Set(Object.entries(starredMap).filter(([,v]) => v).map(([id]) => id));
+    document.querySelectorAll(".tree-cat").forEach(cat => {
+      const hasStarred = [...cat.querySelectorAll(".tree-entry")].some(e => starredIds.has(e.dataset.id));
+      cat.style.display = hasStarred ? "" : "none";
+      if (hasStarred) {
+        cat.querySelectorAll(".tree-entry").forEach(e => {
+          e.style.display = starredIds.has(e.dataset.id) ? "" : "none";
+        });
+      }
+    });
   });
   $("sidebarOverlay").addEventListener("click", closeSidebarMobile);
 
@@ -521,12 +537,11 @@ function renderCoursesTree(tree) {
 function renderTeamspaceTree(tree) {
   const nav = $("teamspaceTree");
   const label = $("teamspaceSectionLabel");
+  label.style.display = "flex";
   if (!tree || Object.keys(tree).length === 0) {
     nav.innerHTML = '<div class="tree-empty">No hay contenido aún.</div>';
-    label.style.display = "none";
     return;
   }
-  label.style.display = "flex";
   nav.innerHTML = "";
 
   for (const [spaceSlug, spaceData] of Object.entries(tree)) {
@@ -1693,25 +1708,17 @@ function closeVersionModal() {
 
 async function restoreVersion() {
   if (!currentEntryId || !_historyCurrentMarkdown) return;
-  const res = await fetch(`/api/entry/${currentEntryId}`);
-  const data = await res.json();
-  const m = data.meta;
-  const putRes = await fetch(`/api/entry/${currentEntryId}`, {
-    method: "PUT",
+  // Use PATCH /content to write markdown directly (bypasses smart_parse)
+  const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      raw_text: _historyCurrentMarkdown,
-      title: m.title,
-      category: m.category_label || m.category,
-      topic: m.topic_label || m.topic,
-    }),
+    body: JSON.stringify({ raw_text: _historyCurrentMarkdown, restore: true }),
   });
   if (putRes.ok) {
     closeVersionModal();
     $("historyPanel").classList.add("hidden");
     $("historyBtn").classList.remove("active");
     showToast("Versión restaurada");
-    await loadTree();
     loadEntry(currentEntryId);
   } else {
     showToast("Error al restaurar", "error");

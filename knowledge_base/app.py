@@ -837,10 +837,12 @@ def patch_content(entry_id):
     data = request.json
     meta = index[entry_id]
     raw_text = data.get("raw_text", "").strip()
+    restore = data.get("restore", False)  # if True, write markdown verbatim (no smart_parse)
     if raw_text:
         path = _entry_path(entry_id, meta)
         _save_history_snapshot(entry_id, meta, path)
-        path.write_text(smart_parse(raw_text))
+        # Restore: write markdown as-is; normal save: smart_parse
+        path.write_text(raw_text if restore else smart_parse(raw_text))
     title = data.get("title", "").strip()
     if title:
         index[entry_id]["title"] = title
