@@ -60,6 +60,8 @@ def slugify(text):
 def _entry_path(entry_id, meta):
     if meta.get("type") == "course":
         return KNOWLEDGE_DIR / "courses" / meta["course"] / meta["module"] / f"{entry_id}.md"
+    if meta.get("type") == "teamspace":
+        return KNOWLEDGE_DIR / "teamspace" / meta.get("teamspace", "general") / f"{entry_id}.md"
     return KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
 
 
@@ -315,6 +317,28 @@ def index():
     return render_template("index.html", v=_BUILD_ID)
 
 
+@app.route("/api/teamspace/tree")
+def get_teamspace_tree():
+    index = load_index()
+    tree = {}
+    for entry_id, meta in index.items():
+        if meta.get("type") != "teamspace":
+            continue
+        space = meta.get("teamspace", "general")
+        space_label = meta.get("teamspace_label") or space.replace("-", " ").title()
+        tree.setdefault(space, {"_label": space_label, "_entries": []})
+        tree[space]["_entries"].append({
+            "id": entry_id,
+            "title": meta["title"],
+            "created_at": meta.get("created_at", ""),
+            "status": meta.get("status", "pendiente"),
+            "order": meta.get("order", 0),
+        })
+    for space in tree:
+        tree[space]["_entries"].sort(key=lambda e: (e["order"], e["created_at"]))
+    return jsonify(tree)
+
+
 @app.route("/api/tree")
 def get_tree():
     index = load_index()
@@ -322,7 +346,7 @@ def get_tree():
     cat_labels = {}
     topic_labels = {}
     for entry_id, meta in index.items():
-        if meta.get("type") == "course":
+        if meta.get("type") in ("course", "teamspace"):
             continue
         cat = meta["category"]
         topic = meta["topic"]
@@ -374,31 +398,54 @@ def create_entry():
     data = request.json
     raw_text = data.get("raw_text", "").strip()
     title = data.get("title", "").strip()
-    category = data.get("category", "").strip()
-    topic = data.get("topic", "").strip()
+    entry_type = data.get("entry_type", "knowledge")
 
-    if not all([raw_text, title, category, topic]):
-        return jsonify({"error": "Missing fields"}), 400
+    if not title:
+        return jsonify({"error": "Missing title"}), 400
 
-    md_content = smart_parse(raw_text)
+    md_content = smart_parse(raw_text) if raw_text else ""
     entry_id = slugify(title)
     index = load_index()
 
-    # avoid collisions
     base_id = entry_id
     counter = 1
     while entry_id in index:
         entry_id = f"{base_id}-{counter}"
         counter += 1
 
+    raw_tags = data.get("tags", "")
+    tags = [t.strip().lower() for t in raw_tags.split(",") if t.strip()] if raw_tags else []
+    parent_id = data.get("parent_id") or None
+
+    if entry_type == "teamspace":
+        teamspace = data.get("teamspace", "general").strip()
+        folder = KNOWLEDGE_DIR / "teamspace" / slugify(teamspace)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{entry_id}.md").write_text(md_content)
+        index[entry_id] = {
+            "title": title,
+            "type": "teamspace",
+            "teamspace": slugify(teamspace),
+            "teamspace_label": teamspace,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "status": "pendiente",
+            "order": 0,
+            "tags": tags,
+            "parent_id": parent_id,
+        }
+        save_index(index)
+        return jsonify({"id": entry_id, "message": "Saved"})
+
+    # knowledge entry (default)
+    category = data.get("category", "").strip()
+    topic = data.get("topic", "").strip()
+    if not all([category, topic]):
+        return jsonify({"error": "Missing fields"}), 400
+
     folder = KNOWLEDGE_DIR / slugify(category) / slugify(topic)
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"{entry_id}.md").write_text(md_content)
 
-    raw_tags = data.get("tags", "")
-    tags = [t.strip().lower() for t in raw_tags.split(",") if t.strip()] if raw_tags else []
-
-    parent_id = data.get("parent_id") or None
     index[entry_id] = {
         "title": title,
         "category": slugify(category),
@@ -412,7 +459,6 @@ def create_entry():
         "parent_id": parent_id,
     }
     save_index(index)
-
     return jsonify({"id": entry_id, "message": "Saved"})
 
 

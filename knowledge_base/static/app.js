@@ -86,15 +86,27 @@ document.addEventListener("DOMContentLoaded", () => {
     tab.addEventListener("click", () => {
       currentModalMode = tab.dataset.mode;
       document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t === tab));
-      $("knowledgeFields").classList.toggle("hidden", currentModalMode === "course");
-      $("courseFields").classList.toggle("hidden", currentModalMode === "knowledge");
-      $("templatePickerGroup").classList.toggle("hidden", currentModalMode === "course");
+      $("knowledgeFields").classList.toggle("hidden",  currentModalMode !== "knowledge");
+      $("courseFields").classList.toggle("hidden",     currentModalMode !== "course");
+      $("teamspaceFields").classList.toggle("hidden",  currentModalMode !== "teamspace");
+      $("templatePickerGroup").classList.toggle("hidden", currentModalMode !== "knowledge");
     });
   });
 });
 
 function bindEvents() {
   $("newEntryBtn").addEventListener("click", openNewModal);
+  $("newTeamspaceEntryBtn").addEventListener("click", () => {
+    openNewModal();
+    // Switch to teamspace tab
+    if (window._setModalMode) window._setModalMode("teamspace");
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "teamspace"));
+    $("knowledgeFields").classList.add("hidden");
+    $("courseFields").classList.add("hidden");
+    $("teamspaceFields").classList.remove("hidden");
+    $("templatePickerGroup").classList.add("hidden");
+    setTimeout(() => $("fieldTeamspace").focus(), 60);
+  });
   // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
@@ -241,11 +253,13 @@ function closeSidebarMobile() {
 
 // ---- TREE ----
 async function loadTree() {
-  const [r1, r2] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree")]);
-  const knowledgeTree = await r1.json();
-  const coursesTree   = await r2.json();
+  const [r1, r2, r3] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree")]);
+  const knowledgeTree  = await r1.json();
+  const coursesTree    = await r2.json();
+  const teamspaceTree  = await r3.json();
   renderTree(knowledgeTree);
   renderCoursesTree(coursesTree);
+  renderTeamspaceTree(teamspaceTree);
   // Restore starred section from starredMap
   renderStarredSection(
     Object.fromEntries(
@@ -503,6 +517,52 @@ function renderCoursesTree(tree) {
   }
 }
 
+// ---- TEAMSPACE TREE ----
+function renderTeamspaceTree(tree) {
+  const nav = $("teamspaceTree");
+  const label = $("teamspaceSectionLabel");
+  if (!tree || Object.keys(tree).length === 0) {
+    nav.innerHTML = '<div class="tree-empty">No hay contenido aún.</div>';
+    label.style.display = "none";
+    return;
+  }
+  label.style.display = "flex";
+  nav.innerHTML = "";
+
+  for (const [spaceSlug, spaceData] of Object.entries(tree)) {
+    const spaceLabel = spaceData._label || spaceSlug;
+    const entries    = spaceData._entries || [];
+
+    const spaceDiv = document.createElement("div");
+    spaceDiv.className = "tree-cat";
+
+    const spaceHeader = document.createElement("div");
+    spaceHeader.className = "tree-cat-header";
+    spaceHeader.innerHTML = `<span class="tree-arrow">▸</span><span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>`;
+    let spaceOpen = true;
+    spaceHeader.addEventListener("click", () => {
+      spaceOpen = !spaceOpen;
+      spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
+      entryList.style.display = spaceOpen ? "" : "none";
+    });
+
+    const entryList = document.createElement("div");
+    entryList.className = "tree-topic";
+    for (const entry of entries) {
+      const item = document.createElement("div");
+      item.className = "tree-item ts-item";
+      item.dataset.id = entry.id;
+      item.textContent = entry.title;
+      item.addEventListener("click", () => loadEntry(entry.id));
+      entryList.appendChild(item);
+    }
+
+    spaceDiv.appendChild(spaceHeader);
+    spaceDiv.appendChild(entryList);
+    nav.appendChild(spaceDiv);
+  }
+}
+
 // ---- RECENTLY VISITED ----
 const KB_RECENT_KEY = "kb_recent_v2";
 const KB_RECENT_MAX = 12;
@@ -744,6 +804,7 @@ function openNewModal() {
   document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
   $("knowledgeFields").classList.remove("hidden");
   $("courseFields").classList.add("hidden");
+  $("teamspaceFields").classList.add("hidden");
   $("templatePickerGroup").classList.remove("hidden");
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
@@ -864,6 +925,27 @@ async function saveEntry() {
       }
     } else {
       showToast("Error al actualizar", "error");
+    }
+    return;
+  }
+
+  // Teamspace new entry
+  if (currentModalMode === "teamspace") {
+    const teamspace = $("fieldTeamspace").value.trim() || "General";
+    if (!title) { showToast("Ingresa un título", "error"); return; }
+    const res = await fetch("/api/entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      closeModal();
+      await loadTree();
+      loadEntry(d.id);
+      showToast("Entrada de teamspace guardada");
+    } else {
+      showToast("Error al guardar", "error");
     }
     return;
   }

@@ -73,6 +73,15 @@
       <nav class="tree" id="coursesTree">
         <div class="tree-empty">No hay cursos aún.</div>
       </nav>
+
+      <!-- TEAMSPACE -->
+      <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:none;align-items:center;justify-content:space-between;">
+        <span>TEAMSPACE</span>
+        <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Nueva entrada en Teamspace">+</button>
+      </div>
+      <nav class="tree" id="teamspaceTree">
+        <div class="tree-empty">No hay contenido aún.</div>
+      </nav>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -220,6 +229,7 @@
         <div class="entry-type-toggle">
           <button class="type-tab active" data-mode="knowledge">Conocimiento</button>
           <button class="type-tab" data-mode="course">Curso</button>
+          <button class="type-tab" data-mode="teamspace">Teamspace</button>
         </div>
         <div id="knowledgeFields">
         <div class="form-row two-col">
@@ -249,6 +259,13 @@
             </div>
           </div>
         </div><!-- /#courseFields -->
+        <div id="teamspaceFields" class="hidden">
+          <div class="form-group">
+            <label>Teamspace</label>
+            <input type="text" id="fieldTeamspace" placeholder="Ej: General, Proyectos, Devops…" list="teamspaceSuggestions" />
+            <datalist id="teamspaceSuggestions"></datalist>
+          </div>
+        </div><!-- /#teamspaceFields -->
         <div class="form-group">
           <label>Título de la entrada</label>
           <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
