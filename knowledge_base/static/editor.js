@@ -253,9 +253,10 @@ window.BlockEditor = (() => {
       const handle = document.createElement('div');
       handle.className = 'eb-handle';
       handle.draggable = true;
-      handle.title = 'Arrastrar para mover';
+      handle.title = 'Clic para opciones · Arrastrar para mover';
       handle.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13.5" r="1.5"/><circle cx="7.5" cy="13.5" r="1.5"/></svg>';
       handle.addEventListener('dragstart', e => {
+
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', b.id);
         dragSrcId = b.id;
@@ -266,12 +267,15 @@ window.BlockEditor = (() => {
         dragSrcId = null;
         container.querySelectorAll('.eb--drag-top, .eb--drag-bot').forEach(el => el.classList.remove('eb--drag-top', 'eb--drag-bot'));
       });
+      // Click handle (no drag) → open block menu
+      handle.addEventListener('click', e => { e.preventDefault(); openBlockMenu(b.id, handle); });
 
+      // + button: add new block below
       const optsBtn = document.createElement('button');
       optsBtn.className = 'eb-opts';
-      optsBtn.title = 'Opciones del bloque';
+      optsBtn.title = 'Añadir bloque abajo';
       optsBtn.innerHTML = '+';
-      optsBtn.addEventListener('mousedown', e => { e.preventDefault(); openBlockMenu(b.id, optsBtn); });
+      optsBtn.addEventListener('mousedown', e => { e.preventDefault(); addBlockAfter(b.id, 'text'); });
 
       controls.appendChild(handle);
       controls.appendChild(optsBtn);
@@ -491,7 +495,9 @@ window.BlockEditor = (() => {
 
         const arrow = document.createElement('button');
         arrow.className = 'eb-toggle-arrow';
-        arrow.textContent = isOpen ? '▾' : '▸';
+        arrow.innerHTML = isOpen
+          ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4"/></svg>'
+          : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
         arrow.title = isOpen ? 'Colapsar' : 'Expandir';
 
         const hDiv = document.createElement('div');
@@ -517,21 +523,34 @@ window.BlockEditor = (() => {
         bodyTa.value = b.body || '';
         bodyTa.spellcheck = false;
         bodyTa.placeholder = 'Contenido del toggle…';
-        bodyTa.rows = Math.max(2, (b.body || '').split('\n').length + 1);
+
+        const resizeBodyTa = () => {
+          bodyTa.style.height = 'auto';
+          bodyTa.style.height = Math.max(bodyTa.scrollHeight, 32) + 'px';
+        };
         bodyTa.addEventListener('input', () => {
-          bodyTa.rows = Math.max(2, bodyTa.value.split('\n').length + 1);
+          resizeBodyTa();
           b.body = bodyTa.value;
           sync();
+        });
+        bodyTa.addEventListener('keydown', e => {
+          if (e.key === 'Escape') { bodyTa.blur(); }
         });
         body.appendChild(bodyTa);
         wrap.appendChild(body);
 
+        // Auto-resize after insertion (needs DOM reflow)
+        if (b.body) requestAnimationFrame(resizeBodyTa);
+
         // Arrow toggle
         arrow.addEventListener('click', () => {
           b.open = !b.open;
-          arrow.textContent = b.open ? '▾' : '▸';
+          arrow.innerHTML = b.open
+            ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4"/></svg>'
+            : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
           arrow.title = b.open ? 'Colapsar' : 'Expandir';
           body.style.display = b.open ? '' : 'none';
+          if (b.open) requestAnimationFrame(resizeBodyTa);
         });
 
         // Header keydown
