@@ -1976,13 +1976,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* Block controls (handle + opts) */
 .eb-controls {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.1s;
-  padding-top: 4px;
+  padding-top: 3px;
   user-select: none;
 }
 .eb:hover .eb-controls { opacity: 1; }
@@ -2730,29 +2730,22 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--toggle-h3 .eb-toggle-header { font-size: 1rem; font-weight: 600; color: var(--h3-color); }
 
 .eb-toggle-body-wrap {
-  padding-left: 28px;
+  padding: 2px 0 4px 28px;
   border-left: 2px solid var(--border);
-  margin-left: 12px;
-  margin-top: 4px;
-  margin-bottom: 6px;
-}
-.eb-toggle-body {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  line-height: 1.65;
-  padding: 4px 0;
-  resize: none;
-  overflow: hidden;
-  box-sizing: border-box;
+  margin-left: 20px;
+  margin-top: 2px;
+  margin-bottom: 4px;
   min-height: 32px;
-  display: block;
 }
-.eb-toggle-body::placeholder { color: var(--text-faint); }
+/* The nested block editor container inside a toggle */
+.eb-toggle-nested {
+  width: 100%;
+}
+/* Nested blocks are slightly smaller */
+.eb-toggle-nested .eb-content { font-size: 0.93rem; }
+.eb-toggle-nested .eb--h1 .eb-content { font-size: 1.4rem; }
+.eb-toggle-nested .eb--h2 .eb-content { font-size: 1.15rem; }
+.eb-toggle-nested .eb--h3 .eb-content { font-size: 1rem; }
 
 /* ── WORKSPACE SIDEBAR ───────────────────────────────────── */
 .workspace-header {

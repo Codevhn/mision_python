@@ -48,11 +48,13 @@ window.BlockEditor = (() => {
     const onChange     = opts.onChange     || null;
 
     let _blocks  = [];
-    let _loading = false;   // true while loading md — prevents onChange feedback loop
+    let _loading = false;
     let slashBlockId = null, slashFilter = '', menuIdx = 0;
     let convertMenu = null;
     let blockMenu   = null;
     let dragSrcId   = null;
+    const _nestedMenus = new Map(); // blockId → slash-menu DOM element
+    let _selfRef = null;            // set after createInstance returns (for page-create in nested editors)
 
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
@@ -208,9 +210,9 @@ window.BlockEditor = (() => {
           case 'toggle-h2':
           case 'toggle-h3': {
             const hEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-header`);
-            const bEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-body`);
             const th = hEl ? (hEl.innerText || '') : (b.header || '');
-            const tb = bEl ? (bEl.value || '') : (b.body || '');
+            // b.body is kept up-to-date by the nested editor's onChange callback
+            const tb = b.body || '';
             parts.push(`:::${b.type} ${th}\n${tb}\n:::`);
             break;
           }
@@ -226,17 +228,17 @@ window.BlockEditor = (() => {
 
     // ── RENDER ──────────────────────────────────────────────────
     function render() {
+      // Clean up nested slash menus before wiping the DOM
+      _nestedMenus.forEach(m => m.remove());
+      _nestedMenus.clear();
       container.innerHTML = '';
       for (const b of _blocks) container.appendChild(makeEl(b));
       if (_blocks.length === 0) {
         _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
         container.appendChild(makeEl(_blocks[0]));
       }
-      // Highlight all code blocks after render
       if (window.Prism) {
-        container.querySelectorAll('.eb-code-pre code[class*="language-"]').forEach(el => {
-          Prism.highlightElement(el);
-        });
+        container.querySelectorAll('.eb-code-pre code[class*="language-"]').forEach(el => Prism.highlightElement(el));
       }
     }
 
@@ -270,15 +272,15 @@ window.BlockEditor = (() => {
       // Click handle (no drag) → open block menu
       handle.addEventListener('click', e => { e.preventDefault(); openBlockMenu(b.id, handle); });
 
-      // + button: add new block below
+      // + button first, then handle — same layout as Notion
       const optsBtn = document.createElement('button');
       optsBtn.className = 'eb-opts';
       optsBtn.title = 'Añadir bloque abajo';
       optsBtn.innerHTML = '+';
       optsBtn.addEventListener('mousedown', e => { e.preventDefault(); addBlockAfter(b.id, 'text'); });
 
-      controls.appendChild(handle);
       controls.appendChild(optsBtn);
+      controls.appendChild(handle);
       wrap.appendChild(controls);
 
       // Drop zone events on every block
@@ -513,34 +515,32 @@ window.BlockEditor = (() => {
         tRow.appendChild(hDiv);
         wrap.appendChild(tRow);
 
-        // Body (collapsible)
+        // Body — full nested block editor (collapsible)
         const body = document.createElement('div');
         body.className = 'eb-toggle-body-wrap';
         body.style.display = isOpen ? '' : 'none';
 
-        const bodyTa = document.createElement('textarea');
-        bodyTa.className = 'eb-toggle-body';
-        bodyTa.value = b.body || '';
-        bodyTa.spellcheck = false;
-        bodyTa.placeholder = 'Contenido del toggle…';
-
-        const resizeBodyTa = () => {
-          bodyTa.style.height = 'auto';
-          bodyTa.style.height = Math.max(bodyTa.scrollHeight, 32) + 'px';
-        };
-        bodyTa.addEventListener('input', () => {
-          resizeBodyTa();
-          b.body = bodyTa.value;
-          sync();
-        });
-        bodyTa.addEventListener('keydown', e => {
-          if (e.key === 'Escape') { bodyTa.blur(); }
-        });
-        body.appendChild(bodyTa);
+        const nestedContainer = document.createElement('div');
+        nestedContainer.className = 'eb-toggle-nested';
+        body.appendChild(nestedContainer);
         wrap.appendChild(body);
 
-        // Auto-resize after insertion (needs DOM reflow)
-        if (b.body) requestAnimationFrame(resizeBodyTa);
+        // Dedicated slash menu for this nested editor
+        const nestedMenu = document.createElement('div');
+        nestedMenu.className = 'slash-menu hidden';
+        document.body.appendChild(nestedMenu);
+        _nestedMenus.set(b.id, nestedMenu);
+
+        // Create nested editor instance
+        const nestedEd = BlockEditor.create({
+          container: nestedContainer,
+          menuEl:    nestedMenu,
+          onChange:  (md) => { b.body = md; sync(); },
+        });
+        nestedEd.load(b.body || '');
+
+        // Store nested editor on wrap so confirmPageCreate can find it
+        wrap._nestedEditor = nestedEd;
 
         // Arrow toggle
         arrow.addEventListener('click', () => {
@@ -550,7 +550,6 @@ window.BlockEditor = (() => {
             : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
           arrow.title = b.open ? 'Colapsar' : 'Expandir';
           body.style.display = b.open ? '' : 'none';
-          if (b.open) requestAnimationFrame(resizeBodyTa);
         });
 
         // Header keydown
@@ -612,6 +611,9 @@ window.BlockEditor = (() => {
       if (_blocks.length <= 1) { clearBlock(id); return; }
       _blocks.splice(idx, 1);
       const el = container.querySelector(`[data-id="${id}"]`);
+      // Clean up any nested slash menu for this toggle block
+      const nm = _nestedMenus.get(id);
+      if (nm) { nm.remove(); _nestedMenus.delete(id); }
       const prevId = _blocks[Math.max(0, idx - 1)].id;
       el.remove();
       const prevC = container.querySelector(`[data-id="${prevId}"] .eb-content`);
@@ -992,6 +994,8 @@ window.BlockEditor = (() => {
       hideMenu();
       if (type === 'divider') { convertBlock(blockId, 'divider'); addBlockAfter(blockId, 'text'); return; }
       if (type === 'page') {
+        // Tell app.js which editor owns this block so addPageBlock goes to the right instance
+        window._activeEditorForPageCreate = _selfRef;
         if (window._promptPageName) window._promptPageName(blockId);
         return;
       }
@@ -1071,7 +1075,8 @@ window.BlockEditor = (() => {
     _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
     render();
 
-    return { load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst };
+    _selfRef = { load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst };
+    return _selfRef;
   }
 
   // ── DEFAULT INSTANCE (modal — backward compat) ───────────────────────────────

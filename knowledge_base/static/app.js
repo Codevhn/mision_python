@@ -1591,7 +1591,9 @@ async function confirmPageCreate() {
   if (res.ok) {
     const d = await res.json();
     // Insert page link block in current entry (stays in place, no scroll)
-    _inlineEditor.addPageBlock(_pendingPageBlockId, name, d.id);
+    const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
+    window._activeEditorForPageCreate = null;
+    targetEditor.addPageBlock(_pendingPageBlockId, name, d.id);
     await loadTree();
     showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
   } else {
