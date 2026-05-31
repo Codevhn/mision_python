@@ -381,9 +381,9 @@ window.BlockEditor = (() => {
       return (typeof el.innerText !== 'undefined') ? el.innerText : el.textContent;
     }
 
-    function blocksToMd() {
+    function blocksToMd(arr) {
       const parts = [];
-      for (const b of _blocks) {
+      for (const b of (arr || _blocks)) {
         const colorPrefix = (b.color && b.color !== 'default') || (b.bgColor && b.bgColor !== 'default')
           ? `<!-- color:${b.color||'default'}${b.bgColor ? ' bgColor:'+b.bgColor : ''} -->\n`
           : '';
@@ -481,9 +481,18 @@ window.BlockEditor = (() => {
     function applyBlockColor(wrap, b) {
       const col = b.color && b.color !== 'default' ? COLOR_NAMES[b.color] : '';
       const bg  = b.bgColor && b.bgColor !== 'default' ? BG_NAMES[b.bgColor] : '';
+      // Background: use !important so it survives the .eb--focused override
+      if (bg) {
+        wrap.style.setProperty('background', bg, 'important');
+        wrap.style.borderRadius = '3px';
+      } else {
+        wrap.style.removeProperty('background');
+        wrap.style.borderRadius = '';
+      }
+      // Color: set on wrap AND on direct content/header child to beat CSS specificity
       wrap.style.color = col || '';
-      wrap.style.background = bg || '';
-      wrap.style.borderRadius = bg ? '3px' : '';
+      const contentEl = wrap.querySelector(':scope > .eb-content, :scope > .eb-toggle-row > .eb-toggle-header');
+      if (contentEl) contentEl.style.color = col || '';
     }
 
     function setBlockColor(blockId, color, bgColor) {
@@ -907,7 +916,27 @@ window.BlockEditor = (() => {
         else             { b.content = src; b.header = undefined; b.body = undefined; }
       } else {
         b.content = readContent(id) ?? b.content;
-        if (isToggleDst) { b.header = b.content; b.body = ''; b.content = undefined; }
+        if (isToggleDst) {
+          b.header = b.content;
+          // Adopt following sibling blocks as toggle body (until next h1/h2/toggle-h1/toggle-h2/divider)
+          const idx = _blocks.findIndex(x => x.id === id);
+          const toAdopt = [];
+          for (let j = idx + 1; j < _blocks.length; j++) {
+            const nb = _blocks[j];
+            if (['h1','h2','toggle-h1','toggle-h2','divider'].includes(nb.type)) break;
+            // read current content from DOM before removing
+            nb.content = readContent(nb.id) ?? nb.content ?? '';
+            toAdopt.push(nb);
+          }
+          if (toAdopt.length) {
+            b.body = blocksToMd(toAdopt);
+            _blocks.splice(idx + 1, toAdopt.length);
+            toAdopt.forEach(nb => container.querySelector(`[data-id="${nb.id}"]`)?.remove());
+          } else {
+            b.body = '';
+          }
+          b.content = undefined;
+        }
       }
       b.type = newType;
       if (isToggleDst && b.open === undefined) b.open = true;

@@ -1969,7 +1969,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   min-height: 28px;
 }
 .eb:hover { background: var(--bg-hover); }
-.eb--focused { background: var(--bg-elevated) !important; }
+.eb--focused { background: var(--bg-elevated); }
 
 /* Block controls (handle + opts) — absolutely positioned left of content */
 .eb-controls {
