@@ -544,7 +544,7 @@ window.BlockEditor = (() => {
       hideMenu();
       if (type === 'divider') { convertBlock(blockId, 'divider'); addBlockAfter(blockId, 'text'); return; }
       if (type === 'page') {
-        if (onPageCreate) window._promptPageName && window._promptPageName(blockId);
+        if (window._promptPageName) window._promptPageName(blockId);
         return;
       }
       convertBlock(blockId, type);

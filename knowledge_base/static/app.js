@@ -29,10 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Inline entry editor (for viewing/editing entries)
   _inlineEditor = BlockEditor.create({
-    container:  document.getElementById("entryBody"),
-    menuEl:     document.getElementById("slashMenuInline"),
-    onChange:   _scheduleAutoSave,
-    onPageCreate: null,
+    container:    document.getElementById("entryBody"),
+    menuEl:       document.getElementById("slashMenuInline"),
+    onChange:     _scheduleAutoSave,
+    onPageCreate: true,  // enable page creation (handled via window._promptPageName)
   });
 
   // Inline title auto-save
@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   initPageNameModal();
+  renderHome();
 
   loadTree();
   loadCategorySuggestions();
@@ -91,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function bindEvents() {
   $("newEntryBtn").addEventListener("click", openNewModal);
-  $("welcomeNewBtn").addEventListener("click", openNewModal);
+  // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
@@ -479,6 +480,63 @@ function renderCoursesTree(tree) {
   }
 }
 
+// ---- RECENTLY VISITED ----
+const KB_RECENT_KEY = "kb_recent_v2";
+const KB_RECENT_MAX = 12;
+
+function _trackRecent(id, title, category, topic) {
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch {}
+  recent = recent.filter(r => r.id !== id);
+  recent.unshift({ id, title, category, topic, ts: Date.now() });
+  if (recent.length > KB_RECENT_MAX) recent = recent.slice(0, KB_RECENT_MAX);
+  localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
+}
+
+function _getRecent() {
+  try { return JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch { return []; }
+}
+
+function renderHome() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+  const recent = _getRecent();
+
+  const welcome = $("welcome");
+  welcome.innerHTML = `
+    <div class="home-wrap">
+      <h1 class="home-greeting">${greeting}</h1>
+
+      ${recent.length ? `
+      <section class="home-section">
+        <div class="home-section-label">⟳ Visitados recientemente</div>
+        <div class="home-recent-grid">
+          ${recent.map(r => `
+            <div class="home-card" data-id="${r.id}">
+              <div class="home-card-icon">󰈙</div>
+              <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
+              <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+      ` : `
+      <div class="home-empty">
+        <p>selecciona una entrada del panel izquierdo o crea una nueva.</p>
+        <button class="btn-primary large" id="welcomeNewBtn2">+ nueva entrada</button>
+      </div>
+      `}
+    </div>
+  `;
+
+  // Bind card clicks
+  welcome.querySelectorAll(".home-card").forEach(card => {
+    card.addEventListener("click", () => loadEntry(card.dataset.id));
+  });
+  const newBtn2 = $("welcomeNewBtn2");
+  if (newBtn2) newBtn2.addEventListener("click", openNewModal);
+}
+
 // ---- ENTRY VIEW ----
 async function loadEntry(id) {
   currentEntryId = id;
@@ -508,6 +566,9 @@ async function loadEntry(id) {
   const m = data.meta;
   currentEntryMeta = m;
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
+
+  // Track in recently visited
+  _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic);
 
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
@@ -820,6 +881,7 @@ async function deleteEntry() {
     currentEntryId = null;
     $("entryView").classList.add("hidden");
     $("welcome").classList.remove("hidden");
+    renderHome();
     showToast("Entrada eliminada");
     await loadTree();
   }
@@ -1423,7 +1485,8 @@ async function confirmPageCreate() {
   });
   if (res.ok) {
     const d = await res.json();
-    BlockEditor.addPageBlock(_pendingPageBlockId, name, d.id);
+    // Use inline editor (entry view) to insert the page link block
+    _inlineEditor.addPageBlock(_pendingPageBlockId, name, d.id);
     await loadTree();
     showToast("Sub-página creada");
   } else {
@@ -1432,13 +1495,15 @@ async function confirmPageCreate() {
 }
 
 async function loadEntryChildren(entryId) {
+  // Remove previous children section
+  const existing = $("entryView").querySelector(".entry-children");
+  if (existing) existing.remove();
+
   const res = await fetch(`/api/entry/${entryId}/children`);
   if (!res.ok) return;
   const children = await res.json();
-  const body = $("entryBody");
-  const existing = body.querySelector(".entry-children");
-  if (existing) existing.remove();
   if (!children.length) return;
+
   const div = document.createElement("div");
   div.className = "entry-children";
   div.innerHTML = `<div class="entry-children-label">⬡ Sub-páginas</div>` +
@@ -1450,7 +1515,8 @@ async function loadEntryChildren(entryId) {
   div.querySelectorAll(".entry-child-link").forEach(el => {
     el.addEventListener("click", () => loadEntry(el.dataset.id));
   });
-  body.appendChild(div);
+  // Append after entryBody, inside entryView
+  $("entryBody").after(div);
 }
 
 let _historyCurrentTimestamp = null;
