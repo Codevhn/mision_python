@@ -86,9 +86,13 @@ window.BlockEditor = (() => {
         // divider
         if (l === '---' || l === '***') { blocks.push({ id:uid(), type:'divider', content:'' }); i++; continue; }
 
-        // page link
+        // page link: [[title]] or [[title|entry-id]]
         if (/^\[\[.+\]\]$/.test(l.trim())) {
-          blocks.push({ id:uid(), type:'page', content:l.trim().slice(2,-2) }); i++; continue;
+          const inner = l.trim().slice(2, -2);
+          const pipe  = inner.lastIndexOf('|');
+          const title  = pipe >= 0 ? inner.slice(0, pipe) : inner;
+          const pageId = pipe >= 0 ? inner.slice(pipe + 1) : undefined;
+          blocks.push({ id:uid(), type:'page', content:title, pageId }); i++; continue;
         }
 
         // code fence
@@ -148,7 +152,8 @@ window.BlockEditor = (() => {
             break;
           }
           case 'divider': parts.push('---'); break;
-          case 'page':    parts.push('[[' + c + ']]'); break;
+          // Store pageId in markdown: [[title|page-id]]
+          case 'page':    parts.push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
           default: if (c.trim()) parts.push(c);
         }
       }
@@ -233,11 +238,14 @@ window.BlockEditor = (() => {
 
       if (b.type === 'page') {
         const link = document.createElement('div');
-        link.className = 'eb-page-link';
+        link.className = 'eb-page-link' + (b.pageId ? ' eb-page-navigable' : '');
         link.dataset.pageTitle = b.content || '';
-        link.innerHTML = `<span class="eb-page-icon">⬡</span><span class="eb-page-name">${escHtml(b.content || 'Sin título')}</span>`;
-        link.addEventListener('click', () => {
-          if (b.pageId) window._loadEntryById && window._loadEntryById(b.pageId);
+        link.dataset.pageId    = b.pageId || '';
+        link.title = b.pageId ? 'Clic para abrir esta página' : 'Sub-página';
+        link.innerHTML = `<span class="eb-page-icon">⬡</span><span class="eb-page-name">${escHtml(b.content || 'Sin título')}</span><span class="eb-page-arrow">→</span>`;
+        link.addEventListener('click', e => {
+          e.stopPropagation();
+          if (b.pageId && window._loadEntryById) window._loadEntryById(b.pageId);
         });
         wrap.appendChild(link);
         return wrap;
@@ -262,7 +270,7 @@ window.BlockEditor = (() => {
     }
 
     // ── BLOCK OPS ───────────────────────────────────────────────
-    function addBlockAfter(afterId, type, content = '') {
+    function addBlockAfter(afterId, type, content = '', opts = {}) {
       const idx = _blocks.findIndex(b => b.id === afterId);
       const nb = { id: uid(), type, content, checked: false };
       _blocks.splice(idx + 1, 0, nb);
@@ -270,7 +278,7 @@ window.BlockEditor = (() => {
       const newEl = makeEl(nb);
       afterEl.after(newEl);
       const c = newEl.querySelector('.eb-content');
-      if (c) { c.focus(); placeCursorEnd(c); }
+      if (c && !opts.noFocus) { c.focus(); placeCursorEnd(c); }
       sync();
       return nb;
     }
@@ -577,7 +585,7 @@ window.BlockEditor = (() => {
     function addPageBlock(blockId, pageName, pageId) {
       const b = _blocks.find(b => b.id === blockId);
       if (b) {
-        b.type = 'page';
+        b.type   = 'page';
         b.content = pageName;
         b.pageId  = pageId;
         const old   = container.querySelector(`[data-id="${blockId}"]`);
@@ -589,7 +597,8 @@ window.BlockEditor = (() => {
         container.appendChild(makeEl(nb));
       }
       const targetId = b ? blockId : _blocks[_blocks.length - 1].id;
-      addBlockAfter(targetId, 'text');
+      // noFocus: don't scroll away from current view position
+      addBlockAfter(targetId, 'text', '', { noFocus: true });
       sync();
     }
 

@@ -52,6 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Allow block editor page links to navigate to sub-pages
+  window._loadEntryById = (id) => loadEntry(id);
+
   initPageNameModal();
   renderHome();
 
@@ -1485,10 +1488,10 @@ async function confirmPageCreate() {
   });
   if (res.ok) {
     const d = await res.json();
-    // Use inline editor (entry view) to insert the page link block
+    // Insert page link block in current entry (stays in place, no scroll)
     _inlineEditor.addPageBlock(_pendingPageBlockId, name, d.id);
     await loadTree();
-    showToast("Sub-página creada");
+    showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
   } else {
     showToast("Error al crear sub-página", "error");
   }
