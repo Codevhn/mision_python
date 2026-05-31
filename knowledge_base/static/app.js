@@ -99,6 +99,26 @@ function bindEvents() {
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
+
+  // Workspace quick nav
+  $("wsHome").addEventListener("click", e => {
+    e.preventDefault();
+    document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    document.querySelectorAll(".tree-item").forEach(el => el.style.display = "");
+    renderHome();
+  });
+  $("wsSearch").addEventListener("click", e => { e.preventDefault(); $("searchInput").focus(); });
+  $("wsStarred").addEventListener("click", e => {
+    e.preventDefault();
+    // Filter sidebar to starred entries
+    document.querySelectorAll(".tree-item").forEach(el => {
+      el.style.display = el.dataset.starred === "true" ? "" : "none";
+    });
+    document.querySelectorAll(".workspace-nav-item").forEach(n => n.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    // Click wsHome to reset
+  });
   $("sidebarOverlay").addEventListener("click", closeSidebarMobile);
 
   // Mobile ··· dropdown
@@ -168,7 +188,7 @@ function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
   $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = saved === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = saved === "dark" ? "[L]" : "[D]";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
@@ -176,7 +196,7 @@ function toggleTheme() {
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
   $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = next === "dark" ? "[light]" : "[dark]";
+  $("themeToggleSidebar").textContent = next === "dark" ? "[L]" : "[D]";
 }
 
 // ---- SIDEBAR ----

@@ -38,10 +38,34 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-section-label" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>CONOCIMIENTO</span>
-        <button id="themeToggleSidebar" class="btn-icon" style="font-size:0.7rem;padding:2px 8px;">[light]</button>
+
+      <!-- WORKSPACE HEADER -->
+      <div class="workspace-header" id="workspaceHeader">
+        <div class="workspace-avatar">KB</div>
+        <div class="workspace-info">
+          <span class="workspace-name">knowledge_base</span>
+          <span class="workspace-plan">personal</span>
+        </div>
+        <button id="themeToggleSidebar" class="btn-icon ws-theme-btn" title="Cambiar tema">[L]</button>
       </div>
+
+      <!-- WORKSPACE QUICK NAV -->
+      <nav class="workspace-nav">
+        <a class="workspace-nav-item" id="wsHome" href="#">
+          <span class="ws-icon">⌂</span><span>Inicio</span>
+        </a>
+        <a class="workspace-nav-item" id="wsStarred" href="#">
+          <span class="ws-icon">☆</span><span>Favoritos</span>
+        </a>
+        <a class="workspace-nav-item" id="wsSearch" href="#">
+          <span class="ws-icon">⌕</span><span>Buscar</span>
+        </a>
+        <a class="workspace-nav-item" href="/logout" style="text-decoration:none">
+          <span class="ws-icon">⏻</span><span>Salir</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section-label">CONOCIMIENTO</div>
       <nav class="tree" id="tree">
         <div class="tree-empty">No hay entradas aún.</div>
       </nav>

@@ -2642,3 +2642,149 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-table-wrap:hover .eb-table-btn { opacity: 1; }
 .eb-table-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── TOGGLE BLOCK ─────────────────────────────────────────── */
+.eb--toggle { flex-direction: column; gap: 0; padding: 0; }
+.eb-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 3px 0;
+  width: 100%;
+}
+.eb-toggle-arrow {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: color 0.12s;
+  line-height: 1;
+  user-select: none;
+}
+.eb-toggle-arrow:hover { color: var(--accent); }
+
+.eb-toggle-header {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text);
+  outline: none;
+  cursor: text;
+}
+/* Toggle heading variants */
+.eb--toggle-h1 .eb-toggle-header { font-size: 1.6rem; font-weight: 700; color: var(--h1-color); }
+.eb--toggle-h2 .eb-toggle-header { font-size: 1.25rem; font-weight: 600; color: var(--h2-color); }
+.eb--toggle-h3 .eb-toggle-header { font-size: 1rem; font-weight: 600; color: var(--h3-color); }
+
+.eb-toggle-body-wrap {
+  padding-left: 20px;
+  border-left: 2px solid var(--border);
+  margin-left: 18px;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+.eb-toggle-body {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  padding: 4px 0;
+  resize: none;
+  box-sizing: border-box;
+}
+.eb-toggle-body::placeholder { color: var(--text-faint); }
+
+/* ── WORKSPACE SIDEBAR ───────────────────────────────────── */
+.workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 2px;
+}
+.workspace-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.workspace-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+.workspace-name {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-plan {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+.ws-theme-btn {
+  font-size: 0.62rem !important;
+  padding: 2px 5px !important;
+  flex-shrink: 0;
+}
+
+/* Workspace quick nav */
+.workspace-nav {
+  padding: 4px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.workspace-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.1s, color 0.1s;
+}
+.workspace-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.workspace-nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.ws-icon {
+  font-size: 0.85rem;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}

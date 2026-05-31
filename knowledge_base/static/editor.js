@@ -5,25 +5,32 @@
 window.BlockEditor = (() => {
 
   const CMDS = [
-    { type:'text',     label:'Texto',          desc:'Párrafo normal',       icon:'¶'   },
-    { type:'h1',       label:'Encabezado 1',   desc:'Título grande',        icon:'H1'  },
-    { type:'h2',       label:'Encabezado 2',   desc:'Título mediano',       icon:'H2'  },
-    { type:'h3',       label:'Encabezado 3',   desc:'Título pequeño',       icon:'H3'  },
-    { type:'h4',       label:'Encabezado 4',   desc:'Título mínimo',        icon:'H4'  },
-    { type:'bullet',   label:'Lista •',        desc:'Lista con viñetas',    icon:'•'   },
-    { type:'numbered', label:'Lista 1.',       desc:'Lista numerada',       icon:'1.'  },
-    { type:'todo',     label:'Tarea',          desc:'Checkbox de tarea',    icon:'☐'   },
-    { type:'code',     label:'Código',         desc:'Bloque de código',     icon:'</>' },
-    { type:'quote',    label:'Cita',           desc:'Blockquote',           icon:'"'   },
-    { type:'divider',  label:'Divisor',        desc:'Línea horizontal',     icon:'—'   },
-    { type:'page',     label:'Sub-página',     desc:'Crear página hija',    icon:'⬡'   },
+    { type:'text',      label:'Texto',           desc:'Párrafo normal',            icon:'¶',   keys:['text','texto','p','paragraph'] },
+    { type:'h1',        label:'Encabezado 1',    desc:'Título grande',             icon:'H1',  keys:['heading','h1','titulo','title','encabezado'] },
+    { type:'h2',        label:'Encabezado 2',    desc:'Título mediano',            icon:'H2',  keys:['heading','h2','titulo','title','encabezado'] },
+    { type:'h3',        label:'Encabezado 3',    desc:'Título pequeño',            icon:'H3',  keys:['heading','h3','titulo','title','encabezado'] },
+    { type:'h4',        label:'Encabezado 4',    desc:'Título mínimo',             icon:'H4',  keys:['heading','h4','titulo','title','encabezado'] },
+    { type:'toggle',    label:'Toggle',          desc:'Bloque desplegable',        icon:'▸',   keys:['toggle','desplegable','collapse','collapsar','t'] },
+    { type:'toggle-h1', label:'Toggle H1',       desc:'Encabezado desplegable 1',  icon:'▸H1', keys:['toggle','heading','h1','desplegable'] },
+    { type:'toggle-h2', label:'Toggle H2',       desc:'Encabezado desplegable 2',  icon:'▸H2', keys:['toggle','heading','h2','desplegable'] },
+    { type:'toggle-h3', label:'Toggle H3',       desc:'Encabezado desplegable 3',  icon:'▸H3', keys:['toggle','heading','h3','desplegable'] },
+    { type:'bullet',    label:'Lista •',         desc:'Lista con viñetas',         icon:'•',   keys:['bullet','list','lista','viñeta','b','ul'] },
+    { type:'numbered',  label:'Lista 1.',        desc:'Lista numerada',            icon:'1.',  keys:['numbered','number','lista','ol','numerada','n'] },
+    { type:'todo',      label:'Tarea',           desc:'Checkbox de tarea',         icon:'☐',   keys:['todo','task','checkbox','tarea','check'] },
+    { type:'table',     label:'Tabla',           desc:'Tabla markdown',            icon:'⊞',   keys:['table','tabla','grid'] },
+    { type:'code',      label:'Código',          desc:'Bloque de código',          icon:'</>',  keys:['code','codigo','snippet','pre','c'] },
+    { type:'quote',     label:'Cita',            desc:'Blockquote',                icon:'"',   keys:['quote','cita','blockquote','q'] },
+    { type:'divider',   label:'Divisor',         desc:'Línea horizontal',          icon:'—',   keys:['divider','divisor','hr','line','separador'] },
+    { type:'page',      label:'Sub-página',      desc:'Crear página hija',         icon:'⬡',   keys:['page','subpage','pagina','link','sub'] },
   ];
 
   const PLACEHOLDER = {
     text:'Escribe algo, o \'/\' para comandos…',
     h1:'Encabezado 1', h2:'Encabezado 2', h3:'Encabezado 3', h4:'Encabezado 4',
+    toggle:'Título del toggle…', 'toggle-h1':'Toggle Encabezado 1',
+    'toggle-h2':'Toggle Encabezado 2', 'toggle-h3':'Toggle Encabezado 3',
     bullet:'Elemento de lista', numbered:'Elemento numerado',
-    todo:'Tarea pendiente',
+    todo:'Tarea pendiente', table:'',
     code:'// código aquí', quote:'Cita…', divider:'', page:'Nombre de la sub-página',
   };
 
@@ -50,7 +57,7 @@ window.BlockEditor = (() => {
       if (!l) return false;
       return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('> ') ||
              l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
-             /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|');
+             /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
     }
 
     // ── MARKDOWN TABLE → HTML ────────────────────────────────────
@@ -110,6 +117,19 @@ window.BlockEditor = (() => {
           const title  = pipe >= 0 ? inner.slice(0, pipe) : inner;
           const pageId = pipe >= 0 ? inner.slice(pipe + 1) : undefined;
           blocks.push({ id:uid(), type:'page', content:title, pageId }); i++; continue;
+        }
+
+        // toggle blocks: :::toggle Header, :::toggle-h1 Header, etc.
+        if (l.startsWith(':::toggle')) {
+          const typeMatch = l.match(/^:::(toggle(?:-h[123])?)\s*(.*)/);
+          const tType   = typeMatch ? typeMatch[1] : 'toggle';
+          const tHeader = typeMatch ? typeMatch[2] : '';
+          const bodyLines = [];
+          i++;
+          while (i < lines.length && !lines[i].startsWith(':::')) { bodyLines.push(lines[i]); i++; }
+          if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
+          blocks.push({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
+          continue;
         }
 
         // markdown table — accumulate consecutive | lines
@@ -179,6 +199,17 @@ window.BlockEditor = (() => {
             const code = ta ? ta.value : c;
             const lang = li ? li.value : (b.lang || '');
             parts.push('```' + lang + '\n' + code + '\n```');
+            break;
+          }
+          case 'toggle':
+          case 'toggle-h1':
+          case 'toggle-h2':
+          case 'toggle-h3': {
+            const hEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-header`);
+            const bEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-body`);
+            const th = hEl ? (hEl.innerText || '') : (b.header || '');
+            const tb = bEl ? (bEl.value || '') : (b.body || '');
+            parts.push(`:::${b.type} ${th}\n${tb}\n:::`);
             break;
           }
           case 'table':   parts.push(b.content || ''); break;
@@ -401,6 +432,70 @@ window.BlockEditor = (() => {
         return wrap;
       }
 
+      // ── TOGGLE block ────────────────────────────────────────────
+      if (b.type === 'toggle' || b.type === 'toggle-h1' || b.type === 'toggle-h2' || b.type === 'toggle-h3') {
+        const isOpen = b.open !== false;
+        wrap.classList.add('eb--toggle');
+        if (b.type !== 'toggle') wrap.classList.add(`eb--${b.type}`);
+
+        // Toggle row: arrow + header
+        const tRow = document.createElement('div');
+        tRow.className = 'eb-toggle-row';
+
+        const arrow = document.createElement('button');
+        arrow.className = 'eb-toggle-arrow';
+        arrow.textContent = isOpen ? '▾' : '▸';
+        arrow.title = isOpen ? 'Colapsar' : 'Expandir';
+
+        const hDiv = document.createElement('div');
+        hDiv.className = 'eb-toggle-header eb-content';
+        hDiv.contentEditable = 'true';
+        hDiv.spellcheck = false;
+        const hTag = b.type === 'toggle-h1' ? 'h1' : b.type === 'toggle-h2' ? 'h2' : b.type === 'toggle-h3' ? 'h3' : null;
+        hDiv.dataset.placeholder = PLACEHOLDER[b.type] || 'Toggle…';
+        if (b.header) hDiv.innerText = b.header;
+        if (hTag) hDiv.dataset.headingTag = hTag;
+
+        tRow.appendChild(arrow);
+        tRow.appendChild(hDiv);
+        wrap.appendChild(tRow);
+
+        // Body (collapsible)
+        const body = document.createElement('div');
+        body.className = 'eb-toggle-body-wrap';
+        body.style.display = isOpen ? '' : 'none';
+
+        const bodyTa = document.createElement('textarea');
+        bodyTa.className = 'eb-toggle-body';
+        bodyTa.value = b.body || '';
+        bodyTa.spellcheck = false;
+        bodyTa.placeholder = 'Contenido del toggle…';
+        bodyTa.rows = Math.max(2, (b.body || '').split('\n').length + 1);
+        bodyTa.addEventListener('input', () => {
+          bodyTa.rows = Math.max(2, bodyTa.value.split('\n').length + 1);
+          b.body = bodyTa.value;
+          sync();
+        });
+        body.appendChild(bodyTa);
+        wrap.appendChild(body);
+
+        // Arrow toggle
+        arrow.addEventListener('click', () => {
+          b.open = !b.open;
+          arrow.textContent = b.open ? '▾' : '▸';
+          arrow.title = b.open ? 'Colapsar' : 'Expandir';
+          body.style.display = b.open ? '' : 'none';
+        });
+
+        // Header keydown
+        hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
+        hDiv.addEventListener('input',   () => { b.header = hDiv.innerText; sync(); });
+        hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
+        hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
+
+        return wrap;
+      }
+
       // Editable content div
       const div = document.createElement('div');
       div.className = 'eb-content';
@@ -485,7 +580,7 @@ window.BlockEditor = (() => {
       const rect = anchor.getBoundingClientRect();
       m.style.top  = (rect.bottom + 4) + 'px';
       m.style.left = rect.left + 'px';
-      m.innerHTML = CMDS.filter(c => c.type !== 'page' && c.type !== 'divider').map(c =>
+      m.innerHTML = CMDS.filter(c => c.type !== 'page' && c.type !== 'divider' && c.type !== 'table').map(c =>
         `<div class="eb-convert-item" data-type="${c.type}"><span>${c.icon}</span>${c.label}</div>`
       ).join('');
       m.querySelectorAll('.eb-convert-item').forEach(el => {
@@ -657,11 +752,21 @@ window.BlockEditor = (() => {
     // ── SLASH MENU ───────────────────────────────────────────────
     function visibleCmds() {
       if (!slashFilter) return CMDS;
-      return CMDS.filter(c =>
-        c.label.toLowerCase().includes(slashFilter) ||
-        c.type.toLowerCase().includes(slashFilter)  ||
-        c.desc.toLowerCase().includes(slashFilter)
-      );
+      const f = slashFilter.toLowerCase();
+      const scored = CMDS.map(c => {
+        const type  = c.type.toLowerCase();
+        const label = c.label.toLowerCase();
+        const desc  = c.desc.toLowerCase();
+        const keys  = (c.keys || []);
+        let score = 0;
+        if (type.startsWith(f) || label.startsWith(f))              score = 3;
+        else if (keys.some(k => k === f || k.startsWith(f)))        score = 3;
+        else if (type.includes(f) || label.includes(f))             score = 2;
+        else if (desc.includes(f) || keys.some(k => k.includes(f))) score = 1;
+        return { c, score };
+      }).filter(x => x.score > 0);
+      scored.sort((a, b) => b.score - a.score);
+      return scored.map(x => x.c);
     }
     function showMenu(div) { positionMenu(div); menuEl.classList.remove('hidden'); renderMenu(); }
     function hideMenu()    { menuEl.classList.add('hidden'); slashBlockId = null; slashFilter = ''; menuIdx = 0; }
@@ -704,6 +809,21 @@ window.BlockEditor = (() => {
       if (type === 'page') {
         if (window._promptPageName) window._promptPageName(blockId);
         return;
+      }
+      if (type === 'table') {
+        const b = _blocks.find(b => b.id === blockId);
+        if (b) {
+          b.type = 'table';
+          b.content = '| Col 1 | Col 2 |\n| --- | --- |\n| val | val |';
+          const old = container.querySelector(`[data-id="${blockId}"]`);
+          const newEl = makeEl(b);
+          old.replaceWith(newEl);
+          // Auto-open edit mode
+          const tEdit = newEl.querySelector('.eb-table-textarea');
+          const tView = newEl.querySelector('.eb-table-view');
+          if (tEdit && tView) { tEdit.style.display = 'block'; tView.style.display = 'none'; tEdit.focus(); tEdit.select(); }
+        }
+        sync(); return;
       }
       convertBlock(blockId, type);
     }
