@@ -3020,11 +3020,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-toggle-nested {
   width: 100%;
 }
-/* Nested blocks are slightly smaller */
-.eb-toggle-nested .eb-content { font-size: 0.93rem; }
-.eb-toggle-nested .eb--h1 .eb-content { font-size: 1.4rem; }
-.eb-toggle-nested .eb--h2 .eb-content { font-size: 1.15rem; }
-.eb-toggle-nested .eb--h3 .eb-content { font-size: 1rem; }
+/* Nested blocks keep the same sizing as the main editor (Notion-like). */
 
 /* ── WORKSPACE SIDEBAR ───────────────────────────────────── */
 .workspace-header {

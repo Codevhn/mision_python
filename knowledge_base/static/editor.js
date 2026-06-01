@@ -62,6 +62,24 @@ window.BlockEditor = (() => {
     const _nestedMenus = new Map(); // blockId → slash-menu DOM element
     let _selfRef = null;            // set after createInstance returns (for page-create in nested editors)
 
+    // ── TREE / INDENT MODEL (Notion-like) ──────────────────────
+    // Hierarchy is represented as a flat list with `indent` levels.
+    // A block is a descendant of a previous block if its indent is greater.
+    // Toggle blocks control visibility of their descendant range.
+    const INDENT_STEP_PX = 24;
+    const getIndent = (b) => Math.max(0, (b?.indent | 0));
+    function subtreeEndIndex(startIdx) {
+      if (startIdx < 0) return startIdx;
+      const base = getIndent(_blocks[startIdx]);
+      let i = startIdx + 1;
+      while (i < _blocks.length && getIndent(_blocks[i]) > base) i++;
+      return i; // first index AFTER subtree
+    }
+    function sliceSubtree(startIdx) {
+      const end = subtreeEndIndex(startIdx);
+      return _blocks.slice(startIdx, end);
+    }
+
     // ── UNDO HISTORY ────────────────────────────────────────────
     const _undoStack = [];
     const MAX_UNDO = 60;
@@ -504,7 +522,7 @@ window.BlockEditor = (() => {
     };
 
     function mdToBlocks(md) {
-      if (!md || !md.trim()) return [{ id:uid(), type:'text', content:'', checked:false }];
+      if (!md || !md.trim()) return [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
       const blocks = [];
       const lines = md.split('\n');
       let i = 0;
@@ -522,25 +540,25 @@ window.BlockEditor = (() => {
         if (!l.trim()) { i++; continue; }
 
         // headings
-        if (l.startsWith('#### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(5) }); i++; continue; }
-        if (l.startsWith('### '))   { pushBlock({ id:uid(), type:'h3', content:l.slice(4) }); i++; continue; }
-        if (l.startsWith('## '))    { pushBlock({ id:uid(), type:'h2', content:l.slice(3) }); i++; continue; }
-        if (l.startsWith('# '))     { pushBlock({ id:uid(), type:'h1', content:l.slice(2) }); i++; continue; }
+        if (l.startsWith('#### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(5), indent: 0 }); i++; continue; }
+        if (l.startsWith('### '))   { pushBlock({ id:uid(), type:'h3', content:l.slice(4), indent: 0 }); i++; continue; }
+        if (l.startsWith('## '))    { pushBlock({ id:uid(), type:'h2', content:l.slice(3), indent: 0 }); i++; continue; }
+        if (l.startsWith('# '))     { pushBlock({ id:uid(), type:'h1', content:l.slice(2), indent: 0 }); i++; continue; }
 
         // todo
-        if (l.startsWith('- [x] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:true  }); i++; continue; }
-        if (l.startsWith('- [ ] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:false }); i++; continue; }
+        if (l.startsWith('- [x] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:true,  indent: 0 }); i++; continue; }
+        if (l.startsWith('- [ ] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:false, indent: 0 }); i++; continue; }
 
         // list
-        if (l.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
-        if (l.startsWith('* '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2) }); i++; continue; }
-        if (/^\d+\. /.test(l))      { pushBlock({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, '') }); i++; continue; }
+        if (l.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2), indent: 0 }); i++; continue; }
+        if (l.startsWith('* '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2), indent: 0 }); i++; continue; }
+        if (/^\d+\. /.test(l))      { pushBlock({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, ''), indent: 0 }); i++; continue; }
 
         // quote
-        if (l.startsWith('> '))     { pushBlock({ id:uid(), type:'quote',   content:l.slice(2) }); i++; continue; }
+        if (l.startsWith('> '))     { pushBlock({ id:uid(), type:'quote',   content:l.slice(2), indent: 0 }); i++; continue; }
 
         // divider
-        if (l === '---' || l === '***') { pushBlock({ id:uid(), type:'divider', content:'' }); i++; continue; }
+        if (l === '---' || l === '***') { pushBlock({ id:uid(), type:'divider', content:'', indent: 0 }); i++; continue; }
 
         // page link: [[title]] or [[title|entry-id]]
         if (/^\[\[.+\]\]$/.test(l.trim())) {
@@ -548,7 +566,7 @@ window.BlockEditor = (() => {
           const pipe  = inner.lastIndexOf('|');
           const title  = pipe >= 0 ? inner.slice(0, pipe) : inner;
           const pageId = pipe >= 0 ? inner.slice(pipe + 1) : undefined;
-          pushBlock({ id:uid(), type:'page', content:title, pageId }); i++; continue;
+          pushBlock({ id:uid(), type:'page', content:title, pageId, indent: 0 }); i++; continue;
         }
 
         // toggle blocks: :::toggle Header, :::toggle-h1 Header, etc.
@@ -558,12 +576,20 @@ window.BlockEditor = (() => {
           const tHeader = typeMatch ? typeMatch[2] : '';
           const bodyLines = [];
           i++;
-          let toggleLines = 0;
           while (i < lines.length && !lines[i].startsWith(':::')) {
-            bodyLines.push(lines[i]); i++; toggleLines++;
+            bodyLines.push(lines[i]); i++;
           }
           if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
-          pushBlock({ id:uid(), type:tType, header:tHeader, body:bodyLines.join('\n'), open:true });
+          const tid = uid();
+          pushBlock({ id:tid, type:tType, content:tHeader, open:true, indent: 0 });
+          const bodyMd = bodyLines.join('\n').trim();
+          if (bodyMd) {
+            const childBlocks = mdToBlocks(bodyMd);
+            // mdToBlocks returns an empty text block for empty input; avoid creating
+            // a fake child when the body is effectively empty.
+            const meaningful = childBlocks.filter(b => (b.type !== 'text') || (b.content || '').trim());
+            meaningful.forEach(cb => { cb.indent = getIndent(cb) + 1; pushBlock(cb); });
+          }
           continue;
         }
 
@@ -578,7 +604,7 @@ window.BlockEditor = (() => {
           if (!dbData) {
             dbData = { cols:[{id:'c0',name:'Nombre'},{id:'c1',name:'Estado'}], rows:[{id:'r0',cells:{c0:'',c1:''}}] };
           }
-          pushBlock({ id:uid(), type:'database', content:JSON.stringify(dbData) });
+          pushBlock({ id:uid(), type:'database', content:JSON.stringify(dbData), indent: 0 });
           continue;
         }
 
@@ -589,7 +615,7 @@ window.BlockEditor = (() => {
           while (i < lines.length && lines[i].trim().startsWith('|')) {
             tableLines.push(lines[i]); i++;
           }
-          pushBlock({ id:uid(), type:'table', content:tableLines.join('\n') });
+          pushBlock({ id:uid(), type:'table', content:tableLines.join('\n'), indent: 0 });
           continue;
         }
 
@@ -603,7 +629,7 @@ window.BlockEditor = (() => {
             code.push(lines[i]); i++; fenceLines++;
           }
           if (i < lines.length && lines[i].startsWith('```')) i++; // skip closing fence
-          pushBlock({ id:uid(), type:'code', content:code.join('\n'), lang });
+          pushBlock({ id:uid(), type:'code', content:code.join('\n'), lang, indent: 0 });
           continue;
         }
 
@@ -614,10 +640,10 @@ window.BlockEditor = (() => {
           paraLines.push(lines[i]);
           i++;
         }
-        pushBlock({ id:uid(), type:'text', content:paraLines.join('\n') });
+        pushBlock({ id:uid(), type:'text', content:paraLines.join('\n'), indent: 0 });
       }
 
-      return blocks.length ? blocks : [{ id:uid(), type:'text', content:'', checked:false }];
+      return blocks.length ? blocks : [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
     }
 
     // ── BLOCKS → MD ─────────────────────────────────────────────
@@ -626,6 +652,9 @@ window.BlockEditor = (() => {
       if (b && b.type === 'database') return b.content; // JSON stored directly
       const el = container.querySelector(`[data-id="${id}"] .eb-content`);
       if (!el) return null;
+      // Hidden blocks (e.g. inside collapsed toggles) may return empty innerText.
+      // In that case, prefer the persisted model value.
+      if (el.offsetParent === null && b && b.content !== undefined) return b.content;
       // When inline-rendered, use stored plain text to avoid reading HTML tags
       if (el.dataset.rendered && el.dataset.plaintext !== undefined) return el.dataset.plaintext;
       return (typeof el.innerText !== 'undefined') ? el.innerText : el.textContent;
@@ -633,7 +662,9 @@ window.BlockEditor = (() => {
 
     function blocksToMd(arr) {
       const parts = [];
-      for (const b of (arr || _blocks)) {
+      const list = (arr || _blocks);
+      for (let idx = 0; idx < list.length; idx++) {
+        const b = list[idx];
         const colorPrefix = (b.color && b.color !== 'default') || (b.bgColor && b.bgColor !== 'default')
           ? `<!-- color:${b.color||'default'}${b.bgColor ? ' bgColor:'+b.bgColor : ''} -->\n`
           : '';
@@ -666,9 +697,20 @@ window.BlockEditor = (() => {
           case 'toggle-h2':
           case 'toggle-h3': {
             const hEl = container.querySelector(`[data-id="${b.id}"] .eb-toggle-header`);
-            const th = hEl ? (hEl.innerText || '') : (b.header || '');
-            const tb = b.body || '';
+            const th = hEl ? (hEl.innerText || '') : (b.content || '');
+            const baseIndent = getIndent(b);
+            const child = [];
+            let j = idx + 1;
+            while (j < list.length && getIndent(list[j]) > baseIndent) {
+              const nb = { ...list[j] };
+              // Normalize child indent inside toggle body so nested toggles round-trip.
+              nb.indent = Math.max(0, getIndent(nb) - (baseIndent + 1));
+              child.push(nb);
+              j++;
+            }
+            const tb = child.length ? blocksToMd(child) : '';
             push(`:::${b.type} ${th}\n${tb}\n:::`);
+            idx = j - 1; // skip descendants already serialized into the toggle body
             break;
           }
           case 'database': push(':::database\n' + (b.content || '{}') + '\n:::'); break;
@@ -698,7 +740,7 @@ window.BlockEditor = (() => {
       container.innerHTML = '';
 
       if (_blocks.length === 0) {
-        _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
+        _blocks = [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
         container.appendChild(makeEl(_blocks[0]));
         return;
       }
@@ -717,11 +759,20 @@ window.BlockEditor = (() => {
 
       // Chunked rendering
       let idx = 0;
+      const toggleStack = []; // [{ indent, bodyEl }]
       function renderChunk() {
         const end = Math.min(idx + CHUNK, _blocks.length);
         for (; idx < end; idx++) {
-          const el = makeEl(_blocks[idx]);
-          container.appendChild(el);
+          const b = _blocks[idx];
+          const el = makeEl(b);
+          const ind = getIndent(b);
+          while (toggleStack.length && ind <= toggleStack[toggleStack.length - 1].indent) toggleStack.pop();
+          const parentBody = toggleStack.length ? toggleStack[toggleStack.length - 1].bodyEl : null;
+          (parentBody || container).appendChild(el);
+          if (b.type && b.type.startsWith('toggle')) {
+            const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
+            if (bodyEl) toggleStack.push({ indent: ind, bodyEl });
+          }
           if (_vObserver) _vObserver.observe(el);
         }
         if (idx < _blocks.length) requestAnimationFrame(renderChunk);
@@ -763,6 +814,7 @@ window.BlockEditor = (() => {
       wrap.className = `eb eb--${b.type}`;
       wrap.dataset.id   = b.id;
       wrap.dataset.type = b.type;
+      wrap.dataset.indent = String(getIndent(b));
       applyBlockColor(wrap, b);
 
       // Block controls (drag handle + options) — shown on hover
@@ -835,13 +887,12 @@ window.BlockEditor = (() => {
           dragSrcId = null;
         } else {
           const { srcEditor, blockId } = _crossDrag;
-          const block = srcEditor._removeBlock(blockId);
-          if (block) {
+          const moved = srcEditor._removeBlock(blockId);
+          if (moved && moved.length) {
             const ti = _blocks.findIndex(x => x.id === b.id);
-            _blocks.splice(before ? ti : ti + 1, 0, block);
-            const targetEl = container.querySelector(`[data-id="${b.id}"]`);
-            const newEl = makeEl(block);
-            before ? targetEl.before(newEl) : targetEl.after(newEl);
+            const insertAt = before ? ti : subtreeEndIndex(ti);
+            _blocks.splice(insertAt, 0, ...moved);
+            render();
             sync();
           }
           _crossDrag = null;
@@ -1060,14 +1111,14 @@ window.BlockEditor = (() => {
         hDiv.spellcheck = false;
         const hTag = b.type === 'toggle-h1' ? 'h1' : b.type === 'toggle-h2' ? 'h2' : b.type === 'toggle-h3' ? 'h3' : null;
         hDiv.dataset.placeholder = PLACEHOLDER[b.type] || 'Toggle…';
-        if (b.header) hDiv.innerText = b.header;
+        if (b.content) hDiv.innerText = b.content;
         if (hTag) hDiv.dataset.headingTag = hTag;
 
         tRow.appendChild(arrow);
         tRow.appendChild(hDiv);
         wrap.appendChild(tRow);
 
-        // Body — full nested block editor (collapsible)
+        // Body — real child blocks (same editor tree), collapsible
         const body = document.createElement('div');
         body.className = 'eb-toggle-body-wrap';
         body.style.display = isOpen ? '' : 'none';
@@ -1077,36 +1128,23 @@ window.BlockEditor = (() => {
         body.appendChild(nestedContainer);
         wrap.appendChild(body);
 
-        // Dedicated slash menu for this nested editor
-        const nestedMenu = document.createElement('div');
-        nestedMenu.className = 'slash-menu hidden';
-        document.body.appendChild(nestedMenu);
-        _nestedMenus.set(b.id, nestedMenu);
-
-        // Create nested editor instance
-        const nestedEd = BlockEditor.create({
-          container: nestedContainer,
-          menuEl:    nestedMenu,
-          onChange:  (md) => { b.body = md; sync(); },
-        });
-        nestedEd.load(b.body || '');
-
-        // Store nested editor on wrap so confirmPageCreate can find it
-        wrap._nestedEditor = nestedEd;
-
         // Arrow toggle
-        arrow.addEventListener('click', () => {
+        arrow.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const prevScroll = container.scrollTop;
           b.open = !b.open;
           arrow.innerHTML = b.open
             ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4"/></svg>'
             : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
           arrow.title = b.open ? 'Colapsar' : 'Expandir';
           body.style.display = b.open ? '' : 'none';
+          container.scrollTop = prevScroll;
         });
 
         // Header keydown
         hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
-        hDiv.addEventListener('input',   () => { b.header = hDiv.innerText; sync(); });
+        hDiv.addEventListener('input',   () => { b.content = hDiv.innerText; sync(); });
         hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
         hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
 
@@ -1148,11 +1186,13 @@ window.BlockEditor = (() => {
     // ── BLOCK OPS ───────────────────────────────────────────────
     function addBlockAfter(afterId, type, content = '', opts = {}) {
       const idx = _blocks.findIndex(b => b.id === afterId);
-      const nb = { id: uid(), type, content, checked: false };
-      _blocks.splice(idx + 1, 0, nb);
-      const afterEl = container.querySelector(`[data-id="${afterId}"]`);
-      const newEl = makeEl(nb);
-      afterEl.after(newEl);
+      const baseIndent = getIndent(_blocks[idx]);
+      const insertAt = subtreeEndIndex(idx);
+      const nb = { id: uid(), type, content, checked: false, indent: baseIndent };
+      _blocks.splice(insertAt, 0, nb);
+      // Re-render to ensure the new block is attached under the correct parent toggle body.
+      render();
+      const newEl = container.querySelector(`[data-id="${nb.id}"]`);
       const c = newEl.querySelector('.eb-content');
       if (c && !opts.noFocus) { c.focus(); placeCursorEnd(c); }
       sync();
@@ -1162,11 +1202,10 @@ window.BlockEditor = (() => {
     function insertBlockBefore(beforeId, type, content = '') {
       const idx = _blocks.findIndex(b => b.id === beforeId);
       if (idx < 0) return;
-      const nb = { id: uid(), type, content, checked: false };
+      const nb = { id: uid(), type, content, checked: false, indent: getIndent(_blocks[idx]) };
       _blocks.splice(idx, 0, nb);
-      const beforeEl = container.querySelector(`[data-id="${beforeId}"]`);
-      const newEl = makeEl(nb);
-      beforeEl.before(newEl);
+      render();
+      const newEl = container.querySelector(`[data-id="${nb.id}"]`);
       const c = newEl.querySelector('.eb-content');
       if (c) { c.focus(); placeCursorEnd(c); }
       sync();
@@ -1176,13 +1215,14 @@ window.BlockEditor = (() => {
       saveHistory();
       const idx = _blocks.findIndex(b => b.id === id);
       if (_blocks.length <= 1) { clearBlock(id); return; }
-      _blocks.splice(idx, 1);
+      const end = subtreeEndIndex(idx);
+      _blocks.splice(idx, end - idx);
       const el = container.querySelector(`[data-id="${id}"]`);
       // Clean up any nested slash menu for this toggle block
       const nm = _nestedMenus.get(id);
       if (nm) { nm.remove(); _nestedMenus.delete(id); }
       const prevId = _blocks[Math.max(0, idx - 1)].id;
-      el.remove();
+      render();
       const prevC = container.querySelector(`[data-id="${prevId}"] .eb-content`);
       if (prevC) { prevC.focus(); placeCursorEnd(prevC); }
       sync();
@@ -1203,31 +1243,23 @@ window.BlockEditor = (() => {
       if (isToggleSrc) {
         // reading from toggle header
         const hEl = container.querySelector(`[data-id="${id}"] .eb-toggle-header`);
-        const src = hEl ? (hEl.innerText || '') : (b.header || '');
-        if (isToggleDst) { b.header = src; }
-        else             { b.content = src; b.header = undefined; b.body = undefined; }
+        const src = hEl ? (hEl.innerText || '') : (b.content || '');
+        b.content = src;
       } else {
         b.content = readContent(id) ?? b.content;
         if (isToggleDst) {
-          b.header = b.content;
-          // Adopt following sibling blocks as toggle body (until next h1/h2/toggle-h1/toggle-h2/divider)
+          // Adopt following sibling blocks as toggle children by indenting them.
           const idx = _blocks.findIndex(x => x.id === id);
-          const toAdopt = [];
+          const baseIndent = getIndent(_blocks[idx]);
           for (let j = idx + 1; j < _blocks.length; j++) {
             const nb = _blocks[j];
-            if (['h1','h2','toggle-h1','toggle-h2','divider'].includes(nb.type)) break;
-            // read current content from DOM before removing
-            nb.content = readContent(nb.id) ?? nb.content ?? '';
-            toAdopt.push(nb);
+            if (getIndent(nb) < baseIndent) break;
+            if (getIndent(nb) === baseIndent && ['h1','h2','toggle-h1','toggle-h2','divider'].includes(nb.type)) break;
+            if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page','database'].includes(nb.type)) {
+              nb.content = readContent(nb.id) ?? nb.content ?? '';
+            }
+            nb.indent = Math.max(getIndent(nb), baseIndent + 1);
           }
-          if (toAdopt.length) {
-            b.body = blocksToMd(toAdopt);
-            _blocks.splice(idx + 1, toAdopt.length);
-            toAdopt.forEach(nb => container.querySelector(`[data-id="${nb.id}"]`)?.remove());
-          } else {
-            b.body = '';
-          }
-          b.content = undefined;
         }
       }
       b.type = newType;
@@ -1237,6 +1269,7 @@ window.BlockEditor = (() => {
       old.replaceWith(newEl);
       const c = newEl.querySelector('.eb-toggle-header, .eb-content');
       if (c) { c.focus(); placeCursorEnd(c); }
+      render();
       sync();
     }
 
@@ -1409,9 +1442,13 @@ window.BlockEditor = (() => {
       saveHistory();
       const si = _blocks.findIndex(b => b.id === srcId);
       if (si < 0) return;
-      const [sb] = _blocks.splice(si, 1);
+      const moved = sliceSubtree(si);
+      const se = subtreeEndIndex(si);
+      _blocks.splice(si, se - si);
       const ti = _blocks.findIndex(b => b.id === targetId);
-      _blocks.splice(before ? ti : ti + 1, 0, sb);
+      if (ti < 0) { _blocks.push(...moved); render(); sync(); return; }
+      const insertAt = before ? ti : subtreeEndIndex(ti);
+      _blocks.splice(insertAt, 0, ...moved);
       render();
       sync();
     }
@@ -1419,17 +1456,19 @@ window.BlockEditor = (() => {
     // ── DUPLICATE BLOCK ─────────────────────────────────────────
     function duplicateBlock(id) {
       saveHistory();
-      const b = _blocks.find(b => b.id === id);
-      if (!b) return;
-      if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page'].includes(b.type)) {
-        b.content = readContent(id) ?? b.content;
+      const si = _blocks.findIndex(b => b.id === id);
+      if (si < 0) return;
+      const se = subtreeEndIndex(si);
+      // Read live DOM content before cloning
+      for (let i = si; i < se; i++) {
+        const b = _blocks[i];
+        if (!['toggle','toggle-h1','toggle-h2','toggle-h3','table','code','divider','page','database'].includes(b.type)) {
+          b.content = readContent(b.id) ?? b.content;
+        }
       }
-      const clone = { ...b, id: uid() };
-      const idx = _blocks.findIndex(b => b.id === id);
-      _blocks.splice(idx + 1, 0, clone);
-      const el = container.querySelector(`[data-id="${id}"]`);
-      const newEl = makeEl(clone);
-      el.after(newEl);
+      const subtree = _blocks.slice(si, se).map(b => ({ ...b, id: uid() }));
+      _blocks.splice(se, 0, ...subtree);
+      render();
       sync();
     }
 
@@ -1484,17 +1523,21 @@ window.BlockEditor = (() => {
     function focusPrevBlock(id) {
       const idx = _blocks.findIndex(b => b.id === id);
       if (idx <= 0) return;
-      const prevId = _blocks[idx - 1].id;
-      const prevEl = container.querySelector(`[data-id="${prevId}"] .eb-content`);
-      if (prevEl) { prevEl.focus(); placeCursorEnd(prevEl); }
+      for (let i = idx - 1; i >= 0; i--) {
+        const prevId = _blocks[i].id;
+        const prevEl = container.querySelector(`[data-id="${prevId}"] .eb-content, [data-id="${prevId}"] .eb-toggle-header`);
+        if (prevEl && prevEl.offsetParent !== null) { prevEl.focus(); placeCursorEnd(prevEl); return; }
+      }
     }
 
     function focusNextBlock(id) {
       const idx = _blocks.findIndex(b => b.id === id);
       if (idx >= _blocks.length - 1) return;
-      const nextId = _blocks[idx + 1].id;
-      const nextEl = container.querySelector(`[data-id="${nextId}"] .eb-content`);
-      if (nextEl) { nextEl.focus(); placeCursorStart(nextEl); }
+      for (let i = idx + 1; i < _blocks.length; i++) {
+        const nextId = _blocks[i].id;
+        const nextEl = container.querySelector(`[data-id="${nextId}"] .eb-content, [data-id="${nextId}"] .eb-toggle-header`);
+        if (nextEl && nextEl.offsetParent !== null) { nextEl.focus(); placeCursorStart(nextEl); return; }
+      }
     }
 
     // ── KEYDOWN ─────────────────────────────────────────────────
@@ -1546,6 +1589,17 @@ window.BlockEditor = (() => {
         if (isCursorAtStart(div) && b.type !== 'text' && div.innerText.trim() !== '') {
           insertBlockBefore(b.id, 'text'); return;
         }
+        // Toggle header behaves like Notion: Enter creates first/next child inside the toggle.
+        if (b.type.startsWith('toggle') && div.classList.contains('eb-toggle-header')) {
+          const idx = _blocks.findIndex(x => x.id === b.id);
+          const nb = { id: uid(), type: 'text', content: '', checked:false, indent: getIndent(b) + 1 };
+          _blocks.splice(idx + 1, 0, nb);
+          render();
+          const c = container.querySelector(`[data-id="${nb.id}"] .eb-content`);
+          if (c) { c.focus(); placeCursorEnd(c); }
+          sync();
+          return;
+        }
         addBlockAfter(b.id, nextType);
         return;
       }
@@ -1583,6 +1637,8 @@ window.BlockEditor = (() => {
         menuIdx = 0;
         renderMenu();
       }
+      // Keep the model updated so collapsed/hidden blocks serialize correctly.
+      b.content = div.dataset.plaintext !== undefined ? div.dataset.plaintext : (htmlToMd(div).replace(/\n$/, ''));
       sync();
     }
 
@@ -1654,9 +1710,7 @@ window.BlockEditor = (() => {
         if (b) {
           b.type = 'table';
           b.content = '| Col 1 | Col 2 | Col 3 |\n| --- | --- | --- |\n| | | |';
-          const old = container.querySelector(`[data-id="${blockId}"]`);
-          const newEl = makeEl(b);
-          old.replaceWith(newEl);
+          render();
         }
         sync(); return;
       }
@@ -1701,9 +1755,9 @@ window.BlockEditor = (() => {
         const newEl = makeEl(b);
         old.replaceWith(newEl);
       } else {
-        const nb = { id: uid(), type: 'page', content: pageName, pageId };
+        const nb = { id: uid(), type: 'page', content: pageName, pageId, indent: 0 };
         _blocks.push(nb);
-        container.appendChild(makeEl(nb));
+        render();
       }
       const targetId = b ? blockId : _blocks[_blocks.length - 1].id;
       // noFocus: don't scroll away from current view position
@@ -1723,29 +1777,31 @@ window.BlockEditor = (() => {
 
     // ── PASTE HANDLER: intercept HTML table paste ────────────────
     container.addEventListener('paste', e => {
-      // Skip if paste target is inside a NESTED editor (toggle body) — let that editor handle it
       const focused = document.activeElement;
-      const closestNested = focused?.closest?.('.eb-toggle-nested');
-      if (closestNested && closestNested !== container && container.contains(closestNested)) return;
 
       const html = e.clipboardData?.getData('text/html') || '';
       const text = e.clipboardData?.getData('text/plain') || '';
+      const focusedWrap = focused?.closest?.('[data-id]');
+      const focusedId = focusedWrap?.dataset?.id;
+      const focusedIdx = focusedId ? _blocks.findIndex(x => x.id === focusedId) : -1;
+      const focusedBlock = focusedIdx >= 0 ? _blocks[focusedIdx] : null;
+      const baseIndent = focusedBlock ? getIndent(focusedBlock) : 0;
+      const inToggleHeader = !!(focused && focused.classList?.contains('eb-toggle-header'));
+      const insertIndent = inToggleHeader ? (baseIndent + 1) : baseIndent;
+      const bumpIndent = (arr, delta) => arr.forEach(b => { b.indent = getIndent(b) + delta; });
 
       // If HTML contains a table, convert it
       if (html && /<table[\s>]/i.test(html)) {
         const md = htmlTableToMd(html);
         if (md) {
           e.preventDefault();
-          const focusedBlock_el = document.activeElement?.closest('[data-id]');
-          const focusedId = focusedBlock_el?.dataset?.id;
-          const focusedBlock = _blocks.find(x => x.id === focusedId);
-          const insertAfter = focusedId || _blocks[_blocks.length - 1]?.id;
-          const nb = { id: uid(), type: 'table', content: md };
-          const idx = _blocks.findIndex(x => x.id === insertAfter);
-          if (idx >= 0) _blocks.splice(idx + 1, 0, nb);
-          else _blocks.push(nb);
-          if (focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim()) {
-            _blocks.splice(_blocks.findIndex(x => x.id === focusedId), 1);
+          const nb = { id: uid(), type: 'table', content: md, indent: insertIndent };
+          if (focusedIdx >= 0) {
+            const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
+            if (replace) _blocks.splice(focusedIdx, 1, nb);
+            else _blocks.splice(focusedIdx + 1, 0, nb);
+          } else {
+            _blocks.push(nb);
           }
           render(); sync(); return;
         }
@@ -1755,15 +1811,13 @@ window.BlockEditor = (() => {
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
         saveHistory();
-        const focusedBlock_el2 = document.activeElement?.closest('[data-id]');
-        const focusedId2 = focusedBlock_el2?.dataset?.id;
         const newBlocks = mdToBlocks(text);
-        const idx2 = _blocks.findIndex(x => x.id === focusedId2);
-        if (idx2 >= 0) {
-          const focusedBlock2 = _blocks[idx2];
-          const replace = focusedBlock2 && focusedBlock2.type === 'text' && !(focusedBlock2.content || '').trim();
-          if (replace) _blocks.splice(idx2, 1, ...newBlocks);
-          else _blocks.splice(idx2 + 1, 0, ...newBlocks);
+        bumpIndent(newBlocks, insertIndent);
+        if (focusedIdx >= 0) {
+          const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
+          const insertAt = inToggleHeader ? (focusedIdx + 1) : (replace ? focusedIdx : focusedIdx + 1);
+          if (replace && !inToggleHeader) _blocks.splice(focusedIdx, 1, ...newBlocks);
+          else _blocks.splice(insertAt, 0, ...newBlocks);
         } else {
           _blocks.push(...newBlocks);
         }
@@ -1801,8 +1855,8 @@ window.BlockEditor = (() => {
       } else if (_crossDrag && _crossDrag.srcEditor !== _selfRef) {
         e.preventDefault();
         const { srcEditor, blockId } = _crossDrag;
-        const block = srcEditor._removeBlock(blockId);
-        if (block) { _blocks.push(block); container.appendChild(makeEl(block)); sync(); }
+        const moved = srcEditor._removeBlock(blockId);
+        if (moved && moved.length) { _blocks.push(...moved); render(); sync(); }
         _crossDrag = null;
       }
     });
@@ -1843,22 +1897,52 @@ window.BlockEditor = (() => {
       if (!e.target.closest('[data-id]')) clearSelection();
     });
 
-    // Click anywhere in the empty editor area → focus last empty text block or add new one
+    // Notion-like click: clicking in vertical whitespace inserts a new block at that position.
+    // Also: clicking inside an empty toggle body inserts a child block inside that toggle.
     container.addEventListener('click', e => {
-      if (e.target.closest('[data-id]')) return; // clicked on a block — normal behavior
-      const last = _blocks[_blocks.length - 1];
-      if (!last) { _blocks.push({ id: uid(), type: 'text', content: '' }); render(); return; }
-      // If last block is an empty text block, just focus it
-      if (last.type === 'text' && !last.content) {
-        const editable = container.querySelector(`[data-id="${last.id}"] .eb-content`);
-        if (editable) { editable.focus(); placeCursorEnd(editable); return; }
+      // If clicking inside a toggle body wrap but not on an actual child block, insert as last child.
+      const bodyWrap = e.target.closest('.eb-toggle-body-wrap');
+      const childBlock = bodyWrap ? e.target.closest('.eb[data-id]') : null;
+      if (bodyWrap && childBlock && childBlock.closest('.eb-toggle-body-wrap') === bodyWrap) {
+        // Click was on an existing child block; let normal behavior happen.
+        return;
       }
-      // Otherwise add a new text block below the last one
-      addBlockAfter(last.id, 'text');
+      if (bodyWrap) {
+        const toggleWrap = bodyWrap.closest('.eb[data-id]');
+        const tid = toggleWrap?.dataset?.id;
+        const ti = tid ? _blocks.findIndex(b => b.id === tid) : -1;
+        if (ti >= 0) {
+          const insertAt = subtreeEndIndex(ti);
+          const nb = { id: uid(), type: 'text', content: '', checked:false, indent: getIndent(_blocks[ti]) + 1 };
+          _blocks.splice(insertAt, 0, nb);
+          render();
+          const editable = container.querySelector(`[data-id="${nb.id}"] .eb-content`);
+          if (editable) { editable.focus(); placeCursorEnd(editable); }
+          sync();
+          return;
+        }
+      }
+
+      // If click is not on a block at all, insert based on Y position.
+      if (!e.target.closest('.eb[data-id]')) {
+        const visible = Array.from(container.querySelectorAll('.eb[data-id]')).filter(el => el.offsetParent !== null);
+        const y = e.clientY;
+        let beforeId = null;
+        for (const el of visible) {
+          const r = el.getBoundingClientRect();
+          if (y < (r.top + r.height / 2)) { beforeId = el.dataset.id; break; }
+        }
+        if (beforeId) insertBlockBefore(beforeId, 'text');
+        else {
+          const last = _blocks[_blocks.length - 1];
+          if (!last) { _blocks.push({ id: uid(), type: 'text', content: '', checked:false, indent: 0 }); render(); return; }
+          addBlockAfter(last.id, 'text');
+        }
+      }
     });
 
     // Initial empty state
-    _blocks = [{ id:uid(), type:'text', content:'', checked:false }];
+    _blocks = [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
     render();
 
     _selfRef = {
@@ -1867,14 +1951,16 @@ window.BlockEditor = (() => {
       _removeBlock(id) {
         const idx = _blocks.findIndex(b => b.id === id);
         if (idx < 0) return null;
-        const [block] = _blocks.splice(idx, 1);
-        container.querySelector(`[data-id="${id}"]`)?.remove();
+        const end = subtreeEndIndex(idx);
+        const removed = _blocks.splice(idx, end - idx);
+        render();
         sync();
-        return block;
+        return removed;
       },
-      _appendBlock(block) {
-        _blocks.push(block);
-        container.appendChild(makeEl(block));
+      _appendBlock(blocks) {
+        const arr = Array.isArray(blocks) ? blocks : [blocks];
+        _blocks.push(...arr);
+        render();
         sync();
       },
     };
