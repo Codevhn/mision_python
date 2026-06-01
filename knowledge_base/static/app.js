@@ -102,6 +102,14 @@ function bindEvents() {
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
 
+  // Clicking in the editor wrap area outside the blocks focuses the last block
+  $("blockEditorWrap").addEventListener("click", e => {
+    const editor = document.getElementById("blockEditor");
+    if (!editor || e.target.closest("[data-id]") || editor.contains(e.target)) return;
+    // Click was in the wrap padding, not on a block — fire click on editor to trigger its handler
+    editor.dispatchEvent(new MouseEvent("click", { bubbles: false }));
+  });
+
   // Workspace quick nav
   $("wsHome").addEventListener("click", e => {
     e.preventDefault();

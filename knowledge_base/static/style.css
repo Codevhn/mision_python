@@ -1952,13 +1952,11 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 #blockEditorWrap {
   border: 1px solid var(--border);
   background: var(--bg);
-  min-height: 320px;
-  max-height: 60vh;
-  overflow-y: auto;
+  min-height: 400px;
   padding: 12px 8px;
 }
 
-.block-editor { outline: none; min-height: 300px; cursor: text; }
+.block-editor { outline: none; min-height: 400px; cursor: text; }
 
 /* Individual block */
 .eb {
