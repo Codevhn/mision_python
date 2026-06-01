@@ -281,6 +281,79 @@ window.BlockEditor = (() => {
       return [fmt(headers), fmt(sep), ...dataRows.map(fmt)].join('\n');
     }
 
+    function htmlToPasteBlocks(html, baseIndent = 0) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const blocks = [];
+      const cleanText = el => (el.innerText || el.textContent || '').replace(/\u00a0/g, ' ').trim();
+      const blockTags = new Set(['h1','h2','h3','h4','p','div','section','article','ul','ol','li','blockquote','pre','table','hr']);
+      const pushText = (type, content, extra = {}) => {
+        if (!content && type !== 'divider') return;
+        blocks.push({ id: uid(), type, content, checked:false, indent: baseIndent, ...extra });
+      };
+      const walk = (node, indent = baseIndent) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent.trim();
+          if (text) pushText('text', text, { indent });
+          return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        const tag = node.tagName.toLowerCase();
+        if (tag === 'style' || tag === 'script') return;
+        if (tag === 'table') {
+          const md = htmlTableToMd(node.outerHTML);
+          if (md) pushText('table', md, { indent });
+          return;
+        }
+        if (/^h[1-4]$/.test(tag)) {
+          pushText(tag, cleanText(node), { indent });
+          return;
+        }
+        if (tag === 'pre') {
+          const code = node.querySelector('code');
+          pushText('code', cleanText(code || node), { indent });
+          return;
+        }
+        if (tag === 'blockquote') {
+          pushText('quote', cleanText(node), { indent });
+          return;
+        }
+        if (tag === 'hr') {
+          blocks.push({ id: uid(), type:'divider', content:'', checked:false, indent });
+          return;
+        }
+        if (tag === 'ul' || tag === 'ol') {
+          Array.from(node.children).forEach(child => {
+            if (child.tagName?.toLowerCase() !== 'li') return;
+            const nested = Array.from(child.children).filter(c => ['ul','ol'].includes(c.tagName?.toLowerCase()));
+            nested.forEach(n => n.remove());
+            const liText = cleanText(child);
+            pushText(tag === 'ol' ? 'numbered' : 'bullet', liText, { indent });
+            nested.forEach(n => walk(n, indent + 1));
+          });
+          return;
+        }
+        if (tag === 'li') {
+          pushText('bullet', cleanText(node), { indent });
+          return;
+        }
+        if (tag === 'p' || tag === 'div' || tag === 'section' || tag === 'article') {
+          const hasBlockChildren = Array.from(node.children).some(child => blockTags.has(child.tagName?.toLowerCase()));
+          if (!hasBlockChildren) {
+            pushText('text', cleanText(node), { indent });
+            return;
+          }
+          const childBlocksBefore = blocks.length;
+          Array.from(node.children).forEach(child => walk(child, indent));
+          if (blocks.length === childBlocksBefore) pushText('text', cleanText(node), { indent });
+          return;
+        }
+        Array.from(node.childNodes).forEach(child => walk(child, indent));
+      };
+      Array.from(tmp.childNodes).forEach(node => walk(node, baseIndent));
+      return blocks;
+    }
+
     function makeTabulator(container, b, onChange) {
       const { columns, data } = parseMdTable(b.content || '');
       const tid = 'tab-' + (++_tabCount);
@@ -2188,6 +2261,21 @@ window.BlockEditor = (() => {
       const inToggleHeader = !!(focused && focused.classList?.contains('eb-toggle-header'));
       const insertIndent = inToggleHeader ? (baseIndent + 1) : baseIndent;
       const bumpIndent = (arr, delta) => arr.forEach(b => { b.indent = getIndent(b) + delta; });
+      const insertBlocks = (newBlocks) => {
+        if (!newBlocks.length) return;
+        saveHistory();
+        if (focusedIdx >= 0) {
+          const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
+          const insertAt = inToggleHeader ? (focusedIdx + 1) : (replace ? focusedIdx : focusedIdx + 1);
+          if (replace && !inToggleHeader) _blocks.splice(focusedIdx, 1, ...newBlocks);
+          else _blocks.splice(insertAt, 0, ...newBlocks);
+        } else {
+          _blocks.push(...newBlocks);
+        }
+        render();
+        focusBlock(newBlocks[0].id);
+        sync();
+      };
 
       // If HTML contains a table, convert it
       if (html && /<table[\s>]/i.test(html)) {
@@ -2206,21 +2294,21 @@ window.BlockEditor = (() => {
         }
       }
 
+      if (html && /<(h[1-4]|p|div|ul|ol|li|blockquote|pre|table|hr)\b/i.test(html)) {
+        const htmlBlocks = htmlToPasteBlocks(html, insertIndent);
+        if (htmlBlocks.length) {
+          e.preventDefault();
+          insertBlocks(htmlBlocks);
+          return;
+        }
+      }
+
       // Markdown paste: works whether clipboard has HTML or only plain text
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
-        saveHistory();
         const newBlocks = mdToBlocks(text);
         bumpIndent(newBlocks, insertIndent);
-        if (focusedIdx >= 0) {
-          const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
-          const insertAt = inToggleHeader ? (focusedIdx + 1) : (replace ? focusedIdx : focusedIdx + 1);
-          if (replace && !inToggleHeader) _blocks.splice(focusedIdx, 1, ...newBlocks);
-          else _blocks.splice(insertAt, 0, ...newBlocks);
-        } else {
-          _blocks.push(...newBlocks);
-        }
-        render(); sync();
+        insertBlocks(newBlocks);
         return;
       }
 
@@ -2276,9 +2364,7 @@ window.BlockEditor = (() => {
         undo();
         return;
       }
-      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a' &&
-          !document.activeElement?.classList.contains('eb-content') &&
-          !document.activeElement?.classList.contains('eb-toggle-header')) {
+      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         clearSelection();
         _blocks.forEach(b => { _selected.add(b.id); container.querySelector(`[data-id="${b.id}"]`)?.classList.add('eb--selected'); });

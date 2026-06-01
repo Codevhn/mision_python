@@ -1830,12 +1830,22 @@ async function restoreVersion() {
     });
     if (putRes.ok) {
       const data = await putRes.json();
+      const verifyRes = await fetch(`/api/entry/${restoredEntryId}?_=${Date.now()}`, { cache: "no-store" });
+      if (!verifyRes.ok) {
+        showToast("Restaurado, pero no se pudo verificar", "error");
+        return;
+      }
+      const fresh = await verifyRes.json();
+      const restored = data.markdown || "";
+      if ((fresh.markdown || "") !== restored) {
+        showToast("Restore no coincidió con el snapshot", "error");
+        return;
+      }
       closeVersionModal();
       $("historyPanel").classList.add("hidden");
       $("historyBtn").classList.remove("active");
-      _inlineEditor.load(data.markdown || "");
+      _inlineEditor.load(fresh.markdown || "");
       showToast("Versión restaurada");
-      // Small delay to ensure file is written before re-fetch
       await loadEntry(restoredEntryId, { force: true });
       // Scroll entry body to top after restore
       const area = $("contentArea");
