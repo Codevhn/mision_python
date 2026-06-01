@@ -352,6 +352,179 @@ window.BlockEditor = (() => {
       return tab;
     }
 
+    function makeSimpleTable(wrap, b, sync) {
+      let active = { row: 0, col: 0 };
+
+      function getModel() {
+        const parsed = parseMdTable(b.content || '');
+        const headers = parsed.columns.length ? parsed.columns.map(c => c.title || '') : ['Col 1', 'Col 2'];
+        const rows = parsed.data.length
+          ? parsed.data.map(r => headers.map((_, i) => r[`c${i}`] || ''))
+          : [headers.map(() => '')];
+        return { headers, rows };
+      }
+
+      function modelToMd(headers, rows) {
+        const fmt = cells => '| ' + cells.map(c => String(c || '').replace(/\n/g, '<br>')).join(' | ') + ' |';
+        return [fmt(headers), fmt(headers.map(() => '---')), ...rows.map(fmt)].join('\n');
+      }
+
+      function saveFromDom() {
+        const headers = Array.from(wrap.querySelectorAll('.eb-simple-th')).map(th => th.innerText.trim());
+        const rows = Array.from(wrap.querySelectorAll('tbody tr')).map(tr =>
+          Array.from(tr.querySelectorAll('.eb-simple-cell')).map(td => td.innerText.replace(/\n$/, ''))
+        );
+        b.content = modelToMd(headers, rows);
+        sync();
+      }
+
+      function focusCell(row, col, header = false) {
+        const selector = header
+          ? `.eb-simple-th[data-col="${col}"]`
+          : `.eb-simple-cell[data-row="${row}"][data-col="${col}"]`;
+        const el = wrap.querySelector(selector);
+        if (el) { el.focus(); placeCursorEnd(el); }
+      }
+
+      function addRow(after = active.row) {
+        const { headers, rows } = getModel();
+        const at = Math.max(0, Math.min(rows.length, after + 1));
+        rows.splice(at, 0, headers.map(() => ''));
+        b.content = modelToMd(headers, rows);
+        build();
+        focusCell(at, active.col);
+        sync();
+      }
+
+      function addCol(after = active.col) {
+        const { headers, rows } = getModel();
+        const at = Math.max(0, Math.min(headers.length, after + 1));
+        headers.splice(at, 0, `Col ${headers.length + 1}`);
+        rows.forEach(r => r.splice(at, 0, ''));
+        b.content = modelToMd(headers, rows);
+        build();
+        focusCell(active.row, at);
+        sync();
+      }
+
+      function deleteRow(row = active.row) {
+        const { headers, rows } = getModel();
+        if (rows.length <= 1) return;
+        const at = Math.max(0, Math.min(rows.length - 1, row));
+        rows.splice(at, 1);
+        b.content = modelToMd(headers, rows);
+        build();
+        focusCell(Math.min(at, rows.length - 1), active.col);
+        sync();
+      }
+
+      function deleteCol(col = active.col) {
+        const { headers, rows } = getModel();
+        if (headers.length <= 1) return;
+        const at = Math.max(0, Math.min(headers.length - 1, col));
+        headers.splice(at, 1);
+        rows.forEach(r => r.splice(at, 1));
+        b.content = modelToMd(headers, rows);
+        build();
+        focusCell(active.row, Math.min(at, headers.length - 1));
+        sync();
+      }
+
+      function moveFocus(row, col) {
+        const { headers, rows } = getModel();
+        if (row >= rows.length) {
+          addRow(rows.length - 1);
+          return;
+        }
+        active = {
+          row: Math.max(0, Math.min(rows.length - 1, row)),
+          col: Math.max(0, Math.min(headers.length - 1, col)),
+        };
+        focusCell(active.row, active.col);
+      }
+
+      function build() {
+        wrap.innerHTML = '';
+        const { headers, rows } = getModel();
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'eb-table-toolbar';
+        toolbar.innerHTML = `
+          <button class="eb-tbl-btn" data-act="row">+ Fila</button>
+          <button class="eb-tbl-btn" data-act="col">+ Columna</button>
+          <button class="eb-tbl-btn eb-tbl-danger" data-act="del-row">− Fila</button>
+          <button class="eb-tbl-btn eb-tbl-danger" data-act="del-col">− Columna</button>
+        `;
+        toolbar.querySelector('[data-act="row"]').addEventListener('mousedown', e => { e.preventDefault(); addRow(); });
+        toolbar.querySelector('[data-act="col"]').addEventListener('mousedown', e => { e.preventDefault(); addCol(); });
+        toolbar.querySelector('[data-act="del-row"]').addEventListener('mousedown', e => { e.preventDefault(); deleteRow(); });
+        toolbar.querySelector('[data-act="del-col"]').addEventListener('mousedown', e => { e.preventDefault(); deleteCol(); });
+        wrap.appendChild(toolbar);
+
+        const scroller = document.createElement('div');
+        scroller.className = 'eb-simple-table-scroll';
+        const table = document.createElement('table');
+        table.className = 'eb-simple-table';
+
+        const thead = document.createElement('thead');
+        const htr = document.createElement('tr');
+        headers.forEach((h, ci) => {
+          const th = document.createElement('th');
+          th.className = 'eb-simple-th';
+          th.contentEditable = 'true';
+          th.spellcheck = false;
+          th.dataset.col = String(ci);
+          th.innerText = h || `Col ${ci + 1}`;
+          th.addEventListener('focus', () => { active.col = ci; });
+          th.addEventListener('input', saveFromDom);
+          th.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); focusCell(0, ci); }
+            if (e.key === 'Tab') { e.preventDefault(); focusCell(0, e.shiftKey ? Math.max(0, ci - 1) : ci); }
+          });
+          htr.appendChild(th);
+        });
+        thead.appendChild(htr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        rows.forEach((row, ri) => {
+          const tr = document.createElement('tr');
+          headers.forEach((_, ci) => {
+            const td = document.createElement('td');
+            td.className = 'eb-simple-cell';
+            td.contentEditable = 'true';
+            td.spellcheck = false;
+            td.dataset.row = String(ri);
+            td.dataset.col = String(ci);
+            td.innerText = row[ci] || '';
+            td.addEventListener('focus', () => { active = { row: ri, col: ci }; });
+            td.addEventListener('input', saveFromDom);
+            td.addEventListener('keydown', e => {
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                const delta = e.shiftKey ? -1 : 1;
+                let nr = ri, nc = ci + delta;
+                if (nc >= headers.length) { nr++; nc = 0; }
+                if (nc < 0) { nr = Math.max(0, nr - 1); nc = headers.length - 1; }
+                moveFocus(nr, nc);
+              }
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                addRow(ri);
+              }
+            });
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        scroller.appendChild(table);
+        wrap.appendChild(scroller);
+      }
+
+      build();
+    }
+
     // ── DATABASE block ──────────────────────────────────────────
     function makeDatabase(wrap, b, sync) {
       function getData() {
@@ -1067,60 +1240,12 @@ window.BlockEditor = (() => {
         return wrap;
       }
 
-      // ── TABLE block (Tabulator) ─────────────────────────────────
+      // ── TABLE block ─────────────────────────────────────────────
       if (b.type === 'table') {
         const tWrap = document.createElement('div');
-        tWrap.className = 'eb-table-wrap eb-tabulator-host';
-        // Toolbar: add/remove row and col
-        const toolbar = document.createElement('div');
-        toolbar.className = 'eb-table-toolbar';
-        let _tab = null;
-        const addRow = () => {
-          if (!_tab) return;
-          const cols = _tab.getColumnDefinitions();
-          const row = {}; cols.forEach(c => row[c.field] = '');
-          _tab.addRow(row);
-          const rows = _tab.getData();
-          b.content = tabulatorToMd(cols, rows); sync();
-        };
-        const addCol = () => {
-          if (!_tab) return;
-          const cols = _tab.getColumnDefinitions();
-          const newField = `c${cols.length}`;
-          _tab.addColumn({ title: 'Col', field: newField, editor: 'input' });
-          const newCols = _tab.getColumnDefinitions();
-          const rows = _tab.getData();
-          b.content = tabulatorToMd(newCols, rows); sync();
-        };
-        const delRow = () => {
-          if (!_tab) return;
-          const sel = _tab.getSelectedRows();
-          if (sel.length) { sel.forEach(r => r.delete()); }
-          else {
-            const rows = _tab.getRows();
-            if (rows.length > 1) rows[rows.length - 1].delete();
-          }
-          const cols = _tab.getColumnDefinitions();
-          b.content = tabulatorToMd(cols, _tab.getData()); sync();
-        };
-
-        toolbar.innerHTML = `
-          <button class="eb-tbl-btn" title="Agregar fila abajo">+ Fila</button>
-          <button class="eb-tbl-btn" title="Agregar columna">+ Columna</button>
-          <button class="eb-tbl-btn eb-tbl-danger" title="Eliminar última fila">− Fila</button>
-          <span class="eb-tbl-hint">Clic en celda para editar · Doble clic en encabezado para renombrar</span>
-        `;
-        toolbar.querySelectorAll('.eb-tbl-btn').forEach((btn, i) => {
-          btn.addEventListener('mousedown', e => { e.preventDefault(); [addRow, addCol, delRow][i](); });
-        });
-
-        tWrap.appendChild(toolbar);
+        tWrap.className = 'eb-table-wrap';
         wrap.appendChild(tWrap);
-
-        // Init Tabulator after element is in DOM
-        requestAnimationFrame(() => {
-          _tab = makeTabulator(tWrap, b, sync);
-        });
+        makeSimpleTable(tWrap, b, sync);
         return wrap;
       }
 
