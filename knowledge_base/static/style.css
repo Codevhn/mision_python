@@ -228,7 +228,8 @@ input, textarea, select { font-family: inherit; }
 }
 .sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; }
 
-.tree { padding: 8px 0 80px; }
+.tree { padding: 8px 0; }
+#teamspaceTree { padding-bottom: 80px; }
 .tree-empty {
   padding: 18px 14px;
   color: var(--text-faint);
