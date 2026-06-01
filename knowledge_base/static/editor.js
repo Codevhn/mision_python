@@ -75,6 +75,13 @@ window.BlockEditor = (() => {
       while (i < _blocks.length && getIndent(_blocks[i]) > base) i++;
       return i; // first index AFTER subtree
     }
+    function parentToggleIndex(idx) {
+      const indent = idx >= 0 ? getIndent(_blocks[idx]) : 0;
+      for (let i = idx - 1; i >= 0; i--) {
+        if (getIndent(_blocks[i]) < indent && _blocks[i].type?.startsWith('toggle')) return i;
+      }
+      return -1;
+    }
     function sliceSubtree(startIdx) {
       const end = subtreeEndIndex(startIdx);
       return _blocks.slice(startIdx, end);
@@ -85,6 +92,12 @@ window.BlockEditor = (() => {
     function focusBlock(id) {
       const el = container.querySelector(editableSelector(id));
       if (el) { el.focus(); placeCursorEnd(el); }
+    }
+    function adjustSubtreeIndent(blocks, newRootIndent) {
+      if (!blocks || !blocks.length) return blocks || [];
+      const delta = newRootIndent - getIndent(blocks[0]);
+      blocks.forEach(b => { b.indent = Math.max(0, getIndent(b) + delta); });
+      return blocks;
     }
 
     // ── UNDO HISTORY ────────────────────────────────────────────
@@ -778,10 +791,15 @@ window.BlockEditor = (() => {
           const parentBody = parentToggle ? parentToggle.bodyEl : null;
           const relativeIndent = parentToggle ? Math.max(0, ind - parentToggle.indent - 1) : ind;
           el.style.marginLeft = relativeIndent ? `${relativeIndent * INDENT_STEP_PX}px` : '';
+          if (parentToggle?.trail) el.dataset.trail = parentToggle.trail;
           (parentBody || container).appendChild(el);
           if (b.type && b.type.startsWith('toggle')) {
             const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
-            if (bodyEl) toggleStack.push({ indent: ind, bodyEl });
+            if (bodyEl) {
+              const label = (b.content || 'Toggle').trim();
+              const trail = parentToggle?.trail ? `${parentToggle.trail} / ${label}` : label;
+              toggleStack.push({ indent: ind, bodyEl, trail });
+            }
           }
           if (_vObserver) _vObserver.observe(el);
         }
@@ -868,6 +886,18 @@ window.BlockEditor = (() => {
       controls.appendChild(optsBtn);
       controls.appendChild(handle);
       wrap.appendChild(controls);
+
+      const betweenAdd = document.createElement('button');
+      betweenAdd.className = 'eb-between-add';
+      betweenAdd.title = 'Añadir bloque debajo';
+      betweenAdd.type = 'button';
+      betweenAdd.textContent = '+';
+      betweenAdd.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        addBlockAfter(b.id, 'text');
+      });
+      wrap.appendChild(betweenAdd);
 
       // Drop zone events on every block (same-editor + cross-editor)
       wrap.addEventListener('dragover', e => {
@@ -1137,6 +1167,40 @@ window.BlockEditor = (() => {
         nestedContainer.className = 'eb-toggle-nested';
         body.appendChild(nestedContainer);
         wrap.appendChild(body);
+
+        body.addEventListener('dragover', e => {
+          const sameEd  = dragSrcId && dragSrcId !== b.id;
+          const crossEd = !dragSrcId && _crossDrag && _crossDrag.srcEditor !== _selfRef;
+          if (!sameEd && !crossEd) return;
+          if (e.target.closest('.eb[data-id]') && e.target.closest('.eb[data-id]') !== wrap) return;
+          e.preventDefault();
+          e.stopPropagation();
+          body.classList.add('eb-toggle-body-wrap--drop');
+        });
+        body.addEventListener('dragleave', e => {
+          if (!body.contains(e.relatedTarget)) body.classList.remove('eb-toggle-body-wrap--drop');
+        });
+        body.addEventListener('drop', e => {
+          const sameEd  = dragSrcId && dragSrcId !== b.id;
+          const crossEd = !dragSrcId && _crossDrag && _crossDrag.srcEditor !== _selfRef;
+          if (!sameEd && !crossEd) return;
+          if (e.target.closest('.eb[data-id]') && e.target.closest('.eb[data-id]') !== wrap) return;
+          e.preventDefault();
+          e.stopPropagation();
+          body.classList.remove('eb-toggle-body-wrap--drop');
+          if (sameEd) {
+            moveBlockIntoToggle(dragSrcId, b.id);
+            dragSrcId = null;
+          } else {
+            const { srcEditor, blockId } = _crossDrag;
+            const moved = srcEditor._removeBlock(blockId);
+            if (moved && moved.length) {
+              saveHistory();
+              appendBlocksToToggle(moved, b.id);
+            }
+            _crossDrag = null;
+          }
+        });
 
         // Arrow toggle
         arrow.addEventListener('click', (e) => {
@@ -1489,6 +1553,61 @@ window.BlockEditor = (() => {
       sync();
     }
 
+    function appendBlocksToToggle(blocks, toggleId) {
+      const ti = _blocks.findIndex(b => b.id === toggleId);
+      if (ti < 0 || !_blocks[ti].type?.startsWith('toggle') || !blocks?.length) return false;
+      _blocks[ti].open = true;
+      adjustSubtreeIndent(blocks, getIndent(_blocks[ti]) + 1);
+      _blocks.splice(subtreeEndIndex(ti), 0, ...blocks);
+      render();
+      focusBlock(blocks[0].id);
+      sync();
+      return true;
+    }
+
+    function moveBlockIntoToggle(srcId, toggleId) {
+      const si = _blocks.findIndex(b => b.id === srcId);
+      const ti = _blocks.findIndex(b => b.id === toggleId);
+      if (si < 0 || ti < 0 || srcId === toggleId) return false;
+      const se = subtreeEndIndex(si);
+      if (ti >= si && ti < se) return false;
+      saveHistory();
+      const moved = _blocks.splice(si, se - si);
+      return appendBlocksToToggle(moved, toggleId);
+    }
+
+    function moveBlockByKeyboard(id, direction) {
+      const idx = _blocks.findIndex(b => b.id === id);
+      if (idx < 0) return false;
+      const indent = getIndent(_blocks[idx]);
+      const end = subtreeEndIndex(idx);
+
+      if (direction < 0) {
+        let prev = idx - 1;
+        while (prev >= 0 && getIndent(_blocks[prev]) > indent) prev--;
+        if (prev < 0 || getIndent(_blocks[prev]) !== indent) return false;
+        saveHistory();
+        const moved = _blocks.splice(idx, end - idx);
+        _blocks.splice(prev, 0, ...moved);
+        render();
+        focusBlock(id);
+        sync();
+        return true;
+      }
+
+      let next = end;
+      if (next >= _blocks.length || getIndent(_blocks[next]) !== indent) return false;
+      const nextEnd = subtreeEndIndex(next);
+      saveHistory();
+      const moved = _blocks.splice(idx, end - idx);
+      const insertAt = nextEnd - moved.length;
+      _blocks.splice(insertAt, 0, ...moved);
+      render();
+      focusBlock(id);
+      sync();
+      return true;
+    }
+
     function indentBlock(id, direction) {
       const idx = _blocks.findIndex(b => b.id === id);
       if (idx < 0) return false;
@@ -1636,6 +1755,22 @@ window.BlockEditor = (() => {
         if (e.key === 'Escape')    { hideMenu(); return; }
       }
 
+      if (e.key === 'Escape') {
+        const idx = _blocks.findIndex(x => x.id === b.id);
+        const parentIdx = parentToggleIndex(idx);
+        if (parentIdx >= 0) {
+          e.preventDefault();
+          focusBlock(_blocks[parentIdx].id);
+          return;
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+        moveBlockByKeyboard(b.id, e.key === 'ArrowUp' ? -1 : 1);
+        return;
+      }
+
       // Arrow navigation between blocks
       if (e.key === 'ArrowUp' && isCursorAtStart(div)) {
         e.preventDefault();
@@ -1718,9 +1853,49 @@ window.BlockEditor = (() => {
       }
     }
 
+    function applyMarkdownShortcut(b, div, text) {
+      if (div.classList.contains('eb-toggle-header')) return false;
+      const shortcuts = {
+        '# ': 'h1',
+        '## ': 'h2',
+        '### ': 'h3',
+        '#### ': 'h4',
+        '- ': 'bullet',
+        '* ': 'bullet',
+        '1. ': 'numbered',
+        '> ': 'quote',
+      };
+      let type = shortcuts[text];
+      let checked = false;
+      if (!type && (text === '[ ] ' || text === '[] ' || text === '- [ ] ')) {
+        type = 'todo';
+      }
+      if (!type && (text === '[x] ' || text === '- [x] ')) {
+        type = 'todo';
+        checked = true;
+      }
+      if (!type && text === '```') type = 'code';
+      if (!type && text === '---') type = 'divider';
+      if (!type) return false;
+
+      saveHistory();
+      b.type = type;
+      b.content = '';
+      if (type === 'todo') b.checked = checked;
+      render();
+      if (type === 'divider') {
+        addBlockAfter(b.id, 'text');
+      } else {
+        focusBlock(b.id);
+      }
+      sync();
+      return true;
+    }
+
     // ── INPUT / SLASH ────────────────────────────────────────────
     function onInput(b, div) {
       const text = div.innerText || div.textContent;
+      if (applyMarkdownShortcut(b, div, text)) return;
       const slashIdx = text.lastIndexOf('/');
       if (slashIdx !== -1 && (slashIdx === 0 || /\s/.test(text[slashIdx - 1]))) {
         slashBlockId = b.id;

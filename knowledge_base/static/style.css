@@ -2054,12 +2054,54 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-opts:hover { color: var(--accent); background: var(--bg-elevated); }
 
+.eb-between-add {
+  position: absolute;
+  left: 28px;
+  bottom: -13px;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s, border-color 0.1s, background 0.1s;
+}
+.eb:hover > .eb-between-add,
+.eb--focused > .eb-between-add { opacity: 1; }
+.eb-between-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
 /* Drag states */
 .eb--dragging { opacity: 0.35; }
 .eb--drag-top { border-top: 2px solid var(--accent); }
 .eb--drag-bot { border-bottom: 2px solid var(--accent); }
 .eb--selected { background: rgba(35, 131, 226, 0.12) !important; outline: 1px solid rgba(35, 131, 226, 0.35); border-radius: 3px; }
 .eb--drop-end { outline: 2px dashed var(--accent); border-radius: 4px; outline-offset: -2px; }
+.eb[data-trail].eb--focused::after {
+  content: attr(data-trail);
+  position: absolute;
+  right: 8px;
+  top: -18px;
+  max-width: min(360px, 60%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
 
 /* Block menu */
 .eb-block-menu {
@@ -3015,6 +3057,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   margin-top: 2px;
   margin-bottom: 4px;
   min-height: 32px;
+}
+.eb-toggle-body-wrap--drop {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
 }
 /* The nested block editor container inside a toggle */
 .eb-toggle-nested {
