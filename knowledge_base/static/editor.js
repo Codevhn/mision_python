@@ -326,6 +326,7 @@ window.BlockEditor = (() => {
     function htmlToPasteBlocks(html, baseIndent = 0) {
       const tmp = document.createElement('div');
       tmp.innerHTML = html;
+      tmp.querySelectorAll('.eb-controls, .eb-between-add, .eb-table-toolbar, script, style').forEach(el => el.remove());
       const blocks = [];
       const cleanText = el => (el.innerText || el.textContent || '').replace(/\u00a0/g, ' ').trim();
       const blockTags = new Set(['h1','h2','h3','h4','p','div','section','article','ul','ol','li','blockquote','pre','table','hr']);
@@ -392,7 +393,35 @@ window.BlockEditor = (() => {
         }
         Array.from(node.childNodes).forEach(child => walk(child, indent));
       };
-      Array.from(tmp.childNodes).forEach(node => walk(node, baseIndent));
+      const editorBlocks = Array.from(tmp.querySelectorAll('.eb[data-type]'));
+      if (editorBlocks.length) {
+        editorBlocks.forEach(el => {
+          const type = el.dataset.type || 'text';
+          const indent = baseIndent + Math.max(0, parseInt(el.dataset.indent || '0', 10) || 0);
+          if (type === 'table') {
+            const table = el.querySelector('.eb-simple-table');
+            const md = table ? htmlTableToMd(table.outerHTML) : '';
+            if (md) pushText('table', md, { indent });
+            return;
+          }
+          if (type === 'database') return;
+          if (type === 'divider') { blocks.push({ id: uid(), type:'divider', content:'', checked:false, indent }); return; }
+          if (type === 'code') {
+            const code = el.querySelector('.eb-code')?.value || el.querySelector('.eb-code-pre code')?.textContent || '';
+            pushText('code', code, { indent });
+            return;
+          }
+          if (type === 'page') {
+            pushText('page', cleanText(el.querySelector('.eb-page-name') || el), { indent });
+            return;
+          }
+          const contentEl = el.querySelector(':scope > .eb-content, :scope > .eb-toggle-row > .eb-toggle-header');
+          const content = cleanText(contentEl || el);
+          pushText(type, content, { indent });
+        });
+      } else {
+        Array.from(tmp.childNodes).forEach(node => walk(node, baseIndent));
+      }
       return blocks;
     }
 
@@ -1031,11 +1060,10 @@ window.BlockEditor = (() => {
       return parts.join('\n\n');
     }
 
-    // ── VIRTUAL RENDER ──────────────────────────────────────────
-    // Blocks are rendered in chunks via rAF to avoid blocking the UI.
-    // IntersectionObserver lazy-highlights code blocks when they enter viewport.
+    // ── RENDER ──────────────────────────────────────────────────
+    // Render every block synchronously so restore/load cannot leave a partial
+    // page visible if an animation frame is delayed or skipped.
     let _vObserver = null;
-    const CHUNK = 40; // blocks per animation frame
 
     function render() {
       _nestedMenus.forEach(m => m.remove());
@@ -1065,35 +1093,28 @@ window.BlockEditor = (() => {
         }, { rootMargin: '300px 0px' });
       }
 
-      // Chunked rendering
-      let idx = 0;
       const toggleStack = []; // [{ indent, bodyEl }]
-      function renderChunk() {
-        const end = Math.min(idx + CHUNK, _blocks.length);
-        for (; idx < end; idx++) {
-          const b = _blocks[idx];
-          const el = makeEl(b);
-          const ind = getIndent(b);
-          while (toggleStack.length && ind <= toggleStack[toggleStack.length - 1].indent) toggleStack.pop();
-          const parentToggle = toggleStack.length ? toggleStack[toggleStack.length - 1] : null;
-          const parentBody = parentToggle ? parentToggle.bodyEl : null;
-          const relativeIndent = parentToggle ? Math.max(0, ind - parentToggle.indent - 1) : ind;
-          el.style.marginLeft = relativeIndent ? `${relativeIndent * INDENT_STEP_PX}px` : '';
-          if (parentToggle?.trail) el.dataset.trail = parentToggle.trail;
-          (parentBody || container).appendChild(el);
-          if (b.type && b.type.startsWith('toggle')) {
-            const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
-            if (bodyEl) {
-              const label = (b.content || 'Toggle').trim();
-              const trail = parentToggle?.trail ? `${parentToggle.trail} / ${label}` : label;
-              toggleStack.push({ indent: ind, bodyEl, trail });
-            }
+      for (let idx = 0; idx < _blocks.length; idx++) {
+        const b = _blocks[idx];
+        const el = makeEl(b);
+        const ind = getIndent(b);
+        while (toggleStack.length && ind <= toggleStack[toggleStack.length - 1].indent) toggleStack.pop();
+        const parentToggle = toggleStack.length ? toggleStack[toggleStack.length - 1] : null;
+        const parentBody = parentToggle ? parentToggle.bodyEl : null;
+        const relativeIndent = parentToggle ? Math.max(0, ind - parentToggle.indent - 1) : ind;
+        el.style.marginLeft = relativeIndent ? `${relativeIndent * INDENT_STEP_PX}px` : '';
+        if (parentToggle?.trail) el.dataset.trail = parentToggle.trail;
+        (parentBody || container).appendChild(el);
+        if (b.type && b.type.startsWith('toggle')) {
+          const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
+          if (bodyEl) {
+            const label = (b.content || 'Toggle').trim();
+            const trail = parentToggle?.trail ? `${parentToggle.trail} / ${label}` : label;
+            toggleStack.push({ indent: ind, bodyEl, trail });
           }
-          if (_vObserver) _vObserver.observe(el);
         }
-        if (idx < _blocks.length) requestAnimationFrame(renderChunk);
+        if (_vObserver) _vObserver.observe(el);
       }
-      renderChunk();
     }
 
     function applyBlockColor(wrap, b) {
@@ -1359,6 +1380,13 @@ window.BlockEditor = (() => {
       if (b.type === 'table') {
         const tWrap = document.createElement('div');
         tWrap.className = 'eb-table-wrap';
+        tWrap.tabIndex = 0;
+        tWrap.addEventListener('keydown', e => {
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            deleteBlock(b.id);
+          }
+        });
         wrap.appendChild(tWrap);
         makeSimpleTable(tWrap, b, sync);
         return wrap;
@@ -2335,8 +2363,16 @@ window.BlockEditor = (() => {
         sync();
       };
 
-      // If HTML contains a table, convert it
-      if (html && /<table[\s>]/i.test(html)) {
+      // If the clipboard is only a table, convert it directly. Otherwise parse
+      // the full HTML fragment so a table inside a copied page does not swallow
+      // the rest of the pasted content.
+      const tableOnlyHtml = html && /<table[\s>]/i.test(html) && (() => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('style, script, meta, link').forEach(el => el.remove());
+        return tmp.children.length === 1 && tmp.firstElementChild?.tagName?.toLowerCase() === 'table';
+      })();
+      if (tableOnlyHtml) {
         const md = htmlTableToMd(html);
         if (md) {
           e.preventDefault();
