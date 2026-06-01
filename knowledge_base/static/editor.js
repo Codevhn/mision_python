@@ -1521,7 +1521,7 @@ window.BlockEditor = (() => {
       // Skip if paste target is inside a NESTED editor (toggle body) — let that editor handle it
       const focused = document.activeElement;
       const closestNested = focused?.closest?.('.eb-toggle-nested');
-      if (closestNested && container.contains(closestNested)) return;
+      if (closestNested && closestNested !== container && container.contains(closestNested)) return;
 
       const html = e.clipboardData?.getData('text/html') || '';
       const text = e.clipboardData?.getData('text/plain') || '';
