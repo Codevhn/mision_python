@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initPin();
   initStatus();
   initReview();
+  initPageFind();
 
   // Modal type toggle
   let currentModalMode = "knowledge";
@@ -1271,6 +1272,41 @@ function showToast(msg, type = "success") {
   t._timer = setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
+function initPageFind() {
+  const panel = document.createElement("div");
+  panel.className = "page-find-panel hidden";
+  panel.innerHTML = `
+    <input id="pageFindInput" type="text" placeholder="buscar en página" />
+    <button id="pageFindNext" class="btn-ghost">next</button>
+    <input id="pageReplaceInput" type="text" placeholder="reemplazar" />
+    <button id="pageReplaceAll" class="btn-ghost">replace all</button>
+    <span id="pageFindCount"></span>
+    <button id="pageFindClose" class="btn-ghost">×</button>
+  `;
+  document.body.appendChild(panel);
+  const show = () => { panel.classList.remove("hidden"); $("pageFindInput").focus(); $("pageFindInput").select(); };
+  const hide = () => panel.classList.add("hidden");
+  const update = (res) => { $("pageFindCount").textContent = res.count ? `${res.index + 1}/${res.count}` : "0"; };
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && currentEntryId) {
+      e.preventDefault();
+      show();
+    }
+    if (e.key === "Escape" && !panel.classList.contains("hidden")) hide();
+  });
+  $("pageFindInput").addEventListener("input", e => update(_inlineEditor.findText(e.target.value)));
+  $("pageFindInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); update(_inlineEditor.findNext()); }
+  });
+  $("pageFindNext").addEventListener("click", () => update(_inlineEditor.findNext()));
+  $("pageReplaceAll").addEventListener("click", () => {
+    const changed = _inlineEditor.replaceAllText($("pageFindInput").value, $("pageReplaceInput").value);
+    showToast(`${changed} bloques actualizados`);
+    update(_inlineEditor.findText($("pageFindInput").value));
+  });
+  $("pageFindClose").addEventListener("click", hide);
+}
+
 // ============================================================
 // FEATURE 1 — FOCUS / READING MODE
 // ============================================================
@@ -1802,11 +1838,20 @@ async function openVersionPreview(entryId, timestamp) {
   const res = await fetch(`/api/entry/${entryId}/history/${timestamp}`);
   if (!res.ok) { showToast("Error al cargar snapshot", "error"); return; }
   const data = await res.json();
+  const current = _inlineEditor ? _inlineEditor.getMarkdown() : "";
+  const currentLines = current.split("\n").length;
+  const snapshotLines = (data.markdown || "").split("\n").length;
+  const delta = snapshotLines - currentLines;
   _historyCurrentTimestamp = timestamp;
   _historyCurrentMarkdown = data.markdown;
   const ts = formatHistoryTimestamp(timestamp);
   $("versionModalTitle").textContent = `snapshot — ${ts}`;
-  $("versionModalBody").innerHTML = data.html;
+  $("versionModalBody").innerHTML = `
+    <div class="version-diff-summary">
+      actual: ${currentLines} líneas · snapshot: ${snapshotLines} líneas · delta: ${delta >= 0 ? "+" : ""}${delta}
+    </div>
+    ${data.html}
+  `;
   $("versionModalOverlay").classList.remove("hidden");
 }
 

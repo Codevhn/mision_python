@@ -158,6 +158,15 @@ window.BlockEditor = (() => {
       }
     }
 
+    function selectAllBlocks() {
+      clearSelection();
+      _blocks.forEach(b => {
+        _selected.add(b.id);
+        container.querySelector(`[data-id="${b.id}"]`)?.classList.add('eb--selected');
+      });
+      _lastSelIdx = _blocks.length - 1;
+    }
+
     // Detect if text looks like markdown (should be parsed as blocks)
     function looksLikeMarkdown(text) {
       const lines = text.split('\n');
@@ -1611,6 +1620,21 @@ window.BlockEditor = (() => {
       const items = [
         { label:'Convertir en…', icon:'⇄', sub:'turn' },
         { label:'Color',          icon:'🎨', sub:'color' },
+        { label:'Copiar Markdown', icon:'⧉', action: () => {
+          const idx = _blocks.findIndex(b => b.id === blockId);
+          if (idx >= 0) navigator.clipboard?.writeText(blocksToMd(sliceSubtree(idx))).catch(() => {});
+          closeBlockMenu();
+        } },
+        { label:'Seleccionar hijos', icon:'□', action: () => {
+          clearSelection();
+          const idx = _blocks.findIndex(b => b.id === blockId);
+          const end = subtreeEndIndex(idx);
+          for (let j = idx; j < end; j++) {
+            _selected.add(_blocks[j].id);
+            container.querySelector(`[data-id="${_blocks[j].id}"]`)?.classList.add('eb--selected');
+          }
+          closeBlockMenu();
+        } },
         { label:'Duplicar',      icon:'⎘', action: () => { duplicateBlock(blockId); closeBlockMenu(); } },
         { sep: true },
         { label:'Eliminar',      icon:'✕', action: () => { deleteBlock(blockId); closeBlockMenu(); }, danger:true },
@@ -2377,6 +2401,40 @@ window.BlockEditor = (() => {
       if (!e.target.closest('[data-id]')) clearSelection();
     });
 
+    // Drag-select blocks from the left margin.
+    let marginSelecting = false;
+    let marginStartIdx = -1;
+    container.addEventListener('mousedown', e => {
+      const blockEl = e.target.closest('.eb[data-id]');
+      if (!blockEl || e.target.closest('.eb-content, .eb-toggle-header, button, input, textarea, table')) return;
+      const rect = blockEl.getBoundingClientRect();
+      if (e.clientX > rect.left + 54) return;
+      e.preventDefault();
+      marginSelecting = true;
+      marginStartIdx = _blocks.findIndex(b => b.id === blockEl.dataset.id);
+      clearSelection();
+      selectBlock(blockEl.dataset.id, true, false);
+    });
+    document.addEventListener('mousemove', e => {
+      if (!marginSelecting) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.eb[data-id]');
+      if (!el || !container.contains(el)) return;
+      const idx = _blocks.findIndex(b => b.id === el.dataset.id);
+      if (idx < 0 || marginStartIdx < 0) return;
+      clearSelection();
+      const from = Math.min(marginStartIdx, idx);
+      const to = Math.max(marginStartIdx, idx);
+      for (let i = from; i <= to; i++) {
+        _selected.add(_blocks[i].id);
+        container.querySelector(`[data-id="${_blocks[i].id}"]`)?.classList.add('eb--selected');
+      }
+      _lastSelIdx = idx;
+    });
+    document.addEventListener('mouseup', () => {
+      marginSelecting = false;
+      marginStartIdx = -1;
+    });
+
     // Notion-like click: clicking in vertical whitespace inserts a new block at that position.
     // Also: clicking inside an empty toggle body inserts a child block inside that toggle.
     container.addEventListener('click', e => {
@@ -2425,8 +2483,51 @@ window.BlockEditor = (() => {
     _blocks = [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
     render();
 
+    let _findMatches = [];
+    let _findIdx = -1;
+    function findText(query) {
+      const q = (query || '').toLowerCase();
+      _findMatches = q
+        ? _blocks.map((b, i) => ({ b, i, text: (readContent(b.id) ?? b.content ?? '').toLowerCase() }))
+            .filter(x => x.text.includes(q))
+        : [];
+      _findIdx = _findMatches.length ? 0 : -1;
+      if (_findIdx >= 0) {
+        focusBlock(_findMatches[_findIdx].b.id);
+        container.querySelector(`[data-id="${_findMatches[_findIdx].b.id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' });
+      }
+      return { count: _findMatches.length, index: _findIdx };
+    }
+    function findNext() {
+      if (!_findMatches.length) return { count: 0, index: -1 };
+      _findIdx = (_findIdx + 1) % _findMatches.length;
+      focusBlock(_findMatches[_findIdx].b.id);
+      container.querySelector(`[data-id="${_findMatches[_findIdx].b.id}"]`)?.scrollIntoView({ block:'center', behavior:'smooth' });
+      return { count: _findMatches.length, index: _findIdx };
+    }
+    function replaceAllText(query, replacement) {
+      if (!query) return 0;
+      saveHistory();
+      const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      let changed = 0;
+      _blocks.forEach(b => {
+        if (['table','code','divider','page','database'].includes(b.type)) return;
+        const text = readContent(b.id) ?? b.content ?? '';
+        if (!re.test(text)) return;
+        re.lastIndex = 0;
+        b.content = text.replace(re, replacement || '');
+        changed++;
+      });
+      if (changed) { render(); sync(); }
+      return changed;
+    }
+
     _selfRef = {
       load, loadMarkdown: load, getMarkdown, addPageBlock, focusFirst,
+      selectAllBlocks,
+      findText,
+      findNext,
+      replaceAllText,
       // Cross-editor drag API
       _removeBlock(id) {
         const idx = _blocks.findIndex(b => b.id === id);
