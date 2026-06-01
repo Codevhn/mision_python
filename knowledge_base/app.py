@@ -836,9 +836,9 @@ def patch_content(entry_id):
         return jsonify({"error": "Not found"}), 404
     data = request.json
     meta = index[entry_id]
-    raw_text = data.get("raw_text", "").strip()
+    raw_text = data.get("raw_text")
     restore = data.get("restore", False)  # if True, write markdown verbatim (no smart_parse)
-    if raw_text:
+    if raw_text is not None:
         path = _entry_path(entry_id, meta)
         _save_history_snapshot(entry_id, meta, path)
         # Restore: write markdown as-is; normal save: smart_parse
@@ -846,7 +846,7 @@ def patch_content(entry_id):
     title = data.get("title", "").strip()
     if title:
         index[entry_id]["title"] = title
-    if raw_text or title:
+    if raw_text is not None or title:
         save_index(index)
     return jsonify({"ok": True})
 
@@ -889,6 +889,23 @@ def get_entry_history_snapshot(entry_id, timestamp):
     content = snapshot_path.read_text()
     html = render_markdown(content)
     return jsonify({"markdown": content, "html": html, "timestamp": timestamp})
+
+
+@app.route("/api/entry/<entry_id>/history/<timestamp>/restore", methods=["POST"])
+def restore_entry_history_snapshot(entry_id, timestamp):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = _entry_path(entry_id, meta)
+    hist_dir = path.parent / ".history"
+    snapshot_path = hist_dir / f"{entry_id}_{timestamp}.md"
+    if not snapshot_path.exists():
+        return jsonify({"error": "Snapshot not found"}), 404
+    _save_history_snapshot(entry_id, meta, path)
+    content = snapshot_path.read_text(encoding="utf-8")
+    path.write_text(content, encoding="utf-8")
+    return jsonify({"ok": True, "markdown": content})
 
 
 # ── FEATURE: Backlinks ──────────────────────────────────────────────────────

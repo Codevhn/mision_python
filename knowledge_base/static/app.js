@@ -1816,24 +1816,21 @@ function closeVersionModal() {
 }
 
 async function restoreVersion() {
-  if (!currentEntryId || !_historyCurrentMarkdown) return;
-  const restoredMarkdown = _historyCurrentMarkdown;
+  if (!currentEntryId || !_historyCurrentTimestamp) return;
   // Cancel any pending auto-save that could overwrite the restored content
   _restoreInProgress = true;
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
-  // Use PATCH /content to write markdown directly (bypasses smart_parse)
   try {
-    const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ raw_text: restoredMarkdown, restore: true }),
+    const putRes = await fetch(`/api/entry/${currentEntryId}/history/${_historyCurrentTimestamp}/restore`, {
+      method: "POST",
     });
     if (putRes.ok) {
+      const data = await putRes.json();
       closeVersionModal();
       $("historyPanel").classList.add("hidden");
       $("historyBtn").classList.remove("active");
-      _inlineEditor.load(restoredMarkdown);
+      _inlineEditor.load(data.markdown || "");
       showToast("Versión restaurada");
       // Small delay to ensure file is written before re-fetch
       await new Promise(r => setTimeout(r, 80));
