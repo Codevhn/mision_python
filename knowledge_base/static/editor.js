@@ -20,7 +20,8 @@ window.BlockEditor = (() => {
     { type:'bullet',    label:'Lista •',         desc:'Lista con viñetas',         icon:'•',   keys:['bullet','list','lista','viñeta','b','ul'] },
     { type:'numbered',  label:'Lista 1.',        desc:'Lista numerada',            icon:'1.',  keys:['numbered','number','lista','ol','numerada','n'] },
     { type:'todo',      label:'Tarea',           desc:'Checkbox de tarea',         icon:'☐',   keys:['todo','task','checkbox','tarea','check'] },
-    { type:'table',     label:'Tabla',           desc:'Tabla markdown',            icon:'⊞',   keys:['table','tabla','grid'] },
+    { type:'database',  label:'Base de datos',   desc:'Tabla tipo Notion DB',      icon:'⊞',   keys:['database','db','tabla','grid','notion'] },
+    { type:'table',     label:'Tabla (md)',      desc:'Tabla markdown simple',     icon:'▦',   keys:['table','tabla','markdown','md'] },
     { type:'code',      label:'Código',          desc:'Bloque de código',          icon:'</>',  keys:['code','codigo','snippet','pre','c'] },
     { type:'quote',     label:'Cita',            desc:'Blockquote',                icon:'"',   keys:['quote','cita','blockquote','q'] },
     { type:'divider',   label:'Divisor',         desc:'Línea horizontal',          icon:'—',   keys:['divider','divisor','hr','line','separador'] },
@@ -33,7 +34,7 @@ window.BlockEditor = (() => {
     toggle:'Título del toggle…', 'toggle-h1':'Toggle Encabezado 1',
     'toggle-h2':'Toggle Encabezado 2', 'toggle-h3':'Toggle Encabezado 3',
     bullet:'Elemento de lista', numbered:'Elemento numerado',
-    todo:'Tarea pendiente', table:'',
+    todo:'Tarea pendiente', table:'', database:'',
     code:'// código aquí', quote:'Cita…', divider:'', page:'Nombre de la sub-página',
   };
 
@@ -313,6 +314,183 @@ window.BlockEditor = (() => {
       return tab;
     }
 
+    // ── DATABASE block ──────────────────────────────────────────
+    function makeDatabase(wrap, b, sync) {
+      function getData() {
+        try { return JSON.parse(b.content || '{}'); } catch(_) { return { cols:[], rows:[] }; }
+      }
+      function saveData(d) {
+        b.content = JSON.stringify(d);
+        sync();
+      }
+      function dbUid() { return 'x' + Math.random().toString(36).slice(2,8); }
+
+      function buildTable() {
+        wrap.innerHTML = '';
+        const d = getData();
+        if (!d.cols) d.cols = [];
+        if (!d.rows) d.rows = [];
+
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'eb-db-wrap';
+
+        const table = document.createElement('table');
+        table.className = 'eb-db-table';
+
+        // ── HEADER ROW ──
+        const thead = document.createElement('thead');
+        const htr = document.createElement('tr');
+
+        // row-delete gutter header
+        const gutterTh = document.createElement('th');
+        gutterTh.className = 'eb-db-gutter-th';
+        htr.appendChild(gutterTh);
+
+        d.cols.forEach((col, ci) => {
+          const th = document.createElement('th');
+          th.className = 'eb-db-th';
+          th.dataset.colId = col.id;
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'eb-db-col-name';
+          nameSpan.textContent = col.name;
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'eb-db-col-del';
+          delBtn.title = 'Eliminar columna';
+          delBtn.textContent = '×';
+          delBtn.addEventListener('mousedown', e => {
+            e.preventDefault();
+            d.cols.splice(ci, 1);
+            d.rows.forEach(r => { delete r.cells[col.id]; });
+            saveData(d); buildTable();
+          });
+
+          nameSpan.addEventListener('dblclick', () => {
+            const inp = document.createElement('input');
+            inp.value = col.name;
+            inp.className = 'eb-db-col-input';
+            th.replaceChild(inp, nameSpan);
+            th.removeChild(delBtn);
+            inp.focus(); inp.select();
+            const commit = () => {
+              col.name = inp.value.trim() || col.name;
+              saveData(d); buildTable();
+            };
+            inp.addEventListener('blur', commit);
+            inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') { e2.preventDefault(); commit(); } if (e2.key === 'Escape') buildTable(); });
+          });
+
+          th.appendChild(nameSpan);
+          th.appendChild(delBtn);
+          htr.appendChild(th);
+        });
+
+        // + col button
+        const addColTh = document.createElement('th');
+        addColTh.className = 'eb-db-add-col-th';
+        const addColBtn = document.createElement('button');
+        addColBtn.className = 'eb-db-add-col';
+        addColBtn.title = 'Agregar columna';
+        addColBtn.textContent = '+';
+        addColBtn.addEventListener('mousedown', e => {
+          e.preventDefault();
+          const cid = dbUid();
+          d.cols.push({ id: cid, name: 'Columna ' + (d.cols.length + 1) });
+          d.rows.forEach(r => { r.cells[cid] = ''; });
+          saveData(d); buildTable();
+        });
+        addColTh.appendChild(addColBtn);
+        htr.appendChild(addColTh);
+
+        thead.appendChild(htr);
+        table.appendChild(thead);
+
+        // ── BODY ROWS ──
+        const tbody = document.createElement('tbody');
+        d.rows.forEach((row, ri) => {
+          const tr = document.createElement('tr');
+          tr.className = 'eb-db-row';
+          tr.dataset.rowId = row.id;
+
+          // row-delete gutter
+          const gutterTd = document.createElement('td');
+          gutterTd.className = 'eb-db-gutter';
+          const delRowBtn = document.createElement('button');
+          delRowBtn.className = 'eb-db-row-del';
+          delRowBtn.title = 'Eliminar fila';
+          delRowBtn.textContent = '×';
+          delRowBtn.addEventListener('mousedown', e => {
+            e.preventDefault();
+            d.rows.splice(ri, 1);
+            saveData(d); buildTable();
+          });
+          gutterTd.appendChild(delRowBtn);
+          tr.appendChild(gutterTd);
+
+          d.cols.forEach((col, ci) => {
+            const td = document.createElement('td');
+            td.className = 'eb-db-cell';
+            td.contentEditable = 'true';
+            td.spellcheck = false;
+            td.textContent = row.cells[col.id] || '';
+            td.addEventListener('input', () => {
+              row.cells[col.id] = td.textContent;
+              saveData(d);
+            });
+            td.addEventListener('keydown', e => {
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                const allCells = Array.from(table.querySelectorAll('.eb-db-cell'));
+                const idx = allCells.indexOf(td);
+                const next = allCells[e.shiftKey ? idx - 1 : idx + 1];
+                if (next) { next.focus(); const r = document.createRange(); r.selectNodeContents(next); r.collapse(false); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); }
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                // move to same column of next row
+                const nextTr = tr.nextElementSibling;
+                if (nextTr) {
+                  const cells = Array.from(nextTr.querySelectorAll('.eb-db-cell'));
+                  const cellIdx = ci;
+                  if (cells[cellIdx]) cells[cellIdx].focus();
+                }
+              }
+            });
+            tr.appendChild(td);
+          });
+
+          // empty add-col gutter
+          const emptyTd = document.createElement('td');
+          emptyTd.className = 'eb-db-add-col-filler';
+          tr.appendChild(emptyTd);
+
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+
+        // ── ADD ROW button ──
+        const addRowBtn = document.createElement('button');
+        addRowBtn.className = 'eb-db-add-row';
+        addRowBtn.textContent = '+ Nueva fila';
+        addRowBtn.addEventListener('mousedown', e => {
+          e.preventDefault();
+          const rid = dbUid();
+          const cells = {};
+          d.cols.forEach(c => { cells[c.id] = ''; });
+          d.rows.push({ id: rid, cells });
+          saveData(d); buildTable();
+        });
+        tableWrap.appendChild(addRowBtn);
+
+        wrap.appendChild(tableWrap);
+      }
+
+      buildTable();
+    }
+
     // ── MD → BLOCKS ─────────────────────────────────────────────
     const COLOR_NAMES = {
       default:'', gray:'#9b9b9b', brown:'#8b6756', orange:'#d9730d', yellow:'#cb912f',
@@ -389,6 +567,21 @@ window.BlockEditor = (() => {
           continue;
         }
 
+        // database block: :::database\n{json}\n:::
+        if (l.startsWith(':::database')) {
+          const bodyLines = [];
+          i++;
+          while (i < lines.length && !lines[i].startsWith(':::')) { bodyLines.push(lines[i]); i++; }
+          if (i < lines.length && lines[i].startsWith(':::')) i++;
+          let dbData;
+          try { dbData = JSON.parse(bodyLines.join('\n')); } catch(_) { dbData = null; }
+          if (!dbData) {
+            dbData = { cols:[{id:'c0',name:'Nombre'},{id:'c1',name:'Estado'}], rows:[{id:'r0',cells:{c0:'',c1:''}}] };
+          }
+          pushBlock({ id:uid(), type:'database', content:JSON.stringify(dbData) });
+          continue;
+        }
+
         // markdown table — accumulate consecutive | lines
         if (l.startsWith('|')) {
           const tableLines = [l];
@@ -429,6 +622,8 @@ window.BlockEditor = (() => {
 
     // ── BLOCKS → MD ─────────────────────────────────────────────
     function readContent(id) {
+      const b = _blocks.find(x => x.id === id);
+      if (b && b.type === 'database') return b.content; // JSON stored directly
       const el = container.querySelector(`[data-id="${id}"] .eb-content`);
       if (!el) return null;
       // When inline-rendered, use stored plain text to avoid reading HTML tags
@@ -476,6 +671,7 @@ window.BlockEditor = (() => {
             push(`:::${b.type} ${th}\n${tb}\n:::`);
             break;
           }
+          case 'database': push(':::database\n' + (b.content || '{}') + '\n:::'); break;
           case 'table':   push(b.content || ''); break;
           case 'divider': push('---'); break;
           case 'page':    push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
@@ -768,6 +964,15 @@ window.BlockEditor = (() => {
           if (b.pageId && window._loadEntryById) window._loadEntryById(b.pageId);
         });
         wrap.appendChild(link);
+        return wrap;
+      }
+
+      // ── DATABASE block ──────────────────────────────────────────
+      if (b.type === 'database') {
+        const dbContainer = document.createElement('div');
+        dbContainer.className = 'eb-db-container';
+        makeDatabase(dbContainer, b, sync);
+        wrap.appendChild(dbContainer);
         return wrap;
       }
 
