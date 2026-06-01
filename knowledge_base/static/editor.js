@@ -1457,11 +1457,15 @@ window.BlockEditor = (() => {
     }
 
     // ── SYNC ────────────────────────────────────────────────────
+    let _syncHistoryTimer = null;
     function sync() {
       if (_loading) return; // never fire onChange during load
       const md = blocksToMd();
       if (syncTarget) syncTarget.value = md;
       if (onChange) onChange(md);
+      // Debounced history snapshot — catches text edits not covered by saveHistory()
+      clearTimeout(_syncHistoryTimer);
+      _syncHistoryTimer = setTimeout(() => saveHistory(), 1500);
     }
 
     // ── PUBLIC ──────────────────────────────────────────────────
@@ -1512,24 +1516,27 @@ window.BlockEditor = (() => {
 
     // ── PASTE HANDLER: intercept HTML table paste ────────────────
     container.addEventListener('paste', e => {
+      // Skip if paste target is inside a NESTED editor (toggle body) — let that editor handle it
+      const focused = document.activeElement;
+      const closestNested = focused?.closest?.('.eb-toggle-nested');
+      if (closestNested && container.contains(closestNested)) return;
+
       const html = e.clipboardData?.getData('text/html') || '';
-      if (!html) return;
+      const text = e.clipboardData?.getData('text/plain') || '';
 
       // If HTML contains a table, convert it
-      if (/<table[\s>]/i.test(html)) {
+      if (html && /<table[\s>]/i.test(html)) {
         const md = htmlTableToMd(html);
         if (md) {
           e.preventDefault();
-          // Find current focused block
-          const focused = document.activeElement?.closest('[data-id]');
-          const focusedId = focused?.dataset?.id;
+          const focusedBlock_el = document.activeElement?.closest('[data-id]');
+          const focusedId = focusedBlock_el?.dataset?.id;
           const focusedBlock = _blocks.find(x => x.id === focusedId);
           const insertAfter = focusedId || _blocks[_blocks.length - 1]?.id;
           const nb = { id: uid(), type: 'table', content: md };
           const idx = _blocks.findIndex(x => x.id === insertAfter);
           if (idx >= 0) _blocks.splice(idx + 1, 0, nb);
           else _blocks.push(nb);
-          // If focused block is empty text, remove it
           if (focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim()) {
             _blocks.splice(_blocks.findIndex(x => x.id === focusedId), 1);
           }
@@ -1537,20 +1544,19 @@ window.BlockEditor = (() => {
         }
       }
 
-      // Markdown paste: detect and parse as blocks even for small content
-      const text = e.clipboardData?.getData('text/plain') || '';
+      // Markdown paste: works whether clipboard has HTML or only plain text
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
         saveHistory();
-        const focused = document.activeElement?.closest('[data-id]');
-        const focusedId = focused?.dataset?.id;
+        const focusedBlock_el2 = document.activeElement?.closest('[data-id]');
+        const focusedId2 = focusedBlock_el2?.dataset?.id;
         const newBlocks = mdToBlocks(text);
-        const idx = _blocks.findIndex(x => x.id === focusedId);
-        if (idx >= 0) {
-          const focusedBlock = _blocks[idx];
-          const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
-          if (replace) _blocks.splice(idx, 1, ...newBlocks);
-          else _blocks.splice(idx + 1, 0, ...newBlocks);
+        const idx2 = _blocks.findIndex(x => x.id === focusedId2);
+        if (idx2 >= 0) {
+          const focusedBlock2 = _blocks[idx2];
+          const replace = focusedBlock2 && focusedBlock2.type === 'text' && !(focusedBlock2.content || '').trim();
+          if (replace) _blocks.splice(idx2, 1, ...newBlocks);
+          else _blocks.splice(idx2 + 1, 0, ...newBlocks);
         } else {
           _blocks.push(...newBlocks);
         }
@@ -1558,12 +1564,10 @@ window.BlockEditor = (() => {
         return;
       }
 
-      // Plain text paste: update plaintext tracking
-      // Let browser handle it, but sync plaintext after
-      const focused2 = document.activeElement;
-      if (focused2?.classList.contains('eb-content')) {
+      // Plain text paste: let browser handle, sync plaintext tracking after
+      if (focused?.classList.contains('eb-content')) {
         setTimeout(() => {
-          focused2.dataset.plaintext = focused2.innerText.replace(/\n$/, '');
+          focused.dataset.plaintext = focused.innerText.replace(/\n$/, '');
         }, 0);
       }
     });
@@ -1630,6 +1634,25 @@ window.BlockEditor = (() => {
     // Clicking the container background deselects
     container.addEventListener('mousedown', e => {
       if (!e.target.closest('[data-id]')) clearSelection();
+    });
+
+    // Click anywhere in the empty editor area → focus last block or add new one
+    container.addEventListener('click', e => {
+      if (e.target.closest('[data-id]')) return; // clicked on a block — normal behavior
+      const last = _blocks[_blocks.length - 1];
+      if (!last) { _blocks.push({ id: uid(), type: 'text', content: '' }); render(); return; }
+      const lastEl = container.querySelector(`[data-id="${last.id}"]`);
+      const editable = lastEl?.querySelector('.eb-content, .eb-toggle-header, .eb-code');
+      if (editable) {
+        editable.focus();
+        if (editable.classList.contains('eb-content') || editable.classList.contains('eb-toggle-header')) {
+          placeCursorEnd(editable);
+        }
+      } else if (last.type === 'text' && !last.content) {
+        // already empty text block, just focus
+      } else {
+        addBlockAfter(last.id, 'text');
+      }
     });
 
     // Initial empty state

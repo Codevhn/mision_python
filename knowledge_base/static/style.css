@@ -1958,7 +1958,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   padding: 12px 8px;
 }
 
-.block-editor { outline: none; }
+.block-editor { outline: none; min-height: 300px; cursor: text; }
 
 /* Individual block */
 .eb {
