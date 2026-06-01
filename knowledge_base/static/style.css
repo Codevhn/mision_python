@@ -2129,7 +2129,15 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--dragging { opacity: 0.35; }
 .eb--drag-top { border-top: 2px solid var(--accent); }
 .eb--drag-bot { border-bottom: 2px solid var(--accent); }
-.eb--selected { background: rgba(35, 131, 226, 0.12) !important; outline: 1px solid rgba(35, 131, 226, 0.35); border-radius: 3px; }
+.eb--selected {
+  background: rgba(35, 131, 226, 0.34) !important;
+  outline: 1px solid rgba(111, 178, 239, 0.75);
+  border-radius: 3px;
+}
+.eb--selected .eb-content,
+.eb--selected .eb-toggle-header {
+  color: #eef7ff;
+}
 .eb--drop-end { outline: 2px dashed var(--accent); border-radius: 4px; outline-offset: -2px; }
 .eb[data-trail].eb--focused::after {
   content: attr(data-trail);

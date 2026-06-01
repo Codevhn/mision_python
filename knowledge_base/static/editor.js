@@ -167,6 +167,39 @@ window.BlockEditor = (() => {
       _lastSelIdx = _blocks.length - 1;
     }
 
+    function selectedRange() {
+      const idxs = _blocks.map((b, i) => _selected.has(b.id) ? i : -1).filter(i => i >= 0);
+      if (!idxs.length) return null;
+      return { from: Math.min(...idxs), to: Math.max(...idxs) };
+    }
+
+    function deleteSelectedBlocks(opts = {}) {
+      const range = selectedRange();
+      if (!range) return false;
+      saveHistory();
+      const count = range.to - range.from + 1;
+      const replacement = opts.keepEmpty === false ? [] : [{ id: uid(), type:'text', content:'', checked:false, indent: 0 }];
+      _blocks.splice(range.from, count, ...replacement);
+      clearSelection();
+      render();
+      const focusId = replacement[0]?.id || _blocks[Math.max(0, range.from - 1)]?.id;
+      if (focusId) focusBlock(focusId);
+      sync();
+      return true;
+    }
+
+    function replaceSelectedBlocks(newBlocks) {
+      const range = selectedRange();
+      if (!range || !newBlocks?.length) return false;
+      saveHistory();
+      _blocks.splice(range.from, range.to - range.from + 1, ...newBlocks);
+      clearSelection();
+      render();
+      focusBlock(newBlocks[0].id);
+      sync();
+      return true;
+    }
+
     // Detect if text looks like markdown (should be parsed as blocks)
     function looksLikeMarkdown(text) {
       const lines = text.split('\n');
@@ -2287,6 +2320,7 @@ window.BlockEditor = (() => {
       const bumpIndent = (arr, delta) => arr.forEach(b => { b.indent = getIndent(b) + delta; });
       const insertBlocks = (newBlocks) => {
         if (!newBlocks.length) return;
+        if (_selected.size > 0 && replaceSelectedBlocks(newBlocks)) return;
         saveHistory();
         if (focusedIdx >= 0) {
           const replace = focusedBlock && focusedBlock.type === 'text' && !(focusedBlock.content || '').trim();
@@ -2337,6 +2371,14 @@ window.BlockEditor = (() => {
       }
 
       // Plain text paste: let browser handle, sync plaintext tracking after
+      if (_selected.size > 0 && text) {
+        e.preventDefault();
+        const blocks = mdToBlocks(text);
+        replaceSelectedBlocks(blocks);
+        return;
+      }
+
+      // Plain text paste: let browser handle, sync plaintext tracking after
       if (focused?.classList.contains('eb-content')) {
         setTimeout(() => {
           focused.dataset.plaintext = focused.innerText.replace(/\n$/, '');
@@ -2380,6 +2422,12 @@ window.BlockEditor = (() => {
       if (_selected.size > 0 && (e.ctrlKey || e.metaKey) && e.key === 'c') {
         const sel = _blocks.filter(b => _selected.has(b.id));
         navigator.clipboard?.writeText(blocksToMd(sel)).catch(() => {});
+        e.preventDefault();
+        return;
+      }
+      if (_selected.size > 0 && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        deleteSelectedBlocks();
         return;
       }
       // Ctrl+Z undo: structural ops when not typing, always when _structuralDirty
@@ -2390,9 +2438,7 @@ window.BlockEditor = (() => {
       }
       if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
-        clearSelection();
-        _blocks.forEach(b => { _selected.add(b.id); container.querySelector(`[data-id="${b.id}"]`)?.classList.add('eb--selected'); });
-        _lastSelIdx = _blocks.length - 1;
+        selectAllBlocks();
       }
     });
 
