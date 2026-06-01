@@ -381,7 +381,7 @@ window.BlockEditor = (() => {
           const bodyLines = [];
           i++;
           let toggleLines = 0;
-          while (i < lines.length && !lines[i].startsWith(':::') && toggleLines < 500) {
+          while (i < lines.length && !lines[i].startsWith(':::')) {
             bodyLines.push(lines[i]); i++; toggleLines++;
           }
           if (i < lines.length && lines[i].startsWith(':::')) i++; // skip closing :::
