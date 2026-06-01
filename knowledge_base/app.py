@@ -468,9 +468,9 @@ def _save_history_snapshot(entry_id, meta, old_path):
         return
     hist_dir = old_path.parent / ".history"
     hist_dir.mkdir(exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S%f")
     snapshot_path = hist_dir / f"{entry_id}_{ts}.md"
-    snapshot_path.write_text(old_path.read_text())
+    snapshot_path.write_text(old_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 @app.route("/api/entry/<entry_id>", methods=["PUT"])

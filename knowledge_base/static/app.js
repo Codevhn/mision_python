@@ -16,6 +16,7 @@ let _reviewEntries = [];
 let _reviewIndex = 0;
 let _inlineEditor = null;  // inline entry editor instance
 let _autoSaveTimer = null;
+let _restoreInProgress = false;
 
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
@@ -865,6 +866,7 @@ async function loadEntry(id) {
 
 // ---- INLINE AUTO-SAVE ----
 function _scheduleAutoSave(md) {
+  if (_restoreInProgress) return;
   clearTimeout(_autoSaveTimer);
   _setAutosaveStatus("saving");
   const savedId = currentEntryId; // capture at schedule time
@@ -1748,6 +1750,10 @@ async function loadEntryChildren(entryId) {
 let _historyCurrentTimestamp = null;
 let _historyCurrentMarkdown = null;
 
+function formatHistoryTimestamp(timestamp) {
+  return timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\d+)?$/, '$1-$2-$3 $4:$5:$6');
+}
+
 function initHistory() {
   $("historyBtn").addEventListener("click", toggleHistoryPanel);
   $("versionModalClose").addEventListener("click", closeVersionModal);
@@ -1779,8 +1785,7 @@ async function loadHistoryPanel(id) {
     return;
   }
   items.innerHTML = snapshots.map(s => {
-    // Parse timestamp: YYYYMMDDTHHMMSS → YYYY-MM-DD HH:MM:SS
-    const ts = s.timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
+    const ts = formatHistoryTimestamp(s.timestamp);
     const kb = (s.size / 1024).toFixed(1);
     return `<div class="history-item" data-ts="${escapeHtml(s.timestamp)}">
       <span class="history-item-ts">${escapeHtml(ts)}</span>
@@ -1798,7 +1803,7 @@ async function openVersionPreview(entryId, timestamp) {
   const data = await res.json();
   _historyCurrentTimestamp = timestamp;
   _historyCurrentMarkdown = data.markdown;
-  const ts = timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6');
+  const ts = formatHistoryTimestamp(timestamp);
   $("versionModalTitle").textContent = `snapshot — ${ts}`;
   $("versionModalBody").innerHTML = data.html;
   $("versionModalOverlay").classList.remove("hidden");
@@ -1812,28 +1817,37 @@ function closeVersionModal() {
 
 async function restoreVersion() {
   if (!currentEntryId || !_historyCurrentMarkdown) return;
+  const restoredMarkdown = _historyCurrentMarkdown;
   // Cancel any pending auto-save that could overwrite the restored content
+  _restoreInProgress = true;
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
   // Use PATCH /content to write markdown directly (bypasses smart_parse)
-  const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ raw_text: _historyCurrentMarkdown, restore: true }),
-  });
-  if (putRes.ok) {
-    closeVersionModal();
-    $("historyPanel").classList.add("hidden");
-    $("historyBtn").classList.remove("active");
-    showToast("Versión restaurada");
-    // Small delay to ensure file is written before re-fetch
-    await new Promise(r => setTimeout(r, 80));
-    await loadEntry(currentEntryId);
-    // Scroll entry body to top after restore
-    const area = $("contentArea");
-    if (area) area.scrollTop = 0;
-  } else {
+  try {
+    const putRes = await fetch(`/api/entry/${currentEntryId}/content`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raw_text: restoredMarkdown, restore: true }),
+    });
+    if (putRes.ok) {
+      closeVersionModal();
+      $("historyPanel").classList.add("hidden");
+      $("historyBtn").classList.remove("active");
+      _inlineEditor.load(restoredMarkdown);
+      showToast("Versión restaurada");
+      // Small delay to ensure file is written before re-fetch
+      await new Promise(r => setTimeout(r, 80));
+      await loadEntry(currentEntryId);
+      // Scroll entry body to top after restore
+      const area = $("contentArea");
+      if (area) area.scrollTop = 0;
+    } else {
+      showToast("Error al restaurar", "error");
+    }
+  } catch (_) {
     showToast("Error al restaurar", "error");
+  } finally {
+    _restoreInProgress = false;
   }
 }
 

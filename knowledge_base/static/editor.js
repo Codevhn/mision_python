@@ -79,8 +79,11 @@ window.BlockEditor = (() => {
       const end = subtreeEndIndex(startIdx);
       return _blocks.slice(startIdx, end);
     }
+    function editableSelector(id) {
+      return `[data-id="${id}"] .eb-content, [data-id="${id}"] .eb-toggle-header`;
+    }
     function focusBlock(id) {
-      const el = container.querySelector(`[data-id="${id}"] .eb-content, [data-id="${id}"] .eb-toggle-header`);
+      const el = container.querySelector(editableSelector(id));
       if (el) { el.focus(); placeCursorEnd(el); }
     }
 
@@ -1151,6 +1154,7 @@ window.BlockEditor = (() => {
 
         // Header keydown
         hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
+        hDiv.addEventListener('beforeinput', () => saveHistory());
         hDiv.addEventListener('input',   () => { b.content = hDiv.innerText; sync(); });
         hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
         hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
@@ -1173,6 +1177,7 @@ window.BlockEditor = (() => {
       }
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
+      div.addEventListener('beforeinput', () => saveHistory());
       div.addEventListener('input', () => {
         _structuralDirty = false;
         div.dataset.plaintext = htmlToMd(div).replace(/\n$/, '');
@@ -1239,6 +1244,30 @@ window.BlockEditor = (() => {
       const el = container.querySelector(`[data-id="${id}"] .eb-content`);
       if (el) el.innerText = '';
       sync();
+    }
+
+    function mergeBlockIntoPrevious(id) {
+      const idx = _blocks.findIndex(b => b.id === id);
+      if (idx <= 0) return false;
+      const prev = _blocks[idx - 1];
+      const cur = _blocks[idx];
+      if (!prev || !cur) return false;
+      if (['table','code','divider','page','database'].includes(prev.type)) return false;
+      if (['table','code','divider','page','database'].includes(cur.type)) return false;
+
+      saveHistory();
+      const prevText = readContent(prev.id) ?? prev.content ?? '';
+      const curText = readContent(cur.id) ?? cur.content ?? '';
+      prev.content = prevText + curText;
+      _blocks.splice(idx, 1);
+      render();
+      const prevEl = container.querySelector(editableSelector(prev.id));
+      if (prevEl) {
+        prevEl.focus();
+        placeCursorTextOffset(prevEl, prevText.length);
+      }
+      sync();
+      return true;
     }
 
     function convertBlock(id, newType) {
@@ -1528,6 +1557,30 @@ window.BlockEditor = (() => {
       } catch(e) {}
     }
 
+    function placeCursorTextOffset(el, offset) {
+      try {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let remaining = Math.max(0, offset);
+        let node = walker.nextNode();
+        while (node) {
+          if (remaining <= node.textContent.length) {
+            const r = document.createRange();
+            r.setStart(node, remaining);
+            r.collapse(true);
+            const s = window.getSelection();
+            s.removeAllRanges();
+            s.addRange(r);
+            return;
+          }
+          remaining -= node.textContent.length;
+          node = walker.nextNode();
+        }
+        placeCursorEnd(el);
+      } catch(e) {
+        placeCursorEnd(el);
+      }
+    }
+
     function isCursorAtStart(el) {
       const sel = window.getSelection();
       if (!sel || !sel.rangeCount) return true;
@@ -1624,6 +1677,10 @@ window.BlockEditor = (() => {
         }
         // Toggle header behaves like Notion: Enter creates first/next child inside the toggle.
         if (b.type.startsWith('toggle') && div.classList.contains('eb-toggle-header')) {
+          if (!b.open) {
+            addBlockAfter(b.id, 'text');
+            return;
+          }
           const idx = _blocks.findIndex(x => x.id === b.id);
           const nb = { id: uid(), type: 'text', content: '', checked:false, indent: getIndent(b) + 1 };
           _blocks.splice(idx + 1, 0, nb);
@@ -1645,6 +1702,13 @@ window.BlockEditor = (() => {
       }
 
       // Backspace on empty → delete block or convert heading→text
+      if (e.key === 'Backspace' && isCursorAtStart(div) && div.innerText.trim() !== '') {
+        if (mergeBlockIntoPrevious(b.id)) {
+          e.preventDefault();
+          hideMenu();
+          return;
+        }
+      }
       if (e.key === 'Backspace' && div.innerText.trim() === '') {
         e.preventDefault();
         hideMenu();
@@ -1757,14 +1821,16 @@ window.BlockEditor = (() => {
       const md = blocksToMd();
       if (syncTarget) syncTarget.value = md;
       if (onChange) onChange(md);
-      // Debounced history snapshot — catches text edits not covered by saveHistory()
       clearTimeout(_syncHistoryTimer);
-      _syncHistoryTimer = setTimeout(() => saveHistory(), 1500);
     }
 
     // ── PUBLIC ──────────────────────────────────────────────────
     function load(md) {
       _loading = true;
+      clearTimeout(_syncHistoryTimer);
+      _undoStack.length = 0;
+      _lastSavedMd = null;
+      _structuralDirty = false;
       _blocks = mdToBlocks(md);
       render();
       if (syncTarget) syncTarget.value = md; // sync textarea silently
@@ -1906,14 +1972,9 @@ window.BlockEditor = (() => {
       }
       // Ctrl+Z undo: structural ops when not typing, always when _structuralDirty
       if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        const inText = document.activeElement?.classList.contains('eb-content') ||
-                       document.activeElement?.classList.contains('eb-toggle-header');
-        if (!inText || _structuralDirty) {
-          e.preventDefault();
-          undo();
-          return;
-        }
-        // else: let browser handle in-block text undo
+        e.preventDefault();
+        undo();
+        return;
       }
       if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a' &&
           !document.activeElement?.classList.contains('eb-content') &&
