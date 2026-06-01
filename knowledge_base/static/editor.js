@@ -2480,7 +2480,9 @@ window.BlockEditor = (() => {
 
     // Clicking the container background deselects
     container.addEventListener('mousedown', e => {
-      if (!e.target.closest('[data-id]')) clearSelection();
+      if (_selected.size === 0) return;
+      if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+      clearSelection();
     });
 
     // Drag-select blocks from the left margin.
