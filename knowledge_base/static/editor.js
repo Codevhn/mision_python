@@ -1638,23 +1638,18 @@ window.BlockEditor = (() => {
       if (!e.target.closest('[data-id]')) clearSelection();
     });
 
-    // Click anywhere in the empty editor area → focus last block or add new one
+    // Click anywhere in the empty editor area → focus last empty text block or add new one
     container.addEventListener('click', e => {
       if (e.target.closest('[data-id]')) return; // clicked on a block — normal behavior
       const last = _blocks[_blocks.length - 1];
       if (!last) { _blocks.push({ id: uid(), type: 'text', content: '' }); render(); return; }
-      const lastEl = container.querySelector(`[data-id="${last.id}"]`);
-      const editable = lastEl?.querySelector('.eb-content, .eb-toggle-header, .eb-code');
-      if (editable) {
-        editable.focus();
-        if (editable.classList.contains('eb-content') || editable.classList.contains('eb-toggle-header')) {
-          placeCursorEnd(editable);
-        }
-      } else if (last.type === 'text' && !last.content) {
-        // already empty text block, just focus
-      } else {
-        addBlockAfter(last.id, 'text');
+      // If last block is an empty text block, just focus it
+      if (last.type === 'text' && !last.content) {
+        const editable = container.querySelector(`[data-id="${last.id}"] .eb-content`);
+        if (editable) { editable.focus(); placeCursorEnd(editable); return; }
       }
+      // Otherwise add a new text block below the last one
+      addBlockAfter(last.id, 'text');
     });
 
     // Initial empty state
