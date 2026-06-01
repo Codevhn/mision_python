@@ -25,6 +25,15 @@ def require_auth():
             return jsonify({"error": "Unauthorized"}), 401
         return redirect(url_for("login_page"))
 
+
+@app.after_request
+def prevent_api_cache(response):
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 BASE_DIR = Path(__file__).parent
 # Si existe la variable DATA_ROOT (Railway volume), usar esa ruta para datos y notas
 _DATA_ROOT = os.environ.get("DATA_ROOT")

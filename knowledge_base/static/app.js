@@ -736,7 +736,7 @@ function renderHome() {
 }
 
 // ---- ENTRY VIEW ----
-async function loadEntry(id) {
+async function loadEntry(id, opts = {}) {
   // CRITICAL: cancel any pending auto-save from the previous entry before switching
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
@@ -752,7 +752,8 @@ async function loadEntry(id) {
     el.classList.toggle("active", el.dataset.id === id);
   });
 
-  const res = await fetch(`/api/entry/${id}`);
+  const entryUrl = opts.force ? `/api/entry/${id}?_=${Date.now()}` : `/api/entry/${id}`;
+  const res = await fetch(entryUrl, opts.force ? { cache: "no-store" } : undefined);
   if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
   const data = await res.json();
 
@@ -1817,13 +1818,15 @@ function closeVersionModal() {
 
 async function restoreVersion() {
   if (!currentEntryId || !_historyCurrentTimestamp) return;
+  const restoredEntryId = currentEntryId;
   // Cancel any pending auto-save that could overwrite the restored content
   _restoreInProgress = true;
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
   try {
-    const putRes = await fetch(`/api/entry/${currentEntryId}/history/${_historyCurrentTimestamp}/restore`, {
+    const putRes = await fetch(`/api/entry/${restoredEntryId}/history/${_historyCurrentTimestamp}/restore`, {
       method: "POST",
+      cache: "no-store",
     });
     if (putRes.ok) {
       const data = await putRes.json();
@@ -1833,8 +1836,7 @@ async function restoreVersion() {
       _inlineEditor.load(data.markdown || "");
       showToast("Versión restaurada");
       // Small delay to ensure file is written before re-fetch
-      await new Promise(r => setTimeout(r, 80));
-      await loadEntry(currentEntryId);
+      await loadEntry(restoredEntryId, { force: true });
       // Scroll entry body to top after restore
       const area = $("contentArea");
       if (area) area.scrollTop = 0;
