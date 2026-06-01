@@ -105,8 +105,10 @@ window.BlockEditor = (() => {
     const MAX_UNDO = 60;
     let _lastSavedMd = null;        // avoid duplicate snapshots
     let _structuralDirty = false;   // true after a structural op, false after typing
+    let _undoing = false;           // block saveHistory during undo restore
 
     function saveHistory() {
+      if (_undoing) return;
       const md = blocksToMd();
       if (md === _lastSavedMd) return;
       _undoStack.push(md);
@@ -118,11 +120,13 @@ window.BlockEditor = (() => {
     function undo() {
       if (_undoStack.length === 0) return;
       const prev = _undoStack.pop();
+      _undoing = true;
       _lastSavedMd = prev;
       _structuralDirty = false;
       _blocks = mdToBlocks(prev);
       render();
       if (onChange) onChange(prev);
+      _undoing = false;
     }
 
     // ── HELPERS ─────────────────────────────────────────────────
