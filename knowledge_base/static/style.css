@@ -2253,8 +2253,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 
 /* List blocks */
 .eb--bullet .eb-content::before  { content: "•"; color: var(--accent); margin-right: 8px; }
-.eb--numbered .eb-content::before { content: counter(eb-num) "."; counter-increment: eb-num; color: var(--accent); margin-right: 8px; }
 .block-editor { counter-reset: eb-num; }
+.eb:not(.eb--numbered) { counter-reset: eb-num; }
+.eb--numbered { counter-increment: eb-num; }
+.eb--numbered .eb-content::before { content: counter(eb-num) "."; color: var(--accent); margin-right: 8px; }
 
 /* Todo */
 .eb--todo { align-items: center; }
