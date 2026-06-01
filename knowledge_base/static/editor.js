@@ -79,6 +79,10 @@ window.BlockEditor = (() => {
       const end = subtreeEndIndex(startIdx);
       return _blocks.slice(startIdx, end);
     }
+    function focusBlock(id) {
+      const el = container.querySelector(`[data-id="${id}"] .eb-content, [data-id="${id}"] .eb-toggle-header`);
+      if (el) { el.focus(); placeCursorEnd(el); }
+    }
 
     // ── UNDO HISTORY ────────────────────────────────────────────
     const _undoStack = [];
@@ -767,7 +771,10 @@ window.BlockEditor = (() => {
           const el = makeEl(b);
           const ind = getIndent(b);
           while (toggleStack.length && ind <= toggleStack[toggleStack.length - 1].indent) toggleStack.pop();
-          const parentBody = toggleStack.length ? toggleStack[toggleStack.length - 1].bodyEl : null;
+          const parentToggle = toggleStack.length ? toggleStack[toggleStack.length - 1] : null;
+          const parentBody = parentToggle ? parentToggle.bodyEl : null;
+          const relativeIndent = parentToggle ? Math.max(0, ind - parentToggle.indent - 1) : ind;
+          el.style.marginLeft = relativeIndent ? `${relativeIndent * INDENT_STEP_PX}px` : '';
           (parentBody || container).appendChild(el);
           if (b.type && b.type.startsWith('toggle')) {
             const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
@@ -1453,6 +1460,32 @@ window.BlockEditor = (() => {
       sync();
     }
 
+    function indentBlock(id, direction) {
+      const idx = _blocks.findIndex(b => b.id === id);
+      if (idx < 0) return false;
+      const current = getIndent(_blocks[idx]);
+      let next = current;
+      if (direction > 0) {
+        if (idx === 0) return false;
+        const prev = _blocks[idx - 1];
+        next = Math.min(current + 1, getIndent(prev) + 1);
+      } else if (current > 0) {
+        next = current - 1;
+      }
+      if (next === current) return false;
+
+      saveHistory();
+      const delta = next - current;
+      const end = subtreeEndIndex(idx);
+      for (let i = idx; i < end; i++) {
+        _blocks[i].indent = Math.max(0, getIndent(_blocks[i]) + delta);
+      }
+      render();
+      focusBlock(id);
+      sync();
+      return true;
+    }
+
     // ── DUPLICATE BLOCK ─────────────────────────────────────────
     function duplicateBlock(id) {
       saveHistory();
@@ -1562,15 +1595,15 @@ window.BlockEditor = (() => {
         return;
       }
 
-      // Tab → move to next block (prevent browser from leaving page)
+      // Tab / Shift+Tab → indent or outdent current block subtree.
       if (e.key === 'Tab' && !e.shiftKey) {
         e.preventDefault();
-        focusNextBlock(b.id);
+        indentBlock(b.id, 1);
         return;
       }
       if (e.key === 'Tab' && e.shiftKey) {
         e.preventDefault();
-        focusPrevBlock(b.id);
+        indentBlock(b.id, -1);
         return;
       }
 
