@@ -536,13 +536,15 @@ window.BlockEditor = (() => {
     function applyBlockColor(wrap, b) {
       const col = b.color && b.color !== 'default' ? COLOR_NAMES[b.color] : '';
       const bg  = b.bgColor && b.bgColor !== 'default' ? BG_NAMES[b.bgColor] : '';
-      // Background: use !important so it survives the .eb--focused override
+      // For toggles, scope the background to the row only (not the body)
+      const isToggle = b.type && b.type.startsWith('toggle');
+      const bgTarget = isToggle ? (wrap.querySelector(':scope > .eb-toggle-row') || wrap) : wrap;
       if (bg) {
-        wrap.style.setProperty('background', bg, 'important');
-        wrap.style.borderRadius = '3px';
+        bgTarget.style.setProperty('background', bg, 'important');
+        bgTarget.style.borderRadius = '3px';
       } else {
-        wrap.style.removeProperty('background');
-        wrap.style.borderRadius = '';
+        bgTarget.style.removeProperty('background');
+        bgTarget.style.borderRadius = '';
       }
       // Color: set on wrap AND on direct content/header child to beat CSS specificity
       wrap.style.color = col || '';

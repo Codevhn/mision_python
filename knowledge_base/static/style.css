@@ -1970,6 +1970,23 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb:hover { background: var(--bg-hover); }
 .eb--focused { background: var(--bg-elevated); }
+/* Toggles: only highlight the header row, not the entire body area */
+.eb--toggle:hover,
+.eb--toggle-h1:hover,
+.eb--toggle-h2:hover,
+.eb--toggle-h3:hover { background: none; }
+.eb--toggle:hover > .eb-toggle-row,
+.eb--toggle-h1:hover > .eb-toggle-row,
+.eb--toggle-h2:hover > .eb-toggle-row,
+.eb--toggle-h3:hover > .eb-toggle-row { background: var(--bg-hover); border-radius: 3px; }
+.eb--toggle.eb--focused,
+.eb--toggle-h1.eb--focused,
+.eb--toggle-h2.eb--focused,
+.eb--toggle-h3.eb--focused { background: none; }
+.eb--toggle.eb--focused > .eb-toggle-row,
+.eb--toggle-h1.eb--focused > .eb-toggle-row,
+.eb--toggle-h2.eb--focused > .eb-toggle-row,
+.eb--toggle-h3.eb--focused > .eb-toggle-row { background: var(--bg-elevated); border-radius: 3px; }
 
 /* Block controls (handle + opts) — absolutely positioned left of content */
 .eb-controls {
