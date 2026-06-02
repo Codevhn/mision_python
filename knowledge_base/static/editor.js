@@ -1055,11 +1055,21 @@ window.BlockEditor = (() => {
             buildTable();
           });
 
+          const menuWrap = document.createElement('div');
+          menuWrap.className = 'eb-db-col-menu-wrap';
+          const menuBtn = document.createElement('button');
+          menuBtn.className = 'eb-db-col-menu-btn';
+          menuBtn.type = 'button';
+          menuBtn.title = 'Opciones de propiedad';
+          menuBtn.textContent = '...';
+          const menu = document.createElement('div');
+          menu.className = 'eb-db-col-menu';
+
           const delBtn = document.createElement('button');
           delBtn.className = 'eb-db-col-del';
           delBtn.type = 'button';
           delBtn.title = 'Eliminar propiedad';
-          delBtn.textContent = '×';
+          delBtn.textContent = 'Eliminar propiedad';
           delBtn.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -1068,7 +1078,7 @@ window.BlockEditor = (() => {
 
           headMain.appendChild(nameSpan);
           headMain.appendChild(sortBtn);
-          headMain.appendChild(delBtn);
+          headMain.appendChild(menuWrap);
           th.appendChild(headMain);
 
           const meta = document.createElement('div');
@@ -1089,6 +1099,16 @@ window.BlockEditor = (() => {
             buildTable();
           });
           meta.appendChild(typeSelect);
+          const filter = document.createElement('input');
+          filter.className = 'eb-db-filter';
+          filter.placeholder = 'Filtrar esta propiedad';
+          filter.value = d.view.filters[col.id] || '';
+          filter.addEventListener('input', () => {
+            d.view.filters[col.id] = filter.value;
+            saveData(d);
+            buildTable();
+          });
+          meta.appendChild(filter);
           if (col.type === 'select' || col.type === 'multi-select') {
             const opts = document.createElement('input');
             opts.className = 'eb-db-options';
@@ -1101,18 +1121,21 @@ window.BlockEditor = (() => {
             });
             meta.appendChild(opts);
           }
-          th.appendChild(meta);
 
-          const filter = document.createElement('input');
-          filter.className = 'eb-db-filter';
-          filter.placeholder = 'Filtrar';
-          filter.value = d.view.filters[col.id] || '';
-          filter.addEventListener('input', () => {
-            d.view.filters[col.id] = filter.value;
-            saveData(d);
-            buildTable();
+          menu.appendChild(meta);
+          menu.appendChild(delBtn);
+          menuBtn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            wrap.querySelectorAll('.eb-db-col-menu.is-open').forEach(open => {
+              if (open !== menu) open.classList.remove('is-open');
+            });
+            menu.classList.toggle('is-open');
           });
-          th.appendChild(filter);
+          menu.addEventListener('click', e => e.stopPropagation());
+          menuWrap.addEventListener('mouseleave', () => menu.classList.remove('is-open'));
+          menuWrap.appendChild(menuBtn);
+          menuWrap.appendChild(menu);
 
           const resizer = document.createElement('span');
           resizer.className = 'eb-db-resizer';
