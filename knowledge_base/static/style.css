@@ -2844,48 +2844,73 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-tabulator-host { min-height: 80px; }
 
-.eb-table-toolbar {
+.eb-table-menu {
   position: absolute;
   top: 6px;
   right: 6px;
   z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px;
+}
+.eb-table-menu-btn {
+  width: 28px;
+  height: 24px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1;
   box-shadow: 0 6px 18px rgba(0,0,0,0.22);
   opacity: 0;
   pointer-events: none;
   transform: translateY(3px);
-  transition: opacity 0.12s, transform 0.12s;
+  transition: opacity 0.12s, transform 0.12s, color 0.12s, border-color 0.12s;
 }
-.eb-table-wrap:hover .eb-table-toolbar,
-.eb-table-wrap:focus-within .eb-table-toolbar {
+.eb-table-wrap:hover .eb-table-menu-btn,
+.eb-table-wrap:focus-within .eb-table-menu-btn,
+.eb-table-menu-btn:focus,
+.eb-table-menu.is-open .eb-table-menu-btn {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
-.eb-table-toolgroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
+.eb-table-menu-btn:hover,
+.eb-table-menu-btn:focus {
+  color: var(--accent);
+  border-color: var(--accent);
 }
-.eb-table-toolgroup + .eb-table-toolgroup {
-  border-left: 1px solid var(--border);
-  padding-left: 4px;
-  margin-left: 2px;
+.eb-table-menu-pop {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  min-width: 220px;
+  display: none;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.eb-table-menu-pop.is-open { display: block; }
+.eb-table-menu-pop button {
+  width: 100%;
+  display: block;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 7px 10px;
+  text-align: left;
+}
+.eb-table-menu-pop button:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
 }
 .eb-tbl-btn {
-  width: 26px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
   border-radius: 3px;
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -2912,8 +2937,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: var(--bg-surface);
 }
 .eb-simple-table {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 0.86rem;
@@ -2921,7 +2946,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-simple-table th,
 .eb-simple-table td {
   border: 1px solid var(--border-light);
-  min-width: 0;
+  width: 220px;
+  min-width: 180px;
   height: 34px;
   padding: 7px 10px;
   vertical-align: top;

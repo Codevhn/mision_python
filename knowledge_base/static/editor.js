@@ -566,6 +566,11 @@ window.BlockEditor = (() => {
         sync();
       }
 
+      function readLatestModel() {
+        if (wrap.querySelector('.eb-simple-table')) saveFromDom();
+        return getModel();
+      }
+
       function focusCell(row, col, header = false) {
         const selector = header
           ? `.eb-simple-th[data-col="${col}"]`
@@ -575,7 +580,7 @@ window.BlockEditor = (() => {
       }
 
       function addRow(after = active.row) {
-        const { headers, rows } = getModel();
+        const { headers, rows } = readLatestModel();
         const at = Math.max(0, Math.min(rows.length, after + 1));
         rows.splice(at, 0, headers.map(() => ''));
         b.content = modelToMd(headers, rows);
@@ -585,7 +590,7 @@ window.BlockEditor = (() => {
       }
 
       function addCol(after = active.col) {
-        const { headers, rows } = getModel();
+        const { headers, rows } = readLatestModel();
         const at = Math.max(0, Math.min(headers.length, after + 1));
         headers.splice(at, 0, `Col ${headers.length + 1}`);
         rows.forEach(r => r.splice(at, 0, ''));
@@ -596,7 +601,7 @@ window.BlockEditor = (() => {
       }
 
       function deleteRow(row = active.row) {
-        const { headers, rows } = getModel();
+        const { headers, rows } = readLatestModel();
         if (rows.length <= 1) return;
         const at = Math.max(0, Math.min(rows.length - 1, row));
         rows.splice(at, 1);
@@ -607,7 +612,7 @@ window.BlockEditor = (() => {
       }
 
       function deleteCol(col = active.col) {
-        const { headers, rows } = getModel();
+        const { headers, rows } = readLatestModel();
         if (headers.length <= 1) return;
         const at = Math.max(0, Math.min(headers.length - 1, col));
         headers.splice(at, 1);
@@ -635,23 +640,43 @@ window.BlockEditor = (() => {
         wrap.innerHTML = '';
         const { headers, rows } = getModel();
 
-        const toolbar = document.createElement('div');
-        toolbar.className = 'eb-table-toolbar';
-        toolbar.innerHTML = `
-          <span class="eb-table-toolgroup" aria-label="Filas">
-            <button class="eb-tbl-btn" data-act="row" title="Agregar fila" aria-label="Agregar fila">+↕</button>
-            <button class="eb-tbl-btn eb-tbl-danger" data-act="del-row" title="Eliminar fila activa" aria-label="Eliminar fila activa">−↕</button>
-          </span>
-          <span class="eb-table-toolgroup" aria-label="Columnas">
-            <button class="eb-tbl-btn" data-act="col" title="Agregar columna" aria-label="Agregar columna">+↔</button>
-            <button class="eb-tbl-btn eb-tbl-danger" data-act="del-col" title="Eliminar columna activa" aria-label="Eliminar columna activa">−↔</button>
-          </span>
+        const menuWrap = document.createElement('div');
+        menuWrap.className = 'eb-table-menu';
+        menuWrap.innerHTML = `
+          <button class="eb-table-menu-btn" type="button" title="Opciones de tabla" aria-label="Opciones de tabla">...</button>
+          <div class="eb-table-menu-pop" role="menu">
+            <button type="button" data-act="row">Agregar fila debajo</button>
+            <button type="button" data-act="col">Agregar columna a la derecha</button>
+            <button type="button" data-act="del-row">Eliminar fila activa</button>
+            <button type="button" data-act="del-col">Eliminar columna activa</button>
+          </div>
         `;
-        toolbar.querySelector('[data-act="row"]').addEventListener('mousedown', e => { e.preventDefault(); addRow(); });
-        toolbar.querySelector('[data-act="col"]').addEventListener('mousedown', e => { e.preventDefault(); addCol(); });
-        toolbar.querySelector('[data-act="del-row"]').addEventListener('mousedown', e => { e.preventDefault(); deleteRow(); });
-        toolbar.querySelector('[data-act="del-col"]').addEventListener('mousedown', e => { e.preventDefault(); deleteCol(); });
-        wrap.appendChild(toolbar);
+        const menuBtn = menuWrap.querySelector('.eb-table-menu-btn');
+        const menuPop = menuWrap.querySelector('.eb-table-menu-pop');
+        menuBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          menuPop.classList.toggle('is-open');
+          menuWrap.classList.toggle('is-open', menuPop.classList.contains('is-open'));
+        });
+        menuPop.querySelectorAll('[data-act]').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const act = btn.dataset.act;
+            if (act === 'row') addRow();
+            if (act === 'col') addCol();
+            if (act === 'del-row') deleteRow();
+            if (act === 'del-col') deleteCol();
+            menuPop.classList.remove('is-open');
+            menuWrap.classList.remove('is-open');
+          });
+        });
+        menuWrap.addEventListener('mouseleave', () => {
+          menuPop.classList.remove('is-open');
+          menuWrap.classList.remove('is-open');
+        });
+        wrap.appendChild(menuWrap);
 
         const scroller = document.createElement('div');
         scroller.className = 'eb-simple-table-scroll';
@@ -1759,6 +1784,13 @@ window.BlockEditor = (() => {
         }
       });
 
+      m.addEventListener('mouseleave', e => {
+        if (!colorMenu?.contains(e.relatedTarget) && !turnIntoMenu?.contains(e.relatedTarget)) {
+          closeColorMenu();
+          closeTurnIntoMenu();
+        }
+      });
+
       document.body.appendChild(m);
       blockMenu = m;
       setTimeout(() => document.addEventListener('mousedown', _closeBMOutside), 0);
@@ -1825,6 +1857,9 @@ window.BlockEditor = (() => {
 
       document.body.appendChild(m);
       colorMenu = m;
+      m.addEventListener('mouseleave', e => {
+        if (!blockMenu?.contains(e.relatedTarget)) closeColorMenu();
+      });
       // Flip if off-screen
       const mr = m.getBoundingClientRect();
       if (mr.right > window.innerWidth) m.style.left = (rect.left - mr.width - 4) + 'px';
@@ -1855,6 +1890,9 @@ window.BlockEditor = (() => {
       });
       document.body.appendChild(m);
       turnIntoMenu = m;
+      m.addEventListener('mouseleave', e => {
+        if (!blockMenu?.contains(e.relatedTarget)) closeTurnIntoMenu();
+      });
     }
     function closeTurnIntoMenu() { if (turnIntoMenu) { turnIntoMenu.remove(); turnIntoMenu = null; } }
 
