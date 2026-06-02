@@ -2868,14 +2868,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   .prop-row { grid-template-columns: 130px 1fr; }
 }
 
-/* ── TABLE BLOCK (Tabulator) ─────────────────────────────── */
+/* ── TABLE BLOCK ─────────────────────────────────────────── */
 .eb--table { padding-top: 2px; padding-bottom: 8px; background: transparent; }
 .eb-table-wrap {
   position: relative;
   width: 100%;
   overflow: visible;
 }
-.eb-tabulator-host { min-height: 80px; }
 
 .eb-table-menu {
   position: absolute;
@@ -3025,74 +3024,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-simple-table tr:hover td {
   background: color-mix(in srgb, var(--bg-hover) 70%, transparent);
 }
-
-/* Tabulator theme overrides — match Arch dark aesthetic */
-.eb-tabulator-host .tabulator {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--text);
-}
-.eb-tabulator-host .tabulator-header {
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-}
-.eb-tabulator-host .tabulator-col {
-  background: var(--bg-elevated);
-  border-right: 1px solid var(--border);
-}
-.eb-tabulator-host .tabulator-col-title {
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: text;
-}
-/* Hide sort arrows — this is a content table, not a data grid */
-.eb-tabulator-host .tabulator-col-sorter { display: none !important; }
-.eb-tabulator-host .tabulator-sortable .tabulator-col-title { padding-right: 0; }
-/* Pointer cursor on cells to indicate they're clickable/editable */
-.eb-tabulator-host .tabulator-cell { cursor: cell; }
-.eb-tabulator-host .tabulator-row {
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text);
-}
-.eb-tabulator-host .tabulator-row:hover {
-  background: var(--bg-hover);
-}
-.eb-tabulator-host .tabulator-row.tabulator-row-even {
-  background: rgba(255,255,255,0.015);
-}
-.eb-tabulator-host .tabulator-cell {
-  border-right: 1px solid var(--border-light);
-  padding: 6px 10px;
-  color: var(--text);
-}
-.eb-tabulator-host .tabulator-cell.tabulator-editing input {
-  background: var(--bg-elevated);
-  border: 1px solid var(--accent);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  padding: 4px 8px;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-.eb-tabulator-host .tabulator-col-resize-handle {
-  background: var(--border);
-}
-.eb-tabulator-host .tabulator-footer { display: none; }
-
-/* Light theme overrides */
-[data-theme="light"] .eb-tabulator-host .tabulator { background: #fff; border-color: var(--border); }
-[data-theme="light"] .eb-tabulator-host .tabulator-header,
-[data-theme="light"] .eb-tabulator-host .tabulator-col { background: #f0f0f0; }
-[data-theme="light"] .eb-tabulator-host .tabulator-row { background: #fff; }
-[data-theme="light"] .eb-tabulator-host .tabulator-row:hover { background: #f5f5f5; }
-[data-theme="light"] .eb-tabulator-host .tabulator-row.tabulator-row-even { background: rgba(0,0,0,0.02); }
-[data-theme="light"] .eb-tabulator-host .tabulator-cell { color: var(--text); }
 
 /* ── DATABASE BLOCK ───────────────────────────────────────── */
 .eb-db-container {

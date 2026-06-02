@@ -329,8 +329,7 @@ window.BlockEditor = (() => {
       }
     }
 
-    // ── MARKDOWN TABLE ↔ TABULATOR ─────────────────────────────
-    let _tabCount = 0;
+    // ── MARKDOWN TABLES ────────────────────────────────────────
     function parseMdTable(raw) {
       const rows = raw.split('\n').map(r => r.trim()).filter(r => r.startsWith('|'));
       if (!rows.length) return { columns: [], data: [] };
@@ -349,15 +348,6 @@ window.BlockEditor = (() => {
       return { columns, data };
     }
 
-    function tabulatorToMd(columns, data) {
-      if (!columns.length) return '';
-      const headers = columns.map(c => c.title || '');
-      const sep = headers.map(() => '---');
-      const rows = data.map(row => columns.map(c => String(row[c.field] || '')));
-      const fmt = cells => '| ' + cells.join(' | ') + ' |';
-      return [fmt(headers), fmt(sep), ...rows.map(fmt)].join('\n');
-    }
-
     // Parse HTML table (from clipboard/Notion) to markdown table
     function htmlTableToMd(html) {
       const tmp = document.createElement('div');
@@ -366,13 +356,20 @@ window.BlockEditor = (() => {
       if (!table) return null;
       const rows = Array.from(table.querySelectorAll('tr'));
       if (!rows.length) return null;
-      const parseRow = tr => Array.from(tr.querySelectorAll('th,td')).map(c => c.innerText.replace(/\n/g, ' ').trim());
-      const allRows = rows.map(parseRow).filter(r => r.length);
+      const parseRow = tr => Array.from(tr.querySelectorAll('th,td')).flatMap(c => {
+        const text = (c.innerText || c.textContent || '').replace(/\s+/g, ' ').trim();
+        const span = Math.max(1, parseInt(c.getAttribute('colspan') || '1', 10) || 1);
+        return Array.from({ length: span }, (_, i) => i === 0 ? text : '');
+      });
+      const allRows = rows.map(parseRow).filter(r => r.some(c => c.trim()));
       if (!allRows.length) return null;
-      const headers = allRows[0];
+      const width = Math.max(...allRows.map(r => r.length));
+      const normalized = allRows.map(r => Array.from({ length: width }, (_, i) => r[i] || ''));
+      const headers = normalized[0].map((h, i) => h || `Col ${i + 1}`);
       const sep = headers.map(() => '---');
-      const dataRows = allRows.slice(1);
-      const fmt = cells => '| ' + cells.join(' | ') + ' |';
+      const dataRows = normalized.slice(1);
+      const escCell = cell => String(cell || '').replace(/\|/g, '\\|');
+      const fmt = cells => '| ' + cells.map(escCell).join(' | ') + ' |';
       return [fmt(headers), fmt(sep), ...dataRows.map(fmt)].join('\n');
     }
 
@@ -480,77 +477,6 @@ window.BlockEditor = (() => {
         Array.from(tmp.childNodes).forEach(node => walk(node, baseIndent));
       }
       return blocks;
-    }
-
-    function makeTabulator(container, b, onChange) {
-      const { columns, data } = parseMdTable(b.content || '');
-      const tid = 'tab-' + (++_tabCount);
-      container.id = tid;
-      if (!window.Tabulator) return;
-
-      const colDefs = (columns.length ? columns : [
-        { title: 'Col 1', field: 'c0' },
-        { title: 'Col 2', field: 'c1' },
-      ]).map(c => ({
-        ...c,
-        editor: 'input',
-        headerSort: false,        // no sort arrows
-        resizable: true,
-        formatter: (cell) => {
-          const v = cell.getValue();
-          if (!v) return '<span style="opacity:0.25;font-style:italic">...</span>';
-          return String(v);
-        },
-      }));
-
-      const tab = new Tabulator('#' + tid, {
-        data: data.length ? data : [{}],  // always at least one row
-        columns: colDefs,
-        layout: 'fitColumns',
-        height: false,
-        renderVertical: 'basic',
-        movableColumns: true,
-        resizableRows: false,
-        headerVisible: true,
-        rowHeight: 36,
-        cellEdited: () => {
-          const cols = tab.getColumnDefinitions();
-          const rows = tab.getData();
-          b.content = tabulatorToMd(cols, rows);
-          onChange();
-        },
-      });
-      container.dataset.tabulatorId = tid;
-
-      // Double-click column header to rename
-      setTimeout(() => {
-        container.querySelectorAll('.tabulator-col-title').forEach((el, i) => {
-          el.title = 'Doble clic para renombrar columna';
-          el.style.cursor = 'text';
-          el.addEventListener('dblclick', e => {
-            e.stopPropagation();
-            const col = tab.getColumnDefinitions()[i];
-            if (!col) return;
-            const inp = document.createElement('input');
-            inp.value = col.title;
-            inp.style.cssText = 'background:var(--bg-elevated);color:var(--text);border:1px solid var(--accent);padding:2px 6px;font-size:0.8rem;width:100%;box-sizing:border-box;';
-            el.innerHTML = '';
-            el.appendChild(inp);
-            inp.focus(); inp.select();
-            const commit = () => {
-              const newTitle = inp.value.trim() || col.title;
-              tab.updateColumnDefinition(col.field, { title: newTitle });
-              const cols = tab.getColumnDefinitions();
-              const rows = tab.getData();
-              b.content = tabulatorToMd(cols, rows);
-              onChange();
-            };
-            inp.addEventListener('blur', commit);
-            inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') { e2.preventDefault(); commit(); } });
-          });
-        });
-      }, 300);
-      return tab;
     }
 
     function makeSimpleTable(wrap, b, sync) {
@@ -1448,10 +1374,6 @@ window.BlockEditor = (() => {
     function render() {
       _nestedMenus.forEach(m => m.remove());
       _nestedMenus.clear();
-      // Destroy any existing Tabulator instances
-      container.querySelectorAll('[data-tabulator-id]').forEach(el => {
-        try { Tabulator.findTable('#' + el.id)?.[0]?.destroy(); } catch(_) {}
-      });
       container.innerHTML = '';
 
       if (_blocks.length === 0) {
