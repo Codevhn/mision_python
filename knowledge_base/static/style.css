@@ -2271,11 +2271,15 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 
 /* Quote */
 .eb--quote {
-  border-left: 3px solid var(--accent);
-  padding-left: 12px;
+  border-left: 0;
+  padding-left: 58px;
   margin: 4px 0;
 }
-.eb--quote .eb-content { color: var(--text-muted); font-style: italic; }
+.eb--quote .eb-content {
+  color: var(--text-muted);
+  font-style: italic;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 
 /* Divider */
 .eb--divider { padding: 8px 0; }
@@ -2840,33 +2844,67 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-code-pre code:not([class*="language-"]) { color: var(--code-text); }
 
 /* ── TABLE BLOCK (Tabulator) ─────────────────────────────── */
-.eb--table { padding: 2px 0 8px 0; background: transparent; }
+.eb--table { padding-top: 2px; padding-bottom: 8px; background: transparent; }
 .eb-table-wrap {
+  position: relative;
   width: 100%;
-  overflow-x: auto;
+  overflow: visible;
 }
 .eb-tabulator-host { min-height: 80px; }
 
-/* Table toolbar — always visible */
 .eb-table-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 0 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.eb-table-wrap:hover .eb-table-toolbar,
+.eb-table-wrap:focus-within .eb-table-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.eb-table-toolgroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.eb-table-toolgroup + .eb-table-toolgroup {
+  border-left: 1px solid var(--border);
+  padding-left: 4px;
+  margin-left: 2px;
 }
 .eb-tbl-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  width: 26px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  padding: 3px 10px;
+  font-size: 0.75rem;
+  padding: 0;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
 }
-.eb-tbl-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
-.eb-tbl-danger:hover { color: var(--danger); border-color: var(--danger); background: rgba(204,68,68,0.08); }
+.eb-tbl-btn:hover { color: var(--accent); background: var(--accent-light); }
+.eb-tbl-danger:hover { color: var(--danger); background: rgba(204,68,68,0.08); }
 .eb-tbl-hint {
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -2883,7 +2921,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-simple-table {
   width: 100%;
-  min-width: 420px;
+  min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 0.86rem;
@@ -2891,13 +2929,14 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-simple-table th,
 .eb-simple-table td {
   border: 1px solid var(--border-light);
-  min-width: 120px;
+  min-width: 0;
   height: 34px;
   padding: 7px 10px;
   vertical-align: top;
   outline: none;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 .eb-simple-table th {
   background: var(--bg-elevated);

@@ -222,6 +222,16 @@ window.BlockEditor = (() => {
       return [fmt(rows[0]), fmt(rows[0].map(() => '---')), ...rows.slice(1).map(fmt)].join('\n');
     }
 
+    function inferCodeLang(code = '') {
+      const s = String(code);
+      if (/\b(def|import|from|class|print|elif|except)\b|:\s*(#.*)?\n\s{2,}\S/.test(s)) return 'python';
+      if (/\b(function|const|let|var|=>|console\.log|document\.|window\.)\b/.test(s)) return 'javascript';
+      if (/^\s*[{[][\s\S]*[}\]]\s*$/.test(s)) return 'json';
+      if (/\b(select|from|where|insert into|update|delete from)\b/i.test(s)) return 'sql';
+      if (/^\s*(sudo\s+|apt\s+|cd\s+|ls\b|git\s+|python3?\s+)/m.test(s)) return 'bash';
+      return '';
+    }
+
     // ── INLINE MARKDOWN ─────────────────────────────────────────
     // WYSIWYG model: rendered HTML stays visible while editing.
     // We read back plaintext by walking the DOM (htmlToMd).
@@ -369,7 +379,10 @@ window.BlockEditor = (() => {
         }
         if (tag === 'pre') {
           const code = node.querySelector('code');
-          pushText('code', cleanText(code || node), { indent });
+          const codeText = cleanText(code || node);
+          const langClass = Array.from((code || node).classList || []).find(cls => cls.startsWith('language-') || cls.startsWith('lang-')) || '';
+          const lang = langClass.replace(/^language-/, '').replace(/^lang-/, '') || inferCodeLang(codeText);
+          pushText('code', codeText, { indent, lang });
           return;
         }
         if (tag === 'blockquote') {
@@ -423,7 +436,8 @@ window.BlockEditor = (() => {
           if (type === 'divider') { blocks.push({ id: uid(), type:'divider', content:'', checked:false, indent }); return; }
           if (type === 'code') {
             const code = el.querySelector('.eb-code')?.value || el.querySelector('.eb-code-pre code')?.textContent || '';
-            pushText('code', code, { indent });
+            const lang = el.querySelector('.eb-code')?.dataset?.lang || inferCodeLang(code);
+            pushText('code', code, { indent, lang });
             return;
           }
           if (type === 'page') {
@@ -609,10 +623,14 @@ window.BlockEditor = (() => {
         const toolbar = document.createElement('div');
         toolbar.className = 'eb-table-toolbar';
         toolbar.innerHTML = `
-          <button class="eb-tbl-btn" data-act="row">+ Fila</button>
-          <button class="eb-tbl-btn" data-act="col">+ Columna</button>
-          <button class="eb-tbl-btn eb-tbl-danger" data-act="del-row">− Fila</button>
-          <button class="eb-tbl-btn eb-tbl-danger" data-act="del-col">− Columna</button>
+          <span class="eb-table-toolgroup" aria-label="Filas">
+            <button class="eb-tbl-btn" data-act="row" title="Agregar fila" aria-label="Agregar fila">+↕</button>
+            <button class="eb-tbl-btn eb-tbl-danger" data-act="del-row" title="Eliminar fila activa" aria-label="Eliminar fila activa">−↕</button>
+          </span>
+          <span class="eb-table-toolgroup" aria-label="Columnas">
+            <button class="eb-tbl-btn" data-act="col" title="Agregar columna" aria-label="Agregar columna">+↔</button>
+            <button class="eb-tbl-btn eb-tbl-danger" data-act="del-col" title="Eliminar columna activa" aria-label="Eliminar columna activa">−↔</button>
+          </span>
         `;
         toolbar.querySelector('[data-act="row"]').addEventListener('mousedown', e => { e.preventDefault(); addRow(); });
         toolbar.querySelector('[data-act="col"]').addEventListener('mousedown', e => { e.preventDefault(); addCol(); });
@@ -1275,7 +1293,8 @@ window.BlockEditor = (() => {
       }
 
       if (b.type === 'code') {
-        const lang = (b.lang || '').trim();
+        const lang = (b.lang || inferCodeLang(b.content || '')).trim();
+        b.lang = lang;
 
         // Overlay container: pre (highlighted) + textarea (transparent, on top)
         const codeWrap = document.createElement('div');
@@ -2418,6 +2437,9 @@ window.BlockEditor = (() => {
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
         const newBlocks = mdToBlocks(text);
+        newBlocks.forEach(b => {
+          if (b.type === 'code' && !b.lang) b.lang = inferCodeLang(b.content || '');
+        });
         bumpIndent(newBlocks, insertIndent);
         insertBlocks(newBlocks);
         return;
