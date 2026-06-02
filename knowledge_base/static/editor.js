@@ -1090,9 +1090,10 @@ window.BlockEditor = (() => {
         _vObserver = new IntersectionObserver(entries => {
           entries.forEach(entry => {
             if (!entry.isIntersecting) return;
+            if (!container.contains(entry.target)) return; // stale after undo/render
             const codeEl = entry.target.querySelector('.eb-code-pre code[class*="language-"]');
             if (codeEl && window.Prism) { Prism.highlightElement(codeEl); }
-            _vObserver.unobserve(entry.target);
+            _vObserver?.unobserve(entry.target);
           });
         }, { rootMargin: '300px 0px' });
       }
