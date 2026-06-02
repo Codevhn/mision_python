@@ -1308,7 +1308,9 @@ window.BlockEditor = (() => {
             const s = ta.selectionStart;
             ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(s);
             ta.selectionStart = ta.selectionEnd = s + 2;
+            b.content = ta.value;
             rehighlight();
+            sync();
           }
           if (e.key === 'Escape') ta.blur();
         });
