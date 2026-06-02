@@ -107,6 +107,8 @@ window.BlockEditor = (() => {
     let _lastSavedMd = null;        // avoid duplicate snapshots
     let _structuralDirty = false;   // true after a structural op, false after typing
     let _undoing = false;           // block saveHistory during undo restore
+    let _pendingStructuralUndo = false;
+    let _textEditedSinceStructure = false;
 
     function saveHistory() {
       if (_undoing) return;
@@ -116,6 +118,8 @@ window.BlockEditor = (() => {
       if (_undoStack.length > MAX_UNDO) _undoStack.shift();
       _lastSavedMd = md;
       _structuralDirty = true;
+      _pendingStructuralUndo = true;
+      _textEditedSinceStructure = false;
     }
 
     function toggleStateSnapshot() {
@@ -159,6 +163,8 @@ window.BlockEditor = (() => {
       _undoing = true;
       _lastSavedMd = prev;
       _structuralDirty = false;
+      _pendingStructuralUndo = _undoStack.length > 0;
+      _textEditedSinceStructure = false;
       _blocks = mdToBlocks(prev);
       applyToggleStateSnapshot(toggleStates);
       render();
@@ -281,6 +287,12 @@ window.BlockEditor = (() => {
 
     function isEditableTarget(target) {
       return !!target?.closest?.('input, textarea, select, [contenteditable="true"], .CodeMirror');
+    }
+
+    function editableText(target) {
+      if (!target) return '';
+      if (target.classList?.contains('CodeMirror')) return '';
+      return (target.innerText || target.textContent || '').replace(/\n$/, '');
     }
 
     function writeSelectedBlocksToClipboard(e) {
@@ -1850,7 +1862,12 @@ window.BlockEditor = (() => {
 
         // Header keydown
         hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
-        hDiv.addEventListener('input',   () => { b.content = hDiv.innerText; sync(); });
+        hDiv.addEventListener('input',   e => {
+          if (e.inputType && !e.inputType.startsWith('history')) _textEditedSinceStructure = true;
+          if (e.inputType && e.inputType.startsWith('history')) _textEditedSinceStructure = false;
+          b.content = hDiv.innerText;
+          sync({ defer: true });
+        });
         hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
         hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
 
@@ -1872,8 +1889,10 @@ window.BlockEditor = (() => {
       }
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
-      div.addEventListener('input', () => {
+      div.addEventListener('input', e => {
         _structuralDirty = false;
+        if (e.inputType && !e.inputType.startsWith('history')) _textEditedSinceStructure = true;
+        if (e.inputType && e.inputType.startsWith('history')) _textEditedSinceStructure = false;
         div.dataset.plaintext = htmlToMd(div).replace(/\n$/, '');
         onInput(b, div);
       });
@@ -1891,6 +1910,7 @@ window.BlockEditor = (() => {
 
     // ── BLOCK OPS ───────────────────────────────────────────────
     function addBlockAfter(afterId, type, content = '', opts = {}) {
+      if (opts.recordHistory !== false) saveHistory();
       const idx = _blocks.findIndex(b => b.id === afterId);
       const baseIndent = getIndent(_blocks[idx]);
       const insertAt = subtreeEndIndex(idx);
@@ -1905,7 +1925,8 @@ window.BlockEditor = (() => {
       return nb;
     }
 
-    function insertBlockBefore(beforeId, type, content = '') {
+    function insertBlockBefore(beforeId, type, content = '', opts = {}) {
+      if (opts.recordHistory !== false) saveHistory();
       const idx = _blocks.findIndex(b => b.id === beforeId);
       if (idx < 0) return;
       const nb = { id: uid(), type, content, checked: false, indent: getIndent(_blocks[idx]) };
@@ -2603,7 +2624,7 @@ window.BlockEditor = (() => {
       }
       // Keep the model updated so collapsed/hidden blocks serialize correctly.
       b.content = div.dataset.plaintext !== undefined ? div.dataset.plaintext : (htmlToMd(div).replace(/\n$/, ''));
-      sync();
+      sync({ defer: true });
     }
 
     // ── SLASH MENU ───────────────────────────────────────────────
@@ -2662,7 +2683,7 @@ window.BlockEditor = (() => {
         placeCursorEnd(el);
       }
       hideMenu();
-      if (type === 'divider') { convertBlock(blockId, 'divider'); addBlockAfter(blockId, 'text'); return; }
+      if (type === 'divider') { convertBlock(blockId, 'divider'); addBlockAfter(blockId, 'text', '', { recordHistory: false }); return; }
       if (type === 'page') {
         // Tell app.js which editor owns this block so addPageBlock goes to the right instance
         window._activeEditorForPageCreate = _selfRef;
@@ -2683,12 +2704,18 @@ window.BlockEditor = (() => {
 
     // ── SYNC ────────────────────────────────────────────────────
     let _syncHistoryTimer = null;
-    function sync() {
+    function sync(opts = {}) {
       if (_loading) return; // never fire onChange during load
+      if (opts.defer) {
+        clearTimeout(_syncHistoryTimer);
+        _syncHistoryTimer = setTimeout(() => sync(), 80);
+        return;
+      }
       const md = blocksToMd();
       if (syncTarget) syncTarget.value = md;
       if (onChange) onChange(md);
       clearTimeout(_syncHistoryTimer);
+      _syncHistoryTimer = null;
     }
 
     // ── PUBLIC ──────────────────────────────────────────────────
@@ -2882,6 +2909,7 @@ window.BlockEditor = (() => {
     document.addEventListener('keydown', e => {
       const hasFocus = container.contains(document.activeElement);
       const activeIsEditable = isEditableTarget(document.activeElement);
+      const activeText = editableText(document.activeElement);
       if (!hasFocus && _selected.size === 0) return;
       if (_selected.size > 0 && e.key === 'Escape') { clearSelection(); return; }
       if (_selected.size > 0 && (e.key === 'Delete' || e.key === 'Backspace')) {
@@ -2891,7 +2919,9 @@ window.BlockEditor = (() => {
       }
       // Let the browser handle text-level undo/redo inside editable blocks.
       // Use editor-level undo only for structural actions or block selections.
-      if ((_selected.size > 0 || (hasFocus && (!activeIsEditable || _structuralDirty))) &&
+      if ((_selected.size > 0 ||
+           (hasFocus && !activeIsEditable) ||
+           (hasFocus && activeIsEditable && _pendingStructuralUndo && !_textEditedSinceStructure && activeText === '')) &&
           (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
