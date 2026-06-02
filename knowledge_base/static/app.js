@@ -124,6 +124,7 @@ function bindEvents() {
     document.querySelectorAll(".tree-cat").forEach(el => el.style.display = "");
     // Go to home screen
     $("entryView").classList.add("hidden");
+    $("kanbanArea").classList.add("hidden");
     $("welcome").classList.remove("hidden");
     renderHome();
   });
@@ -806,6 +807,7 @@ async function loadEntry(id, opts = {}) {
   const data = await res.json();
 
   $("welcome").classList.add("hidden");
+  $("kanbanArea").classList.add("hidden");
   $("entryView").classList.remove("hidden");
 
   // Close move panel and history panel on new entry load
@@ -1155,6 +1157,7 @@ async function deleteEntry() {
   if (res.ok) {
     currentEntryId = null;
     $("entryView").classList.add("hidden");
+    $("kanbanArea").classList.add("hidden");
     $("welcome").classList.remove("hidden");
     renderHome();
     showToast("Entrada eliminada");
