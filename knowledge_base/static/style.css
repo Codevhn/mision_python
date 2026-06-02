@@ -858,27 +858,27 @@ input, textarea, select { font-family: inherit; }
   border-collapse: separate;
   border-spacing: 0;
   margin: 14px 0;
-  font-size: 0.84rem;
-  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-family: inherit;
   border: 1px solid var(--border);
   border-radius: 5px;
   overflow: hidden;
 }
 .entry-body th {
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
-  color: var(--accent);
-  font-weight: 700;
-  padding: 9px 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-weight: 600;
+  padding: 10px 12px;
   border-right: 1px solid var(--border);
-  border-bottom: 2px solid var(--accent-dim);
+  border-bottom: 1px solid var(--border);
   text-align: left;
-  text-transform: uppercase;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  font-size: 0.86rem;
+  letter-spacing: 0;
 }
 .entry-body th:last-child { border-right: 0; }
 .entry-body td {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-right: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
   color: var(--text);
@@ -886,7 +886,7 @@ input, textarea, select { font-family: inherit; }
 }
 .entry-body td:last-child { border-right: 0; }
 .entry-body tr:last-child td { border-bottom: 0; }
-.entry-body tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-elevated) 58%, transparent); }
+.entry-body tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-elevated) 28%, transparent); }
 .entry-body strong { color: var(--text); font-weight: 600; }
 .entry-body em { color: var(--text-muted); }
 .entry-body hr {
@@ -2967,22 +2967,21 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--bg-surface);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
 }
 .eb-simple-table {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed;
-  font-size: 0.86rem;
+  table-layout: auto;
+  font-family: inherit;
+  font-size: 0.9rem;
 }
 .eb-simple-table th,
 .eb-simple-table td {
-  width: 220px;
-  min-width: 180px;
-  height: 34px;
-  padding: 8px 10px;
+  min-width: 120px;
+  height: 38px;
+  padding: 10px 12px;
   vertical-align: top;
   outline: none;
   white-space: pre-wrap;
@@ -2990,18 +2989,14 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   word-break: normal;
 }
 .eb-simple-table th {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--bg-elevated) 80%, var(--accent) 20%),
-    var(--bg-elevated)
-  );
+  background: var(--bg-elevated);
   border-right: 1px solid var(--border);
-  border-bottom: 2px solid var(--accent-dim);
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .eb-simple-table td {
   background: var(--bg-surface);
@@ -3014,7 +3009,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-simple-table td:last-child { border-right: 0; }
 .eb-simple-table tbody tr:last-child td { border-bottom: 0; }
 .eb-simple-table tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--bg-elevated) 50%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 28%, transparent);
 }
 .eb-simple-table th:focus,
 .eb-simple-table td:focus {
