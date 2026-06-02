@@ -211,6 +211,17 @@ window.BlockEditor = (() => {
       return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
 
+    function tsvToMd(text) {
+      const rows = text.split(/\r?\n/)
+        .map(line => line.trimEnd())
+        .filter(line => line.trim())
+        .map(line => line.split('\t').map(cell => cell.trim()));
+      if (rows.length < 2 || rows.some(row => row.length < 2) || !rows.every(row => row.length === rows[0].length)) return null;
+      const escCell = cell => cell.replace(/\|/g, '\\|');
+      const fmt = cells => '| ' + cells.map(escCell).join(' | ') + ' |';
+      return [fmt(rows[0]), fmt(rows[0].map(() => '---')), ...rows.slice(1).map(fmt)].join('\n');
+    }
+
     // ── INLINE MARKDOWN ─────────────────────────────────────────
     // WYSIWYG model: rendered HTML stays visible while editing.
     // We read back plaintext by walking the DOM (htmlToMd).
@@ -1027,9 +1038,8 @@ window.BlockEditor = (() => {
           case 'quote': push('> ' + c); break;
           case 'code': {
             const ta = container.querySelector(`[data-id="${b.id}"] .eb-code`);
-            const li = container.querySelector(`[data-id="${b.id}"] .eb-code-langinp`);
             const code = ta ? ta.value : c;
-            const lang = li ? li.value.trim() : (b.lang || '');
+            const lang = b.lang || ta?.dataset?.lang || '';
             push('```' + lang + '\n' + code + '\n```');
             break;
           }
@@ -1290,9 +1300,19 @@ window.BlockEditor = (() => {
         ta.dataset.lang = lang;
 
         // Keep highlight in sync with textarea content
+        const cleanupPrismToolbar = () => {
+          const toolbarWrap = pre.parentElement?.classList?.contains('code-toolbar') ? pre.parentElement : null;
+          if (toolbarWrap && toolbarWrap.parentElement === codeWrap) {
+            codeWrap.insertBefore(pre, toolbarWrap);
+            toolbarWrap.remove();
+          }
+        };
         const rehighlight = () => {
           codeEl.textContent = (ta.value || '') + '\n';
-          if (window.Prism && container.contains(codeEl)) Prism.highlightElement(codeEl);
+          if (window.Prism && container.contains(codeEl)) {
+            Prism.highlightElement(codeEl);
+            cleanupPrismToolbar();
+          }
         };
 
         ta.addEventListener('input', () => {
@@ -1315,47 +1335,18 @@ window.BlockEditor = (() => {
           if (e.key === 'Escape') ta.blur();
         });
 
-        // Language detection input (PrismJS toolbar won't give us a writable lang)
-        const langBar = document.createElement('div');
-        langBar.className = 'eb-code-langbar';
-        const langInp = document.createElement('input');
-        langInp.className = 'eb-code-langinp';
-        langInp.value = lang;
-        langInp.placeholder = 'lenguaje';
-        langInp.spellcheck = false;
-        langInp.addEventListener('input', () => {
-          const l = langInp.value.trim();
-          codeEl.className = l ? `language-${l}` : '';
-          ta.dataset.lang = l;
-          b.lang = l;
-          if (window.Prism && container.contains(codeEl)) Prism.highlightElement(codeEl);
-          sync();
-        });
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'eb-code-copybtn';
-        copyBtn.textContent = 'copy';
-        copyBtn.addEventListener('mousedown', e => e.preventDefault());
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(ta.value).then(() => {
-            copyBtn.textContent = '✓ copied';
-            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1500);
-          });
-        });
-
-        langBar.appendChild(langInp);
-        langBar.appendChild(copyBtn);
-
         codeWrap.appendChild(pre);
         codeWrap.appendChild(ta);
 
-        wrap.appendChild(langBar);
         wrap.appendChild(codeWrap);
 
         // Initial highlight deferred so Prism toolbar doesn't crash on detached nodes
         if (window.Prism && lang) {
           requestAnimationFrame(() => {
-            if (container.contains(codeEl)) Prism.highlightElement(codeEl);
+            if (container.contains(codeEl)) {
+              Prism.highlightElement(codeEl);
+              cleanupPrismToolbar();
+            }
           });
         }
 
@@ -2405,6 +2396,13 @@ window.BlockEditor = (() => {
           }
           render(); sync(); return;
         }
+      }
+
+      const tsvMd = text ? tsvToMd(text) : null;
+      if (tsvMd) {
+        e.preventDefault();
+        insertBlocks([{ id: uid(), type: 'table', content: tsvMd, indent: insertIndent }]);
+        return;
       }
 
       if (html && /<(h[1-4]|p|div|ul|ol|li|blockquote|pre|table|hr)\b/i.test(html)) {

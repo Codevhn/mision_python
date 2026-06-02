@@ -2293,46 +2293,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   padding-right: 6px;
 }
 
-/* Language bar: language input + copy button */
-.eb-code-langbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 3px 3px 0 0;
-}
-.eb-code-langinp {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--accent);
-  width: 120px;
-}
-.eb-code-langinp::placeholder { color: var(--text-faint); }
-.eb-code-copybtn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  padding: 1px 8px;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: color 0.15s, border-color 0.15s;
-}
-.eb-code-copybtn:hover { color: var(--accent); border-color: var(--accent); }
-
 /* Overlay container: positions pre + textarea on top of each other */
 .eb-code-overlay-wrap {
   position: relative;
   background: var(--bg-code);
   border: 1px solid var(--border);
-  border-radius: 0 0 3px 3px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
