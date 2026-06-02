@@ -2282,7 +2282,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-divider { border: none; border-top: 1px solid var(--border); width: 100%; margin: 0; }
 
 /* Code block */
-.eb--code { flex-direction: column; gap: 0; background: var(--bg-code); border: 1px solid var(--border); border-radius: 3px; padding: 0; }
+.eb--code { flex-direction: column; gap: 0; background: transparent !important; border: none; padding-top: 4px; padding-bottom: 4px; padding-right: 6px; }
+.eb--code > .eb-code-header { background: var(--bg-elevated); border: 1px solid var(--border); border-bottom: none; border-radius: 3px 3px 0 0; }
+.eb--code > .eb-code-pre   { background: var(--bg-code); border: 1px solid var(--border); border-top: none; border-radius: 0 0 3px 3px; margin: 0; }
+.eb--code > .eb-code       { background: var(--bg-code); border: 1px solid var(--border); border-top: none; border-radius: 0 0 3px 3px; }
 .eb-code-header { padding: 4px 10px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
 .eb-code-lang { background: transparent; border: none; outline: none; font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); width: 100px; }
 .eb-code-lang::placeholder { color: var(--text-faint); }
