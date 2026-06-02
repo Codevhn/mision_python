@@ -38,6 +38,8 @@
   let _dragCol = null;       // column id being dragged
   let _filterText = '';      // filter bar search text
   let _filterLabels = new Set(); // active label color filters
+  let _archiveOpen = false;  // archive panel state
+  let _kbKeydownHandler = null; // global keydown handler reference
 
   // ---- Helpers ----
   function uid() {
@@ -59,7 +61,6 @@
 
   function getDueStatus(due, card) {
     if (!due) return 'none';
-    // Check if all checklist done or card.done
     const checklist = card.checklist || [];
     const allDone = card.done === true || (checklist.length > 0 && checklist.every(i => i.done));
     if (allDone) return 'done';
@@ -143,6 +144,8 @@
     if (!_area) return;
     showKanbanArea();
     _area.style.background = '';
+    _archiveOpen = false;
+    _currentBoard = null;
     _area.innerHTML = '<div class="kb-boards-header"><h2>Tableros Kanban</h2></div><div class="kb-boards-grid" id="kbBoardsGrid"><div style="color:var(--text-muted);font-size:0.8rem">Cargando…</div></div>';
     loadBoards().then(renderBoardsGrid).catch(() => showToast('Error cargando tableros'));
   }
@@ -248,6 +251,7 @@
     if (!_area) return;
     showKanbanArea();
     _area.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:0.8rem">Cargando tablero…</div>';
+    _archiveOpen = false;
     try {
       _currentBoard = await getBoardApi(id);
       renderBoardView();
@@ -259,6 +263,10 @@
   function renderBoardView() {
     const b = _currentBoard;
     _area.style.background = b.background || '';
+
+    // Count archived cards
+    const archiveCount = getArchivedCards().length;
+
     _area.innerHTML = `
       <div class="kb-board-view" id="kbBoardView">
         <div class="kb-board-topbar">
@@ -266,6 +274,7 @@
           <div class="kb-board-color-dot" style="background:${escHtml(b.color)}"></div>
           <input class="kb-board-title-input" id="kbBoardTitle" value="${escHtml(b.name)}" spellcheck="false" />
           <button class="kb-btn" id="kbBgBoardBtn" title="Cambiar fondo" style="font-size:0.72rem;padding:4px 10px;">🎨 Fondo</button>
+          <button class="kb-btn kb-archive-topbar-btn" id="kbArchiveBtn" title="Ver archivo">📦 Archivo${archiveCount > 0 ? ` (${archiveCount})` : ''}</button>
           <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;color:var(--text-faint)">× tablero</button>
         </div>
         <div class="kb-filters-bar" id="kbFiltersBar">
@@ -273,7 +282,16 @@
           <div class="kb-filter-labels" id="kbFilterLabels"></div>
           <button class="kb-filter-clear kb-btn" id="kbFilterClear" style="display:none">× Limpiar</button>
         </div>
-        <div class="kb-columns-wrap" id="kbColumnsWrap"></div>
+        <div class="kb-board-content-wrap" id="kbBoardContentWrap">
+          <div class="kb-columns-wrap" id="kbColumnsWrap"></div>
+          <div class="kb-archive-panel hidden" id="kbArchivePanel">
+            <div class="kb-archive-panel-header">
+              <span>📦 Archivo del tablero</span>
+              <button class="kb-archive-panel-close" id="kbArchivePanelClose">&times;</button>
+            </div>
+            <div class="kb-archive-panel-body" id="kbArchivePanelBody"></div>
+          </div>
+        </div>
       </div>`;
 
     document.getElementById('kbBackBtn').addEventListener('click', showBoards);
@@ -306,6 +324,10 @@
       showBgPicker(document.getElementById('kbBgBoardBtn'), b);
     });
 
+    // Archive button
+    document.getElementById('kbArchiveBtn').addEventListener('click', toggleArchivePanel);
+    document.getElementById('kbArchivePanelClose').addEventListener('click', toggleArchivePanel);
+
     // Filter bar events
     const filterSearch = document.getElementById('kbFilterSearch');
     if (filterSearch) {
@@ -329,6 +351,86 @@
     }
 
     renderColumns();
+    setupKeyboardShortcuts();
+  }
+
+  // ---- Archive helpers ----
+  function getArchivedCards() {
+    if (!_currentBoard) return [];
+    const result = [];
+    _currentBoard.columns.forEach(col => {
+      col.cards.forEach(card => {
+        if (card.archived) result.push({ card, col });
+      });
+    });
+    return result;
+  }
+
+  function toggleArchivePanel() {
+    _archiveOpen = !_archiveOpen;
+    const panel = document.getElementById('kbArchivePanel');
+    if (!panel) return;
+    if (_archiveOpen) {
+      panel.classList.remove('hidden');
+      renderArchivePanel();
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+
+  function renderArchivePanel() {
+    const body = document.getElementById('kbArchivePanelBody');
+    if (!body) return;
+    const archived = getArchivedCards();
+    if (archived.length === 0) {
+      body.innerHTML = '<div class="kb-archive-empty">No hay tarjetas archivadas.</div>';
+      return;
+    }
+    // Group by column
+    const byCol = {};
+    archived.forEach(({ card, col }) => {
+      if (!byCol[col.id]) byCol[col.id] = { colName: col.name, cards: [] };
+      byCol[col.id].cards.push({ card, col });
+    });
+    body.innerHTML = '';
+    Object.values(byCol).forEach(({ colName, cards }) => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'kb-archive-group';
+      const groupLabel = document.createElement('div');
+      groupLabel.className = 'kb-archive-group-label';
+      groupLabel.textContent = colName;
+      groupEl.appendChild(groupLabel);
+      cards.forEach(({ card, col }) => {
+        const row = document.createElement('div');
+        row.className = 'kb-archive-card-row';
+        const titleEl = document.createElement('span');
+        titleEl.className = 'kb-archive-card-title';
+        titleEl.textContent = card.title;
+        const restoreBtn = document.createElement('button');
+        restoreBtn.className = 'kb-btn kb-btn--primary';
+        restoreBtn.style.fontSize = '0.7rem';
+        restoreBtn.style.padding = '3px 8px';
+        restoreBtn.textContent = 'Restaurar';
+        restoreBtn.addEventListener('click', () => {
+          card.archived = false;
+          saveBoard(_currentBoard.id);
+          renderColumns();
+          updateArchiveBtnCount();
+          renderArchivePanel();
+        });
+        row.appendChild(titleEl);
+        row.appendChild(restoreBtn);
+        groupEl.appendChild(row);
+      });
+      body.appendChild(groupEl);
+    });
+  }
+
+  function updateArchiveBtnCount() {
+    const btn = document.getElementById('kbArchiveBtn');
+    if (!btn) return;
+    const count = getArchivedCards().length;
+    btn.textContent = '📦 Archivo' + (count > 0 ? ` (${count})` : '');
   }
 
   function showBgPicker(anchor, board) {
@@ -337,7 +439,6 @@
     const pop = document.createElement('div');
     pop.className = 'kb-bg-picker';
 
-    // "Sin fondo" reset option
     const reset = document.createElement('div');
     reset.className = 'kb-bg-swatch kb-bg-swatch--reset' + (!board.background ? ' selected' : '');
     reset.textContent = '✕';
@@ -459,9 +560,7 @@
         const chips = cardEl.querySelectorAll('.kb-label-chip');
         chips.forEach(chip => {
           if (activeLabels.has(chip.style.background || chip.style.backgroundColor)) matchesLabel = true;
-          // also check data or computed color
         });
-        // Try matching by background color string in the chips
         if (!matchesLabel) {
           chips.forEach(chip => {
             const bg = chip.style.background;
@@ -485,6 +584,12 @@
     el.className = 'kb-col';
     el.dataset.colId = col.id;
     el.draggable = true;
+
+    // Visible (non-archived) cards
+    const visibleCards = col.cards.filter(c => !c.archived);
+    const wipLimit = col.wip || null;
+    const overLimit = wipLimit !== null && visibleCards.length >= wipLimit;
+    if (overLimit) el.classList.add('kb-col--over-limit');
 
     // Header
     const header = document.createElement('div');
@@ -516,25 +621,47 @@
     });
 
     const countEl = document.createElement('span');
-    countEl.className = 'kb-col-count';
-    countEl.textContent = col.cards.length;
+    countEl.className = 'kb-col-count' + (overLimit ? ' kb-col-count--over' : '');
+    countEl.textContent = visibleCards.length;
+
+    // WIP limit indicator
+    if (wipLimit !== null) {
+      const wipEl = document.createElement('span');
+      wipEl.className = 'kb-wip-indicator' + (overLimit ? ' kb-wip-indicator--over' : '');
+      wipEl.textContent = `/ ${wipLimit}`;
+      header.appendChild(nameEl);
+      header.appendChild(countEl);
+      header.appendChild(wipEl);
+    } else {
+      header.appendChild(nameEl);
+      header.appendChild(countEl);
+    }
+
+    // WIP settings button
+    const wipBtn = document.createElement('button');
+    wipBtn.className = 'kb-col-wip-btn';
+    wipBtn.textContent = '⚙';
+    wipBtn.title = 'Límite WIP';
+    wipBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      showWipPopover(wipBtn, col);
+    });
+    header.appendChild(wipBtn);
 
     const delBtn = document.createElement('button');
     delBtn.className = 'kb-col-del';
     delBtn.textContent = '×';
     delBtn.title = 'Eliminar lista';
     delBtn.addEventListener('click', () => deleteColumn(col.id));
-
-    header.appendChild(nameEl);
-    header.appendChild(countEl);
     header.appendChild(delBtn);
+
     el.appendChild(header);
 
-    // Cards list
+    // Cards list — only non-archived
     const cardsList = document.createElement('div');
     cardsList.className = 'kb-cards-list';
     cardsList.dataset.colId = col.id;
-    col.cards.forEach(card => {
+    visibleCards.forEach(card => {
       cardsList.appendChild(buildCardEl(card, col.id));
     });
     el.appendChild(cardsList);
@@ -562,6 +689,53 @@
     });
 
     return el;
+  }
+
+  function showWipPopover(anchor, col) {
+    document.querySelectorAll('.kb-wip-popover').forEach(p => p.remove());
+
+    const pop = document.createElement('div');
+    pop.className = 'kb-wip-popover';
+    pop.innerHTML = `
+      <div class="kb-wip-popover-title">Límite WIP</div>
+      <input type="number" class="kb-wip-input" min="1" placeholder="Sin límite" value="${col.wip != null ? col.wip : ''}" />
+      <div class="kb-wip-popover-actions">
+        <button class="kb-btn kb-btn--primary kb-wip-save">Guardar</button>
+        <button class="kb-btn kb-wip-remove">Quitar límite</button>
+      </div>`;
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    let left = rect.left;
+    if (left + 180 > window.innerWidth - 8) left = window.innerWidth - 188;
+    pop.style.left = left + 'px';
+    pop.style.top = (rect.bottom + 6) + 'px';
+
+    const input = pop.querySelector('.kb-wip-input');
+    input.focus();
+
+    pop.querySelector('.kb-wip-save').addEventListener('click', () => {
+      const val = parseInt(input.value, 10);
+      col.wip = isNaN(val) || val < 1 ? null : val;
+      saveBoard(_currentBoard.id);
+      renderColumns();
+      pop.remove();
+    });
+    pop.querySelector('.kb-wip-remove').addEventListener('click', () => {
+      col.wip = null;
+      saveBoard(_currentBoard.id);
+      renderColumns();
+      pop.remove();
+    });
+
+    const closeWip = e => {
+      if (!pop.contains(e.target) && e.target !== anchor) {
+        pop.remove();
+        document.removeEventListener('click', closeWip);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeWip), 10);
   }
 
   function buildCardEl(card, colId) {
@@ -702,12 +876,10 @@
     const toCol = b.columns.find(c => c.id === toColId);
     if (!fromCol || !toCol) return;
 
-    // Remove from source
     const idx = fromCol.cards.findIndex(c => c.id === card.id);
     if (idx === -1) return;
     fromCol.cards.splice(idx, 1);
 
-    // Find insertion index in destination
     const listEl = document.querySelector(`.kb-cards-list[data-col-id="${toColId}"]`);
     let insertIdx = toCol.cards.length;
     if (listEl) {
@@ -721,7 +893,6 @@
       }
     }
     toCol.cards.splice(insertIdx, 0, card);
-    // Update colId reference
     card.colId = toColId;
 
     renderColumns();
@@ -734,7 +905,6 @@
       if (!_dragCol) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      // highlight target col
       const target = e.target.closest('.kb-col');
       wrap.querySelectorAll('.kb-col--col-drag-over').forEach(c => c.classList.remove('kb-col--col-drag-over'));
       if (target && target.dataset.colId !== _dragCol) {
@@ -764,7 +934,7 @@
   async function addColumn() {
     const name = await kbPrompt('Nombre de la nueva lista:', 'Ej: Por hacer, En progreso…');
     if (!name) return;
-    const col = { id: uid(), name, cards: [] };
+    const col = { id: uid(), name, cards: [], wip: null };
     _currentBoard.columns.push(col);
     renderColumns();
     saveBoard(_currentBoard.id);
@@ -774,6 +944,7 @@
   async function deleteColumn(colId) {
     const col = _currentBoard.columns.find(c => c.id === colId);
     if (!col) return;
+    const visCount = col.cards.filter(c => !c.archived).length;
     if (col.cards.length > 0) {
       const ok = await kbConfirm(`¿Eliminar la lista "${col.name}" y sus ${col.cards.length} tarjeta(s)?`);
       if (!ok) return;
@@ -826,10 +997,12 @@
         cover: '',
         members: [],
         done: false,
+        archived: false,
         created: new Date().toISOString().slice(0, 19),
       };
       col.cards.push(card);
-      countEl.textContent = col.cards.length;
+      const visCount = col.cards.filter(c => !c.archived).length;
+      countEl.textContent = visCount;
       cardsList.appendChild(buildCardEl(card, col.id));
       ta.value = '';
       ta.focus();
@@ -839,7 +1012,6 @@
 
   // ---- Card modal ----
   function openCardModal(card, colId) {
-    // Remove existing modal if any
     const existing = document.getElementById('kbCardModal');
     if (existing) existing.remove();
 
@@ -870,16 +1042,15 @@
             </div>
             <div id="kbChecklistSection"></div>
           </div>
-          <div class="kb-modal-sidebar">
-            <div class="kb-modal-section-label">Fecha límite</div>
-            <input type="date" class="kb-due-input" id="kbCardDue" value="${escHtml(card.due || '')}" />
-            <div class="kb-modal-section-label" style="margin-top:12px">Acciones</div>
-            <button class="kb-modal-action-btn danger" id="kbDeleteCardBtn">× Eliminar tarjeta</button>
+          <div class="kb-modal-sidebar" id="kbModalSidebar">
           </div>
         </div>
       </div>`;
 
     document.body.appendChild(overlay);
+
+    const sidebar = overlay.querySelector('#kbModalSidebar');
+    buildModalSidebar(card, colId, sidebar, overlay);
 
     // Render labels
     renderModalLabels(card, overlay.querySelector('#kbModalLabels'));
@@ -890,7 +1061,6 @@
     // Close handlers
     const closeModal = () => {
       overlay.remove();
-      // Re-render board to reflect changes
       renderColumns();
     };
     overlay.querySelector('#kbModalClose').addEventListener('click', closeModal);
@@ -913,33 +1083,366 @@
       card.description = descEl.value;
       saveBoard(_currentBoard.id);
     });
+  }
 
-    // Due date
-    const dueEl = overlay.querySelector('#kbCardDue');
-    dueEl.addEventListener('change', () => {
-      card.due = dueEl.value;
+  function buildModalSidebar(card, colId, sidebar, overlay) {
+    sidebar.innerHTML = '';
+
+    // ---- AGREGAR A LA TARJETA ----
+    const addLabel = document.createElement('div');
+    addLabel.className = 'kb-sidebar-section-label';
+    addLabel.textContent = 'Agregar a la tarjeta';
+    sidebar.appendChild(addLabel);
+
+    // Etiquetas button
+    const lblBtn = document.createElement('button');
+    lblBtn.className = 'kb-sidebar-action-btn';
+    lblBtn.innerHTML = '🏷 Etiquetas';
+    lblBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      showLabelPopover(lblBtn, card, () => renderModalLabels(card, overlay.querySelector('#kbModalLabels')));
+    });
+    sidebar.appendChild(lblBtn);
+
+    // Miembros button
+    const memBtn = document.createElement('button');
+    memBtn.className = 'kb-sidebar-action-btn';
+    memBtn.innerHTML = '👤 Miembros';
+    memBtn.addEventListener('click', () => {
+      // Toggle members section inline below button
+      const existing = sidebar.querySelector('.kb-members-section');
+      if (existing) { existing.remove(); return; }
+      renderMembersSection(card, sidebar);
+    });
+    sidebar.appendChild(memBtn);
+
+    // Portada button
+    const coverBtn = document.createElement('button');
+    coverBtn.className = 'kb-sidebar-action-btn';
+    coverBtn.innerHTML = '🎨 Portada';
+    coverBtn.addEventListener('click', () => {
+      const existing = sidebar.querySelector('.kb-cover-section');
+      if (existing) { existing.remove(); return; }
+      renderCoverSection(card, sidebar);
+    });
+    sidebar.appendChild(coverBtn);
+
+    // Checklist button
+    const chkBtn = document.createElement('button');
+    chkBtn.className = 'kb-sidebar-action-btn';
+    chkBtn.innerHTML = '☑ Checklist';
+    chkBtn.addEventListener('click', () => {
+      // Add a new empty checklist item and re-render checklist section
+      if (!card.checklist) card.checklist = [];
+      renderChecklistSection(card, overlay.querySelector('#kbChecklistSection'));
+      // Scroll to it
+      const section = overlay.querySelector('#kbChecklistSection');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    sidebar.appendChild(chkBtn);
+
+    // Fecha límite
+    const dueLabel2 = document.createElement('div');
+    dueLabel2.className = 'kb-sidebar-section-label';
+    dueLabel2.style.marginTop = '6px';
+    dueLabel2.textContent = '📅 Fecha límite';
+    sidebar.appendChild(dueLabel2);
+
+    // Due date button shows current value, clicking focuses hidden input
+    const dueWrap = document.createElement('div');
+    dueWrap.style.position = 'relative';
+
+    const dueBtn = document.createElement('button');
+    dueBtn.className = 'kb-sidebar-action-btn kb-due-btn';
+    dueBtn.textContent = card.due ? card.due : 'Sin fecha';
+    dueWrap.appendChild(dueBtn);
+
+    const dueInput = document.createElement('input');
+    dueInput.type = 'date';
+    dueInput.className = 'kb-due-input-hidden';
+    dueInput.value = card.due || '';
+    dueWrap.appendChild(dueInput);
+
+    dueBtn.addEventListener('click', () => dueInput.showPicker ? dueInput.showPicker() : dueInput.focus());
+    dueInput.addEventListener('change', () => {
+      card.due = dueInput.value;
+      dueBtn.textContent = card.due ? card.due : 'Sin fecha';
       saveBoard(_currentBoard.id);
     });
+    sidebar.appendChild(dueWrap);
 
-    // Delete card
-    overlay.querySelector('#kbDeleteCardBtn').addEventListener('click', () => {
+    // ---- ACCIONES ----
+    const actLabel = document.createElement('div');
+    actLabel.className = 'kb-sidebar-section-label';
+    actLabel.style.marginTop = '10px';
+    actLabel.textContent = 'Acciones';
+    sidebar.appendChild(actLabel);
+
+    // Mover
+    const moveBtn = document.createElement('button');
+    moveBtn.className = 'kb-sidebar-action-btn';
+    moveBtn.innerHTML = '→ Mover';
+    moveBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      showMovePopover(moveBtn, card, colId, overlay);
+    });
+    sidebar.appendChild(moveBtn);
+
+    // Copiar
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'kb-sidebar-action-btn';
+    copyBtn.innerHTML = '⎘ Copiar';
+    copyBtn.addEventListener('click', () => {
       const col = _currentBoard.columns.find(c => c.id === colId);
       if (!col) return;
-      col.cards = col.cards.filter(c => c.id !== card.id);
+      const copy = JSON.parse(JSON.stringify(card));
+      copy.id = uid();
+      copy.title = 'Copia de ' + card.title;
+      copy.checklist = [];
+      copy.archived = false;
+      const idx = col.cards.findIndex(c => c.id === card.id);
+      col.cards.splice(idx + 1, 0, copy);
       saveBoard(_currentBoard.id);
-      closeModal();
+      overlay.remove();
+      renderColumns();
+      showToast('Tarjeta copiada');
+    });
+    sidebar.appendChild(copyBtn);
+
+    // Archivar
+    const archBtn = document.createElement('button');
+    archBtn.className = 'kb-sidebar-action-btn';
+    archBtn.innerHTML = '📦 Archivar';
+    archBtn.addEventListener('click', () => {
+      card.archived = true;
+      saveBoard(_currentBoard.id);
+      overlay.remove();
+      renderColumns();
+      updateArchiveBtnCount();
+      showToast('Tarjeta archivada');
+    });
+    sidebar.appendChild(archBtn);
+
+    // Eliminar — only shown if card is archived
+    if (card.archived) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'kb-sidebar-action-btn kb-sidebar-action-btn--danger';
+      delBtn.innerHTML = '× Eliminar';
+      delBtn.addEventListener('click', async () => {
+        const ok = await kbConfirm('¿Eliminar permanentemente esta tarjeta?');
+        if (!ok) return;
+        const col = _currentBoard.columns.find(c => c.id === colId);
+        if (!col) return;
+        col.cards = col.cards.filter(c => c.id !== card.id);
+        saveBoard(_currentBoard.id);
+        overlay.remove();
+        renderColumns();
+        updateArchiveBtnCount();
+      });
+      sidebar.appendChild(delBtn);
+    }
+  }
+
+  // ---- Move card popover ----
+  function showMovePopover(anchor, card, fromColId, modalOverlay) {
+    document.querySelectorAll('.kb-move-popover').forEach(p => p.remove());
+
+    const pop = document.createElement('div');
+    pop.className = 'kb-move-popover';
+    pop.innerHTML = `
+      <div class="kb-move-popover-title">Mover tarjeta</div>
+      <label class="kb-move-label">Tablero</label>
+      <select class="kb-move-select" id="kbMoveBoardSel"></select>
+      <label class="kb-move-label">Columna</label>
+      <select class="kb-move-select" id="kbMoveColSel"></select>
+      <label class="kb-move-label">Posición</label>
+      <select class="kb-move-select" id="kbMovePosSel"></select>
+      <button class="kb-btn kb-btn--primary kb-move-confirm" style="width:100%;margin-top:8px;font-size:0.75rem">Mover</button>`;
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    let left = rect.right + 8;
+    if (left + 210 > window.innerWidth - 8) left = rect.left - 218;
+    pop.style.left = left + 'px';
+    pop.style.top = Math.min(rect.top, window.innerHeight - 280) + 'px';
+
+    const boardSel = pop.querySelector('#kbMoveBoardSel');
+    const colSel = pop.querySelector('#kbMoveColSel');
+    const posSel = pop.querySelector('#kbMovePosSel');
+
+    // Populate boards
+    _boards.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.name;
+      if (b.id === _currentBoard.id) opt.selected = true;
+      boardSel.appendChild(opt);
     });
 
-    // Cover section
-    const sidebar = overlay.querySelector('.kb-modal-sidebar');
-    renderCoverSection(card, sidebar);
+    function populateCols(boardId) {
+      colSel.innerHTML = '';
+      posSel.innerHTML = '';
+      let cols;
+      if (boardId === _currentBoard.id) {
+        cols = _currentBoard.columns;
+      } else {
+        // Try to get from boards list (limited info), default to current
+        cols = _currentBoard.columns;
+      }
+      cols.forEach(col => {
+        const opt = document.createElement('option');
+        opt.value = col.id;
+        opt.textContent = col.name;
+        if (col.id === fromColId) opt.selected = true;
+        colSel.appendChild(opt);
+      });
+      populatePos(boardId);
+    }
 
-    // Members section
-    renderMembersSection(card, sidebar);
+    function populatePos(boardId) {
+      posSel.innerHTML = '';
+      const selColId = colSel.value;
+      let targetCol;
+      if (boardId === _currentBoard.id) {
+        targetCol = _currentBoard.columns.find(c => c.id === selColId);
+      }
+      const count = targetCol ? targetCol.cards.filter(c => !c.archived).length : 0;
+      for (let i = 1; i <= count + 1; i++) {
+        const opt = document.createElement('option');
+        opt.value = i - 1; // 0-indexed
+        opt.textContent = i === count + 1 ? `${i} (al final)` : String(i);
+        posSel.appendChild(opt);
+      }
+      // Default: position of current card or end
+      if (boardId === _currentBoard.id && selColId === fromColId && targetCol) {
+        const cardIdx = targetCol.cards.filter(c => !c.archived).findIndex(c => c.id === card.id);
+        if (cardIdx >= 0) posSel.value = cardIdx;
+      } else {
+        posSel.value = count; // al final
+      }
+    }
+
+    boardSel.addEventListener('change', async () => {
+      const bid = boardSel.value;
+      if (bid !== _currentBoard.id) {
+        // Fetch that board's columns
+        try {
+          const remoteBoard = await getBoardApi(bid);
+          colSel.innerHTML = '';
+          remoteBoard.columns.forEach(col => {
+            const opt = document.createElement('option');
+            opt.value = col.id;
+            opt.textContent = col.name;
+            colSel.appendChild(opt);
+          });
+          // Store for use during confirm
+          pop._remoteBoard = remoteBoard;
+          populatePosFromRemote(remoteBoard);
+        } catch (e) {
+          showToast('Error cargando tablero');
+        }
+      } else {
+        pop._remoteBoard = null;
+        populateCols(bid);
+      }
+    });
+
+    function populatePosFromRemote(remoteBoard) {
+      posSel.innerHTML = '';
+      const selColId = colSel.value;
+      const targetCol = remoteBoard.columns.find(c => c.id === selColId);
+      const count = targetCol ? targetCol.cards.filter(c => !c.archived).length : 0;
+      for (let i = 1; i <= count + 1; i++) {
+        const opt = document.createElement('option');
+        opt.value = i - 1;
+        opt.textContent = i === count + 1 ? `${i} (al final)` : String(i);
+        posSel.appendChild(opt);
+      }
+      posSel.value = count;
+    }
+
+    colSel.addEventListener('change', () => {
+      const bid = boardSel.value;
+      if (pop._remoteBoard) {
+        populatePosFromRemote(pop._remoteBoard);
+      } else {
+        populatePos(bid);
+      }
+    });
+
+    populateCols(_currentBoard.id);
+
+    pop.querySelector('.kb-move-confirm').addEventListener('click', async () => {
+      const toBoardId = boardSel.value;
+      const toColId = colSel.value;
+      const toPos = parseInt(posSel.value, 10);
+
+      if (toBoardId === _currentBoard.id) {
+        // Same board move
+        const fromCol = _currentBoard.columns.find(c => c.id === fromColId);
+        const toCol = _currentBoard.columns.find(c => c.id === toColId);
+        if (!fromCol || !toCol) return;
+
+        // Remove from source
+        const srcIdx = fromCol.cards.findIndex(c => c.id === card.id);
+        if (srcIdx === -1) return;
+        fromCol.cards.splice(srcIdx, 1);
+
+        // Find actual insertion index accounting for archived
+        let nonArchivedCount = 0;
+        let insertIdx = toCol.cards.length;
+        for (let i = 0; i <= toCol.cards.length; i++) {
+          if (nonArchivedCount === toPos) {
+            insertIdx = i;
+            break;
+          }
+          if (i < toCol.cards.length && !toCol.cards[i].archived) nonArchivedCount++;
+        }
+        toCol.cards.splice(insertIdx, 0, card);
+        card.colId = toColId;
+
+        saveBoard(_currentBoard.id);
+        pop.remove();
+        modalOverlay.remove();
+        renderColumns();
+      } else {
+        // Different board
+        try {
+          const remoteBoard = pop._remoteBoard || await getBoardApi(toBoardId);
+          const fromCol = _currentBoard.columns.find(c => c.id === fromColId);
+          if (!fromCol) return;
+          const srcIdx = fromCol.cards.findIndex(c => c.id === card.id);
+          if (srcIdx === -1) return;
+          fromCol.cards.splice(srcIdx, 1);
+
+          const toCol = remoteBoard.columns.find(c => c.id === toColId);
+          if (!toCol) return;
+          toCol.cards.splice(toPos, 0, card);
+
+          await saveColumnsApi(_currentBoard.id, _currentBoard.columns);
+          await saveColumnsApi(toBoardId, remoteBoard.columns);
+
+          pop.remove();
+          modalOverlay.remove();
+          renderColumns();
+          showToast('Tarjeta movida al tablero ' + remoteBoard.name);
+        } catch (e) {
+          showToast('Error moviendo tarjeta');
+        }
+      }
+    });
+
+    const closeMove = e => {
+      if (!pop.contains(e.target) && e.target !== anchor) {
+        pop.remove();
+        document.removeEventListener('click', closeMove);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMove), 10);
   }
 
   function renderCoverSection(card, sidebar) {
-    // Remove existing cover section if any
     const existing = sidebar.querySelector('.kb-cover-section');
     if (existing) existing.remove();
 
@@ -948,11 +1451,10 @@
 
     const label = document.createElement('div');
     label.className = 'kb-modal-section-label';
-    label.style.marginTop = '12px';
+    label.style.marginTop = '8px';
     label.textContent = '🎨 Portada';
     section.appendChild(label);
 
-    // Preview swatch if cover set
     if (card.cover) {
       const preview = document.createElement('div');
       preview.className = 'kb-cover-preview';
@@ -961,7 +1463,7 @@
     }
 
     const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'kb-modal-action-btn';
+    toggleBtn.className = 'kb-sidebar-action-btn';
     toggleBtn.textContent = card.cover ? 'Cambiar portada' : 'Agregar portada';
     section.appendChild(toggleBtn);
 
@@ -982,7 +1484,6 @@
       picker.appendChild(sw);
     });
 
-    // "Sin portada" option
     const noneBtn = document.createElement('div');
     noneBtn.className = 'kb-cover-swatch kb-cover-swatch--none';
     noneBtn.textContent = '✕';
@@ -1013,7 +1514,7 @@
 
     const label = document.createElement('div');
     label.className = 'kb-modal-section-label';
-    label.style.marginTop = '12px';
+    label.style.marginTop = '8px';
     label.textContent = '👤 Miembros';
     section.appendChild(label);
 
@@ -1036,7 +1537,7 @@
     section.appendChild(avatarsRow);
 
     const addBtn = document.createElement('button');
-    addBtn.className = 'kb-modal-action-btn';
+    addBtn.className = 'kb-sidebar-action-btn';
     addBtn.textContent = '+ Agregar miembro';
     section.appendChild(addBtn);
 
@@ -1087,13 +1588,11 @@
     const section = document.createElement('div');
     section.className = 'kb-checklist-section';
 
-    // Label
     const label = document.createElement('div');
     label.className = 'kb-modal-section-label';
     label.textContent = 'Checklist';
     section.appendChild(label);
 
-    // Progress bar
     const total = card.checklist.length;
     const done = card.checklist.filter(i => i.done).length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -1108,7 +1607,6 @@
       section.appendChild(progWrap);
     }
 
-    // Items list
     card.checklist.forEach((item, idx) => {
       const row = document.createElement('div');
       row.className = 'kb-checklist-item' + (item.done ? ' kb-checklist-item--done' : '');
@@ -1142,7 +1640,6 @@
       section.appendChild(row);
     });
 
-    // Add item button & inline input
     const addBtn = document.createElement('button');
     addBtn.className = 'kb-checklist-add-btn';
     addBtn.textContent = '+ Agregar ítem';
@@ -1203,7 +1700,6 @@
       container.appendChild(chip);
     });
 
-    // Add label button
     const addBtn = document.createElement('button');
     addBtn.className = 'kb-add-label-btn';
     addBtn.textContent = '+ Etiqueta';
@@ -1215,7 +1711,6 @@
   }
 
   function showLabelPopover(anchor, card, onAdd) {
-    // Remove existing popovers
     document.querySelectorAll('.kb-label-popover').forEach(el => el.remove());
 
     let selColor = LABEL_COLORS[0];
@@ -1239,7 +1734,6 @@
       grid.appendChild(sw);
     });
 
-    // Position popover near anchor
     pop.style.position = 'fixed';
     document.body.appendChild(pop);
     const rect = anchor.getBoundingClientRect();
@@ -1265,8 +1759,87 @@
     setTimeout(() => document.addEventListener('click', closePopover), 10);
   }
 
-  // ---- Custom dialogs (replace native prompt/confirm) ----
+  // ---- Keyboard shortcuts ----
+  function setupKeyboardShortcuts() {
+    // Remove previous handler
+    if (_kbKeydownHandler) {
+      document.removeEventListener('keydown', _kbKeydownHandler);
+    }
 
+    _kbKeydownHandler = function(e) {
+      const kanbanArea = document.getElementById('kanbanArea');
+      if (!kanbanArea || kanbanArea.classList.contains('hidden')) return;
+
+      // Don't intercept when typing in inputs
+      const tag = e.target.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      // Escape: close shortcuts overlay or clear filters
+      if (e.key === 'Escape') {
+        const shortcutsOverlay = document.getElementById('kbShortcutsOverlay');
+        if (shortcutsOverlay) { shortcutsOverlay.remove(); return; }
+        const modal = document.getElementById('kbCardModal');
+        if (modal) return; // handled by modal's own handler
+        if (document.activeElement && document.activeElement.id === 'kbFilterSearch') {
+          _filterText = '';
+          _filterLabels.clear();
+          document.activeElement.value = '';
+          document.querySelectorAll('.kb-filter-chip').forEach(c => c.classList.remove('active'));
+          updateFilterClearBtn();
+          applyFilters();
+        }
+        return;
+      }
+
+      if (isInput) return; // don't intercept other keys in inputs
+
+      // f — focus filter search
+      if (e.key === 'f' || e.key === 'F') {
+        const fs = document.getElementById('kbFilterSearch');
+        if (fs) { e.preventDefault(); fs.focus(); }
+        return;
+      }
+
+      // ? — show shortcuts overlay
+      if (e.key === '?') {
+        e.preventDefault();
+        showShortcutsOverlay();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', _kbKeydownHandler);
+  }
+
+  function showShortcutsOverlay() {
+    const existing = document.getElementById('kbShortcutsOverlay');
+    if (existing) { existing.remove(); return; }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'kb-shortcuts-overlay';
+    overlay.id = 'kbShortcutsOverlay';
+    overlay.innerHTML = `
+      <div class="kb-shortcuts-modal">
+        <div class="kb-shortcuts-header">
+          <span>⌨ Atajos de teclado</span>
+          <button class="kb-modal-close" id="kbShortcutsClose">&times;</button>
+        </div>
+        <table class="kb-shortcuts-table">
+          <thead><tr><th>Tecla</th><th>Acción</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>f</kbd></td><td>Enfocar búsqueda</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Mostrar atajos</td></tr>
+            <tr><td><kbd>Escape</kbd></td><td>Cerrar modal / limpiar filtros</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#kbShortcutsClose').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  // ---- Custom dialogs ----
   function kbConfirm(message) {
     return new Promise(resolve => {
       const overlay = document.createElement('div');
@@ -1338,7 +1911,6 @@
 
   window.KanbanApp = KanbanApp;
 
-  // Auto-init when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => KanbanApp.init());
   } else {
