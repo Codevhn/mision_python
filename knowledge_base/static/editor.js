@@ -1027,9 +1027,9 @@ window.BlockEditor = (() => {
           case 'quote': push('> ' + c); break;
           case 'code': {
             const ta = container.querySelector(`[data-id="${b.id}"] .eb-code`);
-            const li = container.querySelector(`[data-id="${b.id}"] .eb-code-lang`);
+            const li = container.querySelector(`[data-id="${b.id}"] .eb-code-langinp`);
             const code = ta ? ta.value : c;
-            const lang = li ? li.value : (b.lang || '');
+            const lang = li ? li.value.trim() : (b.lang || '');
             push('```' + lang + '\n' + code + '\n```');
             break;
           }
@@ -1265,90 +1265,98 @@ window.BlockEditor = (() => {
       }
 
       if (b.type === 'code') {
-        const header = document.createElement('div');
-        header.className = 'eb-code-header';
-        const langInput = document.createElement('input');
-        langInput.className = 'eb-code-lang';
-        langInput.value = b.lang || '';
-        langInput.placeholder = 'lenguaje…';
-        header.appendChild(langInput);
+        const lang = (b.lang || '').trim();
 
-        // Copy button in header
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'eb-code-copy';
-        copyBtn.title = 'Copiar código';
-        copyBtn.textContent = 'copy';
-        copyBtn.addEventListener('mousedown', e => e.preventDefault());
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(ta.value).then(() => {
-            copyBtn.textContent = 'copied!';
-            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1500);
-          });
-        });
-        header.appendChild(copyBtn);
-        wrap.appendChild(header);
+        // Overlay container: pre (highlighted) + textarea (transparent, on top)
+        const codeWrap = document.createElement('div');
+        codeWrap.className = 'eb-code-overlay-wrap';
 
-        // Highlighted view (pre/code)
         const pre = document.createElement('pre');
         pre.className = 'eb-code-pre';
         const codeEl = document.createElement('code');
-        const lang = (b.lang || '').trim();
         if (lang) codeEl.className = `language-${lang}`;
-        codeEl.textContent = b.content || '';
+        // Trailing newline keeps the pre the right height when textarea has one
+        codeEl.textContent = (b.content || '') + '\n';
         pre.appendChild(codeEl);
 
-        // Editable textarea (hidden by default)
         const ta = document.createElement('textarea');
-        ta.className = 'eb-code';
+        ta.className = 'eb-code eb-code-overlay-ta';
         ta.value = b.content || '';
         ta.spellcheck = false;
-        ta.style.display = 'none';
-        ta.rows = Math.max(3, (b.content || '').split('\n').length + 1);
+        ta.autocomplete = 'off';
+        ta.autocorrect = 'off';
+        ta.autocapitalize = 'off';
+        // data-lang used by blocksToMd reader
+        ta.dataset.lang = lang;
 
-        const showPre = () => {
-          const l = (langInput.value || '').trim();
-          codeEl.className = l ? `language-${l}` : '';
-          codeEl.textContent = ta.value;
+        // Keep highlight in sync with textarea content
+        const rehighlight = () => {
+          codeEl.textContent = (ta.value || '') + '\n';
           if (window.Prism && container.contains(codeEl)) Prism.highlightElement(codeEl);
-          pre.style.display = '';
-          ta.style.display = 'none';
-          b.lang = langInput.value;
-          sync();
         };
-        const showTa = () => {
-          pre.style.display = 'none';
-          ta.style.display = '';
-          ta.focus();
-        };
-
-        pre.addEventListener('click', showTa);
 
         ta.addEventListener('input', () => {
-          ta.rows = Math.max(3, ta.value.split('\n').length + 1);
+          b.content = ta.value;
+          b.lang   = ta.dataset.lang;
+          rehighlight();
           sync();
         });
-        ta.addEventListener('blur', showPre);
+
         ta.addEventListener('keydown', e => {
           if (e.key === 'Tab') {
             e.preventDefault();
             const s = ta.selectionStart;
-            ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(s);
+            ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(s);
             ta.selectionStart = ta.selectionEnd = s + 2;
+            rehighlight();
           }
-          if (e.key === 'Escape') { ta.blur(); }
+          if (e.key === 'Escape') ta.blur();
         });
 
-        langInput.addEventListener('change', showPre);
+        // Language detection input (PrismJS toolbar won't give us a writable lang)
+        const langBar = document.createElement('div');
+        langBar.className = 'eb-code-langbar';
+        const langInp = document.createElement('input');
+        langInp.className = 'eb-code-langinp';
+        langInp.value = lang;
+        langInp.placeholder = 'lenguaje';
+        langInp.spellcheck = false;
+        langInp.addEventListener('input', () => {
+          const l = langInp.value.trim();
+          codeEl.className = l ? `language-${l}` : '';
+          ta.dataset.lang = l;
+          b.lang = l;
+          if (window.Prism && container.contains(codeEl)) Prism.highlightElement(codeEl);
+          sync();
+        });
 
-        // Initial highlight — deferred so Prism toolbar doesn't crash on detached nodes
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'eb-code-copybtn';
+        copyBtn.textContent = 'copy';
+        copyBtn.addEventListener('mousedown', e => e.preventDefault());
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(ta.value).then(() => {
+            copyBtn.textContent = '✓ copied';
+            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1500);
+          });
+        });
+
+        langBar.appendChild(langInp);
+        langBar.appendChild(copyBtn);
+
+        codeWrap.appendChild(pre);
+        codeWrap.appendChild(ta);
+
+        wrap.appendChild(langBar);
+        wrap.appendChild(codeWrap);
+
+        // Initial highlight deferred so Prism toolbar doesn't crash on detached nodes
         if (window.Prism && lang) {
           requestAnimationFrame(() => {
             if (container.contains(codeEl)) Prism.highlightElement(codeEl);
           });
         }
 
-        wrap.appendChild(pre);
-        wrap.appendChild(ta);
         return wrap;
       }
 
