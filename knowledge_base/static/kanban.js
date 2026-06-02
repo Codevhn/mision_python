@@ -249,7 +249,8 @@
     });
 
     document.getElementById('kbDeleteBoardBtn').addEventListener('click', async () => {
-      if (!confirm(`¿Eliminar el tablero "${b.name}"? Esta acción no se puede deshacer.`)) return;
+      const ok = await kbConfirm(`¿Eliminar el tablero "${b.name}"? Esta acción no se puede deshacer.`);
+      if (!ok) return;
       try {
         await deleteBoardApi(b.id);
         await loadBoards();
@@ -509,21 +510,22 @@
   }
 
   // ---- Add column ----
-  function addColumn() {
-    const name = prompt('Nombre de la nueva lista:');
-    if (!name || !name.trim()) return;
-    const col = { id: uid(), name: name.trim(), cards: [] };
+  async function addColumn() {
+    const name = await kbPrompt('Nombre de la nueva lista:', 'Ej: Por hacer, En progreso…');
+    if (!name) return;
+    const col = { id: uid(), name, cards: [] };
     _currentBoard.columns.push(col);
     renderColumns();
     saveBoard(_currentBoard.id);
   }
 
   // ---- Delete column ----
-  function deleteColumn(colId) {
+  async function deleteColumn(colId) {
     const col = _currentBoard.columns.find(c => c.id === colId);
     if (!col) return;
     if (col.cards.length > 0) {
-      if (!confirm(`¿Eliminar la lista "${col.name}" y sus ${col.cards.length} tarjeta(s)?`)) return;
+      const ok = await kbConfirm(`¿Eliminar la lista "${col.name}" y sus ${col.cards.length} tarjeta(s)?`);
+      if (!ok) return;
     }
     _currentBoard.columns = _currentBoard.columns.filter(c => c.id !== colId);
     renderColumns();
@@ -746,6 +748,58 @@
       }
     };
     setTimeout(() => document.addEventListener('click', closePopover), 10);
+  }
+
+  // ---- Custom dialogs (replace native prompt/confirm) ----
+
+  function kbConfirm(message) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'kb-dialog-overlay';
+      overlay.innerHTML = `
+        <div class="kb-dialog">
+          <div class="kb-dialog-msg">${escHtml(message)}</div>
+          <div class="kb-dialog-actions">
+            <button class="kb-btn" id="kbDialogCancel">Cancelar</button>
+            <button class="kb-btn kb-btn--danger" id="kbDialogOk">Eliminar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const close = val => { overlay.remove(); resolve(val); };
+      overlay.querySelector('#kbDialogOk').addEventListener('click', () => close(true));
+      overlay.querySelector('#kbDialogCancel').addEventListener('click', () => close(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+      const esc = e => { if (e.key === 'Escape') { close(false); document.removeEventListener('keydown', esc); } };
+      document.addEventListener('keydown', esc);
+      overlay.querySelector('#kbDialogOk').focus();
+    });
+  }
+
+  function kbPrompt(label, placeholder = '') {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'kb-dialog-overlay';
+      overlay.innerHTML = `
+        <div class="kb-dialog">
+          <div class="kb-dialog-msg">${escHtml(label)}</div>
+          <input class="kb-dialog-input" type="text" placeholder="${escHtml(placeholder)}" autocomplete="off" />
+          <div class="kb-dialog-actions">
+            <button class="kb-btn" id="kbDialogCancel">Cancelar</button>
+            <button class="kb-btn kb-btn--primary" id="kbDialogOk">OK</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('.kb-dialog-input');
+      input.focus();
+      const close = val => { overlay.remove(); resolve(val); };
+      overlay.querySelector('#kbDialogOk').addEventListener('click', () => close(input.value.trim() || null));
+      overlay.querySelector('#kbDialogCancel').addEventListener('click', () => close(null));
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') close(input.value.trim() || null);
+        if (e.key === 'Escape') close(null);
+      });
+    });
   }
 
   // ---- Helper: show kanban area, hide others ----
