@@ -1299,6 +1299,7 @@ window.BlockEditor = (() => {
         // Overlay container: pre (highlighted) + textarea (transparent, on top)
         const codeWrap = document.createElement('div');
         codeWrap.className = 'eb-code-overlay-wrap';
+        codeWrap.dataset.lang = lang;
 
         const pre = document.createElement('pre');
         pre.className = 'eb-code-pre';
@@ -1326,13 +1327,39 @@ window.BlockEditor = (() => {
             toolbarWrap.remove();
           }
         };
+        const setCodeLang = nextLang => {
+          const l = (nextLang || '').trim();
+          ta.dataset.lang = l;
+          b.lang = l;
+          codeWrap.dataset.lang = l;
+          codeEl.className = l ? `language-${l}` : '';
+        };
         const rehighlight = () => {
+          if (!ta.dataset.lang) {
+            const detected = inferCodeLang(ta.value || '');
+            if (detected) setCodeLang(detected);
+          }
           codeEl.textContent = (ta.value || '') + '\n';
           if (window.Prism && container.contains(codeEl)) {
             Prism.highlightElement(codeEl);
             cleanupPrismToolbar();
           }
         };
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'eb-code-copy-floating';
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'copy';
+        copyBtn.title = 'Copiar codigo';
+        copyBtn.addEventListener('mousedown', e => e.preventDefault());
+        copyBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigator.clipboard?.writeText(ta.value).then(() => {
+            copyBtn.textContent = 'copied';
+            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1200);
+          }).catch(() => {});
+        });
 
         ta.addEventListener('input', () => {
           b.content = ta.value;
@@ -1356,6 +1383,7 @@ window.BlockEditor = (() => {
 
         codeWrap.appendChild(pre);
         codeWrap.appendChild(ta);
+        codeWrap.appendChild(copyBtn);
 
         wrap.appendChild(codeWrap);
 
