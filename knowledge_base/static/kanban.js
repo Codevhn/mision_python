@@ -6,6 +6,17 @@
 (function () {
   'use strict';
 
+  const BG_PRESETS = [
+    'linear-gradient(135deg,#1a1a2e,#16213e)',
+    'linear-gradient(135deg,#0f3460,#533483)',
+    'linear-gradient(135deg,#1b4332,#2d6a4f)',
+    'linear-gradient(135deg,#370617,#6a040f)',
+    'linear-gradient(135deg,#03071e,#023e8a)',
+    'linear-gradient(135deg,#240046,#7b2d8b)',
+    'linear-gradient(135deg,#2d2d2d,#1a1a1a)',
+    'linear-gradient(135deg,#0d1117,#161b22)',
+  ];
+
   const LABEL_COLORS = [
     '#61bd4f', '#f2d600', '#ff9f1a', '#eb5a46',
     '#c377e0', '#0079bf', '#00c2e0', '#51e898',
@@ -108,6 +119,7 @@
     _area = document.getElementById('kanbanArea');
     if (!_area) return;
     showKanbanArea();
+    _area.style.background = '';
     _area.innerHTML = '<div class="kb-boards-header"><h2>Tableros Kanban</h2></div><div class="kb-boards-grid" id="kbBoardsGrid"><div style="color:var(--text-muted);font-size:0.8rem">Cargando…</div></div>';
     loadBoards().then(renderBoardsGrid).catch(() => showToast('Error cargando tableros'));
   }
@@ -223,12 +235,14 @@
 
   function renderBoardView() {
     const b = _currentBoard;
+    _area.style.background = b.background || '';
     _area.innerHTML = `
       <div class="kb-board-view" id="kbBoardView">
         <div class="kb-board-topbar">
           <button class="kb-back-btn" id="kbBackBtn">&#8592; Tableros</button>
           <div class="kb-board-color-dot" style="background:${escHtml(b.color)}"></div>
           <input class="kb-board-title-input" id="kbBoardTitle" value="${escHtml(b.name)}" spellcheck="false" />
+          <button class="kb-btn" id="kbBgBoardBtn" title="Cambiar fondo" style="font-size:0.72rem;padding:4px 10px;">🎨 Fondo</button>
           <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;color:var(--text-faint)">× tablero</button>
         </div>
         <div class="kb-columns-wrap" id="kbColumnsWrap"></div>
@@ -259,7 +273,63 @@
       } catch (e) { showToast('Error eliminando tablero'); }
     });
 
+    document.getElementById('kbBgBoardBtn').addEventListener('click', e => {
+      e.stopPropagation();
+      showBgPicker(document.getElementById('kbBgBoardBtn'), b);
+    });
+
     renderColumns();
+  }
+
+  function showBgPicker(anchor, board) {
+    document.querySelectorAll('.kb-bg-picker').forEach(el => el.remove());
+
+    const pop = document.createElement('div');
+    pop.className = 'kb-bg-picker';
+
+    // "Sin fondo" reset option
+    const reset = document.createElement('div');
+    reset.className = 'kb-bg-swatch kb-bg-swatch--reset' + (!board.background ? ' selected' : '');
+    reset.textContent = '✕';
+    reset.title = 'Sin fondo';
+    reset.addEventListener('click', async () => {
+      board.background = '';
+      _area.style.background = '';
+      try { await updateBoardApi(board.id, { background: '' }); } catch (e) { showToast('Error guardando fondo'); }
+      pop.remove();
+    });
+    pop.appendChild(reset);
+
+    BG_PRESETS.forEach(bg => {
+      const sw = document.createElement('div');
+      sw.className = 'kb-bg-swatch' + (board.background === bg ? ' selected' : '');
+      sw.style.background = bg;
+      sw.title = bg;
+      sw.addEventListener('click', async () => {
+        board.background = bg;
+        _area.style.background = bg;
+        try { await updateBoardApi(board.id, { background: bg }); } catch (e) { showToast('Error guardando fondo'); }
+        pop.remove();
+      });
+      pop.appendChild(sw);
+    });
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    const popW = 220;
+    let left = rect.left;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    pop.style.left = left + 'px';
+    pop.style.top = (rect.bottom + 6) + 'px';
+
+    const closePicker = e => {
+      if (!pop.contains(e.target) && e.target !== anchor) {
+        pop.remove();
+        document.removeEventListener('click', closePicker);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closePicker), 10);
   }
 
   function renderColumns() {
@@ -400,6 +470,27 @@
       dueEl.className = 'kb-card-due' + (isOverdue(card.due) ? ' kb-card-due--overdue' : '');
       dueEl.textContent = card.due;
       el.appendChild(dueEl);
+    }
+
+    // Checklist progress
+    if (card.checklist && card.checklist.length > 0) {
+      const total = card.checklist.length;
+      const done = card.checklist.filter(i => i.done).length;
+      const pct = Math.round((done / total) * 100);
+      const allDone = done === total;
+
+      const badgeEl = document.createElement('span');
+      badgeEl.className = 'kb-checklist-badge' + (allDone ? ' kb-checklist-badge--done' : '');
+      badgeEl.textContent = `☑ ${done}/${total}`;
+      el.appendChild(badgeEl);
+
+      const barWrap = document.createElement('div');
+      barWrap.className = 'kb-checklist-bar';
+      const barFill = document.createElement('div');
+      barFill.className = 'kb-checklist-bar-fill';
+      barFill.style.width = pct + '%';
+      barWrap.appendChild(barFill);
+      el.appendChild(barWrap);
     }
 
     // Drag events for card
@@ -614,6 +705,7 @@
               <div class="kb-modal-section-label">Descripción</div>
               <textarea class="kb-modal-desc" id="kbCardDesc" placeholder="Agregar descripción…">${escHtml(card.description || '')}</textarea>
             </div>
+            <div id="kbChecklistSection"></div>
           </div>
           <div class="kb-modal-sidebar">
             <div class="kb-modal-section-label">Fecha límite</div>
@@ -628,6 +720,9 @@
 
     // Render labels
     renderModalLabels(card, overlay.querySelector('#kbModalLabels'));
+
+    // Render checklist
+    renderChecklistSection(card, overlay.querySelector('#kbChecklistSection'));
 
     // Close handlers
     const closeModal = () => {
@@ -671,6 +766,114 @@
       saveBoard(_currentBoard.id);
       closeModal();
     });
+  }
+
+  function renderChecklistSection(card, container) {
+    container.innerHTML = '';
+    if (!card.checklist) card.checklist = [];
+
+    const section = document.createElement('div');
+    section.className = 'kb-checklist-section';
+
+    // Label
+    const label = document.createElement('div');
+    label.className = 'kb-modal-section-label';
+    label.textContent = 'Checklist';
+    section.appendChild(label);
+
+    // Progress bar
+    const total = card.checklist.length;
+    const done = card.checklist.filter(i => i.done).length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    if (total > 0) {
+      const progWrap = document.createElement('div');
+      progWrap.className = 'kb-checklist-progress';
+      const progFill = document.createElement('div');
+      progFill.className = 'kb-checklist-bar-fill';
+      progFill.style.width = pct + '%';
+      progWrap.appendChild(progFill);
+      section.appendChild(progWrap);
+    }
+
+    // Items list
+    card.checklist.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'kb-checklist-item' + (item.done ? ' kb-checklist-item--done' : '');
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = item.done;
+      cb.addEventListener('change', () => {
+        item.done = cb.checked;
+        saveBoard(_currentBoard.id);
+        renderChecklistSection(card, container);
+      });
+
+      const txt = document.createElement('span');
+      txt.className = 'kb-checklist-text';
+      txt.textContent = item.text;
+
+      const del = document.createElement('button');
+      del.className = 'kb-checklist-del';
+      del.textContent = '×';
+      del.title = 'Eliminar ítem';
+      del.addEventListener('click', () => {
+        card.checklist.splice(idx, 1);
+        saveBoard(_currentBoard.id);
+        renderChecklistSection(card, container);
+      });
+
+      row.appendChild(cb);
+      row.appendChild(txt);
+      row.appendChild(del);
+      section.appendChild(row);
+    });
+
+    // Add item button & inline input
+    const addBtn = document.createElement('button');
+    addBtn.className = 'kb-checklist-add-btn';
+    addBtn.textContent = '+ Agregar ítem';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.style.display = 'none';
+    const addInput = document.createElement('input');
+    addInput.type = 'text';
+    addInput.className = 'kb-checklist-add-input';
+    addInput.placeholder = 'Nuevo ítem…';
+    inputWrap.appendChild(addInput);
+
+    const saveItem = () => {
+      const text = addInput.value.trim();
+      if (text) {
+        card.checklist.push({ id: uid(), text, done: false });
+        saveBoard(_currentBoard.id);
+      }
+      addInput.value = '';
+      inputWrap.style.display = 'none';
+      addBtn.style.display = '';
+      renderChecklistSection(card, container);
+    };
+
+    addInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveItem(); }
+      if (e.key === 'Escape') {
+        addInput.value = '';
+        inputWrap.style.display = 'none';
+        addBtn.style.display = '';
+      }
+    });
+    addInput.addEventListener('blur', saveItem);
+
+    addBtn.addEventListener('click', () => {
+      addBtn.style.display = 'none';
+      inputWrap.style.display = '';
+      addInput.focus();
+    });
+
+    section.appendChild(addBtn);
+    section.appendChild(inputWrap);
+    container.appendChild(section);
   }
 
   function renderModalLabels(card, container) {

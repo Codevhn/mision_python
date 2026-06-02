@@ -1258,6 +1258,8 @@ def kanban_update_board(board_id):
         board["description"] = body["description"].strip()
     if "color" in body:
         board["color"] = body["color"]
+    if "background" in body:
+        board["background"] = body["background"]
     save_kanban(data)
     return jsonify(board)
 
