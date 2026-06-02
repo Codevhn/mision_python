@@ -6,6 +6,7 @@ window.BlockEditor = (() => {
 
   // Shared across all editor instances — tracks the block being dragged cross-editor
   let _crossDrag = null; // { srcEditor, blockId }
+  let _activeSelectionEditor = null;
 
   const CMDS = [
     { type:'text',      label:'Texto',           desc:'Párrafo normal',            icon:'¶',   keys:['text','texto','p','paragraph'] },
@@ -117,13 +118,49 @@ window.BlockEditor = (() => {
       _structuralDirty = true;
     }
 
+    function toggleStateSnapshot() {
+      const bySig = new Map();
+      const byIndex = new Map();
+      const sigCounts = new Map();
+      let toggleIdx = 0;
+      _blocks.forEach(b => {
+        if (!b.type?.startsWith('toggle')) return;
+        const sigBase = `${b.type}\u0000${b.content || ''}`;
+        const sigCount = (sigCounts.get(sigBase) || 0) + 1;
+        sigCounts.set(sigBase, sigCount);
+        const state = b.open !== false;
+        bySig.set(`${sigBase}\u0000${sigCount}`, state);
+        byIndex.set(toggleIdx, state);
+        toggleIdx++;
+      });
+      return { bySig, byIndex };
+    }
+
+    function applyToggleStateSnapshot(snapshot) {
+      if (!snapshot) return;
+      const sigCounts = new Map();
+      let toggleIdx = 0;
+      _blocks.forEach(b => {
+        if (!b.type?.startsWith('toggle')) return;
+        const sigBase = `${b.type}\u0000${b.content || ''}`;
+        const sigCount = (sigCounts.get(sigBase) || 0) + 1;
+        sigCounts.set(sigBase, sigCount);
+        const sigKey = `${sigBase}\u0000${sigCount}`;
+        if (snapshot.bySig.has(sigKey)) b.open = snapshot.bySig.get(sigKey);
+        else if (snapshot.byIndex.has(toggleIdx)) b.open = snapshot.byIndex.get(toggleIdx);
+        toggleIdx++;
+      });
+    }
+
     function undo() {
       if (_undoStack.length === 0) return;
       const prev = _undoStack.pop();
+      const toggleStates = toggleStateSnapshot();
       _undoing = true;
       _lastSavedMd = prev;
       _structuralDirty = false;
       _blocks = mdToBlocks(prev);
+      applyToggleStateSnapshot(toggleStates);
       render();
       if (onChange) onChange(prev);
       _undoing = false;
@@ -142,10 +179,12 @@ window.BlockEditor = (() => {
       _selected.forEach(id => container.querySelector(`[data-id="${id}"]`)?.classList.remove('eb--selected'));
       _selected.clear();
       _lastSelIdx = -1;
+      if (_activeSelectionEditor === _selfRef) _activeSelectionEditor = null;
     }
     function selectBlock(id, additive, range) {
       const idx = _blocks.findIndex(b => b.id === id);
       if (!additive && !range) clearSelection();
+      _activeSelectionEditor = _selfRef;
       if (range && _lastSelIdx >= 0) {
         const [from, to] = _lastSelIdx < idx ? [_lastSelIdx, idx] : [idx, _lastSelIdx];
         for (let i = from; i <= to; i++) {
@@ -164,6 +203,7 @@ window.BlockEditor = (() => {
 
     function selectAllBlocks() {
       clearSelection();
+      _activeSelectionEditor = _selfRef;
       _blocks.forEach(b => {
         _selected.add(b.id);
         container.querySelector(`[data-id="${b.id}"]`)?.classList.add('eb--selected');
@@ -171,32 +211,39 @@ window.BlockEditor = (() => {
       _lastSelIdx = _blocks.length - 1;
     }
 
-    function selectedRange() {
-      const idxs = _blocks.map((b, i) => _selected.has(b.id) ? i : -1).filter(i => i >= 0);
-      if (!idxs.length) return null;
-      return { from: Math.min(...idxs), to: Math.max(...idxs) };
+    function selectedIndexes() {
+      return _blocks.map((b, i) => _selected.has(b.id) ? i : -1).filter(i => i >= 0);
+    }
+
+    function selectedBlocksInOrder() {
+      return _blocks.filter(b => _selected.has(b.id));
     }
 
     function deleteSelectedBlocks(opts = {}) {
-      const range = selectedRange();
-      if (!range) return false;
+      const idxs = selectedIndexes();
+      if (!idxs.length) return false;
       saveHistory();
-      const count = range.to - range.from + 1;
-      const replacement = opts.keepEmpty === false ? [] : [{ id: uid(), type:'text', content:'', checked:false, indent: 0 }];
-      _blocks.splice(range.from, count, ...replacement);
+      const firstIdx = idxs[0];
+      for (let i = idxs.length - 1; i >= 0; i--) _blocks.splice(idxs[i], 1);
+      const replacement = (_blocks.length === 0 && opts.keepEmpty !== false)
+        ? [{ id: uid(), type:'text', content:'', checked:false, indent: 0 }]
+        : [];
+      if (replacement.length) _blocks.splice(0, 0, ...replacement);
       clearSelection();
       render();
-      const focusId = replacement[0]?.id || _blocks[Math.max(0, range.from - 1)]?.id;
+      const focusId = replacement[0]?.id || _blocks[Math.min(firstIdx, _blocks.length - 1)]?.id || _blocks[Math.max(0, firstIdx - 1)]?.id;
       if (focusId) focusBlock(focusId);
       sync();
       return true;
     }
 
     function replaceSelectedBlocks(newBlocks) {
-      const range = selectedRange();
-      if (!range || !newBlocks?.length) return false;
+      const idxs = selectedIndexes();
+      if (!idxs.length || !newBlocks?.length) return false;
       saveHistory();
-      _blocks.splice(range.from, range.to - range.from + 1, ...newBlocks);
+      const insertAt = idxs[0];
+      for (let i = idxs.length - 1; i >= 0; i--) _blocks.splice(idxs[i], 1);
+      _blocks.splice(insertAt, 0, ...newBlocks);
       clearSelection();
       render();
       focusBlock(newBlocks[0].id);
@@ -230,6 +277,20 @@ window.BlockEditor = (() => {
       if (/\b(select|from|where|insert into|update|delete from)\b/i.test(s)) return 'sql';
       if (/^\s*(sudo\s+|apt\s+|cd\s+|ls\b|git\s+|python3?\s+)/m.test(s)) return 'bash';
       return '';
+    }
+
+    function isEditableTarget(target) {
+      return !!target?.closest?.('input, textarea, select, [contenteditable="true"], .CodeMirror');
+    }
+
+    function writeSelectedBlocksToClipboard(e) {
+      if (_activeSelectionEditor !== _selfRef) return false;
+      if (_selected.size === 0) return false;
+      const md = blocksToMd(selectedBlocksInOrder());
+      if (!md) return false;
+      e.clipboardData?.setData('text/plain', md);
+      e.preventDefault();
+      return true;
     }
 
     function codeMirrorMode(lang) {
@@ -1789,7 +1850,6 @@ window.BlockEditor = (() => {
 
         // Header keydown
         hDiv.addEventListener('keydown', e => onKeydown(e, b, hDiv));
-        hDiv.addEventListener('beforeinput', () => saveHistory());
         hDiv.addEventListener('input',   () => { b.content = hDiv.innerText; sync(); });
         hDiv.addEventListener('focus',   () => wrap.classList.add('eb--focused'));
         hDiv.addEventListener('blur',    () => { wrap.classList.remove('eb--focused'); sync(); });
@@ -1812,7 +1872,6 @@ window.BlockEditor = (() => {
       }
 
       div.addEventListener('keydown', e => onKeydown(e, b, div));
-      div.addEventListener('beforeinput', () => saveHistory());
       div.addEventListener('input', () => {
         _structuralDirty = false;
         div.dataset.plaintext = htmlToMd(div).replace(/\n$/, '');
@@ -2810,29 +2869,35 @@ window.BlockEditor = (() => {
       }
     });
 
+    document.addEventListener('copy', e => {
+      writeSelectedBlocksToClipboard(e);
+    });
+
+    document.addEventListener('cut', e => {
+      if (!writeSelectedBlocksToClipboard(e)) return;
+      deleteSelectedBlocks({ keepEmpty: true });
+    });
+
     // Selection + undo keyboard shortcuts
     document.addEventListener('keydown', e => {
       const hasFocus = container.contains(document.activeElement);
+      const activeIsEditable = isEditableTarget(document.activeElement);
       if (!hasFocus && _selected.size === 0) return;
       if (_selected.size > 0 && e.key === 'Escape') { clearSelection(); return; }
-      if (_selected.size > 0 && (e.ctrlKey || e.metaKey) && e.key === 'c') {
-        const sel = _blocks.filter(b => _selected.has(b.id));
-        navigator.clipboard?.writeText(blocksToMd(sel)).catch(() => {});
-        e.preventDefault();
-        return;
-      }
       if (_selected.size > 0 && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         deleteSelectedBlocks();
         return;
       }
-      // Ctrl+Z undo: structural ops when not typing, always when _structuralDirty
-      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      // Let the browser handle text-level undo/redo inside editable blocks.
+      // Use editor-level undo only for structural actions or block selections.
+      if ((_selected.size > 0 || (hasFocus && (!activeIsEditable || _structuralDirty))) &&
+          (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
-      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a') {
+      if (hasFocus && !isEditableTarget(document.activeElement) && (e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         selectAllBlocks();
       }
