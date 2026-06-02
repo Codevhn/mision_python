@@ -1949,12 +1949,31 @@ window.BlockEditor = (() => {
       closeConvertMenu();
       const m = document.createElement('div');
       m.className = 'eb-convert-menu';
-      const rect = anchor.getBoundingClientRect();
-      m.style.top  = (rect.bottom + 4) + 'px';
-      m.style.left = rect.left + 'px';
+      // Build content first (off-screen) so we can measure real height
+      m.style.visibility = 'hidden';
+      m.style.position = 'fixed';
       m.innerHTML = CMDS.filter(c => c.type !== 'page' && c.type !== 'divider' && c.type !== 'table').map(c =>
         `<div class="eb-convert-item" data-type="${c.type}"><span>${c.icon}</span>${c.label}</div>`
       ).join('');
+      document.body.appendChild(m);
+
+      const rect = anchor.getBoundingClientRect();
+      const menuH = m.offsetHeight;
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+      let top;
+      if (spaceBelow >= 120 || spaceBelow >= spaceAbove) {
+        top = rect.bottom + 4;
+        m.style.maxHeight = Math.max(spaceBelow, 100) + 'px';
+      } else {
+        m.style.maxHeight = Math.max(spaceAbove, 100) + 'px';
+        top = rect.top - Math.min(menuH, spaceAbove) - 4;
+      }
+      m.style.top = Math.max(8, top) + 'px';
+      m.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+      m.style.overflowY = 'auto';
+      m.style.visibility = '';
+
       m.querySelectorAll('.eb-convert-item').forEach(el => {
         el.addEventListener('mousedown', e => {
           e.preventDefault();
@@ -1962,7 +1981,6 @@ window.BlockEditor = (() => {
           closeConvertMenu();
         });
       });
-      document.body.appendChild(m);
       convertMenu = m;
       setTimeout(() => document.addEventListener('mousedown', closeConvertMenu, { once: true }), 0);
     }
@@ -2112,8 +2130,8 @@ window.BlockEditor = (() => {
       const rect = anchor.getBoundingClientRect();
       const m = document.createElement('div');
       m.className = 'eb-block-menu eb-turninto-menu';
-      m.style.top  = rect.top  + 'px';
-      m.style.left = (rect.right + 4) + 'px';
+      m.style.visibility = 'hidden';
+      m.style.position = 'fixed';
 
       const types = CMDS.filter(c => !['page','divider','table'].includes(c.type));
       m.innerHTML = types.map(c =>
@@ -2121,6 +2139,23 @@ window.BlockEditor = (() => {
            <span class="eb-bm-icon">${c.icon}</span><span>${c.label}</span>
          </div>`
       ).join('');
+      document.body.appendChild(m);
+
+      const menuH = m.offsetHeight;
+      const menuW = m.offsetWidth || 200;
+      const spaceBelow = window.innerHeight - rect.top - 8;
+      const spaceRight = window.innerWidth - rect.right - 8;
+      const left = spaceRight >= menuW ? rect.right + 4 : rect.left - menuW - 4;
+      let top = rect.top;
+      if (top + menuH > window.innerHeight - 8) {
+        top = Math.max(8, window.innerHeight - menuH - 8);
+      }
+      m.style.maxHeight = (window.innerHeight - top - 8) + 'px';
+      m.style.overflowY = 'auto';
+      m.style.top  = top + 'px';
+      m.style.left = Math.max(8, left) + 'px';
+      m.style.visibility = '';
+
       m.querySelectorAll('.eb-bm-item').forEach(el => {
         el.addEventListener('mousedown', e => {
           e.preventDefault();
@@ -2128,7 +2163,6 @@ window.BlockEditor = (() => {
           closeBlockMenu();
         });
       });
-      document.body.appendChild(m);
       turnIntoMenu = m;
       m.addEventListener('mouseleave', e => {
         if (!blockMenu?.contains(e.relatedTarget)) closeTurnIntoMenu();
