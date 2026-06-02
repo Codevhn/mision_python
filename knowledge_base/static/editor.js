@@ -232,6 +232,21 @@ window.BlockEditor = (() => {
       return '';
     }
 
+    function codeMirrorMode(lang) {
+      const l = String(lang || '').toLowerCase();
+      if (l === 'python' || l === 'py') return 'python';
+      if (l === 'javascript' || l === 'js' || l === 'typescript' || l === 'ts') return 'javascript';
+      if (l === 'json') return { name: 'javascript', json: true };
+      if (l === 'html' || l === 'htm') return 'htmlmixed';
+      if (l === 'xml') return 'xml';
+      if (l === 'css') return 'css';
+      if (l === 'java') return 'text/x-java';
+      if (l === 'bash' || l === 'sh' || l === 'shell') return 'shell';
+      if (l === 'sql') return 'sql';
+      if (l === 'yaml' || l === 'yml') return 'yaml';
+      return null;
+    }
+
     // ── INLINE MARKDOWN ─────────────────────────────────────────
     // WYSIWYG model: rendered HTML stays visible while editing.
     // We read back plaintext by walking the DOM (htmlToMd).
@@ -435,7 +450,7 @@ window.BlockEditor = (() => {
           if (type === 'database') return;
           if (type === 'divider') { blocks.push({ id: uid(), type:'divider', content:'', checked:false, indent }); return; }
           if (type === 'code') {
-            const code = el.querySelector('.eb-code')?.value || el.querySelector('.eb-code-pre code')?.textContent || '';
+            const code = el.querySelector('.eb-code')?.value || '';
             const lang = el.querySelector('.eb-code')?.dataset?.lang || inferCodeLang(code);
             pushText('code', code, { indent, lang });
             return;
@@ -1095,8 +1110,6 @@ window.BlockEditor = (() => {
     // ── RENDER ──────────────────────────────────────────────────
     // Render every block synchronously so restore/load cannot leave a partial
     // page visible if an animation frame is delayed or skipped.
-    let _vObserver = null;
-
     function render() {
       _nestedMenus.forEach(m => m.remove());
       _nestedMenus.clear();
@@ -1104,26 +1117,12 @@ window.BlockEditor = (() => {
       container.querySelectorAll('[data-tabulator-id]').forEach(el => {
         try { Tabulator.findTable('#' + el.id)?.[0]?.destroy(); } catch(_) {}
       });
-      if (_vObserver) { _vObserver.disconnect(); _vObserver = null; }
       container.innerHTML = '';
 
       if (_blocks.length === 0) {
         _blocks = [{ id:uid(), type:'text', content:'', checked:false, indent: 0 }];
         container.appendChild(makeEl(_blocks[0]));
         return;
-      }
-
-      // Setup IntersectionObserver for lazy PrismJS highlighting
-      if (window.IntersectionObserver) {
-        _vObserver = new IntersectionObserver(entries => {
-          entries.forEach(entry => {
-            if (!entry.isIntersecting) return;
-            if (!container.contains(entry.target)) return; // stale after undo/render
-            const codeEl = entry.target.querySelector('.eb-code-pre code[class*="language-"]');
-            if (codeEl && window.Prism) { Prism.highlightElement(codeEl); }
-            _vObserver?.unobserve(entry.target);
-          });
-        }, { rootMargin: '300px 0px' });
       }
 
       const toggleStack = []; // [{ indent, bodyEl }]
@@ -1146,7 +1145,6 @@ window.BlockEditor = (() => {
             toggleStack.push({ indent: ind, bodyEl, trail });
           }
         }
-        if (_vObserver) _vObserver.observe(el);
       }
     }
 
@@ -1296,54 +1294,25 @@ window.BlockEditor = (() => {
         const lang = (b.lang || inferCodeLang(b.content || '')).trim();
         b.lang = lang;
 
-        // Overlay container: pre (highlighted) + textarea (transparent, on top)
         const codeWrap = document.createElement('div');
-        codeWrap.className = 'eb-code-overlay-wrap';
+        codeWrap.className = 'eb-code-cm-wrap';
         codeWrap.dataset.lang = lang;
 
-        const pre = document.createElement('pre');
-        pre.className = 'eb-code-pre';
-        const codeEl = document.createElement('code');
-        if (lang) codeEl.className = `language-${lang}`;
-        // Trailing newline keeps the pre the right height when textarea has one
-        codeEl.textContent = (b.content || '') + '\n';
-        pre.appendChild(codeEl);
-
         const ta = document.createElement('textarea');
-        ta.className = 'eb-code eb-code-overlay-ta';
+        ta.className = 'eb-code';
         ta.value = b.content || '';
         ta.spellcheck = false;
         ta.autocomplete = 'off';
         ta.autocorrect = 'off';
         ta.autocapitalize = 'off';
-        // data-lang used by blocksToMd reader
         ta.dataset.lang = lang;
 
-        // Keep highlight in sync with textarea content
-        const cleanupPrismToolbar = () => {
-          const toolbarWrap = pre.parentElement?.classList?.contains('code-toolbar') ? pre.parentElement : null;
-          if (toolbarWrap && toolbarWrap.parentElement === codeWrap) {
-            codeWrap.insertBefore(pre, toolbarWrap);
-            toolbarWrap.remove();
-          }
-        };
-        const setCodeLang = nextLang => {
+        const setLang = nextLang => {
           const l = (nextLang || '').trim();
-          ta.dataset.lang = l;
           b.lang = l;
+          ta.dataset.lang = l;
           codeWrap.dataset.lang = l;
-          codeEl.className = l ? `language-${l}` : '';
-        };
-        const rehighlight = () => {
-          if (!ta.dataset.lang) {
-            const detected = inferCodeLang(ta.value || '');
-            if (detected) setCodeLang(detected);
-          }
-          codeEl.textContent = (ta.value || '') + '\n';
-          if (window.Prism && container.contains(codeEl)) {
-            Prism.highlightElement(codeEl);
-            cleanupPrismToolbar();
-          }
+          if (cm) cm.setOption('mode', codeMirrorMode(l));
         };
 
         const copyBtn = document.createElement('button');
@@ -1361,39 +1330,51 @@ window.BlockEditor = (() => {
           }).catch(() => {});
         });
 
-        ta.addEventListener('input', () => {
-          b.content = ta.value;
-          b.lang   = ta.dataset.lang;
-          rehighlight();
-          sync();
-        });
-
-        ta.addEventListener('keydown', e => {
-          if (e.key === 'Tab') {
-            e.preventDefault();
-            const s = ta.selectionStart;
-            ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(s);
-            ta.selectionStart = ta.selectionEnd = s + 2;
-            b.content = ta.value;
-            rehighlight();
-            sync();
-          }
-          if (e.key === 'Escape') ta.blur();
-        });
-
-        codeWrap.appendChild(pre);
         codeWrap.appendChild(ta);
         codeWrap.appendChild(copyBtn);
-
         wrap.appendChild(codeWrap);
 
-        // Initial highlight deferred so Prism toolbar doesn't crash on detached nodes
-        if (window.Prism && lang) {
+        let cm = null;
+        if (window.CodeMirror) {
           requestAnimationFrame(() => {
-            if (container.contains(codeEl)) {
-              Prism.highlightElement(codeEl);
-              cleanupPrismToolbar();
+            if (!container.contains(ta)) return;
+            cm = CodeMirror.fromTextArea(ta, {
+              mode: codeMirrorMode(lang),
+              theme: 'material-darker',
+              lineNumbers: true,
+              lineWrapping: false,
+              indentUnit: 2,
+              tabSize: 2,
+              indentWithTabs: false,
+              viewportMargin: Infinity,
+              extraKeys: {
+                Tab(editor) {
+                  if (editor.somethingSelected()) editor.indentSelection('add');
+                  else editor.replaceSelection('  ', 'end');
+                },
+                Esc(editor) {
+                  editor.getInputField().blur();
+                },
+              },
+            });
+            cm.on('change', editor => {
+              b.content = editor.getValue();
+              ta.value = b.content;
+              if (!b.lang) {
+                const detected = inferCodeLang(b.content);
+                if (detected) setLang(detected);
+              }
+              sync();
+            });
+          });
+        } else {
+          ta.addEventListener('input', () => {
+            b.content = ta.value;
+            if (!b.lang) {
+              const detected = inferCodeLang(b.content);
+              if (detected) setLang(detected);
             }
+            sync();
           });
         }
 

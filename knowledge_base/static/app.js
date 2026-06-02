@@ -1186,7 +1186,6 @@ async function switchTab(tab) {
       });
       const data = await res.json();
       preview.innerHTML = '<div class="entry-body">' + data.html + "</div>";
-      if (window.Prism) setTimeout(() => Prism.highlightAllUnder(preview), 100);
     } else {
       preview.innerHTML = '<span style="color:var(--text-faint)">Sin contenido aún.</span>';
     }
