@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadTopicSuggestions();
   loadCourseSuggestions();
   bindEvents();
+  loadKanbanSidebar();
   applyTheme();
   initFocusMode();
   initStarFeature();
@@ -79,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initStatus();
   initReview();
   initPageFind();
+  // KanbanApp.init() is called from kanban.js DOMContentLoaded
 
   // Modal type toggle
   let currentModalMode = "knowledge";
@@ -198,7 +200,52 @@ function bindEvents() {
   $("fieldContent").addEventListener("paste", () => setTimeout(autoExtractTitle, 50));
 
   // Topic custom input toggle
+
+  // Kanban sidebar button
+  $("newKanbanBoardBtn").addEventListener("click", () => {
+    showKanbanArea();
+    if (window.KanbanApp) window.KanbanApp.showBoards();
+  });
 }
+
+// ---- KANBAN ----
+function showKanbanArea() {
+  $("entryView").classList.add("hidden");
+  $("welcome").classList.add("hidden");
+  $("kanbanArea").classList.remove("hidden");
+}
+
+async function loadKanbanSidebar() {
+  const tree = $("kanbanTree");
+  if (!tree) return;
+  try {
+    const res = await fetch("/api/kanban/boards");
+    if (!res.ok) return;
+    const boards = await res.json();
+    if (!boards.length) {
+      tree.innerHTML = '<div class="tree-empty">No hay tableros aún.</div>';
+      return;
+    }
+    tree.innerHTML = boards.map(b => `
+      <div class="kanban-board-item" data-id="${b.id}">
+        <span class="kanban-board-dot" style="background:${b.color}"></span>
+        <span>${b.name}</span>
+      </div>`).join('');
+    tree.querySelectorAll('.kanban-board-item').forEach(el => {
+      el.addEventListener('click', () => {
+        tree.querySelectorAll('.kanban-board-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        showKanbanArea();
+        if (window.KanbanApp) window.KanbanApp.showBoard(el.dataset.id);
+      });
+    });
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+// Expose for kanban.js to call after mutations
+window._loadKanbanSidebar = loadKanbanSidebar;
 
 function autoExtractTitle() {
   if ($("fieldTitle").value.trim()) return;

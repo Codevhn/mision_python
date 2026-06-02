@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knowledge Base</title>
   <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/kanban.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/tabulator.min.css" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
@@ -83,6 +84,15 @@
       <nav class="tree" id="teamspaceTree">
         <div class="tree-empty">No hay contenido aún.</div>
       </nav>
+
+      <!-- KANBAN -->
+      <div class="sidebar-section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>KANBAN</span>
+        <button class="ts-new-btn" id="newKanbanBoardBtn" title="Nuevo tablero">+</button>
+      </div>
+      <nav class="tree" id="kanbanTree">
+        <div class="tree-empty">No hay tableros aún.</div>
+      </nav>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -92,6 +102,9 @@
       </div>
 
       <!-- ENTRY VIEW -->
+      <!-- KANBAN VIEW -->
+      <div class="kanban-area hidden" id="kanbanArea"></div>
+
       <article class="entry-view hidden" id="entryView">
         <!-- Inline editable title -->
         <div class="inline-title-wrap" id="inlineTitleWrap">
@@ -423,5 +436,6 @@
   <script src="/static/editor.js?v={{ v }}"></script>
   <script src="/static/properties.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
+  <script src="/static/kanban.js?v={{ v }}"></script>
 </body>
 </html>

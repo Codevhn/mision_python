@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
@@ -1181,6 +1182,106 @@ def reindex():
 
     save_index(index)
     return jsonify({"ok": True, "added": added, "total": len(index)})
+
+
+# ── KANBAN ──────────────────────────────────────────────────────────────────
+
+KANBAN_FILE = DATA_DIR / "kanban.json"
+
+
+def load_kanban():
+    if KANBAN_FILE.exists():
+        return json.loads(KANBAN_FILE.read_text())
+    return {"boards": {}}
+
+
+def save_kanban(data):
+    KANBAN_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+@app.route("/api/kanban/boards", methods=["GET"])
+def kanban_list_boards():
+    data = load_kanban()
+    boards = []
+    for b in data["boards"].values():
+        card_count = sum(len(col.get("cards", [])) for col in b.get("columns", []))
+        boards.append({
+            "id": b["id"],
+            "name": b["name"],
+            "description": b.get("description", ""),
+            "color": b.get("color", "#1793d1"),
+            "created": b.get("created", ""),
+            "card_count": card_count,
+            "col_count": len(b.get("columns", [])),
+        })
+    boards.sort(key=lambda b: b["created"])
+    return jsonify(boards)
+
+
+@app.route("/api/kanban/boards", methods=["POST"])
+def kanban_create_board():
+    data = load_kanban()
+    body = request.json
+    board_id = uuid.uuid4().hex[:8]
+    board = {
+        "id": board_id,
+        "name": body.get("name", "Nuevo tablero").strip(),
+        "description": body.get("description", "").strip(),
+        "color": body.get("color", "#1793d1"),
+        "created": datetime.now().isoformat(timespec="seconds"),
+        "columns": [],
+    }
+    data["boards"][board_id] = board
+    save_kanban(data)
+    return jsonify(board), 201
+
+
+@app.route("/api/kanban/boards/<board_id>", methods=["GET"])
+def kanban_get_board(board_id):
+    data = load_kanban()
+    board = data["boards"].get(board_id)
+    if not board:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(board)
+
+
+@app.route("/api/kanban/boards/<board_id>", methods=["PUT"])
+def kanban_update_board(board_id):
+    data = load_kanban()
+    board = data["boards"].get(board_id)
+    if not board:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json
+    if "name" in body:
+        board["name"] = body["name"].strip()
+    if "description" in body:
+        board["description"] = body["description"].strip()
+    if "color" in body:
+        board["color"] = body["color"]
+    save_kanban(data)
+    return jsonify(board)
+
+
+@app.route("/api/kanban/boards/<board_id>", methods=["DELETE"])
+def kanban_delete_board(board_id):
+    data = load_kanban()
+    if board_id not in data["boards"]:
+        return jsonify({"error": "Not found"}), 404
+    del data["boards"][board_id]
+    save_kanban(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/boards/<board_id>/columns", methods=["PUT"])
+def kanban_save_columns(board_id):
+    data = load_kanban()
+    board = data["boards"].get(board_id)
+    if not board:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json
+    board["columns"] = body.get("columns", [])
+    save_kanban(data)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
