@@ -1309,7 +1309,7 @@ window.BlockEditor = (() => {
           const l = (langInput.value || '').trim();
           codeEl.className = l ? `language-${l}` : '';
           codeEl.textContent = ta.value;
-          if (window.Prism) Prism.highlightElement(codeEl);
+          if (window.Prism && container.contains(codeEl)) Prism.highlightElement(codeEl);
           pre.style.display = '';
           ta.style.display = 'none';
           b.lang = langInput.value;
@@ -1340,8 +1340,12 @@ window.BlockEditor = (() => {
 
         langInput.addEventListener('change', showPre);
 
-        // Initial highlight
-        if (window.Prism && lang) Prism.highlightElement(codeEl);
+        // Initial highlight — deferred so Prism toolbar doesn't crash on detached nodes
+        if (window.Prism && lang) {
+          requestAnimationFrame(() => {
+            if (container.contains(codeEl)) Prism.highlightElement(codeEl);
+          });
+        }
 
         wrap.appendChild(pre);
         wrap.appendChild(ta);
