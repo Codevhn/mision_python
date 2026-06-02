@@ -855,28 +855,38 @@ input, textarea, select { font-family: inherit; }
 
 .entry-body table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   margin: 14px 0;
   font-size: 0.84rem;
   font-family: var(--font-mono);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
 }
 .entry-body th {
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
   color: var(--accent);
   font-weight: 700;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
+  padding: 9px 12px;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent-dim);
   text-align: left;
   text-transform: uppercase;
   font-size: 0.72rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
+.entry-body th:last-child { border-right: 0; }
 .entry-body td {
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  padding: 8px 12px;
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  background: var(--bg-surface);
 }
-.entry-body tr:nth-child(even) td { background: var(--bg-elevated); }
+.entry-body td:last-child { border-right: 0; }
+.entry-body tr:last-child td { border-bottom: 0; }
+.entry-body tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-elevated) 58%, transparent); }
 .entry-body strong { color: var(--text); font-weight: 600; }
 .entry-body em { color: var(--text-muted); }
 .entry-body hr {
@@ -2933,23 +2943,23 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--bg-surface);
 }
 .eb-simple-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   font-size: 0.86rem;
 }
 .eb-simple-table th,
 .eb-simple-table td {
-  border: 1px solid var(--border-light);
   width: 220px;
   min-width: 180px;
   height: 34px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   vertical-align: top;
   outline: none;
   white-space: pre-wrap;
@@ -2957,12 +2967,26 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   word-break: normal;
 }
 .eb-simple-table th {
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  font-weight: 600;
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .eb-simple-table td {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   color: var(--text);
+}
+.eb-simple-table th:last-child,
+.eb-simple-table td:last-child { border-right: 0; }
+.eb-simple-table tbody tr:last-child td { border-bottom: 0; }
+.eb-simple-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
 }
 .eb-simple-table th:focus,
 .eb-simple-table td:focus {
@@ -3045,7 +3069,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-db-container { width: 100%; overflow-x: auto; margin: 4px 0; }
 .eb-db-wrap { display: inline-block; min-width: 100%; }
 .eb-db-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   font-size: 0.82rem;
   background: var(--bg-surface);
@@ -3053,9 +3078,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border-radius: 4px;
   overflow: hidden;
 }
-.eb-db-table thead { background: var(--bg-elevated); }
+.eb-db-table thead { background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%); }
 .eb-db-th {
-  border: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent-dim);
   padding: 0;
   min-width: 120px;
   max-width: 300px;
@@ -3068,8 +3094,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   padding: 7px 28px 7px 10px;
   width: 100%;
   cursor: text;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--accent);
   letter-spacing: 0.02em;
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -3109,15 +3135,17 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   width: 24px;
   min-width: 24px;
   max-width: 24px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent-dim);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
 }
 .eb-db-add-col-th {
   width: 36px;
   min-width: 36px;
-  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent-dim);
+  border-left: 1px solid var(--border);
   text-align: center;
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
 }
 .eb-db-add-col {
   background: none;
@@ -3137,7 +3165,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   width: 24px;
   min-width: 24px;
   max-width: 24px;
-  border: 1px solid var(--border);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   text-align: center;
   vertical-align: middle;
   background: transparent;
@@ -3156,7 +3185,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-db-row-del:hover { color: var(--danger); }
 .eb-db-cell {
-  border: 1px solid var(--border);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   padding: 7px 10px;
   min-width: 120px;
   max-width: 300px;
@@ -3165,6 +3195,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   color: var(--text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+.eb-db-row:nth-child(even) .eb-db-cell,
+.eb-db-row:nth-child(even) .eb-db-gutter {
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
 }
 .eb-db-cell:focus {
   background: var(--bg-elevated);
@@ -3193,7 +3227,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-db-add-row:hover { background: var(--bg-hover); color: var(--accent); }
 
 [data-theme="light"] .eb-db-table { background: #fff; border-color: var(--border); }
-[data-theme="light"] .eb-db-table thead { background: #f5f5f5; }
+[data-theme="light"] .eb-db-table thead { background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%); }
 [data-theme="light"] .eb-db-row:hover { background: #f9f9f9; }
 [data-theme="light"] .eb-db-cell { color: var(--text); }
 
