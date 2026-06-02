@@ -1229,7 +1229,12 @@ def kanban_create_board():
         "description": body.get("description", "").strip(),
         "color": body.get("color", "#1793d1"),
         "created": datetime.now().isoformat(timespec="seconds"),
-        "columns": [],
+        "columns": [
+            {"id": uuid.uuid4().hex[:8], "name": "Pendiente", "cards": []},
+            {"id": uuid.uuid4().hex[:8], "name": "En proceso", "cards": []},
+            {"id": uuid.uuid4().hex[:8], "name": "En revisión", "cards": []},
+            {"id": uuid.uuid4().hex[:8], "name": "Terminado", "cards": []},
+        ],
     }
     data["boards"][board_id] = board
     save_kanban(data)

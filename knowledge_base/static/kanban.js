@@ -27,12 +27,17 @@
     '#ff9f1a', '#c377e0', '#00c2e0', '#51e898',
   ];
 
+  const AVATAR_PALETTE = ['#eb5a46','#61bd4f','#f2d600','#0079bf','#c377e0','#ff9f1a','#00c2e0','#51e898'];
+  const COVER_COLORS = ['#61bd4f','#f2d600','#ff9f1a','#eb5a46','#c377e0','#0079bf','#00c2e0','#51e898'];
+
   // ---- State ----
   let _area = null;          // #kanbanArea
   let _boards = [];          // cached boards list
   let _currentBoard = null;  // full board object
   let _dragCard = null;      // { card, fromColId }
   let _dragCol = null;       // column id being dragged
+  let _filterText = '';      // filter bar search text
+  let _filterLabels = new Set(); // active label color filters
 
   // ---- Helpers ----
   function uid() {
@@ -50,6 +55,24 @@
   function isOverdue(due) {
     if (!due) return false;
     return new Date(due) < new Date(new Date().toDateString());
+  }
+
+  function getDueStatus(due, card) {
+    if (!due) return 'none';
+    // Check if all checklist done or card.done
+    const checklist = card.checklist || [];
+    const allDone = card.done === true || (checklist.length > 0 && checklist.every(i => i.done));
+    if (allDone) return 'done';
+    const now = new Date();
+    const dueDate = new Date(due);
+    const diffMs = dueDate - now;
+    if (diffMs < 0) return 'overdue';
+    if (diffMs <= 24 * 60 * 60 * 1000) return 'soon';
+    return 'future';
+  }
+
+  function avatarColor(name) {
+    return AVATAR_PALETTE[name.length % AVATAR_PALETTE.length];
   }
 
   function showToast(msg) {
@@ -245,6 +268,11 @@
           <button class="kb-btn" id="kbBgBoardBtn" title="Cambiar fondo" style="font-size:0.72rem;padding:4px 10px;">🎨 Fondo</button>
           <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;color:var(--text-faint)">× tablero</button>
         </div>
+        <div class="kb-filters-bar" id="kbFiltersBar">
+          <input class="kb-filter-search" id="kbFilterSearch" placeholder="🔍 Buscar tarjeta…" type="text" value="${escHtml(_filterText)}" />
+          <div class="kb-filter-labels" id="kbFilterLabels"></div>
+          <button class="kb-filter-clear kb-btn" id="kbFilterClear" style="display:none">× Limpiar</button>
+        </div>
         <div class="kb-columns-wrap" id="kbColumnsWrap"></div>
       </div>`;
 
@@ -277,6 +305,28 @@
       e.stopPropagation();
       showBgPicker(document.getElementById('kbBgBoardBtn'), b);
     });
+
+    // Filter bar events
+    const filterSearch = document.getElementById('kbFilterSearch');
+    if (filterSearch) {
+      filterSearch.addEventListener('input', () => {
+        _filterText = filterSearch.value;
+        updateFilterClearBtn();
+        applyFilters();
+      });
+    }
+    const filterClear = document.getElementById('kbFilterClear');
+    if (filterClear) {
+      filterClear.addEventListener('click', () => {
+        _filterText = '';
+        _filterLabels.clear();
+        const fs = document.getElementById('kbFilterSearch');
+        if (fs) fs.value = '';
+        document.querySelectorAll('.kb-filter-chip').forEach(c => c.classList.remove('active'));
+        updateFilterClearBtn();
+        applyFilters();
+      });
+    }
 
     renderColumns();
   }
@@ -351,6 +401,83 @@
 
     // Column drag and drop setup
     setupColumnDnD(wrap);
+
+    // Build label filter chips
+    renderFilterLabelChips();
+
+    // Re-apply active filters
+    applyFilters();
+  }
+
+  function renderFilterLabelChips() {
+    const container = document.getElementById('kbFilterLabels');
+    if (!container || !_currentBoard) return;
+    container.innerHTML = '';
+    const seen = new Set();
+    _currentBoard.columns.forEach(col => {
+      col.cards.forEach(card => {
+        (card.labels || []).forEach(lbl => {
+          if (!seen.has(lbl.color)) {
+            seen.add(lbl.color);
+            const chip = document.createElement('div');
+            chip.className = 'kb-filter-chip' + (_filterLabels.has(lbl.color) ? ' active' : '');
+            chip.style.background = lbl.color;
+            chip.title = lbl.color;
+            chip.dataset.color = lbl.color;
+            chip.addEventListener('click', () => {
+              if (_filterLabels.has(lbl.color)) {
+                _filterLabels.delete(lbl.color);
+                chip.classList.remove('active');
+              } else {
+                _filterLabels.add(lbl.color);
+                chip.classList.add('active');
+              }
+              updateFilterClearBtn();
+              applyFilters();
+            });
+            container.appendChild(chip);
+          }
+        });
+      });
+    });
+  }
+
+  function updateFilterClearBtn() {
+    const btn = document.getElementById('kbFilterClear');
+    if (!btn) return;
+    btn.style.display = (_filterText || _filterLabels.size > 0) ? '' : 'none';
+  }
+
+  function applyFilters() {
+    const searchText = _filterText.toLowerCase();
+    const activeLabels = _filterLabels;
+    document.querySelectorAll('.kb-card').forEach(cardEl => {
+      const title = (cardEl.querySelector('.kb-card-title') || {}).textContent || '';
+      const matchesText = !searchText || title.toLowerCase().includes(searchText);
+      let matchesLabel = activeLabels.size === 0;
+      if (!matchesLabel) {
+        const chips = cardEl.querySelectorAll('.kb-label-chip');
+        chips.forEach(chip => {
+          if (activeLabels.has(chip.style.background || chip.style.backgroundColor)) matchesLabel = true;
+          // also check data or computed color
+        });
+        // Try matching by background color string in the chips
+        if (!matchesLabel) {
+          chips.forEach(chip => {
+            const bg = chip.style.background;
+            activeLabels.forEach(color => {
+              if (bg === color) matchesLabel = true;
+            });
+          });
+        }
+      }
+      if (matchesText && matchesLabel) {
+        cardEl.classList.remove('kb-card--filtered-out');
+      } else {
+        cardEl.classList.add('kb-card--filtered-out');
+      }
+    });
+    updateFilterClearBtn();
   }
 
   function buildColEl(col) {
@@ -444,6 +571,14 @@
     el.dataset.colId = colId;
     el.draggable = true;
 
+    // Cover color
+    if (card.cover) {
+      const coverEl = document.createElement('div');
+      coverEl.className = 'kb-card-cover';
+      coverEl.style.background = card.cover;
+      el.appendChild(coverEl);
+    }
+
     // Labels
     if (card.labels && card.labels.length) {
       const labelsEl = document.createElement('div');
@@ -464,12 +599,22 @@
     titleEl.textContent = card.title;
     el.appendChild(titleEl);
 
-    // Due date
+    // Enhanced due date badge
     if (card.due) {
-      const dueEl = document.createElement('span');
-      dueEl.className = 'kb-card-due' + (isOverdue(card.due) ? ' kb-card-due--overdue' : '');
-      dueEl.textContent = card.due;
-      el.appendChild(dueEl);
+      const status = getDueStatus(card.due, card);
+      if (status !== 'none') {
+        const dueEl = document.createElement('span');
+        const statusMap = {
+          future:  { cls: 'kb-card-due--future',  icon: '📅' },
+          soon:    { cls: 'kb-card-due--soon',    icon: '⏰' },
+          overdue: { cls: 'kb-card-due--overdue', icon: '⚠' },
+          done:    { cls: 'kb-card-due--done',    icon: '✓' },
+        };
+        const s = statusMap[status];
+        dueEl.className = 'kb-card-due ' + s.cls;
+        dueEl.textContent = s.icon + ' ' + card.due;
+        el.appendChild(dueEl);
+      }
     }
 
     // Checklist progress
@@ -491,6 +636,21 @@
       barFill.style.width = pct + '%';
       barWrap.appendChild(barFill);
       el.appendChild(barWrap);
+    }
+
+    // Member avatars
+    if (card.members && card.members.length) {
+      const avatarsEl = document.createElement('div');
+      avatarsEl.className = 'kb-card-avatars';
+      card.members.forEach(m => {
+        const av = document.createElement('div');
+        av.className = 'kb-avatar';
+        av.style.background = m.color;
+        av.textContent = m.name.charAt(0).toUpperCase();
+        av.title = m.name;
+        avatarsEl.appendChild(av);
+      });
+      el.appendChild(avatarsEl);
     }
 
     // Drag events for card
@@ -663,6 +823,9 @@
         description: '',
         labels: [],
         due: '',
+        cover: '',
+        members: [],
+        done: false,
         created: new Date().toISOString().slice(0, 19),
       };
       col.cards.push(card);
@@ -766,6 +929,155 @@
       saveBoard(_currentBoard.id);
       closeModal();
     });
+
+    // Cover section
+    const sidebar = overlay.querySelector('.kb-modal-sidebar');
+    renderCoverSection(card, sidebar);
+
+    // Members section
+    renderMembersSection(card, sidebar);
+  }
+
+  function renderCoverSection(card, sidebar) {
+    // Remove existing cover section if any
+    const existing = sidebar.querySelector('.kb-cover-section');
+    if (existing) existing.remove();
+
+    const section = document.createElement('div');
+    section.className = 'kb-cover-section';
+
+    const label = document.createElement('div');
+    label.className = 'kb-modal-section-label';
+    label.style.marginTop = '12px';
+    label.textContent = '🎨 Portada';
+    section.appendChild(label);
+
+    // Preview swatch if cover set
+    if (card.cover) {
+      const preview = document.createElement('div');
+      preview.className = 'kb-cover-preview';
+      preview.style.background = card.cover;
+      section.appendChild(preview);
+    }
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'kb-modal-action-btn';
+    toggleBtn.textContent = card.cover ? 'Cambiar portada' : 'Agregar portada';
+    section.appendChild(toggleBtn);
+
+    const picker = document.createElement('div');
+    picker.className = 'kb-cover-picker';
+    picker.style.display = 'none';
+
+    COVER_COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'kb-cover-swatch';
+      sw.style.background = c;
+      sw.title = c;
+      sw.addEventListener('click', () => {
+        card.cover = c;
+        saveBoard(_currentBoard.id);
+        renderCoverSection(card, sidebar);
+      });
+      picker.appendChild(sw);
+    });
+
+    // "Sin portada" option
+    const noneBtn = document.createElement('div');
+    noneBtn.className = 'kb-cover-swatch kb-cover-swatch--none';
+    noneBtn.textContent = '✕';
+    noneBtn.title = 'Sin portada';
+    noneBtn.addEventListener('click', () => {
+      card.cover = '';
+      saveBoard(_currentBoard.id);
+      renderCoverSection(card, sidebar);
+    });
+    picker.appendChild(noneBtn);
+
+    toggleBtn.addEventListener('click', () => {
+      picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    section.appendChild(picker);
+    sidebar.appendChild(section);
+  }
+
+  function renderMembersSection(card, sidebar) {
+    if (!card.members) card.members = [];
+
+    const existing = sidebar.querySelector('.kb-members-section');
+    if (existing) existing.remove();
+
+    const section = document.createElement('div');
+    section.className = 'kb-members-section';
+
+    const label = document.createElement('div');
+    label.className = 'kb-modal-section-label';
+    label.style.marginTop = '12px';
+    label.textContent = '👤 Miembros';
+    section.appendChild(label);
+
+    const avatarsRow = document.createElement('div');
+    avatarsRow.className = 'kb-members-avatars-row';
+    card.members.forEach((m, idx) => {
+      const av = document.createElement('div');
+      av.className = 'kb-avatar kb-avatar-sm';
+      av.style.background = m.color;
+      av.textContent = m.name.charAt(0).toUpperCase();
+      av.title = m.name + ' (click para quitar)';
+      av.style.cursor = 'pointer';
+      av.addEventListener('click', () => {
+        card.members.splice(idx, 1);
+        saveBoard(_currentBoard.id);
+        renderMembersSection(card, sidebar);
+      });
+      avatarsRow.appendChild(av);
+    });
+    section.appendChild(avatarsRow);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'kb-modal-action-btn';
+    addBtn.textContent = '+ Agregar miembro';
+    section.appendChild(addBtn);
+
+    const inputWrap = document.createElement('div');
+    inputWrap.style.display = 'none';
+    const memberInput = document.createElement('input');
+    memberInput.type = 'text';
+    memberInput.className = 'kb-checklist-add-input';
+    memberInput.placeholder = 'Nombre…';
+    inputWrap.appendChild(memberInput);
+    section.appendChild(inputWrap);
+
+    addBtn.addEventListener('click', () => {
+      addBtn.style.display = 'none';
+      inputWrap.style.display = '';
+      memberInput.focus();
+    });
+
+    const saveMember = () => {
+      const name = memberInput.value.trim();
+      if (name) {
+        card.members.push({ name, color: avatarColor(name) });
+        saveBoard(_currentBoard.id);
+      }
+      addBtn.style.display = '';
+      inputWrap.style.display = 'none';
+      memberInput.value = '';
+      renderMembersSection(card, sidebar);
+    };
+
+    memberInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveMember(); }
+      if (e.key === 'Escape') {
+        addBtn.style.display = '';
+        inputWrap.style.display = 'none';
+        memberInput.value = '';
+      }
+    });
+    memberInput.addEventListener('blur', saveMember);
+
+    sidebar.appendChild(section);
   }
 
   function renderChecklistSection(card, container) {
