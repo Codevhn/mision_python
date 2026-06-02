@@ -247,6 +247,19 @@ window.BlockEditor = (() => {
       return null;
     }
 
+    function codeLangLabel(lang) {
+      const l = String(lang || '').trim().toLowerCase();
+      if (!l) return 'Plain text';
+      const labels = {
+        py:'Python', python:'Python',
+        js:'JavaScript', javascript:'JavaScript', ts:'TypeScript', typescript:'TypeScript',
+        json:'JSON', html:'HTML', htm:'HTML', xml:'XML', css:'CSS',
+        java:'Java', bash:'Bash', sh:'Shell', shell:'Shell',
+        sql:'SQL', yaml:'YAML', yml:'YAML',
+      };
+      return labels[l] || l.toUpperCase();
+    }
+
     // ── INLINE MARKDOWN ─────────────────────────────────────────
     // WYSIWYG model: rendered HTML stays visible while editing.
     // We read back plaintext by walking the DOM (htmlToMd).
@@ -744,89 +757,383 @@ window.BlockEditor = (() => {
 
     // ── DATABASE block ──────────────────────────────────────────
     function makeDatabase(wrap, b, sync) {
+      const DB_TYPES = [
+        ['text', 'Text'],
+        ['number', 'Number'],
+        ['select', 'Select'],
+        ['multi-select', 'Multi-select'],
+        ['checkbox', 'Checkbox'],
+        ['date', 'Date'],
+        ['url', 'URL'],
+      ];
+      function dbUid() { return 'x' + Math.random().toString(36).slice(2,8); }
       function getData() {
         try { return JSON.parse(b.content || '{}'); } catch(_) { return { cols:[], rows:[] }; }
+      }
+      function normalizeData(d) {
+        d = d && typeof d === 'object' ? d : {};
+        d.cols = Array.isArray(d.cols) ? d.cols : [];
+        d.rows = Array.isArray(d.rows) ? d.rows : [];
+        if (!d.cols.length) {
+          d.cols = [
+            { id: dbUid(), name: 'Nombre', type: 'text', width: 260 },
+            { id: dbUid(), name: 'Estado', type: 'select', width: 180, options: ['Pendiente', 'En curso', 'Listo'] },
+          ];
+        }
+        d.cols = d.cols.map((col, i) => ({
+          id: col.id || dbUid(),
+          name: col.name || `Columna ${i + 1}`,
+          type: DB_TYPES.some(([t]) => t === col.type) ? col.type : 'text',
+          width: Math.max(120, Math.min(520, Number(col.width) || 220)),
+          options: Array.isArray(col.options) ? col.options.filter(Boolean) : [],
+        }));
+        d.rows = d.rows.map(row => {
+          const next = { id: row.id || dbUid(), cells: row.cells && typeof row.cells === 'object' ? row.cells : {} };
+          d.cols.forEach(col => { if (next.cells[col.id] === undefined) next.cells[col.id] = defaultCellValue(col.type); });
+          return next;
+        });
+        if (!d.rows.length) {
+          const cells = {};
+          d.cols.forEach(col => { cells[col.id] = defaultCellValue(col.type); });
+          d.rows.push({ id: dbUid(), cells });
+        }
+        d.view = d.view && typeof d.view === 'object' ? d.view : {};
+        d.view.search = d.view.search || '';
+        d.view.filters = d.view.filters && typeof d.view.filters === 'object' ? d.view.filters : {};
+        d.view.sort = d.view.sort && d.view.sort.col ? d.view.sort : null;
+        return d;
+      }
+      function defaultCellValue(type) {
+        if (type === 'checkbox') return false;
+        if (type === 'multi-select') return [];
+        return '';
       }
       function saveData(d) {
         b.content = JSON.stringify(d);
         sync();
       }
-      function dbUid() { return 'x' + Math.random().toString(36).slice(2,8); }
+      function cellText(value) {
+        if (Array.isArray(value)) return value.join(', ');
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        return String(value ?? '');
+      }
+      function optionList(text) {
+        return String(text || '')
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean)
+          .filter((v, i, arr) => arr.indexOf(v) === i);
+      }
+      function visibleRows(d) {
+        let rows = d.rows.slice();
+        const q = String(d.view.search || '').trim().toLowerCase();
+        if (q) rows = rows.filter(row => d.cols.some(col => cellText(row.cells[col.id]).toLowerCase().includes(q)));
+        Object.entries(d.view.filters || {}).forEach(([cid, value]) => {
+          const needle = String(value || '').trim().toLowerCase();
+          if (!needle) return;
+          rows = rows.filter(row => cellText(row.cells[cid]).toLowerCase().includes(needle));
+        });
+        const sort = d.view.sort;
+        if (sort && sort.col) {
+          const dir = sort.dir === 'desc' ? -1 : 1;
+          rows.sort((a, b2) => {
+            const av = cellText(a.cells[sort.col]).toLowerCase();
+            const bv = cellText(b2.cells[sort.col]).toLowerCase();
+            const an = Number(av), bn = Number(bv);
+            const cmp = Number.isFinite(an) && Number.isFinite(bn) ? an - bn : av.localeCompare(bv);
+            return cmp * dir;
+          });
+        }
+        return rows;
+      }
+      function addRow(d) {
+        const cells = {};
+        d.cols.forEach(col => { cells[col.id] = defaultCellValue(col.type); });
+        d.rows.push({ id: dbUid(), cells });
+        saveData(d);
+        buildTable();
+      }
+      function addColumn(d) {
+        const col = { id: dbUid(), name: `Columna ${d.cols.length + 1}`, type: 'text', width: 220, options: [] };
+        d.cols.push(col);
+        d.rows.forEach(row => { row.cells[col.id] = ''; });
+        saveData(d);
+        buildTable();
+      }
+      function removeColumn(d, col) {
+        if (d.cols.length <= 1) return;
+        d.cols = d.cols.filter(c => c.id !== col.id);
+        d.rows.forEach(row => { delete row.cells[col.id]; });
+        delete d.view.filters[col.id];
+        if (d.view.sort?.col === col.id) d.view.sort = null;
+        saveData(d);
+        buildTable();
+      }
+      function moveColumn(d, fromId, toId) {
+        if (!fromId || !toId || fromId === toId) return;
+        const from = d.cols.findIndex(c => c.id === fromId);
+        const to = d.cols.findIndex(c => c.id === toId);
+        if (from < 0 || to < 0) return;
+        const [col] = d.cols.splice(from, 1);
+        d.cols.splice(to, 0, col);
+        saveData(d);
+        buildTable();
+      }
+      function resizeColumn(d, col, startX, startWidth) {
+        const onMove = e => {
+          col.width = Math.max(120, Math.min(620, startWidth + e.clientX - startX));
+          wrap.querySelectorAll(`[data-col-id="${col.id}"]`).forEach(el => { el.style.width = `${col.width}px`; });
+        };
+        const onUp = () => {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          saveData(d);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      }
+      function renderCellEditor(td, d, row, col) {
+        const value = row.cells[col.id];
+        const commit = next => {
+          row.cells[col.id] = next;
+          saveData(d);
+        };
+        if (col.type === 'checkbox') {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.className = 'eb-db-check';
+          input.checked = value === true || value === 'true';
+          input.addEventListener('change', () => commit(input.checked));
+          td.appendChild(input);
+          return;
+        }
+        if (col.type === 'select') {
+          const select = document.createElement('select');
+          select.className = 'eb-db-input eb-db-select';
+          const empty = document.createElement('option');
+          empty.value = '';
+          empty.textContent = '';
+          select.appendChild(empty);
+          col.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            select.appendChild(option);
+          });
+          select.value = cellText(value);
+          select.addEventListener('change', () => commit(select.value));
+          td.appendChild(select);
+          return;
+        }
+        if (col.type === 'multi-select') {
+          const input = document.createElement('input');
+          input.className = 'eb-db-input';
+          input.value = Array.isArray(value) ? value.join(', ') : cellText(value);
+          input.placeholder = 'Opcion 1, Opcion 2';
+          input.addEventListener('change', () => commit(optionList(input.value)));
+          input.addEventListener('input', () => commit(optionList(input.value)));
+          td.appendChild(input);
+          return;
+        }
+        if (col.type === 'number' || col.type === 'date' || col.type === 'url') {
+          const input = document.createElement('input');
+          input.className = 'eb-db-input';
+          input.type = col.type === 'url' ? 'url' : col.type;
+          input.value = cellText(value);
+          input.addEventListener('input', () => commit(input.value));
+          td.appendChild(input);
+          return;
+        }
+        const editor = document.createElement('div');
+        editor.className = 'eb-db-cell-editor';
+        editor.contentEditable = 'true';
+        editor.spellcheck = false;
+        editor.textContent = cellText(value);
+        editor.addEventListener('input', () => commit(editor.innerText.replace(/\n$/, '')));
+        editor.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const nextRow = td.parentElement?.nextElementSibling;
+            const next = nextRow?.querySelector(`[data-col-id="${col.id}"] .eb-db-cell-editor`);
+            if (next) { next.focus(); placeCursorEnd(next); }
+          }
+        });
+        td.appendChild(editor);
+      }
 
       function buildTable() {
         wrap.innerHTML = '';
-        const d = getData();
-        if (!d.cols) d.cols = [];
-        if (!d.rows) d.rows = [];
+        const d = normalizeData(getData());
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'eb-db-toolbar';
+        const search = document.createElement('input');
+        search.className = 'eb-db-search';
+        search.type = 'search';
+        search.placeholder = 'Buscar';
+        search.value = d.view.search || '';
+        search.addEventListener('input', () => {
+          d.view.search = search.value;
+          saveData(d);
+          buildTable();
+          const next = wrap.querySelector('.eb-db-search');
+          if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+        });
+        const addRowTop = document.createElement('button');
+        addRowTop.className = 'eb-db-toolbar-btn';
+        addRowTop.type = 'button';
+        addRowTop.textContent = '+ Fila';
+        addRowTop.addEventListener('click', e => { e.preventDefault(); addRow(d); });
+        const addColTop = document.createElement('button');
+        addColTop.className = 'eb-db-toolbar-btn';
+        addColTop.type = 'button';
+        addColTop.textContent = '+ Propiedad';
+        addColTop.addEventListener('click', e => { e.preventDefault(); addColumn(d); });
+        toolbar.appendChild(search);
+        toolbar.appendChild(addRowTop);
+        toolbar.appendChild(addColTop);
+        wrap.appendChild(toolbar);
 
         const tableWrap = document.createElement('div');
         tableWrap.className = 'eb-db-wrap';
+        const viewport = document.createElement('div');
+        viewport.className = 'eb-db-viewport';
 
         const table = document.createElement('table');
         table.className = 'eb-db-table';
 
-        // ── HEADER ROW ──
         const thead = document.createElement('thead');
         const htr = document.createElement('tr');
-
-        // row-delete gutter header
         const gutterTh = document.createElement('th');
         gutterTh.className = 'eb-db-gutter-th';
         htr.appendChild(gutterTh);
 
-        d.cols.forEach((col, ci) => {
+        d.cols.forEach(col => {
           const th = document.createElement('th');
           th.className = 'eb-db-th';
           th.dataset.colId = col.id;
+          th.draggable = true;
+          th.style.width = `${col.width}px`;
+          th.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', col.id);
+          });
+          th.addEventListener('dragover', e => { e.preventDefault(); th.classList.add('is-drop-target'); });
+          th.addEventListener('dragleave', () => th.classList.remove('is-drop-target'));
+          th.addEventListener('drop', e => {
+            e.preventDefault();
+            th.classList.remove('is-drop-target');
+            moveColumn(d, e.dataTransfer.getData('text/plain'), col.id);
+          });
+
+          const headMain = document.createElement('div');
+          headMain.className = 'eb-db-head-main';
 
           const nameSpan = document.createElement('span');
           nameSpan.className = 'eb-db-col-name';
+          nameSpan.contentEditable = 'true';
+          nameSpan.spellcheck = false;
           nameSpan.textContent = col.name;
+          nameSpan.addEventListener('input', () => {
+            col.name = nameSpan.innerText.trim() || col.name;
+            saveData(d);
+          });
+
+          const sortBtn = document.createElement('button');
+          sortBtn.className = 'eb-db-sort';
+          sortBtn.type = 'button';
+          const sortActive = d.view.sort?.col === col.id ? d.view.sort.dir : '';
+          sortBtn.textContent = sortActive === 'asc' ? '↑' : sortActive === 'desc' ? '↓' : '↕';
+          sortBtn.title = 'Ordenar';
+          sortBtn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!d.view.sort || d.view.sort.col !== col.id) d.view.sort = { col: col.id, dir: 'asc' };
+            else if (d.view.sort.dir === 'asc') d.view.sort = { col: col.id, dir: 'desc' };
+            else d.view.sort = null;
+            saveData(d);
+            buildTable();
+          });
 
           const delBtn = document.createElement('button');
           delBtn.className = 'eb-db-col-del';
-          delBtn.title = 'Eliminar columna';
+          delBtn.type = 'button';
+          delBtn.title = 'Eliminar propiedad';
           delBtn.textContent = '×';
-          delBtn.addEventListener('mousedown', e => {
+          delBtn.addEventListener('click', e => {
             e.preventDefault();
-            d.cols.splice(ci, 1);
-            d.rows.forEach(r => { delete r.cells[col.id]; });
-            saveData(d); buildTable();
+            e.stopPropagation();
+            removeColumn(d, col);
           });
 
-          nameSpan.addEventListener('dblclick', () => {
-            const inp = document.createElement('input');
-            inp.value = col.name;
-            inp.className = 'eb-db-col-input';
-            th.replaceChild(inp, nameSpan);
-            th.removeChild(delBtn);
-            inp.focus(); inp.select();
-            const commit = () => {
-              col.name = inp.value.trim() || col.name;
-              saveData(d); buildTable();
-            };
-            inp.addEventListener('blur', commit);
-            inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') { e2.preventDefault(); commit(); } if (e2.key === 'Escape') buildTable(); });
-          });
+          headMain.appendChild(nameSpan);
+          headMain.appendChild(sortBtn);
+          headMain.appendChild(delBtn);
+          th.appendChild(headMain);
 
-          th.appendChild(nameSpan);
-          th.appendChild(delBtn);
+          const meta = document.createElement('div');
+          meta.className = 'eb-db-head-meta';
+          const typeSelect = document.createElement('select');
+          typeSelect.className = 'eb-db-type';
+          DB_TYPES.forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            typeSelect.appendChild(opt);
+          });
+          typeSelect.value = col.type;
+          typeSelect.addEventListener('change', () => {
+            col.type = typeSelect.value;
+            d.rows.forEach(row => { if (row.cells[col.id] === undefined) row.cells[col.id] = defaultCellValue(col.type); });
+            saveData(d);
+            buildTable();
+          });
+          meta.appendChild(typeSelect);
+          if (col.type === 'select' || col.type === 'multi-select') {
+            const opts = document.createElement('input');
+            opts.className = 'eb-db-options';
+            opts.placeholder = 'Opciones';
+            opts.value = col.options.join(', ');
+            opts.addEventListener('change', () => {
+              col.options = optionList(opts.value);
+              saveData(d);
+              buildTable();
+            });
+            meta.appendChild(opts);
+          }
+          th.appendChild(meta);
+
+          const filter = document.createElement('input');
+          filter.className = 'eb-db-filter';
+          filter.placeholder = 'Filtrar';
+          filter.value = d.view.filters[col.id] || '';
+          filter.addEventListener('input', () => {
+            d.view.filters[col.id] = filter.value;
+            saveData(d);
+            buildTable();
+          });
+          th.appendChild(filter);
+
+          const resizer = document.createElement('span');
+          resizer.className = 'eb-db-resizer';
+          resizer.addEventListener('mousedown', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            resizeColumn(d, col, e.clientX, col.width);
+          });
+          th.appendChild(resizer);
           htr.appendChild(th);
         });
 
-        // + col button
         const addColTh = document.createElement('th');
         addColTh.className = 'eb-db-add-col-th';
         const addColBtn = document.createElement('button');
         addColBtn.className = 'eb-db-add-col';
         addColBtn.title = 'Agregar columna';
         addColBtn.textContent = '+';
-        addColBtn.addEventListener('mousedown', e => {
+        addColBtn.addEventListener('click', e => {
           e.preventDefault();
-          const cid = dbUid();
-          d.cols.push({ id: cid, name: 'Columna ' + (d.cols.length + 1) });
-          d.rows.forEach(r => { r.cells[cid] = ''; });
-          saveData(d); buildTable();
+          addColumn(d);
         });
         addColTh.appendChild(addColBtn);
         htr.appendChild(addColTh);
@@ -834,21 +1141,20 @@ window.BlockEditor = (() => {
         thead.appendChild(htr);
         table.appendChild(thead);
 
-        // ── BODY ROWS ──
         const tbody = document.createElement('tbody');
-        d.rows.forEach((row, ri) => {
+        visibleRows(d).forEach(row => {
+          const ri = d.rows.findIndex(r => r.id === row.id);
           const tr = document.createElement('tr');
           tr.className = 'eb-db-row';
           tr.dataset.rowId = row.id;
 
-          // row-delete gutter
           const gutterTd = document.createElement('td');
           gutterTd.className = 'eb-db-gutter';
           const delRowBtn = document.createElement('button');
           delRowBtn.className = 'eb-db-row-del';
           delRowBtn.title = 'Eliminar fila';
           delRowBtn.textContent = '×';
-          delRowBtn.addEventListener('mousedown', e => {
+          delRowBtn.addEventListener('click', e => {
             e.preventDefault();
             d.rows.splice(ri, 1);
             saveData(d); buildTable();
@@ -856,39 +1162,24 @@ window.BlockEditor = (() => {
           gutterTd.appendChild(delRowBtn);
           tr.appendChild(gutterTd);
 
-          d.cols.forEach((col, ci) => {
+          d.cols.forEach(col => {
             const td = document.createElement('td');
-            td.className = 'eb-db-cell';
-            td.contentEditable = 'true';
-            td.spellcheck = false;
-            td.textContent = row.cells[col.id] || '';
-            td.addEventListener('input', () => {
-              row.cells[col.id] = td.textContent;
-              saveData(d);
-            });
+            td.className = `eb-db-cell eb-db-cell--${col.type}`;
+            td.dataset.colId = col.id;
+            td.style.width = `${col.width}px`;
             td.addEventListener('keydown', e => {
               if (e.key === 'Tab') {
                 e.preventDefault();
-                const allCells = Array.from(table.querySelectorAll('.eb-db-cell'));
-                const idx = allCells.indexOf(td);
+                const allCells = Array.from(table.querySelectorAll('.eb-db-cell input, .eb-db-cell select, .eb-db-cell-editor'));
+                const idx = allCells.indexOf(e.target);
                 const next = allCells[e.shiftKey ? idx - 1 : idx + 1];
-                if (next) { next.focus(); const r = document.createRange(); r.selectNodeContents(next); r.collapse(false); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); }
-              }
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                // move to same column of next row
-                const nextTr = tr.nextElementSibling;
-                if (nextTr) {
-                  const cells = Array.from(nextTr.querySelectorAll('.eb-db-cell'));
-                  const cellIdx = ci;
-                  if (cells[cellIdx]) cells[cellIdx].focus();
-                }
+                if (next) next.focus();
               }
             });
+            renderCellEditor(td, d, row, col);
             tr.appendChild(td);
           });
 
-          // empty add-col gutter
           const emptyTd = document.createElement('td');
           emptyTd.className = 'eb-db-add-col-filler';
           tr.appendChild(emptyTd);
@@ -897,19 +1188,15 @@ window.BlockEditor = (() => {
         });
 
         table.appendChild(tbody);
-        tableWrap.appendChild(table);
+        viewport.appendChild(table);
+        tableWrap.appendChild(viewport);
 
-        // ── ADD ROW button ──
         const addRowBtn = document.createElement('button');
         addRowBtn.className = 'eb-db-add-row';
         addRowBtn.textContent = '+ Nueva fila';
-        addRowBtn.addEventListener('mousedown', e => {
+        addRowBtn.addEventListener('click', e => {
           e.preventDefault();
-          const rid = dbUid();
-          const cells = {};
-          d.cols.forEach(c => { cells[c.id] = ''; });
-          d.rows.push({ id: rid, cells });
-          saveData(d); buildTable();
+          addRow(d);
         });
         tableWrap.appendChild(addRowBtn);
 
@@ -1337,8 +1624,13 @@ window.BlockEditor = (() => {
           b.lang = l;
           ta.dataset.lang = l;
           codeWrap.dataset.lang = l;
+          if (langBadge) langBadge.textContent = codeLangLabel(l);
           if (cm) cm.setOption('mode', codeMirrorMode(l));
         };
+
+        const langBadge = document.createElement('span');
+        langBadge.className = 'eb-code-lang-badge';
+        langBadge.textContent = codeLangLabel(lang);
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'eb-code-copy-floating';
@@ -1356,6 +1648,7 @@ window.BlockEditor = (() => {
         });
 
         codeWrap.appendChild(ta);
+        codeWrap.appendChild(langBadge);
         codeWrap.appendChild(copyBtn);
         wrap.appendChild(codeWrap);
 

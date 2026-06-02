@@ -2355,6 +2355,29 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border-color: var(--accent);
   background: var(--bg-elevated);
 }
+.eb-code-lang-badge {
+  position: absolute;
+  top: 6px;
+  right: 58px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 4px 8px;
+  transform: translateY(-2px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.eb-code-cm-wrap:hover .eb-code-lang-badge,
+.eb-code-cm-wrap:focus-within .eb-code-lang-badge {
+  opacity: 1;
+  transform: translateY(0);
+}
 .eb-code-cm-wrap .CodeMirror {
   height: auto;
   min-height: 52px;
@@ -3066,33 +3089,99 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 [data-theme="light"] .eb-tabulator-host .tabulator-cell { color: var(--text); }
 
 /* ── DATABASE BLOCK ───────────────────────────────────────── */
-.eb-db-container { width: 100%; overflow-x: auto; margin: 4px 0; }
-.eb-db-wrap { display: inline-block; min-width: 100%; }
+.eb-db-container {
+  width: 100%;
+  margin: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+.eb-db-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+}
+.eb-db-search {
+  flex: 1;
+  min-width: 160px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 0 10px;
+  outline: none;
+}
+.eb-db-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+.eb-db-toolbar-btn {
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 0 10px;
+  cursor: pointer;
+}
+.eb-db-toolbar-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--bg-hover);
+}
+.eb-db-wrap {
+  display: block;
+  min-width: 100%;
+}
+.eb-db-viewport {
+  width: 100%;
+  max-height: 520px;
+  overflow: auto;
+}
 .eb-db-table {
   border-collapse: separate;
   border-spacing: 0;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   font-size: 0.82rem;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
+  table-layout: fixed;
 }
 .eb-db-table thead { background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%); }
 .eb-db-th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   border-right: 1px solid var(--border);
   border-bottom: 2px solid var(--accent-dim);
   padding: 0;
   min-width: 120px;
-  max-width: 300px;
-  position: relative;
+  max-width: 620px;
+  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
   white-space: nowrap;
+  vertical-align: top;
+  user-select: none;
 }
-.eb-db-th:hover .eb-db-col-del { opacity: 1; }
+.eb-db-th.is-drop-target {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.eb-db-head-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px 22px;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+}
 .eb-db-col-name {
-  display: inline-block;
-  padding: 7px 28px 7px 10px;
-  width: 100%;
+  display: block;
+  padding: 7px 4px 7px 10px;
   cursor: text;
   font-weight: 700;
   color: var(--accent);
@@ -3102,13 +3191,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
+  outline: none;
 }
+.eb-db-col-name:focus { color: var(--text); }
 .eb-db-col-del {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -3120,18 +3206,67 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   transition: opacity 0.1s, color 0.1s;
 }
 .eb-db-col-del:hover { color: var(--danger); }
-.eb-db-col-input {
-  width: 100%;
-  background: var(--bg);
+.eb-db-sort {
+  width: 22px;
+  height: 22px;
   border: none;
-  border-bottom: 1px solid var(--accent);
-  color: var(--text);
-  font-size: 0.75rem;
-  padding: 7px 10px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.eb-db-sort:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.eb-db-head-meta {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.8fr) minmax(80px, 1fr);
+  gap: 4px;
+  padding: 0 8px 6px;
+}
+.eb-db-type,
+.eb-db-options,
+.eb-db-filter {
+  min-width: 0;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 0 6px;
   outline: none;
-  box-sizing: border-box;
+}
+.eb-db-head-meta .eb-db-type:only-child {
+  grid-column: 1 / -1;
+}
+.eb-db-filter {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 0 8px 8px;
+}
+.eb-db-type:focus,
+.eb-db-options:focus,
+.eb-db-filter:focus {
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+.eb-db-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;
 }
 .eb-db-gutter-th {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 5;
   width: 24px;
   min-width: 24px;
   max-width: 24px;
@@ -3140,6 +3275,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%);
 }
 .eb-db-add-col-th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   width: 36px;
   min-width: 36px;
   border-bottom: 2px solid var(--accent-dim);
@@ -3160,8 +3298,15 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-db-add-col:hover { color: var(--accent); background: var(--accent-light); }
 .eb-db-row { transition: background 0.1s; }
 .eb-db-row:hover { background: var(--bg-hover); }
+.eb-db-row:hover .eb-db-cell,
+.eb-db-row:hover .eb-db-gutter {
+  background: var(--bg-hover);
+}
 .eb-db-row:hover .eb-db-row-del { opacity: 1; }
 .eb-db-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   width: 24px;
   min-width: 24px;
   max-width: 24px;
@@ -3187,25 +3332,55 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-db-cell {
   border-right: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
-  padding: 7px 10px;
+  padding: 0;
   min-width: 120px;
-  max-width: 300px;
+  max-width: 620px;
   vertical-align: top;
   outline: none;
   color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
+  background: var(--bg-surface);
 }
 .eb-db-row:nth-child(even) .eb-db-cell,
 .eb-db-row:nth-child(even) .eb-db-gutter {
   background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
 }
-.eb-db-cell:focus {
+.eb-db-cell:focus-within {
   background: var(--bg-elevated);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+.eb-db-cell-editor {
+  min-height: 34px;
+  padding: 8px 10px;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.eb-db-input,
+.eb-db-select {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 7px 10px;
+  outline: none;
+  box-sizing: border-box;
+}
+.eb-db-select {
+  appearance: none;
+  cursor: pointer;
+}
+.eb-db-check {
+  width: 16px;
+  height: 16px;
+  margin: 9px 10px;
+  accent-color: var(--accent);
+}
 .eb-db-add-col-filler {
-  border: 1px solid var(--border);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   width: 36px;
   min-width: 36px;
   background: transparent;
@@ -3228,7 +3403,14 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 
 [data-theme="light"] .eb-db-table { background: #fff; border-color: var(--border); }
 [data-theme="light"] .eb-db-table thead { background: color-mix(in srgb, var(--bg-elevated) 82%, var(--accent) 18%); }
+[data-theme="light"] .eb-db-container,
+[data-theme="light"] .eb-db-toolbar,
+[data-theme="light"] .eb-db-cell { background: #fff; }
 [data-theme="light"] .eb-db-row:hover { background: #f9f9f9; }
+[data-theme="light"] .eb-db-row:nth-child(even) .eb-db-cell,
+[data-theme="light"] .eb-db-row:nth-child(even) .eb-db-gutter { background: #f7f7f7; }
+[data-theme="light"] .eb-db-row:hover .eb-db-cell,
+[data-theme="light"] .eb-db-row:hover .eb-db-gutter { background: #f2f2f2; }
 [data-theme="light"] .eb-db-cell { color: var(--text); }
 
 /* ── TOGGLE BLOCK ─────────────────────────────────────────── */
