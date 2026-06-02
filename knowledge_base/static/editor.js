@@ -1654,13 +1654,15 @@ window.BlockEditor = (() => {
       }
 
       if (b.type === 'page') {
-        const link = document.createElement('div');
+        const link = document.createElement(b.pageId ? 'a' : 'span');
         link.className = 'eb-page-link' + (b.pageId ? ' eb-page-navigable' : '');
         link.dataset.pageTitle = b.content || '';
         link.dataset.pageId    = b.pageId || '';
+        if (b.pageId) link.href = '#';
         link.title = b.pageId ? 'Clic para abrir esta página' : 'Sub-página';
         link.innerHTML = `<span class="eb-page-icon">⬡</span><span class="eb-page-name">${escHtml(b.content || 'Sin título')}</span><span class="eb-page-arrow">→</span>`;
         link.addEventListener('click', e => {
+          e.preventDefault();
           e.stopPropagation();
           if (b.pageId && window._loadEntryById) window._loadEntryById(b.pageId);
         });

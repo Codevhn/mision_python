@@ -2415,34 +2415,46 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 
 /* Sub-page block */
 .eb--page { cursor: default; }
+.eb--page:hover,
+.eb--page.eb--focused { background: transparent; }
 .eb-page-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 5px;
+  background: transparent;
+  border: 0;
   border-radius: 4px;
   cursor: default;
-  color: var(--fg-muted);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  flex: 1;
-  transition: background 0.12s, border-color 0.12s;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  vertical-align: baseline;
+  transition: background 0.12s, color 0.12s;
 }
 .eb-page-navigable {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--text);
 }
 .eb-page-navigable:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  color: var(--accent);
 }
-.eb-page-icon { font-size: 1rem; opacity: 0.7; }
-.eb-page-name { font-weight: 600; flex: 1; }
+.eb-page-icon { font-size: 0.95rem; opacity: 0.72; flex: 0 0 auto; }
+.eb-page-name {
+  display: inline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
 .eb-page-arrow {
   opacity: 0;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  flex: 0 0 auto;
   transition: opacity 0.15s;
 }
 .eb-page-navigable:hover .eb-page-arrow { opacity: 0.6; }
