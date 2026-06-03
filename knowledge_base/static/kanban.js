@@ -306,9 +306,14 @@
           <button class="kb-back-btn" id="kbBackBtn">&#8592; Tableros</button>
           <div class="kb-board-color-dot" style="background:${escHtml(b.color)}"></div>
           <input class="kb-board-title-input" id="kbBoardTitle" value="${escHtml(b.name)}" spellcheck="false" />
+          <div class="kb-view-switcher">
+            <button class="kb-view-btn kb-view-btn--active" id="kbViewBoard" title="Vista tablero">⊞ Tablero</button>
+            <button class="kb-view-btn" id="kbViewTable" title="Vista tabla">☰ Tabla</button>
+            <button class="kb-view-btn" id="kbViewCal" title="Vista calendario">📅 Calendario</button>
+          </div>
           <button class="kb-btn" id="kbBgBoardBtn" title="Cambiar fondo" style="font-size:0.72rem;padding:4px 10px;">🎨 Fondo</button>
           <button class="kb-btn kb-archive-topbar-btn" id="kbArchiveBtn" title="Ver archivo">📦 Archivo${archiveCount > 0 ? ` (${archiveCount})` : ''}</button>
-          <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;color:var(--text-faint)">× tablero</button>
+          <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;">× tablero</button>
         </div>
         <div class="kb-filters-bar" id="kbFiltersBar">
           <input class="kb-filter-search" id="kbFilterSearch" placeholder="🔍 Buscar tarjeta…" type="text" value="${escHtml(_filterText)}" />
@@ -356,6 +361,36 @@
       e.stopPropagation();
       showBgPicker(document.getElementById('kbBgBoardBtn'), b);
     });
+
+    // View switcher
+    let _currentView = 'board';
+    const contentWrap = document.getElementById('kbBoardContentWrap');
+    function switchView(view) {
+      _currentView = view;
+      document.querySelectorAll('.kb-view-btn').forEach(b => b.classList.remove('kb-view-btn--active'));
+      document.getElementById('kbView' + view.charAt(0).toUpperCase() + view.slice(1)).classList.add('kb-view-btn--active');
+      renderCurrentView();
+    }
+    function renderCurrentView() {
+      const wrap = document.getElementById('kbBoardContentWrap');
+      if (!wrap) return;
+      // Remove existing view containers except columns-wrap and archive
+      wrap.querySelectorAll('.kb-table-view, .kb-cal-view').forEach(el => el.remove());
+      const colsWrap = document.getElementById('kbColumnsWrap');
+      if (_currentView === 'board') {
+        colsWrap.style.display = '';
+        renderColumns();
+      } else if (_currentView === 'table') {
+        colsWrap.style.display = 'none';
+        renderTableView(wrap);
+      } else if (_currentView === 'cal') {
+        colsWrap.style.display = 'none';
+        renderCalendarView(wrap);
+      }
+    }
+    document.getElementById('kbViewBoard').addEventListener('click', () => switchView('board'));
+    document.getElementById('kbViewTable').addEventListener('click', () => switchView('table'));
+    document.getElementById('kbViewCal').addEventListener('click', () => switchView('cal'));
 
     // Archive button
     document.getElementById('kbArchiveBtn').addEventListener('click', toggleArchivePanel);
@@ -2366,6 +2401,203 @@
       }
     };
     setTimeout(() => document.addEventListener('click', closeMove), 10);
+  }
+
+  // ---- TABLE VIEW ----
+  function renderTableView(wrap) {
+    const div = document.createElement('div');
+    div.className = 'kb-table-view';
+
+    // Gather all non-archived cards
+    const allCards = [];
+    (_currentBoard.columns || []).forEach(col => {
+      (col.cards || []).filter(c => !c.archived).forEach(c => allCards.push({ card: c, colName: col.name, colId: col.id }));
+    });
+
+    const table = document.createElement('table');
+    table.className = 'kb-tbl';
+    table.innerHTML = `<thead><tr>
+      <th>Tarjeta</th><th>Lista</th><th>Etiquetas</th><th>Fecha</th><th>Miembros</th>
+    </tr></thead>`;
+    const tbody = document.createElement('tbody');
+
+    allCards.forEach(({ card, colName, colId }) => {
+      const tr = document.createElement('tr');
+      tr.className = 'kb-tbl-row';
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => openCardModal(card, colId));
+
+      // Title cell
+      const tdTitle = document.createElement('td');
+      tdTitle.className = 'kb-tbl-title';
+      if (card.cover) {
+        const dot = document.createElement('span');
+        dot.className = 'kb-tbl-cover-dot';
+        dot.style.background = card.cover.startsWith('url') ? '#888' : card.cover;
+        tdTitle.appendChild(dot);
+      }
+      tdTitle.appendChild(document.createTextNode(card.title));
+      tr.appendChild(tdTitle);
+
+      // List cell
+      const tdCol = document.createElement('td');
+      tdCol.className = 'kb-tbl-col';
+      tdCol.textContent = colName;
+      tr.appendChild(tdCol);
+
+      // Labels cell
+      const tdLbls = document.createElement('td');
+      tdLbls.className = 'kb-tbl-labels';
+      (card.labels || []).forEach(lbl => {
+        const chip = document.createElement('span');
+        chip.className = 'kb-tbl-label-chip';
+        chip.style.background = lbl.color;
+        chip.textContent = lbl.text || '';
+        tdLbls.appendChild(chip);
+      });
+      tr.appendChild(tdLbls);
+
+      // Due cell
+      const tdDue = document.createElement('td');
+      tdDue.className = 'kb-tbl-due';
+      if (card.due) {
+        const status = getDueStatus(card.due, card);
+        const cls = { future:'', soon:'kb-tbl-due--soon', overdue:'kb-tbl-due--overdue', done:'kb-tbl-due--done' }[status] || '';
+        tdDue.innerHTML = `<span class="kb-tbl-due-chip ${cls}">${card.due}</span>`;
+      }
+      tr.appendChild(tdDue);
+
+      // Members cell
+      const tdMem = document.createElement('td');
+      tdMem.className = 'kb-tbl-members';
+      (card.members || []).forEach(m => {
+        const av = document.createElement('span');
+        av.className = 'kb-avatar';
+        av.style.background = m.color;
+        av.style.width = '22px'; av.style.height = '22px'; av.style.fontSize = '0.6rem';
+        av.title = m.name;
+        av.textContent = m.name.charAt(0).toUpperCase();
+        tdMem.appendChild(av);
+      });
+      tr.appendChild(tdMem);
+
+      tbody.appendChild(tr);
+    });
+
+    if (allCards.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="5" style="text-align:center;padding:32px;color:var(--text-faint)">No hay tarjetas en este tablero</td>';
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    div.appendChild(table);
+    wrap.appendChild(div);
+  }
+
+  // ---- CALENDAR VIEW ----
+  function renderCalendarView(wrap) {
+    const div = document.createElement('div');
+    div.className = 'kb-cal-view';
+
+    const now = new Date();
+    let calYear = now.getFullYear();
+    let calMonth = now.getMonth();
+
+    function buildCal() {
+      div.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.className = 'kb-cal-header';
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'kb-cal-nav';
+      prevBtn.textContent = '‹';
+      prevBtn.addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } buildCal(); });
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'kb-cal-nav';
+      nextBtn.textContent = '›';
+      nextBtn.addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } buildCal(); });
+      const monthLabel = document.createElement('span');
+      monthLabel.className = 'kb-cal-month-label';
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      monthLabel.textContent = `${months[calMonth]} ${calYear}`;
+      header.appendChild(prevBtn);
+      header.appendChild(monthLabel);
+      header.appendChild(nextBtn);
+      div.appendChild(header);
+
+      // Day names
+      const dayNames = document.createElement('div');
+      dayNames.className = 'kb-cal-daynames';
+      ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].forEach(d => {
+        const dn = document.createElement('div');
+        dn.className = 'kb-cal-dayname';
+        dn.textContent = d;
+        dayNames.appendChild(dn);
+      });
+      div.appendChild(dayNames);
+
+      // Build card map by date
+      const cardsByDate = {};
+      (_currentBoard.columns || []).forEach(col => {
+        (col.cards || []).filter(c => !c.archived && c.due).forEach(c => {
+          const key = c.due.substring(0, 10);
+          if (!cardsByDate[key]) cardsByDate[key] = [];
+          cardsByDate[key].push({ card: c, colId: col.id });
+        });
+      });
+
+      // Grid
+      const grid = document.createElement('div');
+      grid.className = 'kb-cal-grid';
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const todayStr = now.toISOString().substring(0, 10);
+
+      // Empty cells
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'kb-cal-cell kb-cal-cell--empty';
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const cell = document.createElement('div');
+        cell.className = 'kb-cal-cell' + (dateStr === todayStr ? ' kb-cal-cell--today' : '');
+
+        const dayNum = document.createElement('div');
+        dayNum.className = 'kb-cal-day-num';
+        dayNum.textContent = d;
+        cell.appendChild(dayNum);
+
+        const cards = cardsByDate[dateStr] || [];
+        cards.slice(0, 3).forEach(({ card, colId }) => {
+          const chip = document.createElement('div');
+          chip.className = 'kb-cal-card-chip';
+          const lblColor = card.labels && card.labels[0] ? card.labels[0].color : 'var(--accent)';
+          chip.style.borderLeftColor = lblColor;
+          chip.textContent = card.title;
+          chip.title = card.title;
+          chip.addEventListener('click', e => { e.stopPropagation(); openCardModal(card, colId); });
+          cell.appendChild(chip);
+        });
+        if (cards.length > 3) {
+          const more = document.createElement('div');
+          more.className = 'kb-cal-more';
+          more.textContent = `+${cards.length - 3} más`;
+          cell.appendChild(more);
+        }
+
+        grid.appendChild(cell);
+      }
+
+      div.appendChild(grid);
+    }
+
+    buildCal();
+    wrap.appendChild(div);
   }
 
   function renderCoverSection(card, sidebar) {
