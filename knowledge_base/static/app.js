@@ -42,20 +42,20 @@ const ICON_CATALOG = [
   { group: "Workspace", label: "Servidor", icon: "lucide:server", tags: ["backend", "infra"] },
   { group: "Workspace", label: "Red", icon: "lucide:network", tags: ["network", "topologia"] },
   { group: "Workspace", label: "Escudo", icon: "lucide:shield", tags: ["security", "seguridad"] },
-  { group: "Tech", label: "Python", icon: "simple-icons:python", tags: ["python", "lenguaje"] },
-  { group: "Tech", label: "JavaScript", icon: "simple-icons:javascript", tags: ["javascript", "js"] },
-  { group: "Tech", label: "TypeScript", icon: "simple-icons:typescript", tags: ["typescript", "ts"] },
-  { group: "Tech", label: "HTML", icon: "simple-icons:html5", tags: ["html", "frontend"] },
-  { group: "Tech", label: "CSS", icon: "simple-icons:css", tags: ["css", "styles"] },
-  { group: "Tech", label: "React", icon: "simple-icons:react", tags: ["react"] },
-  { group: "Tech", label: "Node", icon: "simple-icons:nodedotjs", tags: ["node", "nodejs"] },
-  { group: "Tech", label: "Docker", icon: "simple-icons:docker", tags: ["docker", "contenedor"] },
-  { group: "Tech", label: "Git", icon: "simple-icons:git", tags: ["git", "control de versiones"] },
-  { group: "Tech", label: "GitHub", icon: "simple-icons:github", tags: ["github", "repo"] },
-  { group: "Tech", label: "Linux", icon: "simple-icons:linux", tags: ["linux", "sistema"] },
-  { group: "Tech", label: "PostgreSQL", icon: "simple-icons:postgresql", tags: ["postgres", "database"] },
-  { group: "Tech", label: "MySQL", icon: "simple-icons:mysql", tags: ["mysql", "database"] },
-  { group: "Tech", label: "MongoDB", icon: "simple-icons:mongodb", tags: ["mongodb", "database"] },
+  { group: "Tech", label: "Python", icon: "simple-icons:python", color: "#3776AB", tags: ["python", "lenguaje"] },
+  { group: "Tech", label: "JavaScript", icon: "simple-icons:javascript", color: "#F7DF1E", tags: ["javascript", "js"] },
+  { group: "Tech", label: "TypeScript", icon: "simple-icons:typescript", color: "#3178C6", tags: ["typescript", "ts"] },
+  { group: "Tech", label: "HTML", icon: "simple-icons:html5", color: "#E34F26", tags: ["html", "frontend"] },
+  { group: "Tech", label: "CSS", icon: "simple-icons:css", color: "#1572B6", tags: ["css", "styles"] },
+  { group: "Tech", label: "React", icon: "simple-icons:react", color: "#61DAFB", tags: ["react"] },
+  { group: "Tech", label: "Node", icon: "simple-icons:nodedotjs", color: "#339933", tags: ["node", "nodejs"] },
+  { group: "Tech", label: "Docker", icon: "simple-icons:docker", color: "#2496ED", tags: ["docker", "contenedor"] },
+  { group: "Tech", label: "Git", icon: "simple-icons:git", color: "#F05032", tags: ["git", "control de versiones"] },
+  { group: "Tech", label: "GitHub", icon: "simple-icons:github", color: "#ffffff", tags: ["github", "repo"] },
+  { group: "Tech", label: "Linux", icon: "simple-icons:linux", color: "#FCC624", tags: ["linux", "sistema"] },
+  { group: "Tech", label: "PostgreSQL", icon: "simple-icons:postgresql", color: "#4169E1", tags: ["postgres", "database"] },
+  { group: "Tech", label: "MySQL", icon: "simple-icons:mysql", color: "#4479A1", tags: ["mysql", "database"] },
+  { group: "Tech", label: "MongoDB", icon: "simple-icons:mongodb", color: "#47A248", tags: ["mongodb", "database"] },
 ];
 
 // ---- Init ----
@@ -1696,7 +1696,7 @@ function openIconPicker(anchor, initialIcon, onPick) {
         <div class="icon-picker-group-title">${escapeHtml(group.name)}</div>
         <div class="icon-picker-grid">
           ${group.items.map(item => `
-            <button type="button" class="icon-picker-item${item.icon === initialIcon ? " selected" : ""}" data-icon="${escapeHtml(item.icon)}" title="${escapeHtml(item.label)}">
+            <button type="button" class="icon-picker-item${item.icon === initialIcon ? " selected" : ""}" data-icon="${escapeHtml(item.icon)}" title="${escapeHtml(item.label)}"${item.color ? ` data-color="${escapeHtml(item.color)}"` : ''}>
               ${renderIconMarkup(item.icon, "icon-picker-item-glyph", item.icon)}
               <span>${escapeHtml(item.label)}</span>
             </button>
@@ -1704,6 +1704,12 @@ function openIconPicker(anchor, initialIcon, onPick) {
         </div>
       </section>
     `).join("") || '<div class="icon-picker-empty">Sin coincidencias.</div>';
+
+    // Apply brand colors to tech icons
+    body.querySelectorAll(".icon-picker-item[data-color]").forEach(btn => {
+      const glyph = btn.querySelector(".icon-picker-item-glyph, iconify-icon");
+      if (glyph) glyph.style.color = btn.dataset.color;
+    });
 
     body.querySelectorAll(".icon-picker-item").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1718,7 +1724,7 @@ function openIconPicker(anchor, initialIcon, onPick) {
 
   document.body.appendChild(pop);
   const rect = anchor.getBoundingClientRect();
-  const popWidth = Math.min(420, window.innerWidth - 24);
+  const popWidth = Math.min(480, window.innerWidth - 24);
   let left = rect.left;
   if (left + popWidth > window.innerWidth - 12) left = window.innerWidth - popWidth - 12;
   pop.style.width = `${popWidth}px`;

@@ -3937,35 +3937,35 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .icon-picker-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 .icon-picker-item {
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--text-muted);
   border-radius: 6px;
-  min-height: 68px;
-  padding: 10px 8px;
+  min-height: 62px;
+  padding: 8px 6px;
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
-  font-size: 0.72rem;
+  transition: border-color 0.12s, background 0.12s;
+  font-size: 0.68rem;
   font-family: var(--font-ui);
 }
 .icon-picker-item:hover,
 .icon-picker-item.selected {
   border-color: var(--accent);
-  color: var(--text);
   background: var(--accent-light);
 }
 .icon-picker-item iconify-icon,
 .icon-picker-item span:first-child {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  font-size: 1.3rem;
 }
 .icon-picker-empty {
   color: var(--text-faint);
