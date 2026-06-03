@@ -1049,6 +1049,17 @@ const COVER_PRESETS = [
   "linear-gradient(135deg,#f2d600,#ff9f1a)",
 ];
 
+const COVER_IMAGE_PRESETS = [
+  { label: "Aurora",     url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Montañas",   url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Costa",      url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Bosque",     url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Ciudad",     url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Escritorio", url: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Galaxia",    url: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1200&q=80" },
+  { label: "Desierto",   url: "https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=1200&q=80" },
+];
+
 function applyCover(coverValue) {
   const coverEl  = $("entryCover");
   const addCoverEl = $("entryAddCover");
@@ -1078,11 +1089,15 @@ function openCoverPicker() {
       <div class="cover-picker-title">Elige una portada</div>
       <div class="cover-picker-tabs">
         <button class="cover-tab active" data-tab="Gradients">Degradados</button>
-        <button class="cover-tab" data-tab="Image">URL de imagen</button>
-        <button class="cover-tab" data-tab="Upload">Subir imagen</button>
+        <button class="cover-tab" data-tab="Photos">Imágenes</button>
+        <button class="cover-tab" data-tab="Image">URL</button>
+        <button class="cover-tab" data-tab="Upload">Subir</button>
       </div>
       <div class="cover-tab-panel" id="coverTabGradients">
         <div class="cover-picker-grid" id="coverPickerGrid"></div>
+      </div>
+      <div class="cover-tab-panel hidden" id="coverTabPhotos">
+        <div class="cover-picker-grid cover-photo-grid" id="coverPhotoGrid"></div>
       </div>
       <div class="cover-tab-panel hidden" id="coverTabImage">
         <div class="cover-url-wrap">
@@ -1128,6 +1143,24 @@ function openCoverPicker() {
       overlay.remove();
     });
     grid.appendChild(swatch);
+  });
+
+  // Photo presets
+  const photoGrid = overlay.querySelector("#coverPhotoGrid");
+  COVER_IMAGE_PRESETS.forEach(photo => {
+    const swatch = document.createElement("div");
+    swatch.className = "cover-preset-swatch cover-photo-swatch";
+    swatch.style.cssText = `background-image:url(${photo.url});background-size:cover;background-position:center`;
+    swatch.title = photo.label;
+    const lbl = document.createElement("span");
+    lbl.className = "cover-photo-label";
+    lbl.textContent = photo.label;
+    swatch.appendChild(lbl);
+    swatch.addEventListener("click", async () => {
+      await saveCover(`url(${photo.url})`);
+      overlay.remove();
+    });
+    photoGrid.appendChild(swatch);
   });
 
   // URL image tab
