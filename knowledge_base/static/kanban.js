@@ -1387,8 +1387,15 @@
         descEditBtn.style.display = 'none';
         descEditArea.style.display = '';
         descTa.focus();
+        // auto-size on open
+        descTa.style.height = 'auto';
+        descTa.style.height = Math.max(descTa.scrollHeight, 120) + 'px';
       };
-      descEditBtn.addEventListener('click', openDescEdit);
+      // auto-resize while typing
+      descTa.addEventListener('input', () => {
+        descTa.style.height = 'auto';
+        descTa.style.height = descTa.scrollHeight + 'px';
+      });
       descDisplay.addEventListener('click', openDescEdit);
       descSaveBtn.addEventListener('click', () => {
         card.description = descTa.value;
