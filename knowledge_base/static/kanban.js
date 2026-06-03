@@ -2607,6 +2607,20 @@
       (col.cards || []).filter(c => !c.archived).forEach(c => allCards.push({ card: c, colName: col.name, colId: col.id }));
     });
 
+    // Filter bar
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:center;';
+    const searchInput = document.createElement('input');
+    searchInput.placeholder = 'Filtrar tarjetas…';
+    searchInput.style.cssText = 'flex:1;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;outline:none;';
+    const colNames = [...new Set(allCards.map(x => x.colName))];
+    const colSel = document.createElement('select');
+    colSel.style.cssText = 'background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;cursor:pointer;';
+    colSel.innerHTML = `<option value="">Todas las listas</option>` + colNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+    filterBar.appendChild(searchInput);
+    filterBar.appendChild(colSel);
+    div.appendChild(filterBar);
+
     const tblWrap = document.createElement('div');
     tblWrap.className = 'kb-tbl-wrap';
     div.appendChild(tblWrap);
@@ -2618,9 +2632,23 @@
     </tr></thead>`;
     const tbody = document.createElement('tbody');
 
+    function applyFilter() {
+      const q = searchInput.value.toLowerCase();
+      const col = colSel.value;
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const title = (tr.dataset.title || '').toLowerCase();
+        const list = tr.dataset.col || '';
+        tr.style.display = (!q || title.includes(q)) && (!col || list === col) ? '' : 'none';
+      });
+    }
+    searchInput.addEventListener('input', applyFilter);
+    colSel.addEventListener('change', applyFilter);
+
     allCards.forEach(({ card, colName, colId }) => {
       const tr = document.createElement('tr');
       tr.className = 'kb-tbl-row';
+      tr.dataset.title = card.title;
+      tr.dataset.col = colName;
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => openCardModal(card, colId));
 
@@ -2786,6 +2814,24 @@
           more.textContent = `+${cards.length - 3} más`;
           cell.appendChild(more);
         }
+
+        // Click on empty area of cell → create card with that due date
+        cell.addEventListener('click', async e => {
+          if (e.target !== cell && e.target !== dayNum) return;
+          const col = (_currentBoard.columns || [])[0];
+          if (!col) return;
+          const title = prompt(`Nueva tarjeta para ${dateStr}:`);
+          if (!title || !title.trim()) return;
+          const newCard = {
+            id: 'c' + Date.now(),
+            title: title.trim(),
+            due: dateStr,
+            labels: [], members: [], checklists: [], attachments: [], comments: []
+          };
+          col.cards.push(newCard);
+          await saveBoardData(_currentBoard.id, _currentBoard);
+          buildCal();
+        });
 
         grid.appendChild(cell);
       }
