@@ -482,8 +482,15 @@ input, textarea, select { font-family: inherit; }
 }
 .home-card-icon {
   font-size: 1.1rem;
-  opacity: 0.4;
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+.home-card-icon .home-card-icon-glyph,
+.home-card-icon iconify-icon {
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 .home-card-title {
   font-family: var(--font-mono);
@@ -531,11 +538,11 @@ input, textarea, select { font-family: inherit; }
   height: 180px;
   background: var(--bg-surface);
   position: relative;
-  display: none;
+  display: block;
   flex-shrink: 0;
   margin-bottom: 0;
 }
-.entry-cover:not(.hidden) { display: block; }
+.entry-cover.hidden { display: none; }
 .entry-cover .cover-change-btn,
 .entry-cover .cover-remove-btn {
   position: absolute;
@@ -557,6 +564,7 @@ input, textarea, select { font-family: inherit; }
 
 .entry-add-cover {
   padding: 8px 40px 0;
+  display: block;
 }
 .entry-add-cover.hidden { display: none; }
 .add-cover-btn {
@@ -569,7 +577,8 @@ input, textarea, select { font-family: inherit; }
   opacity: 0;
   transition: opacity 0.15s;
 }
-.entry-view:hover .add-cover-btn { opacity: 1; }
+.entry-add-cover:hover .add-cover-btn,
+#contentArea:hover .add-cover-btn { opacity: 1; }
 .add-cover-btn:hover { color: var(--text-muted); }
 
 /* ---- Cover picker modal ---- */

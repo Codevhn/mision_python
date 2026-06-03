@@ -168,6 +168,7 @@ function bindEvents() {
     document.querySelectorAll(".tree-cat").forEach(el => el.style.display = "");
     // Go to home screen
     $("entryView").classList.add("hidden");
+    $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
     $("kanbanArea").classList.add("hidden");
     $("welcome").classList.remove("hidden");
     renderHome();
@@ -256,6 +257,7 @@ function bindEvents() {
 // ---- KANBAN ----
 function showKanbanArea() {
   $("entryView").classList.add("hidden");
+  $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
   $("welcome").classList.add("hidden");
   $("kanbanArea").classList.remove("hidden");
 }
@@ -787,12 +789,12 @@ $("tsPageCreate").addEventListener("click", async () => {
 const KB_RECENT_KEY = "kb_recent_v2";
 const KB_RECENT_MAX = 12;
 
-function _trackRecent(id, title, category, topic, cover) {
+function _trackRecent(id, title, category, topic, cover, icon) {
   let recent = [];
   try { recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch {}
   const prev = recent.find(r => r.id === id);
   recent = recent.filter(r => r.id !== id);
-  recent.unshift({ id, title, category, topic, cover: cover || prev?.cover || "", ts: Date.now() });
+  recent.unshift({ id, title, category, topic, cover: cover || prev?.cover || "", icon: icon || prev?.icon || "", ts: Date.now() });
   if (recent.length > KB_RECENT_MAX) recent = recent.slice(0, KB_RECENT_MAX);
   localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
 }
@@ -819,7 +821,7 @@ function renderHome() {
             <div class="home-card" data-id="${r.id}">
               <div class="home-card-cover" style="${r.cover ? `background:${r.cover}` : ""}"></div>
               <div class="home-card-body">
-                <div class="home-card-icon">󰈙</div>
+                <div class="home-card-icon">${renderIconMarkup(r.icon || ENTRY_ICON_DEFAULTS.knowledge, "home-card-icon-glyph")}</div>
                 <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
                 <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
               </div>
@@ -880,7 +882,7 @@ async function loadEntry(id, opts = {}) {
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
   // Track in recently visited
-  _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic, m.cover || "");
+  _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic, m.cover || "", m.icon || "");
 
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
@@ -1367,6 +1369,7 @@ async function deleteEntry() {
   if (res.ok) {
     currentEntryId = null;
     $("entryView").classList.add("hidden");
+    $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
     $("kanbanArea").classList.add("hidden");
     $("welcome").classList.remove("hidden");
     renderHome();

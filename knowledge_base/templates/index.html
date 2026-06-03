@@ -100,20 +100,21 @@
         <!-- populated by renderHome() -->
       </div>
 
+      <!-- Entry cover banner (outside entry-view for full-width) -->
+      <div class="entry-cover hidden" id="entryCover">
+        <button class="cover-change-btn" id="coverChangeBtn">🖼 Cambiar portada</button>
+        <button class="cover-remove-btn" id="coverRemoveBtn">× Quitar</button>
+      </div>
+      <!-- Add cover button (shown when no cover) -->
+      <div class="entry-add-cover hidden" id="entryAddCover">
+        <button class="add-cover-btn" id="addCoverBtn">🖼 Agregar portada</button>
+      </div>
+
       <!-- ENTRY VIEW -->
       <!-- KANBAN VIEW -->
       <div class="kanban-area hidden" id="kanbanArea"></div>
 
       <article class="entry-view hidden" id="entryView">
-        <!-- Entry cover banner -->
-        <div class="entry-cover" id="entryCover">
-          <button class="cover-change-btn" id="coverChangeBtn">🖼 Cambiar portada</button>
-          <button class="cover-remove-btn" id="coverRemoveBtn">× Quitar</button>
-        </div>
-        <!-- Add cover button (shown when no cover) -->
-        <div class="entry-add-cover" id="entryAddCover">
-          <button class="add-cover-btn" id="addCoverBtn">🖼 Agregar portada</button>
-        </div>
         <!-- Inline editable title -->
         <div class="inline-title-wrap" id="inlineTitleWrap">
           <h1 class="inline-title" id="inlineTitle" contenteditable="true" spellcheck="false" data-placeholder="Sin título"></h1>
