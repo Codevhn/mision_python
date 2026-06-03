@@ -1961,7 +1961,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   z-index: 2;
   position: relative;
 }
-.meta-seg-words .meta-seg-icon { margin-right: 4px; }
+.meta-seg-words { display: inline-flex; align-items: center; gap: 6px; }
+.meta-seg-words .meta-seg-icon { margin-right: 0; }
 .meta-seg-readtime {
   background: #1e2433;
   color: #7eb8d4;
