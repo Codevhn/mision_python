@@ -276,20 +276,39 @@ def _build_pdf_html(title, date, body_html):
 <head>
 <meta charset="utf-8">
 <style>
-  body {{ font-family: "DejaVu Sans", sans-serif; font-size: 11pt; color: #1a1a1a; margin: 2.5cm; line-height: 1.7; }}
-  h1 {{ font-size: 1.6em; border-bottom: 2px solid #1793d1; padding-bottom: 6px; color: #0e0e0e; margin-top: 0; }}
-  h2 {{ font-size: 1.15em; color: #1793d1; border-left: 3px solid #1793d1; padding-left: 8px; margin-top: 1.4em; }}
-  h3 {{ font-size: 1em; color: #333; margin-top: 1.2em; }}
-  code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.85em; background: #f4f4f4; padding: 1px 5px; border: 1px solid #ddd; }}
-  pre  {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.82em; background: #f4f4f4; border: 1px solid #ccc; border-left: 3px solid #1793d1; padding: 12px; overflow-x: auto; }}
-  pre code {{ background: none; border: none; padding: 0; }}
-  blockquote {{ border-left: 3px solid #aaa; padding: 6px 14px; color: #555; margin: 1em 0; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9em; }}
-  th {{ background: #1793d1; color: #fff; padding: 7px 10px; text-align: left; }}
-  td {{ padding: 6px 10px; border: 1px solid #ddd; }}
+  @page {{ margin: 1.8cm 1.5cm; }}
+  body {{ font-family: "DejaVu Sans", sans-serif; font-size: 10.5pt; color: #1a1a1a; line-height: 1.7; }}
+  h1 {{ font-size: 1.5em; border-bottom: 2px solid #1793d1; padding-bottom: 6px; color: #0e0e0e; margin-top: 0; margin-bottom: 0.6em; }}
+  h2 {{ font-size: 1.1em; color: #1793d1; border-left: 3px solid #1793d1; padding-left: 8px; margin-top: 1.4em; margin-bottom: 0.4em; }}
+  h3 {{ font-size: 1em; color: #333; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.3em; }}
+  h4 {{ font-size: 0.95em; color: #555; margin-top: 1em; margin-bottom: 0.3em; }}
+  p  {{ margin: 0 0 0.7em; }}
+  code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.82em; background: #f4f4f4; padding: 1px 5px; border: 1px solid #ddd; border-radius: 3px; }}
+  pre {{
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 0.78em;
+    background: #f7f7f7;
+    border: 1px solid #ccc;
+    border-left: 3px solid #1793d1;
+    padding: 10px 12px;
+    margin: 0.9em 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    page-break-inside: avoid;
+    line-height: 1.5;
+  }}
+  pre code {{ background: none; border: none; padding: 0; font-size: inherit; word-break: break-all; }}
+  blockquote {{ border-left: 3px solid #1793d1; padding: 5px 14px; color: #555; background: #f0f7fc; margin: 0.9em 0; border-radius: 0 3px 3px 0; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 0.88em; page-break-inside: avoid; }}
+  th {{ background: #1793d1; color: #fff; padding: 6px 9px; text-align: left; }}
+  td {{ padding: 5px 9px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; }}
   tr:nth-child(even) td {{ background: #f9f9f9; }}
-  .meta {{ font-size: 0.8em; color: #777; margin-bottom: 2em; font-family: monospace; }}
-  hr {{ border: none; border-top: 1px solid #ddd; margin: 2em 0; }}
+  ul, ol {{ margin: 0.4em 0 0.8em 1.4em; padding: 0; }}
+  li {{ margin: 3px 0; line-height: 1.6; }}
+  .meta {{ font-size: 0.78em; color: #777; margin-bottom: 1.6em; font-family: "DejaVu Sans Mono", monospace; }}
+  hr {{ border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }}
+  a {{ color: #1793d1; text-decoration: none; }}
 </style>
 </head>
 <body>
