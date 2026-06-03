@@ -2310,6 +2310,29 @@ async function applyMove() {
 // ============================================================
 function initPin() {
   $("pinBtn").addEventListener("click", togglePin);
+  $("fmtBtn").addEventListener("click", beautifyEntry);
+}
+
+async function beautifyEntry() {
+  if (!currentEntryId) return;
+  const btn = $("fmtBtn");
+  btn.textContent = "⬚ …";
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/entry/${currentEntryId}/beautify`, { method: "POST" });
+    const data = await res.json();
+    if (data.changed) {
+      showToast("Espaciado aplicado");
+      await loadEntry(currentEntryId);
+    } else {
+      showToast("El contenido ya tiene espaciado correcto");
+    }
+  } catch (e) {
+    showToast("Error al formatear");
+  } finally {
+    btn.textContent = "⬚ fmt";
+    btn.disabled = false;
+  }
 }
 
 async function togglePin() {

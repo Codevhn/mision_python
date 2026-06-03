@@ -1077,6 +1077,106 @@ def reorder_entries():
     return jsonify({"ok": True})
 
 
+# ── FEATURE: Auto-format (add logical spacing) ─────────────────────────────
+def _beautify_markdown(text):
+    """Insert blank lines between block-level elements that need separation."""
+    def line_type(line):
+        s = line.strip()
+        if not s:
+            return "blank"
+        if s.startswith("```"):
+            return "fence"
+        if re.match(r"^#{1,6}\s", s):
+            return "heading"
+        if re.match(r"^[-*+]\s", s) or re.match(r"^\d+\.\s", s):
+            return "list"
+        if s.startswith(">"):
+            return "blockquote"
+        if s.startswith("|"):
+            return "table"
+        if re.match(r"^[-*_]{3,}$", s):
+            return "divider"
+        return "paragraph"
+
+    lines = text.splitlines()
+    out = []
+    in_fence = False
+    prev_type = "blank"
+
+    # Pairs that NEED a blank line between them
+    needs_blank = {
+        ("heading",    "paragraph"),
+        ("heading",    "list"),
+        ("heading",    "blockquote"),
+        ("heading",    "table"),
+        ("paragraph",  "heading"),
+        ("paragraph",  "list"),
+        ("list",       "heading"),
+        ("list",       "paragraph"),
+        ("blockquote", "heading"),
+        ("blockquote", "paragraph"),
+        ("blockquote", "list"),
+        ("table",      "heading"),
+        ("table",      "paragraph"),
+        ("divider",    "heading"),
+        ("divider",    "paragraph"),
+        ("fence",      "paragraph"),
+        ("fence",      "heading"),
+        ("fence",      "list"),
+        ("paragraph",  "blockquote"),
+    }
+
+    for line in lines:
+        s = line.strip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+
+        if in_fence:
+            out.append(line)
+            prev_type = "fence"
+            continue
+
+        lt = line_type(line)
+
+        if lt == "blank":
+            # Only keep one consecutive blank line
+            if out and out[-1].strip() != "":
+                out.append("")
+            prev_type = "blank"
+            continue
+
+        if prev_type != "blank" and (prev_type, lt) in needs_blank:
+            out.append("")
+
+        out.append(line)
+        prev_type = lt
+
+    # Remove leading/trailing blank lines
+    while out and out[0].strip() == "":
+        out.pop(0)
+    while out and out[-1].strip() == "":
+        out.pop()
+
+    return "\n".join(out) + "\n"
+
+
+@app.route("/api/entry/<entry_id>/beautify", methods=["POST"])
+def beautify_entry(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = _entry_path(entry_id, meta)
+    if not path.exists():
+        return jsonify({"error": "File not found"}), 404
+    original = path.read_text()
+    formatted = _beautify_markdown(original)
+    if formatted == original:
+        return jsonify({"ok": True, "changed": False})
+    path.write_text(formatted)
+    return jsonify({"ok": True, "changed": True})
+
+
 # ── FEATURE: Wiki-link resolution ──────────────────────────────────────────
 @app.route("/api/resolve-wikilink")
 def resolve_wikilink():
