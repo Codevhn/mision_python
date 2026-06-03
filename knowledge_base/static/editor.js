@@ -2979,9 +2979,24 @@ window.BlockEditor = (() => {
         undo();
         return;
       }
-      if (hasFocus && !isEditableTarget(document.activeElement) && (e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        selectAllBlocks();
+      if (hasFocus && (e.ctrlKey || e.metaKey) && e.key === 'a') {
+        const active = document.activeElement;
+        if (!isEditableTarget(active)) {
+          // Not in a text field — select all blocks directly
+          e.preventDefault();
+          selectAllBlocks();
+        } else {
+          // In an editable: first press selects text in block (native),
+          // second press (when all text already selected) selects all blocks
+          const sel = window.getSelection();
+          const text = editableText(active);
+          const selectedText = sel ? sel.toString() : '';
+          if (text && selectedText.replace(/\n$/, '') === text.replace(/\n$/, '')) {
+            e.preventDefault();
+            selectAllBlocks();
+          }
+          // else: let browser handle native text selection
+        }
       }
     });
 

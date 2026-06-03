@@ -907,7 +907,11 @@ async function loadEntry(id, opts = {}) {
 
   const catLabel   = m.type === "course" ? (m.course_label  || m.course)  : (m.category_label || m.category);
   const topicLabel = m.type === "course" ? (m.module_label  || m.module)  : (m.topic_label    || m.topic);
+  const entryIconHtml = m.icon
+    ? renderIconMarkup(m.icon, "meta-entry-icon-glyph", "")
+    : "";
   $("entryMeta").innerHTML = `
+    ${entryIconHtml ? `<span class="meta-seg meta-seg-entry-icon">${entryIconHtml}</span>` : ""}
     <span class="meta-seg meta-seg-cat">
       <span class="meta-seg-icon">󰣇</span>
       ${escapeHtml(catLabel || "")}

@@ -706,6 +706,21 @@ input, textarea, select { font-family: inherit; }
 }
 .meta-seg-icon { font-size: 0.75rem; opacity: 0.8; }
 
+/* Entry icon segment — shown before category breadcrumb */
+.meta-seg-entry-icon {
+  background: var(--bg-elevated);
+  color: var(--text);
+  z-index: 6;
+  position: relative;
+  padding: 0 28px 0 10px;
+}
+.meta-entry-icon-glyph {
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+}
+.meta-entry-icon-glyph iconify-icon { font-size: 1.05rem; }
+
 /* z-index: first on top so its arrow covers the next */
 .meta-seg-cat   { background: var(--accent); color: #fff;    z-index: 5; position: relative; }
 .meta-seg-topic { background: #1d3545;       color: #7ec8e3; z-index: 4; position: relative; }
