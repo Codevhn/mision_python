@@ -3595,8 +3595,11 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ts-space-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 8px 5px 6px;
+  gap: 6px;
+  padding: 5px 8px 5px 2px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
 }
 .ts-space-toggle-btn,
 .ts-space-main {
@@ -3611,6 +3614,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+  flex: 0 0 auto;
 }
 .ts-space-main {
   display: inline-flex;
@@ -3619,14 +3626,16 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   min-width: 0;
   flex: 1;
   cursor: pointer;
+  text-align: left;
 }
 .ts-space-icon {
-  width: 20px;
-  height: 20px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3635,14 +3644,28 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .ts-space-icon iconify-icon,
 .ts-space-icon span {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.85rem;
+  height: 0.85rem;
 }
 .ts-space-main:hover .ts-space-label,
-.ts-space-main:hover .ts-space-icon {
+.ts-space-main:hover .ts-space-icon,
+.ts-space-toggle-btn:hover {
   color: var(--text);
 }
-.ts-space-label { color: var(--accent); font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-space-main:hover .ts-space-icon {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+.ts-space-label {
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ts-add-page-btn {
   background: none;
   border: none;
@@ -3656,6 +3679,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .ts-space-header:hover .ts-add-page-btn { opacity: 1; }
 .ts-add-page-btn:hover { color: var(--accent); }
+.ts-space-block + .ts-space-block { margin-top: 2px; }
 
 .ts-item {
   padding-left: 30px !important;

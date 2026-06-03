@@ -2959,7 +2959,7 @@ window.BlockEditor = (() => {
       // Use editor-level undo only for structural actions or block selections.
       if ((_selected.size > 0 ||
            (hasFocus && !activeIsEditable) ||
-           (hasFocus && activeIsEditable && _pendingStructuralUndo && !_textEditedSinceStructure && activeText === '')) &&
+           (hasFocus && activeIsEditable && _pendingStructuralUndo && !_textEditedSinceStructure)) &&
           (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
