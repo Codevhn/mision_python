@@ -351,23 +351,28 @@
 .kb-add-col-btn {
   width: 272px;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.06);
-  border: 1px dashed var(--border);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
   border-radius: 10px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.8);
   font-size: 0.82rem;
+  font-weight: 600;
   font-family: var(--font-ui);
   cursor: pointer;
-  padding: 12px 16px;
+  padding: 12px 18px;
   text-align: left;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
   min-height: 44px;
   align-self: flex-start;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  letter-spacing: 0.01em;
 }
 .kb-add-col-btn:hover {
-  background: var(--accent-light);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 
 /* ---- Quick add card form ---- */
