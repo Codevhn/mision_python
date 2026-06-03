@@ -319,8 +319,23 @@ def _build_pdf_html(title, date, body_html):
 </html>"""
 
 
-# Cache-busting version derived from build time
-_BUILD_ID = datetime.now().strftime("%Y%m%d%H%M%S")
+import hashlib, os as _os
+
+def _file_hash(path):
+    try:
+        h = hashlib.md5()
+        with open(path, 'rb') as f:
+            h.update(f.read())
+        return h.hexdigest()[:8]
+    except Exception:
+        return datetime.now().strftime("%Y%m%d%H%M%S")
+
+_STATIC_DIR = _os.path.join(_os.path.dirname(__file__), 'static')
+
+def _build_id():
+    css = _file_hash(_os.path.join(_STATIC_DIR, 'kanban.css'))
+    js  = _file_hash(_os.path.join(_STATIC_DIR, 'kanban.js'))
+    return f"{css}-{js}"
 
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
@@ -343,7 +358,7 @@ def logout():
 
 @app.route("/")
 def index():
-    return render_template("index.html", v=_BUILD_ID)
+    return render_template("index.html", v=_build_id())
 
 
 @app.route("/api/teamspace/tree")

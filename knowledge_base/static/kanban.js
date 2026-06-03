@@ -422,7 +422,7 @@
           <label>Color</label>
           <div class="kb-color-row" id="kbcColors"></div>
         </div>
-        ${_workspaces.length > 1 ? `<div class="kb-create-field"><label>Workspace</label><select id="kbcWorkspace" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:5px 8px;font-size:0.8rem;width:100%;">${wsOptions}</select></div>` : ''}
+        ${_workspaces.length > 1 ? `<div class="kb-create-field"><label>Workspace</label><select id="kbcWorkspace">${wsOptions}</select></div>` : ''}
         <div class="kb-create-actions">
           <button class="kb-btn" id="kbcCancel">Cancelar</button>
           <button class="kb-btn kb-btn--primary" id="kbcCreate">Crear</button>
@@ -2607,6 +2607,24 @@
       (col.cards || []).filter(c => !c.archived).forEach(c => allCards.push({ card: c, colName: col.name, colId: col.id }));
     });
 
+    // Filter bar
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:center;';
+    const searchInput = document.createElement('input');
+    searchInput.placeholder = 'Filtrar tarjetas…';
+    searchInput.style.cssText = 'flex:1;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;outline:none;';
+    const colNames = [...new Set(allCards.map(x => x.colName))];
+    const colSel = document.createElement('select');
+    colSel.style.cssText = 'background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;cursor:pointer;';
+    colSel.innerHTML = `<option value="">Todas las listas</option>` + colNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+    filterBar.appendChild(searchInput);
+    filterBar.appendChild(colSel);
+    div.appendChild(filterBar);
+
+    const tblWrap = document.createElement('div');
+    tblWrap.className = 'kb-tbl-wrap';
+    div.appendChild(tblWrap);
+
     const table = document.createElement('table');
     table.className = 'kb-tbl';
     table.innerHTML = `<thead><tr>
@@ -2614,9 +2632,23 @@
     </tr></thead>`;
     const tbody = document.createElement('tbody');
 
+    function applyFilter() {
+      const q = searchInput.value.toLowerCase();
+      const col = colSel.value;
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const title = (tr.dataset.title || '').toLowerCase();
+        const list = tr.dataset.col || '';
+        tr.style.display = (!q || title.includes(q)) && (!col || list === col) ? '' : 'none';
+      });
+    }
+    searchInput.addEventListener('input', applyFilter);
+    colSel.addEventListener('change', applyFilter);
+
     allCards.forEach(({ card, colName, colId }) => {
       const tr = document.createElement('tr');
       tr.className = 'kb-tbl-row';
+      tr.dataset.title = card.title;
+      tr.dataset.col = colName;
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => openCardModal(card, colId));
 
@@ -2684,7 +2716,7 @@
     }
 
     table.appendChild(tbody);
-    div.appendChild(table);
+    tblWrap.appendChild(table);
     wrap.appendChild(div);
   }
 
@@ -2755,10 +2787,15 @@
         grid.appendChild(empty);
       }
 
+      // Drag state
+      let dragCardId = null;
+      let dragColId = null;
+
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const cell = document.createElement('div');
         cell.className = 'kb-cal-cell' + (dateStr === todayStr ? ' kb-cal-cell--today' : '');
+        cell.dataset.date = dateStr;
 
         const dayNum = document.createElement('div');
         dayNum.className = 'kb-cal-day-num';
@@ -2769,10 +2806,19 @@
         cards.slice(0, 3).forEach(({ card, colId }) => {
           const chip = document.createElement('div');
           chip.className = 'kb-cal-card-chip';
+          chip.draggable = true;
           const lblColor = card.labels && card.labels[0] ? card.labels[0].color : 'var(--accent)';
           chip.style.borderLeftColor = lblColor;
           chip.textContent = card.title;
           chip.title = card.title;
+
+          chip.addEventListener('dragstart', e => {
+            dragCardId = card.id;
+            dragColId = colId;
+            chip.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          chip.addEventListener('dragend', () => { chip.style.opacity = ''; });
           chip.addEventListener('click', e => { e.stopPropagation(); openCardModal(card, colId); });
           cell.appendChild(chip);
         });
@@ -2782,6 +2828,50 @@
           more.textContent = `+${cards.length - 3} más`;
           cell.appendChild(more);
         }
+
+        // Drop target: highlight on dragover
+        cell.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          cell.classList.add('kb-cal-cell--dragover');
+        });
+        cell.addEventListener('dragleave', e => {
+          if (!cell.contains(e.relatedTarget)) cell.classList.remove('kb-cal-cell--dragover');
+        });
+        cell.addEventListener('drop', async e => {
+          e.preventDefault();
+          cell.classList.remove('kb-cal-cell--dragover');
+          if (!dragCardId || cell.dataset.date === dateStr) return;
+          // Find and update the card
+          let found = false;
+          for (const col of (_currentBoard.columns || [])) {
+            const c = col.cards.find(x => x.id === dragCardId);
+            if (c) { c.due = cell.dataset.date; found = true; break; }
+          }
+          if (found) {
+            await saveBoardData(_currentBoard.id, _currentBoard);
+            buildCal();
+          }
+          dragCardId = null; dragColId = null;
+        });
+
+        // Click on empty area of cell → create card with that due date
+        cell.addEventListener('click', async e => {
+          if (e.target !== cell && e.target !== dayNum) return;
+          const col = (_currentBoard.columns || [])[0];
+          if (!col) return;
+          const title = prompt(`Nueva tarjeta para ${dateStr}:`);
+          if (!title || !title.trim()) return;
+          const newCard = {
+            id: 'c' + Date.now(),
+            title: title.trim(),
+            due: dateStr,
+            labels: [], members: [], checklists: [], attachments: [], comments: []
+          };
+          col.cards.push(newCard);
+          await saveBoardData(_currentBoard.id, _currentBoard);
+          buildCal();
+        });
 
         grid.appendChild(cell);
       }
