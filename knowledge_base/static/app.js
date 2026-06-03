@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHome();
 
   loadTree();
-  loadCategorySuggestions().then(() => loadTopicSuggestions().then(initSmartSelects));
+  Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
   loadCourseSuggestions();
   bindEvents();
   loadKanbanSidebar();
@@ -1346,7 +1346,7 @@ async function saveEntry() {
       closeModal();
       showToast("Entrada guardada");
       await loadTree();
-      loadCategorySuggestions().then(() => loadTopicSuggestions().then(initSmartSelects));
+      Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
       loadEntry(data.id);
     } else {
       showToast("Error al guardar", "error");
@@ -1462,20 +1462,28 @@ let _treeCache = null;
 
 async function loadCategorySuggestions() {
   try {
-    const res = await fetch("/api/categories");
-    const cats = await res.json();                    // { key: label }
-    _allCategories = Object.entries(cats).map(([k, v]) => ({ key: k, label: v }));
+    // Load from tree so we get ALL categories, not just those in the local index
+    const res = await fetch("/api/tree");
+    if (!res.ok) return;
+    const tree = await res.json();
+    _allCategories = Object.entries(tree)
+      .filter(([k]) => !k.startsWith("_"))
+      .map(([k, v]) => ({ key: k, label: v._label || k }));
   } catch {}
 }
 
 async function loadTopicSuggestions() {
   try {
-    const res = await fetch("/api/tree");
-    if (!res.ok) return;
-    _treeCache = await res.json();
+    if (!_treeCache) {
+      const res = await fetch("/api/tree");
+      if (!res.ok) return;
+      _treeCache = await res.json();
+    }
     const topics = new Set();
     for (const catData of Object.values(_treeCache)) {
-      const topicsMap = catData._topics || catData;
+      // Only iterate _topics — never treat category keys as topics
+      const topicsMap = catData._topics;
+      if (!topicsMap) continue;
       for (const [key, topicData] of Object.entries(topicsMap)) {
         if (key.startsWith("_")) continue;
         topics.add(topicData._label || key);
@@ -1534,7 +1542,6 @@ function initSmartSelects() {
       const matches = _allCategories
         .map(c => c.label)
         .filter(l => !f || l.toLowerCase().includes(f));
-      // If typed value not in list, offer "Nueva: <typed>" item
       if (filter.trim() && !matches.find(l => l.toLowerCase() === f)) {
         matches.push(`+ Nueva: "${filter.trim()}"`);
       }
