@@ -910,10 +910,12 @@ async function loadEntry(id, opts = {}) {
   const wordCount = getWordCount($("entryBody"));
   const readMin = Math.max(1, Math.round(wordCount / 200));
 
-  const catLabel   = m.type === "course"     ? (m.course_label     || m.course)     :
-                    m.type === "teamspace"  ? (m.teamspace_label  || m.teamspace)  :
+  const _isTeamspace = m.type === "teamspace" || !!m.teamspace;
+  const _isCourse    = m.type === "course"    || !!m.course;
+  const catLabel   = _isCourse    ? (m.course_label    || m.course)    :
+                    _isTeamspace ? (m.teamspace_label || m.teamspace) :
                     (m.category_label || m.category);
-  const topicLabel = m.type === "course"    ? (m.module_label  || m.module)  : (m.topic_label    || m.topic);
+  const topicLabel = _isCourse ? (m.module_label || m.module) : (m.topic_label || m.topic);
   const entryIconHtml = m.icon
     ? renderIconMarkup(m.icon, "meta-entry-icon-glyph", "")
     : `<span class="meta-seg-icon">󰣇</span>`;
