@@ -1407,8 +1407,32 @@ KANBAN_FILE = DATA_DIR / "kanban.json"
 
 def load_kanban():
     if KANBAN_FILE.exists():
-        return json.loads(KANBAN_FILE.read_text())
-    return {"boards": {}}
+        data = json.loads(KANBAN_FILE.read_text())
+    else:
+        data = {"boards": {}, "workspaces": {}}
+
+    # Migrate: ensure workspaces key exists
+    if "workspaces" not in data:
+        data["workspaces"] = {}
+
+    # Migrate: ensure a default workspace exists
+    if not data["workspaces"]:
+        ws_id = uuid.uuid4().hex[:8]
+        data["workspaces"][ws_id] = {
+            "id": ws_id,
+            "name": "Default",
+            "color": "#0079bf",
+            "created": datetime.utcnow().isoformat()
+        }
+        save_kanban(data)
+
+    # Migrate: assign orphan boards to first workspace
+    first_ws_id = next(iter(data["workspaces"]))
+    for board in data["boards"].values():
+        if not board.get("workspace_id"):
+            board["workspace_id"] = first_ws_id
+
+    return data
 
 
 def save_kanban(data):
@@ -1418,17 +1442,22 @@ def save_kanban(data):
 @app.route("/api/kanban/boards", methods=["GET"])
 def kanban_list_boards():
     data = load_kanban()
+    workspace_id_filter = request.args.get("workspace_id", "").strip()
     boards = []
     for b in data["boards"].values():
+        if workspace_id_filter and b.get("workspace_id") != workspace_id_filter:
+            continue
         card_count = sum(len(col.get("cards", [])) for col in b.get("columns", []))
         boards.append({
             "id": b["id"],
             "name": b["name"],
             "description": b.get("description", ""),
             "color": b.get("color", "#1793d1"),
+            "background": b.get("background", ""),
             "created": b.get("created", ""),
             "card_count": card_count,
             "col_count": len(b.get("columns", [])),
+            "workspace_id": b.get("workspace_id"),
         })
     boards.sort(key=lambda b: b["created"])
     return jsonify(boards)
@@ -1438,6 +1467,20 @@ def kanban_list_boards():
 def kanban_create_board():
     data = load_kanban()
     body = request.json
+    # Determine workspace_id
+    workspace_id = body.get("workspace_id", "").strip() if body.get("workspace_id") else ""
+    if not workspace_id:
+        if data["workspaces"]:
+            workspace_id = next(iter(data["workspaces"]))
+        else:
+            ws_id = uuid.uuid4().hex[:8]
+            data["workspaces"][ws_id] = {
+                "id": ws_id,
+                "name": "Default",
+                "color": "#0079bf",
+                "created": datetime.utcnow().isoformat()
+            }
+            workspace_id = ws_id
     board_id = uuid.uuid4().hex[:8]
     board = {
         "id": board_id,
@@ -1445,6 +1488,7 @@ def kanban_create_board():
         "description": body.get("description", "").strip(),
         "color": body.get("color", "#1793d1"),
         "created": datetime.now().isoformat(timespec="seconds"),
+        "workspace_id": workspace_id,
         "columns": [
             {"id": uuid.uuid4().hex[:8], "name": "Pendiente", "cards": []},
             {"id": uuid.uuid4().hex[:8], "name": "En proceso", "cards": []},
@@ -1503,6 +1547,60 @@ def kanban_save_columns(board_id):
         return jsonify({"error": "Not found"}), 404
     body = request.json
     board["columns"] = body.get("columns", [])
+    save_kanban(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/workspaces", methods=["GET"])
+def kanban_list_workspaces():
+    data = load_kanban()
+    workspaces = sorted(data["workspaces"].values(), key=lambda w: w.get("created", ""))
+    return jsonify(workspaces)
+
+
+@app.route("/api/kanban/workspaces", methods=["POST"])
+def kanban_create_workspace():
+    data = load_kanban()
+    body = request.json or {}
+    ws_id = uuid.uuid4().hex[:8]
+    workspace = {
+        "id": ws_id,
+        "name": body.get("name", "Nuevo workspace").strip(),
+        "color": body.get("color", "#0079bf"),
+        "created": datetime.utcnow().isoformat()
+    }
+    data["workspaces"][ws_id] = workspace
+    save_kanban(data)
+    return jsonify(workspace), 201
+
+
+@app.route("/api/kanban/workspaces/<ws_id>", methods=["PATCH"])
+def kanban_update_workspace(ws_id):
+    data = load_kanban()
+    ws = data["workspaces"].get(ws_id)
+    if not ws:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    if "name" in body:
+        ws["name"] = body["name"].strip()
+    if "color" in body:
+        ws["color"] = body["color"]
+    save_kanban(data)
+    return jsonify(ws)
+
+
+@app.route("/api/kanban/workspaces/<ws_id>", methods=["DELETE"])
+def kanban_delete_workspace(ws_id):
+    data = load_kanban()
+    if ws_id not in data["workspaces"]:
+        return jsonify({"error": "Not found"}), 404
+    del data["workspaces"][ws_id]
+    # Move boards to first remaining workspace or set to None
+    remaining = list(data["workspaces"].keys())
+    new_ws_id = remaining[0] if remaining else None
+    for board in data["boards"].values():
+        if board.get("workspace_id") == ws_id:
+            board["workspace_id"] = new_ws_id
     save_kanban(data)
     return jsonify({"ok": True})
 
