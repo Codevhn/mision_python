@@ -2075,8 +2075,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   transition: opacity 0.1s;
   user-select: none;
 }
-.eb:hover .eb-controls { opacity: 1; }
-.eb--focused .eb-controls { opacity: 1; }
+.eb:hover > .eb-controls { opacity: 1; }
+.eb--focused > .eb-controls { opacity: 1; }
 
 /* Controls inline inside toggle row — reset absolute positioning */
 .eb-controls--inline {
@@ -2084,14 +2084,14 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   align-self: center;
 }
-.eb--toggle:hover .eb-controls--inline,
-.eb--toggle-h1:hover .eb-controls--inline,
-.eb--toggle-h2:hover .eb-controls--inline,
-.eb--toggle-h3:hover .eb-controls--inline { opacity: 1; }
-.eb--toggle.eb--focused .eb-controls--inline,
-.eb--toggle-h1.eb--focused .eb-controls--inline,
-.eb--toggle-h2.eb--focused .eb-controls--inline,
-.eb--toggle-h3.eb--focused .eb-controls--inline { opacity: 1; }
+.eb--toggle:hover > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h1:hover > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h2:hover > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h3:hover > .eb-toggle-row > .eb-controls--inline { opacity: 1; }
+.eb--toggle.eb--focused > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h1.eb--focused > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h2.eb--focused > .eb-toggle-row > .eb-controls--inline,
+.eb--toggle-h3.eb--focused > .eb-toggle-row > .eb-controls--inline { opacity: 1; }
 
 .eb-handle {
   cursor: grab;
