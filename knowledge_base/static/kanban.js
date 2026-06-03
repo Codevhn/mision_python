@@ -2607,6 +2607,10 @@
       (col.cards || []).filter(c => !c.archived).forEach(c => allCards.push({ card: c, colName: col.name, colId: col.id }));
     });
 
+    const tblWrap = document.createElement('div');
+    tblWrap.className = 'kb-tbl-wrap';
+    div.appendChild(tblWrap);
+
     const table = document.createElement('table');
     table.className = 'kb-tbl';
     table.innerHTML = `<thead><tr>
@@ -2684,7 +2688,7 @@
     }
 
     table.appendChild(tbody);
-    div.appendChild(table);
+    tblWrap.appendChild(table);
     wrap.appendChild(div);
   }
 
