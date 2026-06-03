@@ -1944,6 +1944,25 @@ kbd {
   color: var(--text);
 }
 
+/* ---- Lightbox overlay ---- */
+.kb-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.kb-lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 6px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  cursor: default;
+}
+
 /* ---- Card cover side panel (Trello-style) ---- */
 .kb-cover-panel {
   position: fixed;

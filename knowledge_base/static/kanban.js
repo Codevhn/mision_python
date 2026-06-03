@@ -78,8 +78,12 @@
 
   function getDueStatus(due, card) {
     if (!due) return 'none';
+    // Support both legacy card.checklist and new card.checklists
     const checklist = card.checklist || [];
-    const allDone = card.done === true || (checklist.length > 0 && checklist.every(i => i.done));
+    const allChecklistsDone = card.checklists && card.checklists.length > 0
+      ? card.checklists.every(cl => cl.items.length > 0 && cl.items.every(i => i.done))
+      : (checklist.length > 0 && checklist.every(i => i.done));
+    const allDone = card.done === true || allChecklistsDone;
     if (allDone) return 'done';
     const now = new Date();
     const dueDate = new Date(due);
@@ -154,6 +158,14 @@
     if (!_currentBoard || _currentBoard.id !== boardId) return;
     try {
       await saveColumnsApi(boardId, _currentBoard.columns);
+    } catch (e) {
+      showToast('Error guardando tablero');
+    }
+  }
+
+  async function saveBoardData(boardId, boardData) {
+    try {
+      await saveColumnsApi(boardId, boardData.columns);
     } catch (e) {
       showToast('Error guardando tablero');
     }
@@ -871,25 +883,33 @@
       }
     }
 
-    // Checklist progress
-    if (card.checklist && card.checklist.length > 0) {
-      const total = card.checklist.length;
-      const done = card.checklist.filter(i => i.done).length;
-      const pct = Math.round((done / total) * 100);
-      const allDone = done === total;
+    // Checklist progress — support new card.checklists and legacy card.checklist
+    {
+      let allItems = [];
+      if (card.checklists && card.checklists.length > 0) {
+        card.checklists.forEach(cl => { allItems = allItems.concat(cl.items || []); });
+      } else if (card.checklist && card.checklist.length > 0) {
+        allItems = card.checklist;
+      }
+      if (allItems.length > 0) {
+        const total = allItems.length;
+        const done = allItems.filter(i => i.done).length;
+        const pct = Math.round((done / total) * 100);
+        const allDone = done === total;
 
-      const badgeEl = document.createElement('span');
-      badgeEl.className = 'kb-checklist-badge' + (allDone ? ' kb-checklist-badge--done' : '');
-      badgeEl.textContent = `☑ ${done}/${total}`;
-      el.appendChild(badgeEl);
+        const badgeEl = document.createElement('span');
+        badgeEl.className = 'kb-checklist-badge' + (allDone ? ' kb-checklist-badge--done' : '');
+        badgeEl.textContent = `☑ ${done}/${total}`;
+        el.appendChild(badgeEl);
 
-      const barWrap = document.createElement('div');
-      barWrap.className = 'kb-checklist-bar';
-      const barFill = document.createElement('div');
-      barFill.className = 'kb-checklist-bar-fill';
-      barFill.style.width = pct + '%';
-      barWrap.appendChild(barFill);
-      el.appendChild(barWrap);
+        const barWrap = document.createElement('div');
+        barWrap.className = 'kb-checklist-bar';
+        const barFill = document.createElement('div');
+        barFill.className = 'kb-checklist-bar-fill';
+        barFill.style.width = pct + '%';
+        barWrap.appendChild(barFill);
+        el.appendChild(barWrap);
+      }
     }
 
     // Footer: left icons + right avatars
@@ -1142,6 +1162,13 @@
     if (!card.comments) card.comments = [];
     if (!card.attachments) card.attachments = [];
     if (card.cover_full === undefined) card.cover_full = false;
+    // Migrate legacy single checklist to new checklists array
+    if (card.checklist && !card.checklists) {
+      card.checklists = [{ id: uid(), name: 'Checklist', items: card.checklist }];
+      delete card.checklist;
+      saveBoard(_currentBoard.id);
+    }
+    if (!card.checklists) card.checklists = [];
 
     const overlay = document.createElement('div');
     overlay.className = 'kb-modal-overlay';
@@ -1295,9 +1322,11 @@
 
       // Checklist pill
       pillsRow.appendChild(makePill('☑', 'Checklist', () => {
-        if (!card.checklist) card.checklist = [];
-        renderChecklistSection(card, checklistSection);
-        checklistSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (!card.checklists) card.checklists = [];
+        card.checklists.push({ id: uid(), name: 'Checklist', items: [] });
+        saveBoard(_currentBoard.id);
+        renderAllChecklists(card, checklistsContainer);
+        checklistsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }));
       // Members pill
       pillsRow.appendChild(makePill('👤', 'Miembros', btn => {
@@ -1413,11 +1442,11 @@
         descEditArea.style.display = 'none';
       });
 
-      // Checklist section
-      const checklistSection = document.createElement('div');
-      checklistSection.id = 'kbChecklistSection';
-      renderChecklistSection(card, checklistSection);
-      main.appendChild(checklistSection);
+      // Checklists container
+      const checklistsContainer = document.createElement('div');
+      checklistsContainer.id = 'kbChecklistsContainer';
+      renderAllChecklists(card, checklistsContainer);
+      main.appendChild(checklistsContainer);
 
       // Attachments section
       const attSection = document.createElement('div');
@@ -1468,6 +1497,22 @@
           thumb.className = 'kb-attachment-thumb';
           thumb.src = att.url;
           thumb.alt = att.name;
+          thumb.style.cursor = 'zoom-in';
+          thumb.addEventListener('click', e => {
+            e.stopPropagation();
+            const lbOverlay = document.createElement('div');
+            lbOverlay.className = 'kb-lightbox-overlay';
+            const lbImg = document.createElement('img');
+            lbImg.className = 'kb-lightbox-img';
+            lbImg.src = att.url;
+            lbImg.alt = att.name;
+            lbImg.addEventListener('click', e => e.stopPropagation());
+            lbOverlay.appendChild(lbImg);
+            document.body.appendChild(lbOverlay);
+            lbOverlay.addEventListener('click', () => lbOverlay.remove());
+            const escLb = e => { if (e.key === 'Escape') { lbOverlay.remove(); document.removeEventListener('keydown', escLb); } };
+            document.addEventListener('keydown', escLb);
+          });
           item.appendChild(thumb);
         } else {
           const icon = document.createElement('div');
@@ -1477,15 +1522,40 @@
         }
         const meta = document.createElement('div');
         meta.className = 'kb-attachment-meta';
+        const nameRow = document.createElement('div');
+        nameRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
         const nameEl = document.createElement('a');
         nameEl.className = 'kb-attachment-name';
         nameEl.href = att.url;
-        nameEl.target = '_blank';
         nameEl.download = att.name;
         nameEl.textContent = att.name;
+        const openLinkBtn = document.createElement('a');
+        openLinkBtn.href = att.url;
+        openLinkBtn.target = '_blank';
+        openLinkBtn.rel = 'noopener noreferrer';
+        openLinkBtn.title = 'Abrir en nueva pestaña';
+        openLinkBtn.style.cssText = 'color:var(--text-faint);font-size:0.75rem;text-decoration:none;';
+        openLinkBtn.textContent = '⧉';
+        nameRow.appendChild(nameEl);
+        nameRow.appendChild(openLinkBtn);
         const tsEl = document.createElement('span');
         tsEl.className = 'kb-attachment-ts';
         tsEl.textContent = relativeTime(att.ts);
+        const attActionsRow = document.createElement('div');
+        attActionsRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;';
+        if (isImage) {
+          const coverBtn = document.createElement('button');
+          coverBtn.className = 'kb-attachment-del';
+          coverBtn.style.color = 'var(--accent)';
+          coverBtn.textContent = 'Usar como portada';
+          coverBtn.addEventListener('click', () => {
+            card.cover = `url("${att.url}") center/cover no-repeat`;
+            card.cover_full = true;
+            saveBoard(_currentBoard.id);
+            rebuildModal();
+          });
+          attActionsRow.appendChild(coverBtn);
+        }
         const delAttBtn = document.createElement('button');
         delAttBtn.className = 'kb-attachment-del';
         delAttBtn.textContent = '× Eliminar';
@@ -1494,9 +1564,10 @@
           saveBoard(_currentBoard.id);
           rebuildModal();
         });
-        meta.appendChild(nameEl);
+        attActionsRow.appendChild(delAttBtn);
+        meta.appendChild(nameRow);
         meta.appendChild(tsEl);
-        meta.appendChild(delAttBtn);
+        meta.appendChild(attActionsRow);
         item.appendChild(meta);
         attList.appendChild(item);
       });
@@ -1974,12 +2045,14 @@
     chkBtn.className = 'kb-sidebar-action-btn';
     chkBtn.innerHTML = '☑ Checklist';
     chkBtn.addEventListener('click', () => {
-      // Add a new empty checklist item and re-render checklist section
-      if (!card.checklist) card.checklist = [];
-      renderChecklistSection(card, overlay.querySelector('#kbChecklistSection'));
-      // Scroll to it
-      const section = overlay.querySelector('#kbChecklistSection');
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (!card.checklists) card.checklists = [];
+      card.checklists.push({ id: uid(), name: 'Checklist', items: [] });
+      saveBoard(_currentBoard.id);
+      const container = overlay.querySelector('#kbChecklistsContainer');
+      if (container) {
+        renderAllChecklists(card, container);
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     });
     sidebar.appendChild(chkBtn);
 
@@ -2252,23 +2325,28 @@
         // Different board
         try {
           const remoteBoard = pop._remoteBoard || await getBoardApi(toBoardId);
+          // Find target column in the remote board
+          const toCol = remoteBoard.columns.find(c => c.id === toColId);
+          if (!toCol) { showToast('Columna destino no encontrada'); return; }
+
+          // Remove card from current board
           const fromCol = _currentBoard.columns.find(c => c.id === fromColId);
           if (!fromCol) return;
           const srcIdx = fromCol.cards.findIndex(c => c.id === card.id);
           if (srcIdx === -1) return;
           fromCol.cards.splice(srcIdx, 1);
 
-          const toCol = remoteBoard.columns.find(c => c.id === toColId);
-          if (!toCol) return;
+          // Insert card at target position
           toCol.cards.splice(toPos, 0, card);
 
-          await saveColumnsApi(_currentBoard.id, _currentBoard.columns);
-          await saveColumnsApi(toBoardId, remoteBoard.columns);
+          // Save both boards
+          await saveBoardData(toBoardId, remoteBoard);
+          await saveBoard(_currentBoard.id);
 
           pop.remove();
           modalOverlay.remove();
           renderColumns();
-          showToast('Tarjeta movida al tablero ' + remoteBoard.name);
+          showToast('Tarjeta movida a ' + remoteBoard.name);
         } catch (e) {
           showToast('Error moviendo tarjeta');
         }
@@ -2421,6 +2499,184 @@
     memberInput.addEventListener('blur', saveMember);
 
     sidebar.appendChild(section);
+  }
+
+  function renderAllChecklists(card, container) {
+    container.innerHTML = '';
+    if (!card.checklists || card.checklists.length === 0) return;
+
+    card.checklists.forEach((checklist, clIdx) => {
+      const section = document.createElement('div');
+      section.className = 'kb-checklist-section';
+      section.style.marginBottom = '10px';
+
+      // Header row: editable name + Eliminar button
+      const headerRow = document.createElement('div');
+      headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);cursor:pointer;flex:1;min-width:0;';
+      nameSpan.innerHTML = `<span>☑</span><span class="kb-checklist-name-text">${escHtml(checklist.name)}</span>`;
+
+      // Inline name editing
+      nameSpan.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'kb-checklist-edit-input';
+        input.value = checklist.name;
+        input.style.flex = '1';
+        const nameText = nameSpan.querySelector('.kb-checklist-name-text');
+        nameSpan.replaceChild(input, nameText);
+        input.focus();
+        input.select();
+        const saveNameEdit = () => {
+          const newName = input.value.trim();
+          if (newName) checklist.name = newName;
+          saveBoard(_currentBoard.id);
+          renderAllChecklists(card, container);
+        };
+        input.addEventListener('blur', saveNameEdit);
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); saveNameEdit(); }
+          if (e.key === 'Escape') { renderAllChecklists(card, container); }
+        });
+      });
+
+      const eliminarBtn = document.createElement('button');
+      eliminarBtn.className = 'kb-checklist-del';
+      eliminarBtn.style.cssText = 'font-size:0.72rem;padding:2px 8px;flex-shrink:0;';
+      eliminarBtn.textContent = 'Eliminar';
+      eliminarBtn.title = 'Eliminar checklist';
+      eliminarBtn.addEventListener('click', () => {
+        card.checklists.splice(clIdx, 1);
+        saveBoard(_currentBoard.id);
+        renderAllChecklists(card, container);
+      });
+
+      headerRow.appendChild(nameSpan);
+      headerRow.appendChild(eliminarBtn);
+      section.appendChild(headerRow);
+
+      const items = checklist.items || [];
+      const total = items.length;
+      const done = items.filter(i => i.done).length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      if (total > 0) {
+        const progressRow = document.createElement('div');
+        progressRow.className = 'kb-checklist-progress-row';
+        const pctLabel = document.createElement('span');
+        pctLabel.className = 'kb-checklist-pct';
+        pctLabel.textContent = pct + '%';
+        const progWrap = document.createElement('div');
+        progWrap.className = 'kb-checklist-progress';
+        const progFill = document.createElement('div');
+        progFill.className = 'kb-checklist-bar-fill';
+        progFill.style.width = pct + '%';
+        progWrap.appendChild(progFill);
+        progressRow.appendChild(pctLabel);
+        progressRow.appendChild(progWrap);
+        section.appendChild(progressRow);
+      }
+
+      items.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'kb-checklist-item' + (item.done ? ' kb-checklist-item--done' : '');
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = item.done;
+        cb.addEventListener('change', () => {
+          item.done = cb.checked;
+          saveBoard(_currentBoard.id);
+          renderAllChecklists(card, container);
+        });
+
+        const txt = document.createElement('span');
+        txt.className = 'kb-checklist-text';
+        txt.textContent = item.text;
+
+        txt.addEventListener('click', () => {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'kb-checklist-edit-input';
+          input.value = item.text;
+          row.replaceChild(input, txt);
+          input.focus();
+          input.select();
+          const saveEdit = () => {
+            const newText = input.value.trim();
+            if (newText) item.text = newText;
+            saveBoard(_currentBoard.id);
+            renderAllChecklists(card, container);
+          };
+          input.addEventListener('blur', saveEdit);
+          input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
+            if (e.key === 'Escape') { renderAllChecklists(card, container); }
+          });
+        });
+
+        const del = document.createElement('button');
+        del.className = 'kb-checklist-del';
+        del.textContent = '×';
+        del.title = 'Eliminar ítem';
+        del.addEventListener('click', () => {
+          checklist.items.splice(idx, 1);
+          saveBoard(_currentBoard.id);
+          renderAllChecklists(card, container);
+        });
+
+        row.appendChild(cb);
+        row.appendChild(txt);
+        row.appendChild(del);
+        section.appendChild(row);
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'kb-checklist-add-btn';
+      addBtn.textContent = '+ Agregar ítem';
+
+      const inputWrap = document.createElement('div');
+      inputWrap.style.display = 'none';
+      const addInput = document.createElement('input');
+      addInput.type = 'text';
+      addInput.className = 'kb-checklist-add-input';
+      addInput.placeholder = 'Nuevo ítem…';
+      inputWrap.appendChild(addInput);
+
+      const saveItem = () => {
+        const text = addInput.value.trim();
+        if (text) {
+          checklist.items.push({ id: uid(), text, done: false });
+          saveBoard(_currentBoard.id);
+        }
+        addInput.value = '';
+        inputWrap.style.display = 'none';
+        addBtn.style.display = '';
+        renderAllChecklists(card, container);
+      };
+
+      addInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); saveItem(); }
+        if (e.key === 'Escape') {
+          addInput.value = '';
+          inputWrap.style.display = 'none';
+          addBtn.style.display = '';
+        }
+      });
+      addInput.addEventListener('blur', saveItem);
+
+      addBtn.addEventListener('click', () => {
+        addBtn.style.display = 'none';
+        inputWrap.style.display = '';
+        addInput.focus();
+      });
+
+      section.appendChild(addBtn);
+      section.appendChild(inputWrap);
+      container.appendChild(section);
+    });
   }
 
   function renderChecklistSection(card, container) {
