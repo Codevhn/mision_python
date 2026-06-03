@@ -2186,16 +2186,22 @@
     const colSel = pop.querySelector('#kbMoveColSel');
     const posSel = pop.querySelector('#kbMovePosSel');
 
-    // Populate boards
-    _boards.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b.id;
-      opt.textContent = b.name;
-      if (b.id === _currentBoard.id) opt.selected = true;
-      boardSel.appendChild(opt);
-    });
-
-    function populateCols(boardId) {
+    // Ensure boards are loaded before populating
+    const fillBoards = async () => {
+      if (!_boards || _boards.length === 0) {
+        await loadBoards();
+      }
+      boardSel.innerHTML = '';
+      _boards.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.name;
+        if (b.id === _currentBoard.id) opt.selected = true;
+        boardSel.appendChild(opt);
+      });
+      populateCols(_currentBoard.id);
+    };
+    fillBoards();
       colSel.innerHTML = '';
       posSel.innerHTML = '';
       let cols;
@@ -2285,8 +2291,6 @@
         populatePos(bid);
       }
     });
-
-    populateCols(_currentBoard.id);
 
     pop.querySelector('.kb-move-confirm').addEventListener('click', async () => {
       const toBoardId = boardSel.value;
