@@ -831,16 +831,23 @@ input, textarea, select { font-family: inherit; }
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--h3-color);
-  margin: 22px 0 8px;
+  margin: 28px 0 8px;
 }
 .entry-body h3::before { content: "→ "; color: var(--text-faint); }
 
-.entry-body p { margin: 0 0 14px; }
+.entry-body h4 {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 22px 0 6px;
+}
+
+.entry-body p { margin: 0 0 16px; }
 .entry-body p:last-child { margin-bottom: 0; }
 
-.entry-body ul, .entry-body ol { margin: 4px 0 12px 18px; }
-.entry-body li { margin: 2px 0; }
-.entry-body li::marker { color: var(--accent); }
+.entry-body ul, .entry-body ol { margin: 8px 0 16px 20px; }
+.entry-body li { margin: 4px 0; line-height: 1.6; }
 
 /* inline code only — block code is styled separately */
 .entry-body :not(pre) > code {
@@ -860,7 +867,7 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--font-mono);
   font-size: 0.86rem;
   line-height: 1.65;
-  margin: 14px 0;
+  margin: 18px 0;
   overflow-x: auto;
   padding: 12px 14px;
   tab-size: 2;
