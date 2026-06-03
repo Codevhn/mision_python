@@ -788,11 +788,12 @@ $("tsPageCreate").addEventListener("click", async () => {
 const KB_RECENT_KEY = "kb_recent_v2";
 const KB_RECENT_MAX = 12;
 
-function _trackRecent(id, title, category, topic) {
+function _trackRecent(id, title, category, topic, cover) {
   let recent = [];
   try { recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch {}
+  const prev = recent.find(r => r.id === id);
   recent = recent.filter(r => r.id !== id);
-  recent.unshift({ id, title, category, topic, ts: Date.now() });
+  recent.unshift({ id, title, category, topic, cover: cover || prev?.cover || "", ts: Date.now() });
   if (recent.length > KB_RECENT_MAX) recent = recent.slice(0, KB_RECENT_MAX);
   localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
 }
@@ -817,9 +818,12 @@ function renderHome() {
         <div class="home-recent-grid">
           ${recent.map(r => `
             <div class="home-card" data-id="${r.id}">
-              <div class="home-card-icon">󰈙</div>
-              <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
-              <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
+              <div class="home-card-cover" style="${r.cover ? `background:${r.cover}` : ""}"></div>
+              <div class="home-card-body">
+                <div class="home-card-icon">󰈙</div>
+                <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
+                <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
+              </div>
             </div>
           `).join("")}
         </div>
@@ -877,7 +881,7 @@ async function loadEntry(id, opts = {}) {
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
   // Track in recently visited
-  _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic);
+  _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic, m.cover || "");
 
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
@@ -971,7 +975,108 @@ async function loadEntry(id, opts = {}) {
     });
     $("propContainer").after(bar);
   }
+
+  // Cover banner
+  applyCover(m.cover || "");
 }
+
+// ---- ENTRY COVER ----
+const COVER_PRESETS = [
+  "linear-gradient(135deg,#1a1a2e,#16213e)",
+  "linear-gradient(135deg,#0f3460,#533483)",
+  "linear-gradient(135deg,#1b4332,#2d6a4f)",
+  "linear-gradient(135deg,#370617,#6a040f)",
+  "linear-gradient(135deg,#03071e,#023e8a)",
+  "linear-gradient(135deg,#240046,#7b2d8b)",
+  "linear-gradient(135deg,#7f5a83,#0d324d)",
+  "linear-gradient(135deg,#232526,#414345)",
+  "linear-gradient(135deg,#134e5e,#71b280)",
+  "linear-gradient(135deg,#1793d1,#0f3460)",
+  "linear-gradient(135deg,#eb5a46,#c0392b)",
+  "linear-gradient(135deg,#f2d600,#ff9f1a)",
+];
+
+function applyCover(coverValue) {
+  const coverEl  = $("entryCover");
+  const addCoverEl = $("entryAddCover");
+  if (!coverEl) return;
+  if (coverValue) {
+    coverEl.style.background = coverValue;
+    coverEl.classList.remove("hidden");
+    addCoverEl.classList.add("hidden");
+  } else {
+    coverEl.classList.add("hidden");
+    addCoverEl.classList.remove("hidden");
+  }
+}
+
+function openCoverPicker() {
+  document.querySelectorAll(".cover-picker-overlay").forEach(e => e.remove());
+  const overlay = document.createElement("div");
+  overlay.className = "cover-picker-overlay";
+  overlay.innerHTML = `
+    <div class="cover-picker">
+      <div class="cover-picker-title">Elige una portada</div>
+      <div class="cover-picker-grid" id="coverPickerGrid"></div>
+      <div class="cover-picker-actions">
+        <button class="btn-ghost" id="coverPickerCancel">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const grid = overlay.querySelector("#coverPickerGrid");
+  COVER_PRESETS.forEach(preset => {
+    const swatch = document.createElement("div");
+    swatch.className = "cover-preset-swatch";
+    swatch.style.background = preset;
+    swatch.addEventListener("click", async () => {
+      await saveCover(preset);
+      overlay.remove();
+    });
+    grid.appendChild(swatch);
+  });
+
+  overlay.querySelector("#coverPickerCancel").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.addEventListener("keydown", function esc(e) {
+    if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); }
+  });
+}
+
+async function saveCover(coverValue) {
+  if (!currentEntryId) return;
+  const res = await fetch(`/api/entry/${currentEntryId}/cover`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cover: coverValue }),
+  });
+  if (!res.ok) return showToast("Error guardando portada");
+  applyCover(coverValue);
+  if (currentEntryMeta) currentEntryMeta.cover = coverValue;
+  // Update recent entry cover
+  _updateRecentCover(currentEntryId, coverValue);
+  renderHome();
+}
+
+function _updateRecentCover(id, cover) {
+  try {
+    let recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]");
+    recent = recent.map(r => r.id === id ? { ...r, cover } : r);
+    localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
+  } catch {}
+}
+
+// Init cover buttons (called once)
+(function initCoverButtons() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const addBtn    = $("addCoverBtn");
+    const changeBtn = $("coverChangeBtn");
+    const removeBtn = $("coverRemoveBtn");
+    if (addBtn)    addBtn.addEventListener("click", openCoverPicker);
+    if (changeBtn) changeBtn.addEventListener("click", openCoverPicker);
+    if (removeBtn) removeBtn.addEventListener("click", () => saveCover(""));
+  });
+})();
 
 // ---- INLINE AUTO-SAVE ----
 function _scheduleAutoSave(md) {

@@ -893,6 +893,19 @@ def toggle_checkbox(entry_id):
     return jsonify({"ok": True})
 
 
+# ── FEATURE: Entry cover ───────────────────────────────────────────────────
+@app.route("/api/entry/<entry_id>/cover", methods=["PATCH"])
+def update_cover(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    cover = body.get("cover", "")   # CSS gradient/color string or ""
+    index[entry_id]["cover"] = cover
+    save_index(index)
+    return jsonify({"ok": True, "cover": cover})
+
+
 # ── FEATURE: Custom Properties ─────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/properties", methods=["PATCH"])
 def update_properties(entry_id):
