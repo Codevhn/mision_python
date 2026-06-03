@@ -109,6 +109,7 @@ window.BlockEditor = (() => {
     let _undoing = false;           // block saveHistory during undo restore
     let _pendingStructuralUndo = false;
     let _textEditedSinceStructure = false;
+    let _toggleStateKey = '';
 
     function saveHistory() {
       if (_undoing) return;
@@ -156,6 +157,32 @@ window.BlockEditor = (() => {
       });
     }
 
+    function saveToggleStateSnapshot() {
+      if (!_toggleStateKey) return;
+      try {
+        const snapshot = toggleStateSnapshot();
+        localStorage.setItem(_toggleStateKey, JSON.stringify({
+          bySig: Array.from(snapshot.bySig.entries()),
+          byIndex: Array.from(snapshot.byIndex.entries()),
+        }));
+      } catch (_) {}
+    }
+
+    function loadToggleStateSnapshot() {
+      if (!_toggleStateKey) return null;
+      try {
+        const raw = localStorage.getItem(_toggleStateKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return {
+          bySig: new Map(Array.isArray(parsed.bySig) ? parsed.bySig : []),
+          byIndex: new Map(Array.isArray(parsed.byIndex) ? parsed.byIndex : []),
+        };
+      } catch (_) {
+        return null;
+      }
+    }
+
     function undo() {
       if (_undoStack.length === 0) return;
       const prev = _undoStack.pop();
@@ -168,6 +195,7 @@ window.BlockEditor = (() => {
       _blocks = mdToBlocks(prev);
       applyToggleStateSnapshot(toggleStates);
       render();
+      saveToggleStateSnapshot();
       if (onChange) onChange(prev);
       _undoing = false;
     }
@@ -1381,6 +1409,7 @@ window.BlockEditor = (() => {
 
     function blocksToMd(arr) {
       const parts = [];
+      const isListLike = type => ['bullet', 'numbered', 'todo'].includes(type);
       const list = (arr || _blocks);
       for (let idx = 0; idx < list.length; idx++) {
         const b = list[idx];
@@ -1388,7 +1417,7 @@ window.BlockEditor = (() => {
           ? `<!-- color:${b.color||'default'}${b.bgColor ? ' bgColor:'+b.bgColor : ''} -->\n`
           : '';
         const c = (readContent(b.id) ?? b.content ?? '').replace(/\n$/, ''); // trim trailing \n
-        const push = (raw) => parts.push(colorPrefix + raw);
+        const push = (raw) => parts.push({ raw: colorPrefix + raw, type: b.type, indent: getIndent(b) });
         switch (b.type) {
           case 'h1': push('# '  + c); break;
           case 'h2': push('## ' + c); break;
@@ -1438,7 +1467,16 @@ window.BlockEditor = (() => {
           default: if (c.trim()) push(c);
         }
       }
-      return parts.join('\n\n');
+      let out = '';
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const next = parts[i + 1];
+        out += part.raw;
+        if (!next) continue;
+        const tightList = isListLike(part.type) && isListLike(next.type) && part.indent === next.indent;
+        out += tightList ? '\n' : '\n\n';
+      }
+      return out;
     }
 
     // ── RENDER ──────────────────────────────────────────────────
@@ -1857,6 +1895,7 @@ window.BlockEditor = (() => {
             : '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>';
           arrow.title = b.open ? 'Colapsar' : 'Expandir';
           body.style.display = b.open ? '' : 'none';
+          saveToggleStateSnapshot();
           container.scrollTop = prevScroll;
         });
 
@@ -2724,6 +2763,7 @@ window.BlockEditor = (() => {
       _lastSavedMd = null;
       _structuralDirty = false;
       _blocks = mdToBlocks(md);
+      applyToggleStateSnapshot(loadToggleStateSnapshot());
       render();
       if (syncTarget) syncTarget.value = md; // sync textarea silently
       _loading = false;
@@ -3065,6 +3105,9 @@ window.BlockEditor = (() => {
       findText,
       findNext,
       replaceAllText,
+      setPersistenceKey(key) {
+        _toggleStateKey = key ? `kb_toggle_state:${key}` : '';
+      },
       // Cross-editor drag API
       _removeBlock(id) {
         const idx = _blocks.findIndex(b => b.id === id);

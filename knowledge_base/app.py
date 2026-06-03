@@ -335,11 +335,13 @@ def get_teamspace_tree():
             continue
         space = meta.get("teamspace", "general")
         space_label = meta.get("teamspace_label") or space.replace("-", " ").title()
-        tree.setdefault(space, {"_label": space_label, "_icon": "", "_entries": []})
+        tree.setdefault(space, {"_label": space_label, "_icon": "", "_home_id": "", "_entries": []})
         if meta.get("is_teamspace_home") and meta.get("icon"):
             tree[space]["_icon"] = meta["icon"]
         elif not tree[space]["_icon"] and meta.get("icon"):
             tree[space]["_icon"] = meta["icon"]
+        if meta.get("is_teamspace_home"):
+            tree[space]["_home_id"] = entry_id
         tree[space]["_entries"].append({
             "id": entry_id,
             "title": meta["title"],
@@ -411,7 +413,8 @@ def get_entry(entry_id):
 @app.route("/api/entry", methods=["POST"])
 def create_entry():
     data = request.json
-    raw_text = data.get("raw_text", "").strip()
+    raw_text = data.get("raw_text", "")
+    already_markdown = bool(data.get("already_markdown"))
     title = data.get("title", "").strip()
     entry_type = data.get("entry_type", "knowledge")
     icon = data.get("icon", "").strip()
@@ -419,7 +422,9 @@ def create_entry():
     if not title:
         return jsonify({"error": "Missing title"}), 400
 
-    md_content = smart_parse(raw_text) if raw_text else ""
+    raw_text = raw_text if isinstance(raw_text, str) else ""
+    raw_text = raw_text.strip()
+    md_content = raw_text if already_markdown else (smart_parse(raw_text) if raw_text else "")
     entry_id = slugify(title)
     index = load_index()
 
@@ -498,11 +503,15 @@ def update_entry(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     data = request.json
-    raw_text = data.get("raw_text", "").strip()
+    raw_text = data.get("raw_text", "")
+    already_markdown = bool(data.get("already_markdown"))
     title = data.get("title", "").strip()
     category = data.get("category", "").strip()
     topic = data.get("topic", "").strip()
     icon = data.get("icon")
+    raw_text = raw_text if isinstance(raw_text, str) else ""
+    raw_text = raw_text.strip()
+    rendered_text = raw_text if already_markdown else (smart_parse(raw_text) if raw_text else "")
 
     meta = index[entry_id]
     old_path = _entry_path(entry_id, meta)
@@ -517,7 +526,7 @@ def update_entry(entry_id):
             _save_history_snapshot(entry_id, meta, old_path)
             if old_path != new_path and old_path.exists():
                 old_path.unlink()
-            new_path.write_text(smart_parse(raw_text))
+            new_path.write_text(rendered_text)
         elif old_path != new_path:
             new_path.parent.mkdir(parents=True, exist_ok=True)
             if old_path.exists():
@@ -546,7 +555,7 @@ def update_entry(entry_id):
             _save_history_snapshot(entry_id, meta, old_path)
             if old_path != new_path and old_path.exists():
                 old_path.unlink()
-            new_path.write_text(smart_parse(raw_text))
+            new_path.write_text(rendered_text)
         elif old_path != new_path and old_path.exists():
             import shutil
             shutil.copy2(old_path, new_path)
@@ -572,7 +581,7 @@ def update_entry(entry_id):
         _save_history_snapshot(entry_id, meta, old_path)
         if old_path != new_path and old_path.exists():
             old_path.unlink()
-        new_path.write_text(smart_parse(raw_text))
+        new_path.write_text(rendered_text)
     elif old_path != new_path and old_path.exists():
         import shutil
         shutil.copy2(old_path, new_path)
@@ -650,7 +659,8 @@ def _extract_snippet(text, q):
 @app.route("/api/preview", methods=["POST"])
 def preview():
     raw_text = request.json.get("raw_text", "")
-    md = smart_parse(raw_text)
+    already_markdown = bool(request.json.get("already_markdown"))
+    md = raw_text if already_markdown else smart_parse(raw_text)
     html = render_markdown(md)
     return jsonify({"markdown": md, "html": html})
 
@@ -886,11 +896,12 @@ def patch_content(entry_id):
     meta = index[entry_id]
     raw_text = data.get("raw_text")
     restore = data.get("restore", False)  # if True, write markdown verbatim (no smart_parse)
+    already_markdown = bool(data.get("already_markdown"))
     if raw_text is not None:
         path = _entry_path(entry_id, meta)
         _save_history_snapshot(entry_id, meta, path)
         # Restore: write markdown as-is; normal save: smart_parse
-        path.write_text(raw_text if restore else smart_parse(raw_text))
+        path.write_text(raw_text if restore or already_markdown else smart_parse(raw_text))
     title = data.get("title", "").strip()
     if title:
         index[entry_id]["title"] = title

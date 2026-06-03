@@ -3598,6 +3598,28 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   gap: 5px;
   padding: 5px 8px 5px 6px;
 }
+.ts-space-toggle-btn,
+.ts-space-main {
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
+.ts-space-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ts-space-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
 .ts-space-icon {
   width: 20px;
   height: 20px;
@@ -3615,6 +3637,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ts-space-icon span {
   width: 0.95rem;
   height: 0.95rem;
+}
+.ts-space-main:hover .ts-space-label,
+.ts-space-main:hover .ts-space-icon {
+  color: var(--text);
 }
 .ts-space-label { color: var(--accent); font-size: 0.78rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-add-page-btn {

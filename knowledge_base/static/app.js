@@ -644,6 +644,7 @@ function renderTeamspaceTree(tree) {
     const spaceLabel = spaceData._label || spaceSlug;
     const entries    = spaceData._entries || [];
     const icon       = spaceData._icon || ENTRY_ICON_DEFAULTS.teamspace;
+    const homeId     = spaceData._home_id || "";
 
     const spaceDiv = document.createElement("div");
     spaceDiv.className = "tree-cat ts-space-block";
@@ -651,19 +652,33 @@ function renderTeamspaceTree(tree) {
     const spaceHeader = document.createElement("div");
     spaceHeader.className = "tree-cat-header ts-space-header";
     spaceHeader.innerHTML = `
-      <span class="tree-arrow">▾</span>
-      <span class="ts-space-icon">${renderIconMarkup(icon, "ts-space-icon-glyph", ENTRY_ICON_DEFAULTS.teamspace)}</span>
-      <span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>
+      <button class="ts-space-toggle-btn" title="Expandir o colapsar">
+        <span class="tree-arrow">▾</span>
+      </button>
+      <button class="ts-space-main" data-home-id="${escapeHtml(homeId)}" title="${homeId ? `Abrir ${escapeHtml(spaceLabel)}` : escapeHtml(spaceLabel)}">
+        <span class="ts-space-icon">${renderIconMarkup(icon, "ts-space-icon-glyph", ENTRY_ICON_DEFAULTS.teamspace)}</span>
+        <span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>
+      </button>
       <button class="ts-add-page-btn" data-space="${escapeHtml(spaceSlug)}" data-label="${escapeHtml(spaceLabel)}" title="Nueva página en ${escapeHtml(spaceLabel)}">+</button>
     `;
     let spaceOpen = true;
 
-    // Click on header (not on + button) → toggle
-    spaceHeader.addEventListener("click", e => {
-      if (e.target.classList.contains("ts-add-page-btn")) return;
+    const toggleBtn = spaceHeader.querySelector(".ts-space-toggle-btn");
+    const mainBtn = spaceHeader.querySelector(".ts-space-main");
+
+    toggleBtn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
       spaceOpen = !spaceOpen;
       spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
       entryList.style.display = spaceOpen ? "" : "none";
+    });
+
+    mainBtn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (homeId) loadEntry(homeId);
+      else toggleBtn.click();
     });
 
     // "+" button → open new page modal for this space
@@ -721,7 +736,7 @@ $("ntsCreate").addEventListener("click", async () => {
   const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: name, raw_text: content, icon, is_teamspace_home: true }),
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: name, raw_text: content, icon, is_teamspace_home: true, already_markdown: true }),
   });
   if (res.ok) {
     $("newTeamspaceOverlay").classList.add("hidden");
@@ -757,7 +772,7 @@ $("tsPageCreate").addEventListener("click", async () => {
   const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "", icon }),
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "", icon, already_markdown: true }),
   });
   if (res.ok) {
     const data = await res.json();
@@ -867,6 +882,7 @@ async function loadEntry(id, opts = {}) {
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
   $("entryBody").classList.toggle("note-entry", isNote);
+  if (_inlineEditor.setPersistenceKey) _inlineEditor.setPersistenceKey(id);
   _inlineEditor.load(data.markdown);
   $("contentArea").scrollTo(0, 0);
 
@@ -966,7 +982,7 @@ function _scheduleAutoSave(md) {
   _autoSaveTimer = setTimeout(() => {
     // Guard: only save if we're still on the same entry
     if (!currentEntryId || currentEntryId !== savedId) return;
-    _patchContent({ raw_text: md });
+    _patchContent({ raw_text: md, already_markdown: true });
   }, 1200);
 }
 
@@ -1119,7 +1135,7 @@ async function saveEntry() {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ course, module, title, raw_text: content, icon }),
+      body: JSON.stringify({ course, module, title, raw_text: content, icon, already_markdown: true }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -1196,7 +1212,7 @@ async function saveEntry() {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content, icon }),
+      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content, icon, already_markdown: true }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -1219,7 +1235,7 @@ async function saveEntry() {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, topic, title, raw_text, icon }),
+      body: JSON.stringify({ category, topic, title, raw_text, icon, already_markdown: true }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -1320,7 +1336,7 @@ async function switchTab(tab) {
       const res = await fetch("/api/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw_text: raw }),
+        body: JSON.stringify({ raw_text: raw, already_markdown: true }),
       });
       const data = await res.json();
       preview.innerHTML = '<div class="entry-body">' + data.html + "</div>";
@@ -2011,6 +2027,7 @@ async function confirmPageCreate() {
       raw_text: "# " + name + "\n\n",
       parent_id: parentId || null,
       icon,
+      already_markdown: true,
     }),
   });
   if (res.ok) {
@@ -2275,6 +2292,7 @@ async function applyMove() {
       title: m.title,
       category: cat,
       topic: topic,
+      already_markdown: true,
     }),
   });
   if (res.ok) {
