@@ -163,13 +163,15 @@
 .kb-col {
   width: 272px;
   flex-shrink: 0;
-  background: var(--bg-elevated);
+  background: rgba(var(--bg-elevated-rgb, 30,30,40), 0.92);
+  background: color-mix(in srgb, var(--bg-surface) 70%, var(--bg-elevated) 30%);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 120px);
   transition: border-color 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 .kb-col--drag-over {
   border-color: var(--accent);
@@ -184,15 +186,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 8px;
+  padding: 10px 14px 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
 }
 .kb-col-name {
   flex: 1;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: var(--text);
+  letter-spacing: 0.01em;
   font-family: var(--font-ui);
   background: none;
   border: none;
@@ -212,8 +215,9 @@
   overflow: visible;
 }
 .kb-col-count {
-  font-size: 0.7rem;
-  color: var(--text-faint);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
   flex-shrink: 0;
 }
 .kb-col-del {
@@ -246,15 +250,17 @@
 .kb-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
-  transition: box-shadow 0.12s, border-color 0.12s;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
   position: relative;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 .kb-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
 }
 .kb-card--dragging {
   opacity: 0.4;
@@ -272,10 +278,11 @@
   display: inline-block;
 }
 .kb-card-title {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
+  font-weight: 500;
 }
 .kb-card-due {
   display: inline-block;
@@ -317,9 +324,9 @@
 .kb-add-col-btn {
   width: 272px;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.06);
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text-muted);
   font-size: 0.82rem;
   font-family: var(--font-ui);
@@ -1346,28 +1353,36 @@
 
 /* ---- Checklist in card thumbnail ---- */
 .kb-checklist-badge {
-  display: inline-block;
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  background: var(--bg-elevated);
-  border-radius: 3px;
-  padding: 1px 5px;
-  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  color: var(--text);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-top: 6px;
   font-family: var(--font-mono);
+  font-weight: 600;
 }
-.kb-checklist-badge--done { color: #61bd4f; }
+.kb-checklist-badge--done {
+  color: #61bd4f;
+  border-color: rgba(97,189,79,0.4);
+  background: rgba(97,189,79,0.1);
+}
 .kb-checklist-bar {
-  height: 4px;
+  height: 5px;
   background: var(--border);
-  border-radius: 2px;
-  margin-top: 4px;
+  border-radius: 3px;
+  margin-top: 5px;
   overflow: hidden;
 }
 .kb-checklist-bar-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.25s;
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 /* ---- Checklist in card modal ---- */
@@ -1533,11 +1548,13 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 0.68rem;
-  color: var(--text-faint);
-  background: none;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 .kb-card-avatars {
   display: flex;
