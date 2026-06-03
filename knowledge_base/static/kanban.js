@@ -1161,6 +1161,7 @@
 
       // ---- COVER ----
       if (card.cover) {
+        modal.classList.remove('kb-modal--no-cover');
         const coverEl = document.createElement('div');
         coverEl.className = 'kb-modal-cover';
         coverEl.style.background = card.cover;
@@ -1173,6 +1174,8 @@
         });
         coverEl.appendChild(coverBtnEl);
         modal.appendChild(coverEl);
+      } else {
+        modal.classList.add('kb-modal--no-cover');
       }
 
       // ---- BODY (two columns) ----
