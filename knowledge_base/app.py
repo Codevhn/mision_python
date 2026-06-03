@@ -278,10 +278,10 @@ def _build_pdf_html(title, date, body_html):
 <style>
   @page {{ margin: 1.8cm 1.5cm; }}
   body {{ font-family: "DejaVu Sans", sans-serif; font-size: 10.5pt; color: #1a1a1a; line-height: 1.7; }}
-  h1 {{ font-size: 1.5em; border-bottom: 2px solid #1793d1; padding-bottom: 6px; color: #0e0e0e; margin-top: 0; margin-bottom: 0.6em; }}
-  h2 {{ font-size: 1.1em; color: #1793d1; border-left: 3px solid #1793d1; padding-left: 8px; margin-top: 1.4em; margin-bottom: 0.4em; }}
-  h3 {{ font-size: 1em; color: #333; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.3em; }}
-  h4 {{ font-size: 0.95em; color: #555; margin-top: 1em; margin-bottom: 0.3em; }}
+  h1 {{ font-size: 1.6em; border-bottom: 2.5px solid #1793d1; padding-bottom: 8px; color: #0a0a0a; margin-top: 0; margin-bottom: 0.7em; letter-spacing: -0.02em; }}
+  h2 {{ font-size: 1.15em; color: #fff; background: #1793d1; padding: 5px 10px; margin-top: 1.6em; margin-bottom: 0.5em; border-radius: 3px; letter-spacing: 0.03em; text-transform: uppercase; }}
+  h3 {{ font-size: 1em; color: #1793d1; font-weight: 700; margin-top: 1.3em; margin-bottom: 0.3em; border-bottom: 1px solid #d0e8f5; padding-bottom: 3px; }}
+  h4 {{ font-size: 0.92em; color: #555; font-weight: 700; margin-top: 1em; margin-bottom: 0.3em; text-transform: uppercase; letter-spacing: 0.05em; font-style: italic; }}
   p  {{ margin: 0 0 0.7em; }}
   code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.82em; background: #f4f4f4; padding: 1px 5px; border: 1px solid #ddd; border-radius: 3px; }}
   pre {{
