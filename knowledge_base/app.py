@@ -4,6 +4,7 @@ import re
 import subprocess
 import shutil
 import uuid
+import base64
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
@@ -904,6 +905,36 @@ def update_cover(entry_id):
     index[entry_id]["cover"] = cover
     save_index(index)
     return jsonify({"ok": True, "cover": cover})
+
+
+@app.route("/api/upload/cover", methods=["POST"])
+def upload_cover_image():
+    """Receive a base64-encoded image, save to static/covers/, return URL."""
+    covers_dir = Path(app.root_path) / "static" / "covers"
+    covers_dir.mkdir(exist_ok=True)
+    body = request.json or {}
+    data_url = body.get("dataUrl", "")
+    if not data_url.startswith("data:image/"):
+        return jsonify({"error": "Invalid image"}), 400
+    header, encoded = data_url.split(",", 1)
+    ext = header.split("/")[1].split(";")[0]  # e.g. "jpeg", "png", "webp"
+    filename = f"{uuid.uuid4().hex[:12]}.{ext}"
+    filepath = covers_dir / filename
+    with open(filepath, "wb") as f:
+        f.write(base64.b64decode(encoded))
+    return jsonify({"ok": True, "url": f"/static/covers/{filename}"})
+
+
+@app.route("/api/entry/<entry_id>/icon", methods=["PATCH"])
+def update_icon(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    icon = body.get("icon", "").strip()
+    index[entry_id]["icon"] = icon
+    save_index(index)
+    return jsonify({"ok": True, "icon": icon})
 
 
 # ── FEATURE: Custom Properties ─────────────────────────────────────────────

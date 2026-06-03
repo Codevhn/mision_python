@@ -898,6 +898,9 @@ async function loadEntry(id, opts = {}) {
     titleEl.classList.toggle("is-empty", !m.title);
   }
 
+  // Set page icon button (Notion-style large icon before title)
+  _setPageIconBtn(m.icon);
+
   // Set status button from meta
   const entryStatus = m.status || "pendiente";
   statusMap[id] = entryStatus;
@@ -984,6 +987,47 @@ async function loadEntry(id, opts = {}) {
   applyCover(m.cover || "");
 }
 
+// ---- PAGE ICON (Notion-style, before inline title) ----
+function _setPageIconBtn(icon) {
+  const btn = $("entryPageIconBtn");
+  if (!btn) return;
+  const fallback = ENTRY_ICON_DEFAULTS[currentEntryMeta?.type] || ENTRY_ICON_DEFAULTS.knowledge;
+  const effective = icon || fallback;
+  btn.innerHTML = renderIconMarkup(effective, "page-icon-glyph");
+
+  // Bind click once (remove old listener by replacing node clone trick via flag)
+  if (!btn._iconPickerBound) {
+    btn._iconPickerBound = true;
+    btn.addEventListener("click", () => {
+      openIconPicker(btn, currentEntryMeta?.icon || "", async (chosenIcon) => {
+        if (!currentEntryId) return;
+        await fetch(`/api/entry/${currentEntryId}/icon`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ icon: chosenIcon }),
+        });
+        if (currentEntryMeta) currentEntryMeta.icon = chosenIcon;
+        _setPageIconBtn(chosenIcon);
+        // Update sidebar label
+        document.querySelectorAll(`.tree-entry[data-id="${currentEntryId}"] .tree-entry-icon`).forEach(el => {
+          el.innerHTML = renderIconMarkup(chosenIcon, "tree-entry-icon-glyph");
+        });
+        // Update meta bar
+        const glyph = $("entryMeta")?.querySelector(".meta-entry-icon-glyph, .meta-seg-icon");
+        if (glyph) glyph.replaceWith(...(new DOMParser().parseFromString(renderIconMarkup(chosenIcon, "meta-entry-icon-glyph"), "text/html").body.childNodes));
+        // Update recent icon
+        try {
+          let rec = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]");
+          rec = rec.map(r => r.id === currentEntryId ? { ...r, icon: chosenIcon } : r);
+          localStorage.setItem(KB_RECENT_KEY, JSON.stringify(rec));
+        } catch {}
+        renderHome();
+      });
+    });
+  }
+}
+
+
 // ---- ENTRY COVER ----
 const COVER_PRESETS = [
   "linear-gradient(135deg,#1a1a2e,#16213e)",
@@ -1006,21 +1050,17 @@ function applyCover(coverValue) {
   if (!coverEl) return;
   if (coverValue) {
     if (coverValue.startsWith("url(")) {
-      coverEl.style.backgroundImage = coverValue;
-      coverEl.style.backgroundSize = "cover";
-      coverEl.style.backgroundPosition = "center";
-      coverEl.style.background = "";
+      coverEl.setAttribute("style",
+        `background-image:${coverValue};background-size:cover;background-position:center`);
     } else {
-      coverEl.style.background = coverValue;
-      coverEl.style.backgroundImage = "";
+      coverEl.setAttribute("style", `background:${coverValue}`);
     }
     coverEl.classList.remove("hidden");
-    addCoverEl.classList.add("hidden");
+    if (addCoverEl) addCoverEl.classList.add("hidden");
   } else {
-    coverEl.style.background = "";
-    coverEl.style.backgroundImage = "";
+    coverEl.removeAttribute("style");
     coverEl.classList.add("hidden");
-    addCoverEl.classList.remove("hidden");
+    if (addCoverEl) addCoverEl.classList.remove("hidden");
   }
 }
 
@@ -1032,8 +1072,9 @@ function openCoverPicker() {
     <div class="cover-picker">
       <div class="cover-picker-title">Elige una portada</div>
       <div class="cover-picker-tabs">
-        <button class="cover-tab active" data-tab="gradients">Degradados</button>
-        <button class="cover-tab" data-tab="image">Imagen URL</button>
+        <button class="cover-tab active" data-tab="Gradients">Degradados</button>
+        <button class="cover-tab" data-tab="Image">URL de imagen</button>
+        <button class="cover-tab" data-tab="Upload">Subir imagen</button>
       </div>
       <div class="cover-tab-panel" id="coverTabGradients">
         <div class="cover-picker-grid" id="coverPickerGrid"></div>
@@ -1042,7 +1083,17 @@ function openCoverPicker() {
         <div class="cover-url-wrap">
           <input type="url" id="coverUrlInput" class="cover-url-input" placeholder="https://ejemplo.com/imagen.jpg" />
           <div class="cover-url-preview" id="coverUrlPreview"></div>
-          <button class="btn-primary" id="coverUrlApply">Aplicar imagen</button>
+          <button class="btn-primary" id="coverUrlApply">Aplicar</button>
+        </div>
+      </div>
+      <div class="cover-tab-panel hidden" id="coverTabUpload">
+        <div class="cover-url-wrap">
+          <label class="cover-upload-label">
+            <input type="file" id="coverFileInput" accept="image/*" style="display:none" />
+            <span class="cover-upload-zone" id="coverUploadZone">📁 Haz clic o arrastra una imagen aquí</span>
+          </label>
+          <div class="cover-url-preview" id="coverUploadPreview"></div>
+          <button class="btn-primary" id="coverUploadApply" disabled>Aplicar imagen</button>
         </div>
       </div>
       <div class="cover-picker-actions">
@@ -1057,7 +1108,7 @@ function openCoverPicker() {
       overlay.querySelectorAll(".cover-tab").forEach(t => t.classList.remove("active"));
       overlay.querySelectorAll(".cover-tab-panel").forEach(p => p.classList.add("hidden"));
       tab.classList.add("active");
-      overlay.querySelector(`#coverTab${tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)}`).classList.remove("hidden");
+      overlay.querySelector(`#coverTab${tab.dataset.tab}`).classList.remove("hidden");
     });
   });
 
@@ -1080,18 +1131,52 @@ function openCoverPicker() {
   urlInput.addEventListener("input", () => {
     const val = urlInput.value.trim();
     if (val) {
-      urlPreview.style.backgroundImage = `url(${val})`;
-      urlPreview.style.backgroundSize = "cover";
-      urlPreview.style.backgroundPosition = "center";
-      urlPreview.style.display = "block";
-    } else {
-      urlPreview.style.display = "none";
-    }
+      urlPreview.style.cssText = `background-image:url(${val});background-size:cover;background-position:center;display:block`;
+    } else { urlPreview.style.display = "none"; }
   });
   overlay.querySelector("#coverUrlApply").addEventListener("click", async () => {
     const val = urlInput.value.trim();
     if (!val) return;
     await saveCover(`url(${val})`);
+    overlay.remove();
+  });
+
+  // File upload tab
+  let _uploadDataUrl = null;
+  const fileInput = overlay.querySelector("#coverFileInput");
+  const uploadPreview = overlay.querySelector("#coverUploadPreview");
+  const uploadApply = overlay.querySelector("#coverUploadApply");
+  const uploadZone = overlay.querySelector("#coverUploadZone");
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      _uploadDataUrl = e.target.result;
+      uploadPreview.style.cssText = `background-image:url(${_uploadDataUrl});background-size:cover;background-position:center;display:block`;
+      uploadApply.disabled = false;
+      uploadZone.textContent = `✓ ${file.name}`;
+    };
+    reader.readAsDataURL(file);
+  }
+  fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+  uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.style.borderColor = "var(--accent)"; });
+  uploadZone.addEventListener("dragleave", () => { uploadZone.style.borderColor = ""; });
+  uploadZone.addEventListener("drop", e => { e.preventDefault(); uploadZone.style.borderColor = ""; handleFile(e.dataTransfer.files[0]); });
+  uploadZone.addEventListener("click", () => fileInput.click());
+
+  uploadApply.addEventListener("click", async () => {
+    if (!_uploadDataUrl) return;
+    uploadApply.disabled = true;
+    uploadApply.textContent = "Subiendo…";
+    const res = await fetch("/api/upload/cover", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl: _uploadDataUrl }),
+    });
+    if (!res.ok) { showToast("Error al subir imagen", "error"); uploadApply.disabled = false; uploadApply.textContent = "Aplicar imagen"; return; }
+    const { url } = await res.json();
+    await saveCover(`url(${url})`);
     overlay.remove();
   });
 
