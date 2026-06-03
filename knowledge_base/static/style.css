@@ -1,6 +1,7 @@
 /* =============================================
    KNOWLEDGE BASE — Arch Linux Aesthetic
    Minimalist · Sharp · Cold · #1793d1
+   + Glassmorphism layer (backdrop-filter blur)
    ============================================= */
 
 :root {
@@ -9,11 +10,11 @@
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 
   /* ARCH DARK */
-  --bg:          #0e0e0e;
-  --bg-sidebar:  #111111;
-  --bg-surface:  #161616;
-  --bg-elevated: #1c1c1c;
-  --bg-hover:    #202020;
+  --bg:          #0a0a0f;
+  --bg-sidebar:  rgba(14, 14, 22, 0.72);
+  --bg-surface:  rgba(18, 18, 28, 0.70);
+  --bg-elevated: rgba(24, 24, 36, 0.80);
+  --bg-hover:    rgba(32, 32, 48, 0.85);
   --bg-code:     #131313;
 
   --border:      #2a2a2a;
@@ -43,6 +44,11 @@
   --topbar-h:  46px;
   --sidebar-w: 256px;
   --shadow:    none;
+
+  /* Glassmorphism */
+  --glass-blur:   blur(20px) saturate(160%);
+  --glass-border: rgba(23, 147, 209, 0.12);
+  --glass-shadow: 0 4px 32px rgba(0, 0, 0, 0.55);
 }
 
 /* LIGHT variant — keep Arch feel, just lighter bg */
@@ -86,6 +92,13 @@ body {
   line-height: 1.6;
   height: 100vh;
   overflow: hidden;
+  /* Glassmorphism base: animated radial blobs */
+  background-color: #060610;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% 20%, rgba(23, 147, 209, 0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 55% at 85% 75%, rgba(10, 60, 120, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(30, 20, 60, 0.25) 0%, transparent 70%);
+  background-attachment: fixed;
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); text-decoration: underline; }
@@ -99,7 +112,9 @@ input, textarea, select { font-family: inherit; }
   top: 0; left: 0; right: 0;
   height: var(--topbar-h);
   background: var(--bg-sidebar);
-  border-bottom: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
   padding: 0 14px;
@@ -149,7 +164,10 @@ input, textarea, select { font-family: inherit; }
   top: calc(100% + 2px);
   left: 0; right: 0;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   max-height: 360px;
   overflow-y: auto;
   z-index: 200;
@@ -173,7 +191,10 @@ input, textarea, select { font-family: inherit; }
   gap: 6px;
   padding: 8px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
 }
 .page-find-panel input {
@@ -263,7 +284,9 @@ input, textarea, select { font-family: inherit; }
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
   overflow-y: auto;
   transition: width 0.18s, min-width 0.18s;
   scrollbar-width: thin;
@@ -450,10 +473,12 @@ input, textarea, select { font-family: inherit; }
 }
 .home-card {
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.1s;
+  transition: background 0.12s, border-color 0.12s, transform 0.1s, box-shadow 0.12s;
   min-height: 90px;
   display: flex;
   flex-direction: column;
@@ -461,9 +486,9 @@ input, textarea, select { font-family: inherit; }
 }
 .home-card:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: rgba(23, 147, 209, 0.35);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(23,147,209,0.1);
 }
 .home-card-cover {
   width: 100%;
@@ -596,12 +621,14 @@ input, textarea, select { font-family: inherit; }
 }
 .cover-picker {
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   padding: 24px;
   width: 480px;
   max-width: 95vw;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--glass-shadow);
 }
 .cover-picker-title {
   font-size: 0.85rem;
@@ -1132,13 +1159,15 @@ input, textarea, select { font-family: inherit; }
 }
 .modal {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   width: 100%;
   max-width: 740px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  box-shadow: var(--glass-shadow);
 }
 .modal-header {
   display: flex;
@@ -1550,7 +1579,10 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   right: 10px;
   width: 200px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   z-index: 90;
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -1794,10 +1826,12 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
 .context-menu {
   position: fixed;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   z-index: 500;
   min-width: 140px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  box-shadow: var(--glass-shadow);
 }
 .context-menu-item {
   padding: 8px 14px;
@@ -1915,7 +1949,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   right: 10px;
   width: 220px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   z-index: 89;
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -2026,7 +2063,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
    ============================================================ */
 .move-panel {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-top: none;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -2725,8 +2764,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   position: fixed;
   z-index: 9999;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   width: 280px;
   max-height: 280px;
   overflow-y: auto;
