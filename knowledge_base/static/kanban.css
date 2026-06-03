@@ -1134,7 +1134,8 @@
 .kb-create-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
   z-index: 1100;
   display: flex;
   align-items: center;
@@ -1142,43 +1143,69 @@
 }
 .kb-create-overlay.hidden { display: none; }
 .kb-create-modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  width: 400px;
+  background: rgba(18, 20, 30, 0.97);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  width: 420px;
   max-width: calc(100vw - 32px);
-  padding: 24px 28px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  padding: 28px 32px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
 }
 .kb-create-modal h3 {
-  font-size: 0.92rem;
-  color: var(--text);
-  margin-bottom: 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 22px;
+  letter-spacing: 0.01em;
 }
 .kb-create-field {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .kb-create-field label {
   display: block;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-bottom: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 6px;
   font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .kb-create-field input,
 .kb-create-field textarea {
   width: 100%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  resize: none;
+  box-sizing: border-box;
+}
+.kb-create-field input::placeholder,
+.kb-create-field textarea::placeholder { color: rgba(255,255,255,0.3); }
+.kb-create-field input:focus,
+.kb-create-field textarea:focus {
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.11);
+}
+.kb-create-field select {
+  width: 100%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  color: #fff;
   font-family: var(--font-ui);
   font-size: 0.82rem;
-  padding: 7px 10px;
+  padding: 8px 12px;
   outline: none;
+  cursor: pointer;
+  appearance: auto;
 }
-.kb-create-field input:focus,
-.kb-create-field textarea:focus { border-color: var(--accent); }
 .kb-color-row {
   display: flex;
   gap: 7px;
