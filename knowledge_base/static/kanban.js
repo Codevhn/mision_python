@@ -892,19 +892,49 @@
       el.appendChild(barWrap);
     }
 
-    // Member avatars
-    if (card.members && card.members.length) {
-      const avatarsEl = document.createElement('div');
-      avatarsEl.className = 'kb-card-avatars';
-      card.members.forEach(m => {
-        const av = document.createElement('div');
-        av.className = 'kb-avatar';
-        av.style.background = m.color;
-        av.textContent = m.name.charAt(0).toUpperCase();
-        av.title = m.name;
-        avatarsEl.appendChild(av);
-      });
-      el.appendChild(avatarsEl);
+    // Footer: left icons + right avatars
+    const hasDesc = card.description && card.description.trim();
+    const hasAttach = card.attachments && card.attachments.length;
+    const hasMembers = card.members && card.members.length;
+    if (hasDesc || hasAttach || hasMembers) {
+      const footerEl = document.createElement('div');
+      footerEl.className = 'kb-card-footer';
+
+      const leftEl = document.createElement('div');
+      leftEl.className = 'kb-card-footer-left';
+
+      if (hasDesc) {
+        const descIcon = document.createElement('span');
+        descIcon.className = 'kb-card-footer-icon';
+        descIcon.textContent = '≡';
+        descIcon.title = 'Descripción';
+        leftEl.appendChild(descIcon);
+      }
+      if (hasAttach) {
+        const attachIcon = document.createElement('span');
+        attachIcon.className = 'kb-card-footer-icon';
+        attachIcon.textContent = '📎 ' + card.attachments.length;
+        attachIcon.title = 'Adjuntos';
+        leftEl.appendChild(attachIcon);
+      }
+
+      footerEl.appendChild(leftEl);
+
+      if (hasMembers) {
+        const avatarsEl = document.createElement('div');
+        avatarsEl.className = 'kb-card-avatars';
+        card.members.forEach(m => {
+          const av = document.createElement('div');
+          av.className = 'kb-avatar';
+          av.style.background = m.color;
+          av.textContent = m.name.charAt(0).toUpperCase();
+          av.title = m.name;
+          avatarsEl.appendChild(av);
+        });
+        footerEl.appendChild(avatarsEl);
+      }
+
+      el.appendChild(footerEl);
     }
 
     // Drag events for card
@@ -2393,23 +2423,48 @@
     const section = document.createElement('div');
     section.className = 'kb-checklist-section';
 
-    const label = document.createElement('div');
-    label.className = 'kb-modal-section-label';
-    label.textContent = 'Checklist';
-    section.appendChild(label);
+    // Header row: icon + title + Eliminar button
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+    const headerLeft = document.createElement('div');
+    headerLeft.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);';
+    headerLeft.innerHTML = '<span>☑</span><span>Checklist</span>';
+    const eliminarBtn = document.createElement('button');
+    eliminarBtn.className = 'kb-checklist-del';
+    eliminarBtn.style.cssText = 'font-size:0.72rem;padding:2px 8px;';
+    eliminarBtn.textContent = 'Eliminar';
+    eliminarBtn.title = 'Eliminar checklist';
+    eliminarBtn.addEventListener('click', () => {
+      card.checklist = [];
+      saveBoard(_currentBoard.id);
+      renderChecklistSection(card, container);
+    });
+    headerRow.appendChild(headerLeft);
+    headerRow.appendChild(eliminarBtn);
+    section.appendChild(headerRow);
 
     const total = card.checklist.length;
     const done = card.checklist.filter(i => i.done).length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
     if (total > 0) {
+      const progressRow = document.createElement('div');
+      progressRow.className = 'kb-checklist-progress-row';
+
+      const pctLabel = document.createElement('span');
+      pctLabel.className = 'kb-checklist-pct';
+      pctLabel.textContent = pct + '%';
+
       const progWrap = document.createElement('div');
       progWrap.className = 'kb-checklist-progress';
       const progFill = document.createElement('div');
       progFill.className = 'kb-checklist-bar-fill';
       progFill.style.width = pct + '%';
       progWrap.appendChild(progFill);
-      section.appendChild(progWrap);
+
+      progressRow.appendChild(pctLabel);
+      progressRow.appendChild(progWrap);
+      section.appendChild(progressRow);
     }
 
     card.checklist.forEach((item, idx) => {
@@ -2428,6 +2483,28 @@
       const txt = document.createElement('span');
       txt.className = 'kb-checklist-text';
       txt.textContent = item.text;
+
+      // Inline editing on click
+      txt.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'kb-checklist-edit-input';
+        input.value = item.text;
+        row.replaceChild(input, txt);
+        input.focus();
+        input.select();
+        const saveEdit = () => {
+          const newText = input.value.trim();
+          if (newText) item.text = newText;
+          saveBoard(_currentBoard.id);
+          renderChecklistSection(card, container);
+        };
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
+          if (e.key === 'Escape') { renderChecklistSection(card, container); }
+        });
+      });
 
       const del = document.createElement('button');
       del.className = 'kb-checklist-del';
