@@ -1633,7 +1633,7 @@
       const chip = document.createElement('span');
       chip.className = 'kb-modal-label-chip';
       chip.style.background = lbl.color;
-      chip.innerHTML = `${escHtml(lbl.text)}<button class="kb-modal-label-del" data-idx="${i}">&times;</button>`;
+      chip.innerHTML = `${lbl.text ? escHtml(lbl.text) : ''}<button class="kb-modal-label-del" data-idx="${i}">&times;</button>`;
       chip.querySelector('.kb-modal-label-del').addEventListener('click', () => {
         card.labels.splice(i, 1);
         renderModalLabelsInline(card, container);
@@ -2451,7 +2451,7 @@
       const chip = document.createElement('span');
       chip.className = 'kb-modal-label-chip';
       chip.style.background = lbl.color;
-      chip.innerHTML = `${escHtml(lbl.text)}<button class="kb-modal-label-del" data-idx="${i}">&times;</button>`;
+      chip.innerHTML = `${lbl.text ? escHtml(lbl.text) : ''}<button class="kb-modal-label-del" data-idx="${i}">&times;</button>`;
       chip.querySelector('.kb-modal-label-del').addEventListener('click', () => {
         card.labels.splice(i, 1);
         renderModalLabels(card, container);
@@ -2476,12 +2476,25 @@
     let selColor = LABEL_COLORS[0];
     const pop = document.createElement('div');
     pop.className = 'kb-label-popover';
-    pop.innerHTML = `
-      <input type="text" placeholder="Texto de la etiqueta…" id="kbLblText" />
-      <div class="kb-label-color-grid" id="kbLblColors"></div>
-      <button class="kb-label-popover-add" id="kbLblAdd">Agregar etiqueta</button>`;
 
-    const grid = pop.querySelector('#kbLblColors');
+    // Preview chip
+    const preview = document.createElement('div');
+    preview.className = 'kb-label-preview-chip';
+    preview.style.background = selColor;
+    preview.textContent = ' ';
+    pop.appendChild(preview);
+
+    const textInput = document.createElement('input');
+    textInput.type = 'text';
+    textInput.placeholder = 'Texto (opcional)…';
+    textInput.className = 'kb-label-text-input';
+    textInput.addEventListener('input', () => {
+      preview.textContent = textInput.value.trim() || ' ';
+    });
+    pop.appendChild(textInput);
+
+    const grid = document.createElement('div');
+    grid.className = 'kb-label-color-grid';
     LABEL_COLORS.forEach(c => {
       const sw = document.createElement('div');
       sw.className = 'kb-label-color-swatch' + (c === selColor ? ' selected' : '');
@@ -2490,25 +2503,30 @@
         selColor = c;
         grid.querySelectorAll('.kb-label-color-swatch').forEach(s => s.classList.remove('selected'));
         sw.classList.add('selected');
+        preview.style.background = c;
       });
       grid.appendChild(sw);
     });
+    pop.appendChild(grid);
 
-    pop.style.position = 'fixed';
-    document.body.appendChild(pop);
-    const rect = anchor.getBoundingClientRect();
-    pop.style.left = Math.min(rect.left, window.innerWidth - 250) + 'px';
-    pop.style.top = (rect.bottom + 6) + 'px';
-
-    pop.querySelector('#kbLblAdd').addEventListener('click', () => {
-      const text = pop.querySelector('#kbLblText').value.trim();
-      if (!text) return;
+    const addBtn = document.createElement('button');
+    addBtn.className = 'kb-label-popover-add';
+    addBtn.textContent = 'Agregar etiqueta';
+    addBtn.addEventListener('click', () => {
+      const text = textInput.value.trim();
       if (!card.labels) card.labels = [];
       card.labels.push({ text, color: selColor });
       saveBoard(_currentBoard.id);
       onAdd();
       pop.remove();
     });
+    pop.appendChild(addBtn);
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    pop.style.left = Math.min(rect.left, window.innerWidth - 250) + 'px';
+    pop.style.top = (rect.bottom + 6) + 'px';
 
     const closePopover = e => {
       if (!pop.contains(e.target) && e.target !== anchor) {
