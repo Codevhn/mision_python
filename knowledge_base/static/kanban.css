@@ -36,9 +36,7 @@
 }
 .kb-board-card {
   background: var(--bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
   padding: 0;
@@ -246,10 +244,8 @@
 
 /* ---- Card ---- */
 .kb-card {
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
   cursor: pointer;
@@ -401,17 +397,15 @@
 .kb-modal-overlay.hidden { display: none; }
 
 .kb-modal {
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 8px;
   width: 640px;
   max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0;
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
 .kb-modal--trello {
   width: 768px;
