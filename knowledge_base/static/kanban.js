@@ -1090,10 +1090,28 @@
     });
   }
 
-  // ---- Card modal ----
+  // ---- Card modal (Trello-exact) ----
+  function relativeTime(isoStr) {
+    if (!isoStr) return '';
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return 'hace un momento';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `hace ${m} min`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `hace ${h} h`;
+    const d = Math.floor(h / 24);
+    return `hace ${d} día${d > 1 ? 's' : ''}`;
+  }
+
   function openCardModal(card, colId) {
     const existing = document.getElementById('kbCardModal');
     if (existing) existing.remove();
+
+    // Ensure new fields exist
+    if (!card.comments) card.comments = [];
+    if (!card.attachments) card.attachments = [];
+    if (card.cover_full === undefined) card.cover_full = false;
 
     const overlay = document.createElement('div');
     overlay.className = 'kb-modal-overlay';
@@ -1101,68 +1119,730 @@
 
     const col = _currentBoard.columns.find(c => c.id === colId);
     const colName = col ? col.name : '';
+    const boardName = _currentBoard ? _currentBoard.name : '';
 
-    overlay.innerHTML = `
-      <div class="kb-modal">
-        <div class="kb-modal-header">
-          <span class="kb-modal-header-icon">&#9646;</span>
-          <textarea class="kb-modal-title-input" id="kbCardTitle" rows="2">${escHtml(card.title)}</textarea>
-          <button class="kb-modal-close" id="kbModalClose">&times;</button>
-        </div>
-        <div style="padding:4px 20px 0;font-size:0.7rem;color:var(--text-faint)">en lista <strong>${escHtml(colName)}</strong></div>
-        <div class="kb-modal-body">
-          <div class="kb-modal-main">
-            <div>
-              <div class="kb-modal-section-label">Etiquetas</div>
-              <div class="kb-modal-labels" id="kbModalLabels"></div>
-            </div>
-            <div>
-              <div class="kb-modal-section-label">Descripción</div>
-              <textarea class="kb-modal-desc" id="kbCardDesc" placeholder="Agregar descripción…">${escHtml(card.description || '')}</textarea>
-            </div>
-            <div id="kbChecklistSection"></div>
-          </div>
-          <div class="kb-modal-sidebar" id="kbModalSidebar">
-          </div>
-        </div>
-      </div>`;
-
+    const modal = document.createElement('div');
+    modal.className = 'kb-modal kb-modal--trello';
+    overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    const sidebar = overlay.querySelector('#kbModalSidebar');
-    buildModalSidebar(card, colId, sidebar, overlay);
-
-    // Render labels
-    renderModalLabels(card, overlay.querySelector('#kbModalLabels'));
-
-    // Render checklist
-    renderChecklistSection(card, overlay.querySelector('#kbChecklistSection'));
-
-    // Close handlers
+    // ---- Close helpers ----
     const closeModal = () => {
       overlay.remove();
       renderColumns();
     };
-    overlay.querySelector('#kbModalClose').addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     const escHandler = e => {
       if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escHandler); }
     };
     document.addEventListener('keydown', escHandler);
 
-    // Title save
-    const titleEl = overlay.querySelector('#kbCardTitle');
-    titleEl.addEventListener('blur', () => {
-      const val = titleEl.value.trim();
-      if (val) { card.title = val; saveBoard(_currentBoard.id); }
-    });
+    function rebuildModal() {
+      modal.innerHTML = '';
 
-    // Description save
-    const descEl = overlay.querySelector('#kbCardDesc');
-    descEl.addEventListener('blur', () => {
-      card.description = descEl.value;
-      saveBoard(_currentBoard.id);
+      // ---- TOP BAR ----
+      const topbar = document.createElement('div');
+      topbar.className = 'kb-modal-topbar';
+      topbar.innerHTML = `
+        <span class="kb-modal-topbar-board">&#9646; ${escHtml(boardName)}</span>
+        <div class="kb-modal-topbar-actions">
+          <button class="kb-modal-topbar-btn" id="kbModalArchiveTopBtn" title="Archivar">&#9632;</button>
+          <button class="kb-modal-topbar-btn" id="kbModalMoreTopBtn" title="Más">&#8943;</button>
+          <button class="kb-modal-close" id="kbModalClose">&times;</button>
+        </div>`;
+      modal.appendChild(topbar);
+      topbar.querySelector('#kbModalClose').addEventListener('click', closeModal);
+      topbar.querySelector('#kbModalArchiveTopBtn').addEventListener('click', () => {
+        card.archived = true;
+        saveBoard(_currentBoard.id);
+        overlay.remove();
+        renderColumns();
+        updateArchiveBtnCount();
+        showToast('Tarjeta archivada');
+      });
+
+      // ---- COVER ----
+      if (card.cover) {
+        const coverEl = document.createElement('div');
+        coverEl.className = 'kb-modal-cover';
+        coverEl.style.background = card.cover;
+        const coverBtnEl = document.createElement('button');
+        coverBtnEl.className = 'kb-modal-cover-btn';
+        coverBtnEl.innerHTML = '&#128444; Cambiar portada';
+        coverBtnEl.addEventListener('click', e => {
+          e.stopPropagation();
+          showCardCoverPicker(coverBtnEl, card, rebuildModal);
+        });
+        coverEl.appendChild(coverBtnEl);
+        modal.appendChild(coverEl);
+      }
+
+      // ---- BODY (two columns) ----
+      const body = document.createElement('div');
+      body.className = 'kb-modal-body';
+      modal.appendChild(body);
+
+      // ---- LEFT / MAIN ----
+      const main = document.createElement('div');
+      main.className = 'kb-modal-main';
+      body.appendChild(main);
+
+      // Title row
+      const titleRow = document.createElement('div');
+      titleRow.className = 'kb-modal-title-row';
+      const doneCircle = document.createElement('button');
+      doneCircle.className = 'kb-modal-done-circle' + (card.done ? ' kb-modal-done-circle--done' : '');
+      doneCircle.title = card.done ? 'Marcar como pendiente' : 'Marcar como completada';
+      doneCircle.textContent = card.done ? '●' : '○';
+      doneCircle.addEventListener('click', () => {
+        card.done = !card.done;
+        saveBoard(_currentBoard.id);
+        rebuildModal();
+      });
+      const titleTa = document.createElement('textarea');
+      titleTa.className = 'kb-modal-title-input kb-modal-title-trello';
+      titleTa.value = card.title;
+      titleTa.rows = 1;
+      titleTa.addEventListener('input', () => {
+        titleTa.style.height = 'auto';
+        titleTa.style.height = titleTa.scrollHeight + 'px';
+      });
+      titleTa.addEventListener('blur', () => {
+        const val = titleTa.value.trim();
+        if (val) { card.title = val; saveBoard(_currentBoard.id); }
+      });
+      titleRow.appendChild(doneCircle);
+      titleRow.appendChild(titleTa);
+      main.appendChild(titleRow);
+      // Auto-resize on load
+      setTimeout(() => {
+        titleTa.style.height = 'auto';
+        titleTa.style.height = titleTa.scrollHeight + 'px';
+      }, 0);
+
+      // In list note
+      const inList = document.createElement('div');
+      inList.className = 'kb-modal-inlist';
+      inList.innerHTML = `en lista <strong>${escHtml(colName)}</strong>`;
+      main.appendChild(inList);
+
+      // Action pills row
+      const pillsRow = document.createElement('div');
+      pillsRow.className = 'kb-modal-action-pills';
+
+      function makePill(icon, text, onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'kb-modal-pill-btn';
+        btn.innerHTML = `${icon} ${escHtml(text)}`;
+        btn.addEventListener('click', e => { e.stopPropagation(); onClick(btn, e); });
+        return btn;
+      }
+
+      // Labels pill
+      pillsRow.appendChild(makePill('🏷', 'Etiquetas', btn => {
+        showLabelPopover(btn, card, () => renderModalLabelsInline(card, labelsSection));
+      }));
+      // Due date pill
+      const duePillWrap = document.createElement('div');
+      duePillWrap.style.position = 'relative';
+      const duePill = document.createElement('button');
+      duePill.className = 'kb-modal-pill-btn';
+      duePill.innerHTML = '📅 ' + escHtml(card.due || 'Fecha');
+      const duePillInput = document.createElement('input');
+      duePillInput.type = 'date';
+      duePillInput.className = 'kb-due-input-hidden';
+      duePillInput.value = card.due || '';
+      duePill.addEventListener('click', () => duePillInput.showPicker ? duePillInput.showPicker() : duePillInput.focus());
+      duePillInput.addEventListener('change', () => {
+        card.due = duePillInput.value;
+        saveBoard(_currentBoard.id);
+        rebuildModal();
+      });
+      duePillWrap.appendChild(duePill);
+      duePillWrap.appendChild(duePillInput);
+      pillsRow.appendChild(duePillWrap);
+
+      // Checklist pill
+      pillsRow.appendChild(makePill('☑', 'Checklist', () => {
+        if (!card.checklist) card.checklist = [];
+        renderChecklistSection(card, checklistSection);
+        checklistSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }));
+      // Members pill
+      pillsRow.appendChild(makePill('👤', 'Miembros', btn => {
+        showMembersPopover(btn, card, rebuildModal);
+      }));
+      // Portada pill
+      pillsRow.appendChild(makePill('🎨', 'Portada', btn => {
+        showCardCoverPicker(btn, card, rebuildModal);
+      }));
+      main.appendChild(pillsRow);
+
+      // Labels section (inline, below pills)
+      const labelsSection = document.createElement('div');
+      labelsSection.className = 'kb-modal-labels-section';
+      renderModalLabelsInline(card, labelsSection);
+      main.appendChild(labelsSection);
+
+      // Members section inline
+      if (card.members && card.members.length > 0) {
+        const memSection = document.createElement('div');
+        memSection.className = 'kb-modal-section';
+        const memHeader = document.createElement('div');
+        memHeader.className = 'kb-modal-section-header';
+        memHeader.innerHTML = '<span class="kb-modal-section-icon">👤</span><span class="kb-modal-section-title">Miembros</span>';
+        const memAvatars = document.createElement('div');
+        memAvatars.className = 'kb-members-avatars-row';
+        card.members.forEach((m, idx) => {
+          const av = document.createElement('div');
+          av.className = 'kb-avatar';
+          av.style.background = m.color;
+          av.textContent = m.name.charAt(0).toUpperCase();
+          av.title = m.name + ' (click para quitar)';
+          av.style.cursor = 'pointer';
+          av.addEventListener('click', () => {
+            card.members.splice(idx, 1);
+            saveBoard(_currentBoard.id);
+            rebuildModal();
+          });
+          memAvatars.appendChild(av);
+        });
+        memSection.appendChild(memHeader);
+        memSection.appendChild(memAvatars);
+        main.appendChild(memSection);
+      }
+
+      // Description section
+      const descSection = document.createElement('div');
+      descSection.className = 'kb-modal-section';
+      const descHeader = document.createElement('div');
+      descHeader.className = 'kb-modal-section-header';
+      descHeader.innerHTML = `<span class="kb-modal-section-icon">&#9776;</span><span class="kb-modal-section-title">Descripción</span>`;
+      const descEditBtn = document.createElement('button');
+      descEditBtn.className = 'kb-modal-section-edit-btn';
+      descEditBtn.textContent = 'Editar';
+      descHeader.appendChild(descEditBtn);
+      descSection.appendChild(descHeader);
+
+      const descDisplay = document.createElement('div');
+      descDisplay.className = 'kb-modal-desc-display' + (!card.description ? ' kb-modal-desc-placeholder' : '');
+      descDisplay.textContent = card.description || 'Agregar una descripción más detallada…';
+      descSection.appendChild(descDisplay);
+
+      const descEditArea = document.createElement('div');
+      descEditArea.className = 'kb-modal-desc-edit-area';
+      descEditArea.style.display = 'none';
+      const descTa = document.createElement('textarea');
+      descTa.className = 'kb-modal-desc';
+      descTa.placeholder = 'Agregar una descripción más detallada…';
+      descTa.value = card.description || '';
+      const descBtns = document.createElement('div');
+      descBtns.className = 'kb-modal-desc-btns';
+      const descSaveBtn = document.createElement('button');
+      descSaveBtn.className = 'kb-btn kb-btn--primary';
+      descSaveBtn.style.fontSize = '0.75rem';
+      descSaveBtn.style.padding = '4px 12px';
+      descSaveBtn.textContent = 'Guardar';
+      const descCancelBtn = document.createElement('button');
+      descCancelBtn.className = 'kb-btn';
+      descCancelBtn.style.fontSize = '0.75rem';
+      descCancelBtn.style.padding = '4px 12px';
+      descCancelBtn.textContent = 'Cancelar';
+      descBtns.appendChild(descSaveBtn);
+      descBtns.appendChild(descCancelBtn);
+      descEditArea.appendChild(descTa);
+      descEditArea.appendChild(descBtns);
+      descSection.appendChild(descEditArea);
+      main.appendChild(descSection);
+
+      const openDescEdit = () => {
+        descDisplay.style.display = 'none';
+        descEditBtn.style.display = 'none';
+        descEditArea.style.display = '';
+        descTa.focus();
+      };
+      descEditBtn.addEventListener('click', openDescEdit);
+      descDisplay.addEventListener('click', openDescEdit);
+      descSaveBtn.addEventListener('click', () => {
+        card.description = descTa.value;
+        saveBoard(_currentBoard.id);
+        descDisplay.textContent = card.description || 'Agregar una descripción más detallada…';
+        descDisplay.className = 'kb-modal-desc-display' + (!card.description ? ' kb-modal-desc-placeholder' : '');
+        descDisplay.style.display = '';
+        descEditBtn.style.display = '';
+        descEditArea.style.display = 'none';
+      });
+      descCancelBtn.addEventListener('click', () => {
+        descTa.value = card.description || '';
+        descDisplay.style.display = '';
+        descEditBtn.style.display = '';
+        descEditArea.style.display = 'none';
+      });
+
+      // Checklist section
+      const checklistSection = document.createElement('div');
+      checklistSection.id = 'kbChecklistSection';
+      renderChecklistSection(card, checklistSection);
+      main.appendChild(checklistSection);
+
+      // Attachments section
+      const attSection = document.createElement('div');
+      attSection.className = 'kb-modal-section';
+      const attHeader = document.createElement('div');
+      attHeader.className = 'kb-modal-section-header';
+      attHeader.innerHTML = `<span class="kb-modal-section-icon">&#8853;</span><span class="kb-modal-section-title">Adjuntos</span>`;
+      const attBtn = document.createElement('button');
+      attBtn.className = 'kb-modal-section-edit-btn';
+      attBtn.textContent = 'Adjuntar';
+      attHeader.appendChild(attBtn);
+      attSection.appendChild(attHeader);
+
+      // File input (hidden)
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.style.display = 'none';
+      fileInput.multiple = true;
+      attSection.appendChild(fileInput);
+      attBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        Array.from(fileInput.files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            if (!card.attachments) card.attachments = [];
+            card.attachments.push({
+              id: uid(),
+              name: file.name,
+              url: e.target.result,
+              ts: new Date().toISOString(),
+            });
+            saveBoard(_currentBoard.id);
+            rebuildModal();
+          };
+          reader.readAsDataURL(file);
+        });
+        fileInput.value = '';
+      });
+
+      const attList = document.createElement('div');
+      attList.className = 'kb-attachment-list';
+      (card.attachments || []).forEach((att, idx) => {
+        const item = document.createElement('div');
+        item.className = 'kb-attachment-item';
+        const isImage = att.url && att.url.startsWith('data:image');
+        if (isImage) {
+          const thumb = document.createElement('img');
+          thumb.className = 'kb-attachment-thumb';
+          thumb.src = att.url;
+          thumb.alt = att.name;
+          item.appendChild(thumb);
+        } else {
+          const icon = document.createElement('div');
+          icon.className = 'kb-attachment-icon';
+          icon.textContent = '📄';
+          item.appendChild(icon);
+        }
+        const meta = document.createElement('div');
+        meta.className = 'kb-attachment-meta';
+        const nameEl = document.createElement('a');
+        nameEl.className = 'kb-attachment-name';
+        nameEl.href = att.url;
+        nameEl.target = '_blank';
+        nameEl.download = att.name;
+        nameEl.textContent = att.name;
+        const tsEl = document.createElement('span');
+        tsEl.className = 'kb-attachment-ts';
+        tsEl.textContent = relativeTime(att.ts);
+        const delAttBtn = document.createElement('button');
+        delAttBtn.className = 'kb-attachment-del';
+        delAttBtn.textContent = '× Eliminar';
+        delAttBtn.addEventListener('click', () => {
+          card.attachments.splice(idx, 1);
+          saveBoard(_currentBoard.id);
+          rebuildModal();
+        });
+        meta.appendChild(nameEl);
+        meta.appendChild(tsEl);
+        meta.appendChild(delAttBtn);
+        item.appendChild(meta);
+        attList.appendChild(item);
+      });
+      attSection.appendChild(attList);
+      main.appendChild(attSection);
+
+      // Actions section (Move, Copy, Archive, Delete)
+      const actSection = document.createElement('div');
+      actSection.className = 'kb-modal-section kb-modal-actions-section';
+
+      const moveBtn2 = document.createElement('button');
+      moveBtn2.className = 'kb-sidebar-action-btn';
+      moveBtn2.innerHTML = '→ Mover';
+      moveBtn2.style.width = 'auto';
+      moveBtn2.style.display = 'inline-flex';
+      moveBtn2.addEventListener('click', e => {
+        e.stopPropagation();
+        showMovePopover(moveBtn2, card, colId, overlay);
+      });
+
+      const copyBtn2 = document.createElement('button');
+      copyBtn2.className = 'kb-sidebar-action-btn';
+      copyBtn2.innerHTML = '⎘ Copiar';
+      copyBtn2.style.width = 'auto';
+      copyBtn2.style.display = 'inline-flex';
+      copyBtn2.addEventListener('click', () => {
+        const col2 = _currentBoard.columns.find(c => c.id === colId);
+        if (!col2) return;
+        const copy = JSON.parse(JSON.stringify(card));
+        copy.id = uid();
+        copy.title = 'Copia de ' + card.title;
+        copy.checklist = [];
+        copy.archived = false;
+        const idx = col2.cards.findIndex(c => c.id === card.id);
+        col2.cards.splice(idx + 1, 0, copy);
+        saveBoard(_currentBoard.id);
+        overlay.remove();
+        renderColumns();
+        showToast('Tarjeta copiada');
+      });
+
+      actSection.appendChild(moveBtn2);
+      actSection.appendChild(copyBtn2);
+
+      if (card.archived) {
+        const delBtn2 = document.createElement('button');
+        delBtn2.className = 'kb-sidebar-action-btn kb-sidebar-action-btn--danger';
+        delBtn2.innerHTML = '× Eliminar';
+        delBtn2.style.width = 'auto';
+        delBtn2.style.display = 'inline-flex';
+        delBtn2.addEventListener('click', async () => {
+          const ok = await kbConfirm('¿Eliminar permanentemente esta tarjeta?');
+          if (!ok) return;
+          const col2 = _currentBoard.columns.find(c => c.id === colId);
+          if (!col2) return;
+          col2.cards = col2.cards.filter(c => c.id !== card.id);
+          saveBoard(_currentBoard.id);
+          overlay.remove();
+          renderColumns();
+          updateArchiveBtnCount();
+        });
+        actSection.appendChild(delBtn2);
+      }
+      main.appendChild(actSection);
+
+      // ---- RIGHT / SIDEBAR ----
+      const sidebar = document.createElement('div');
+      sidebar.className = 'kb-modal-sidebar kb-modal-sidebar--trello';
+      body.appendChild(sidebar);
+
+      // Comments section header
+      const commSectionLabel = document.createElement('div');
+      commSectionLabel.className = 'kb-modal-sidebar-section-label';
+      commSectionLabel.innerHTML = '&#9776; Actividad';
+      sidebar.appendChild(commSectionLabel);
+
+      // Comment input
+      const commInputWrap = document.createElement('div');
+      commInputWrap.className = 'kb-comment-input-wrap';
+      const commTa = document.createElement('textarea');
+      commTa.className = 'kb-comment-input';
+      commTa.placeholder = 'Agregar un comentario…';
+      commTa.rows = 2;
+      const commSaveBtn = document.createElement('button');
+      commSaveBtn.className = 'kb-btn kb-btn--primary kb-comment-save-btn';
+      commSaveBtn.textContent = 'Guardar';
+      commSaveBtn.style.display = 'none';
+      commTa.addEventListener('focus', () => { commSaveBtn.style.display = ''; });
+      commTa.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (!commSaveBtn.matches(':hover') && !commSaveBtn.matches(':focus')) {
+            if (!commTa.value.trim()) commSaveBtn.style.display = 'none';
+          }
+        }, 100);
+      });
+      commSaveBtn.addEventListener('click', () => {
+        const text = commTa.value.trim();
+        if (!text) return;
+        if (!card.comments) card.comments = [];
+        card.comments.push({ id: uid(), text, author: 'Yo', ts: new Date().toISOString() });
+        commTa.value = '';
+        commSaveBtn.style.display = 'none';
+        saveBoard(_currentBoard.id);
+        rebuildModal();
+      });
+      commInputWrap.appendChild(commTa);
+      commInputWrap.appendChild(commSaveBtn);
+      sidebar.appendChild(commInputWrap);
+
+      // Activity / comment list
+      const commList = document.createElement('div');
+      commList.className = 'kb-comment-list';
+
+      // System activity: card created
+      const createdItem = document.createElement('div');
+      createdItem.className = 'kb-comment-item kb-comment-item--system';
+      createdItem.innerHTML = `<div class="kb-comment-avatar" style="background:#0079bf">Y</div>
+        <div class="kb-comment-body"><span class="kb-comment-author">Yo</span> <span class="kb-comment-text-inline">creó esta tarjeta</span> <span class="kb-comment-ts">${relativeTime(card.created || new Date().toISOString())}</span></div>`;
+      commList.appendChild(createdItem);
+
+      // User comments (newest first)
+      const comments = (card.comments || []).slice().reverse();
+      comments.forEach((c, revIdx) => {
+        const origIdx = (card.comments.length - 1) - revIdx;
+        const item = document.createElement('div');
+        item.className = 'kb-comment-item';
+        const av = document.createElement('div');
+        av.className = 'kb-comment-avatar';
+        av.style.background = avatarColor(c.author);
+        av.textContent = c.author.charAt(0).toUpperCase();
+        const commBody = document.createElement('div');
+        commBody.className = 'kb-comment-body';
+        const authorEl = document.createElement('span');
+        authorEl.className = 'kb-comment-author';
+        authorEl.textContent = c.author;
+        const tsEl = document.createElement('span');
+        tsEl.className = 'kb-comment-ts';
+        tsEl.textContent = relativeTime(c.ts);
+        const textEl = document.createElement('div');
+        textEl.className = 'kb-comment-text';
+        textEl.textContent = c.text;
+        const delCommBtn = document.createElement('button');
+        delCommBtn.className = 'kb-comment-del';
+        delCommBtn.textContent = '× Eliminar';
+        delCommBtn.addEventListener('click', () => {
+          card.comments.splice(origIdx, 1);
+          saveBoard(_currentBoard.id);
+          rebuildModal();
+        });
+        commBody.appendChild(authorEl);
+        commBody.appendChild(tsEl);
+        commBody.appendChild(textEl);
+        commBody.appendChild(delCommBtn);
+        item.appendChild(av);
+        item.appendChild(commBody);
+        commList.appendChild(item);
+      });
+      sidebar.appendChild(commList);
+    }
+
+    rebuildModal();
+  }
+
+  function renderModalLabelsInline(card, container) {
+    container.innerHTML = '';
+    if (!card.labels || !card.labels.length) return;
+    (card.labels || []).forEach((lbl, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'kb-modal-label-chip';
+      chip.style.background = lbl.color;
+      chip.innerHTML = `${escHtml(lbl.text)}<button class="kb-modal-label-del" data-idx="${i}">&times;</button>`;
+      chip.querySelector('.kb-modal-label-del').addEventListener('click', () => {
+        card.labels.splice(i, 1);
+        renderModalLabelsInline(card, container);
+        saveBoard(_currentBoard.id);
+      });
+      container.appendChild(chip);
     });
+  }
+
+  function showMembersPopover(anchor, card, onUpdate) {
+    document.querySelectorAll('.kb-members-popover').forEach(p => p.remove());
+    const pop = document.createElement('div');
+    pop.className = 'kb-members-popover kb-label-popover';
+    pop.style.width = '200px';
+
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'font-size:0.75rem;font-weight:600;color:var(--text);margin-bottom:8px';
+    titleEl.textContent = 'Miembros';
+    pop.appendChild(titleEl);
+
+    if (card.members && card.members.length) {
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px';
+      card.members.forEach((m, idx) => {
+        const av = document.createElement('div');
+        av.className = 'kb-avatar';
+        av.style.background = m.color;
+        av.style.cursor = 'pointer';
+        av.title = m.name + ' (click para quitar)';
+        av.textContent = m.name.charAt(0).toUpperCase();
+        av.addEventListener('click', () => {
+          card.members.splice(idx, 1);
+          saveBoard(_currentBoard.id);
+          onUpdate();
+          pop.remove();
+        });
+        list.appendChild(av);
+      });
+      pop.appendChild(list);
+    }
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'Nombre del miembro…';
+    inp.style.cssText = 'width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.8rem;padding:5px 8px;outline:none;margin-bottom:6px;font-family:var(--font-ui)';
+    pop.appendChild(inp);
+    inp.focus();
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'kb-label-popover-add';
+    addBtn.textContent = 'Agregar miembro';
+    addBtn.addEventListener('click', () => {
+      const name = inp.value.trim();
+      if (!name) return;
+      if (!card.members) card.members = [];
+      card.members.push({ name, color: avatarColor(name) });
+      saveBoard(_currentBoard.id);
+      onUpdate();
+      pop.remove();
+    });
+    pop.appendChild(addBtn);
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    pop.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+    pop.style.top = (rect.bottom + 6) + 'px';
+
+    const close = e => {
+      if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('click', close); }
+    };
+    setTimeout(() => document.addEventListener('click', close), 10);
+  }
+
+  // ---- Card cover picker ----
+  const COVER_GRADIENTS = [
+    'linear-gradient(135deg,#1793d1,#00c2e0)',
+    'linear-gradient(135deg,#61bd4f,#51e898)',
+    'linear-gradient(135deg,#f2d600,#ff9f1a)',
+    'linear-gradient(135deg,#eb5a46,#c377e0)',
+    'linear-gradient(135deg,#0079bf,#533483)',
+    'linear-gradient(135deg,#1b4332,#2d6a4f)',
+    'linear-gradient(135deg,#370617,#6a040f)',
+    'linear-gradient(135deg,#42275a,#734b6d)',
+  ];
+
+  function showCardCoverPicker(anchor, card, onUpdate) {
+    document.querySelectorAll('.kb-card-cover-picker').forEach(p => p.remove());
+
+    const pop = document.createElement('div');
+    pop.className = 'kb-card-cover-picker kb-bg-picker';
+    pop.style.width = '300px';
+
+    // Colors row
+    const colorSection = document.createElement('div');
+    colorSection.className = 'kb-bg-picker-section';
+    const colorLabel = document.createElement('div');
+    colorLabel.className = 'kb-bg-picker-label';
+    colorLabel.textContent = 'Colores';
+    const colorGrid = document.createElement('div');
+    colorGrid.className = 'kb-bg-swatch-grid';
+    colorGrid.style.gridTemplateColumns = 'repeat(5, 1fr)';
+
+    COVER_COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'kb-bg-swatch' + (card.cover === c ? ' selected' : '');
+      sw.style.background = c;
+      sw.style.height = '28px';
+      sw.addEventListener('click', () => {
+        card.cover = c;
+        card.cover_full = true;
+        saveBoard(_currentBoard.id);
+        onUpdate();
+        pop.remove();
+      });
+      colorGrid.appendChild(sw);
+    });
+    colorSection.appendChild(colorLabel);
+    colorSection.appendChild(colorGrid);
+    pop.appendChild(colorSection);
+
+    // Gradients
+    const gradSection = document.createElement('div');
+    gradSection.className = 'kb-bg-picker-section';
+    const gradLabel = document.createElement('div');
+    gradLabel.className = 'kb-bg-picker-label';
+    gradLabel.textContent = 'Degradados';
+    const gradGrid = document.createElement('div');
+    gradGrid.className = 'kb-bg-swatch-grid';
+    gradGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+
+    COVER_GRADIENTS.forEach(g => {
+      const sw = document.createElement('div');
+      sw.className = 'kb-bg-swatch' + (card.cover === g ? ' selected' : '');
+      sw.style.background = g;
+      sw.style.height = '28px';
+      sw.addEventListener('click', () => {
+        card.cover = g;
+        card.cover_full = true;
+        saveBoard(_currentBoard.id);
+        onUpdate();
+        pop.remove();
+      });
+      gradGrid.appendChild(sw);
+    });
+    gradSection.appendChild(gradLabel);
+    gradSection.appendChild(gradGrid);
+    pop.appendChild(gradSection);
+
+    // Unsplash presets
+    const imgSection = document.createElement('div');
+    imgSection.className = 'kb-bg-picker-section';
+    const imgLabel = document.createElement('div');
+    imgLabel.className = 'kb-bg-picker-label';
+    imgLabel.textContent = 'Imágenes';
+    const imgGrid = document.createElement('div');
+    imgGrid.className = 'kb-bg-swatch-grid';
+    imgGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+
+    BG_IMAGE_PRESETS.forEach(preset => {
+      const bg = `url("${preset.url}") center/cover no-repeat`;
+      const sw = document.createElement('div');
+      sw.className = 'kb-bg-swatch kb-bg-swatch--photo';
+      sw.style.background = bg;
+      sw.style.height = '40px';
+      sw.title = preset.label;
+      sw.addEventListener('click', () => {
+        card.cover = bg;
+        card.cover_full = true;
+        saveBoard(_currentBoard.id);
+        onUpdate();
+        pop.remove();
+      });
+      imgGrid.appendChild(sw);
+    });
+    imgSection.appendChild(imgLabel);
+    imgSection.appendChild(imgGrid);
+    pop.appendChild(imgSection);
+
+    // Remove cover
+    const noneSection = document.createElement('div');
+    noneSection.className = 'kb-bg-picker-section';
+    const noneBtn = document.createElement('div');
+    noneBtn.className = 'kb-bg-swatch kb-bg-swatch--reset';
+    noneBtn.style.height = '28px';
+    noneBtn.textContent = '✕ Sin portada';
+    noneBtn.style.gridColumn = '1 / -1';
+    noneBtn.addEventListener('click', () => {
+      card.cover = '';
+      card.cover_full = false;
+      saveBoard(_currentBoard.id);
+      onUpdate();
+      pop.remove();
+    });
+    noneSection.appendChild(noneBtn);
+    pop.appendChild(noneSection);
+
+    pop.style.position = 'fixed';
+    document.body.appendChild(pop);
+    const rect = anchor.getBoundingClientRect();
+    let left = rect.left;
+    if (left + 310 > window.innerWidth - 8) left = window.innerWidth - 318;
+    pop.style.left = left + 'px';
+    pop.style.top = (rect.bottom + 6) + 'px';
+
+    const closePicker = e => {
+      if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('click', closePicker); }
+    };
+    setTimeout(() => document.addEventListener('click', closePicker), 10);
   }
 
   function buildModalSidebar(card, colId, sidebar, overlay) {
