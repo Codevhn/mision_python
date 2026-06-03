@@ -422,7 +422,7 @@
           <label>Color</label>
           <div class="kb-color-row" id="kbcColors"></div>
         </div>
-        ${_workspaces.length > 1 ? `<div class="kb-create-field"><label>Workspace</label><select id="kbcWorkspace" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:5px 8px;font-size:0.8rem;width:100%;">${wsOptions}</select></div>` : ''}
+        ${_workspaces.length > 1 ? `<div class="kb-create-field"><label>Workspace</label><select id="kbcWorkspace">${wsOptions}</select></div>` : ''}
         <div class="kb-create-actions">
           <button class="kb-btn" id="kbcCancel">Cancelar</button>
           <button class="kb-btn kb-btn--primary" id="kbcCreate">Crear</button>
