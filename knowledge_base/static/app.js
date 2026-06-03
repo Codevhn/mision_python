@@ -819,7 +819,7 @@ function renderHome() {
         <div class="home-recent-grid">
           ${recent.map(r => `
             <div class="home-card" data-id="${r.id}">
-              <div class="home-card-cover" style="${r.cover ? `background:${r.cover}` : ""}"></div>
+              <div class="home-card-cover" style="${r.cover ? (r.cover.startsWith('url(') ? `background-image:${r.cover};background-size:cover;background-position:center` : `background:${r.cover}`) : ""}"></div>
               <div class="home-card-body">
                 <div class="home-card-icon">${renderIconMarkup(r.icon || ENTRY_ICON_DEFAULTS.knowledge, "home-card-icon-glyph")}</div>
                 <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
@@ -1005,10 +1005,20 @@ function applyCover(coverValue) {
   const addCoverEl = $("entryAddCover");
   if (!coverEl) return;
   if (coverValue) {
-    coverEl.style.background = coverValue;
+    if (coverValue.startsWith("url(")) {
+      coverEl.style.backgroundImage = coverValue;
+      coverEl.style.backgroundSize = "cover";
+      coverEl.style.backgroundPosition = "center";
+      coverEl.style.background = "";
+    } else {
+      coverEl.style.background = coverValue;
+      coverEl.style.backgroundImage = "";
+    }
     coverEl.classList.remove("hidden");
     addCoverEl.classList.add("hidden");
   } else {
+    coverEl.style.background = "";
+    coverEl.style.backgroundImage = "";
     coverEl.classList.add("hidden");
     addCoverEl.classList.remove("hidden");
   }
@@ -1021,13 +1031,37 @@ function openCoverPicker() {
   overlay.innerHTML = `
     <div class="cover-picker">
       <div class="cover-picker-title">Elige una portada</div>
-      <div class="cover-picker-grid" id="coverPickerGrid"></div>
+      <div class="cover-picker-tabs">
+        <button class="cover-tab active" data-tab="gradients">Degradados</button>
+        <button class="cover-tab" data-tab="image">Imagen URL</button>
+      </div>
+      <div class="cover-tab-panel" id="coverTabGradients">
+        <div class="cover-picker-grid" id="coverPickerGrid"></div>
+      </div>
+      <div class="cover-tab-panel hidden" id="coverTabImage">
+        <div class="cover-url-wrap">
+          <input type="url" id="coverUrlInput" class="cover-url-input" placeholder="https://ejemplo.com/imagen.jpg" />
+          <div class="cover-url-preview" id="coverUrlPreview"></div>
+          <button class="btn-primary" id="coverUrlApply">Aplicar imagen</button>
+        </div>
+      </div>
       <div class="cover-picker-actions">
         <button class="btn-ghost" id="coverPickerCancel">Cancelar</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 
+  // Tab switching
+  overlay.querySelectorAll(".cover-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      overlay.querySelectorAll(".cover-tab").forEach(t => t.classList.remove("active"));
+      overlay.querySelectorAll(".cover-tab-panel").forEach(p => p.classList.add("hidden"));
+      tab.classList.add("active");
+      overlay.querySelector(`#coverTab${tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)}`).classList.remove("hidden");
+    });
+  });
+
+  // Gradient swatches
   const grid = overlay.querySelector("#coverPickerGrid");
   COVER_PRESETS.forEach(preset => {
     const swatch = document.createElement("div");
@@ -1038,6 +1072,27 @@ function openCoverPicker() {
       overlay.remove();
     });
     grid.appendChild(swatch);
+  });
+
+  // URL image tab
+  const urlInput = overlay.querySelector("#coverUrlInput");
+  const urlPreview = overlay.querySelector("#coverUrlPreview");
+  urlInput.addEventListener("input", () => {
+    const val = urlInput.value.trim();
+    if (val) {
+      urlPreview.style.backgroundImage = `url(${val})`;
+      urlPreview.style.backgroundSize = "cover";
+      urlPreview.style.backgroundPosition = "center";
+      urlPreview.style.display = "block";
+    } else {
+      urlPreview.style.display = "none";
+    }
+  });
+  overlay.querySelector("#coverUrlApply").addEventListener("click", async () => {
+    const val = urlInput.value.trim();
+    if (!val) return;
+    await saveCover(`url(${val})`);
+    overlay.remove();
   });
 
   overlay.querySelector("#coverPickerCancel").addEventListener("click", () => overlay.remove());
