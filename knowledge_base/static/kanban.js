@@ -50,7 +50,10 @@
   // ---- State ----
   let _area = null;          // #kanbanArea
   let _boards = [];          // cached boards list
+  let _workspaces = [];      // cached workspaces list
+  let _selectedWorkspaceId = null; // currently selected workspace in sidebar
   let _currentBoard = null;  // full board object
+  let _currentWorkspaceId = null; // workspace id when in board view
   let _dragCard = null;      // { card, fromColId }
   let _dragCol = null;       // column id being dragged
   let _filterText = '';      // filter bar search text
@@ -125,10 +128,26 @@
     return _boards;
   }
 
-  async function createBoardApi(name, description, color) {
+  async function loadWorkspaces() {
+    _workspaces = await apiFetch('/api/kanban/workspaces');
+    return _workspaces;
+  }
+
+  async function createWorkspaceApi(name, color) {
+    return apiFetch('/api/kanban/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name, color }),
+    });
+  }
+
+  async function deleteWorkspaceApi(id) {
+    return apiFetch(`/api/kanban/workspaces/${id}`, { method: 'DELETE' });
+  }
+
+  async function createBoardApi(name, description, color, workspace_id) {
     return apiFetch('/api/kanban/boards', {
       method: 'POST',
-      body: JSON.stringify({ name, description, color }),
+      body: JSON.stringify({ name, description, color, workspace_id }),
     });
   }
 
@@ -171,52 +190,223 @@
     }
   }
 
-  // ---- Boards list view ----
-  function showBoards() {
+  // ---- Boards list / Workspace view ----
+  function showBoards(targetWorkspaceId) {
     _area = document.getElementById('kanbanArea');
     if (!_area) return;
     showKanbanArea();
     _area.style.background = '';
     _archiveOpen = false;
     _currentBoard = null;
-    _area.innerHTML = '<div class="kb-boards-header"><h2>Tableros Kanban</h2></div><div class="kb-boards-grid" id="kbBoardsGrid"><div style="color:var(--text-muted);font-size:0.8rem">Cargando…</div></div>';
-    loadBoards().then(renderBoardsGrid).catch(() => showToast('Error cargando tableros'));
+    _area.innerHTML = '<div class="kb-ws-layout"><div class="kb-ws-sidebar" id="kbWsSidebar"><div style="color:var(--text-muted);font-size:0.8rem;padding:16px">Cargando…</div></div><div class="kb-ws-main" id="kbWsMain"><div style="color:var(--text-muted);font-size:0.8rem">Cargando…</div></div></div>';
+
+    Promise.all([loadWorkspaces(), loadBoards()])
+      .then(() => {
+        if (targetWorkspaceId) {
+          _selectedWorkspaceId = targetWorkspaceId;
+        } else if (!_selectedWorkspaceId || !_workspaces.find(w => w.id === _selectedWorkspaceId)) {
+          _selectedWorkspaceId = _workspaces.length > 0 ? _workspaces[0].id : null;
+        }
+        renderWorkspaceSidebar();
+        renderWorkspaceMain();
+      })
+      .catch(() => showToast('Error cargando tableros'));
   }
 
-  function renderBoardsGrid() {
-    const grid = document.getElementById('kbBoardsGrid');
-    if (!grid) return;
-    let html = '';
-    for (const b of _boards) {
-      html += `<div class="kb-board-card" data-id="${escHtml(b.id)}">
-        <div class="kb-board-card-accent" style="background:${escHtml(b.color)}"></div>
-        <div class="kb-board-card-body">
-          <div class="kb-board-card-name">${escHtml(b.name)}</div>
-          <div class="kb-board-card-desc">${escHtml(b.description || '')}</div>
-          <div class="kb-board-card-meta">
-            <span>${b.col_count} listas</span>
-            <span>${b.card_count} tarjetas</span>
-          </div>
-        </div>
-      </div>`;
-    }
-    html += `<div class="kb-board-card kb-board-card--new" id="kbNewBoardCard">
-      <span>+</span><span>Nuevo tablero</span>
-    </div>`;
-    grid.innerHTML = html;
+  function renderWorkspaceSidebar() {
+    const sidebar = document.getElementById('kbWsSidebar');
+    if (!sidebar) return;
+    sidebar.innerHTML = '';
 
-    grid.querySelectorAll('.kb-board-card[data-id]').forEach(el => {
-      el.addEventListener('click', () => showBoard(el.dataset.id));
+    const label = document.createElement('div');
+    label.className = 'kb-ws-sidebar-label';
+    label.textContent = 'Workspaces';
+    sidebar.appendChild(label);
+
+    _workspaces.forEach(ws => {
+      const item = document.createElement('div');
+      item.className = 'kb-ws-item' + (ws.id === _selectedWorkspaceId ? ' kb-ws-item--active' : '');
+      item.dataset.wsId = ws.id;
+      const icon = document.createElement('div');
+      icon.className = 'kb-ws-icon';
+      icon.style.background = ws.color || '#0079bf';
+      icon.textContent = ws.name.charAt(0).toUpperCase();
+      const name = document.createElement('div');
+      name.className = 'kb-ws-name';
+      name.textContent = ws.name;
+      item.appendChild(icon);
+      item.appendChild(name);
+      item.addEventListener('click', () => {
+        _selectedWorkspaceId = ws.id;
+        sidebar.querySelectorAll('.kb-ws-item').forEach(i => i.classList.remove('kb-ws-item--active'));
+        item.classList.add('kb-ws-item--active');
+        renderWorkspaceMain();
+      });
+      sidebar.appendChild(item);
     });
-    const newCard = document.getElementById('kbNewBoardCard');
-    if (newCard) newCard.addEventListener('click', openCreateModal);
+
+    // New workspace button
+    const newWsBtn = document.createElement('button');
+    newWsBtn.className = 'kb-btn';
+    newWsBtn.style.cssText = 'margin:12px 16px 4px;font-size:0.75rem;padding:5px 10px;text-align:left;';
+    newWsBtn.textContent = '+ Nuevo workspace';
+    newWsBtn.addEventListener('click', () => showNewWorkspaceForm(sidebar, newWsBtn));
+    sidebar.appendChild(newWsBtn);
+  }
+
+  function showNewWorkspaceForm(sidebar, triggerBtn) {
+    if (sidebar.querySelector('.kb-ws-new-form')) return;
+    triggerBtn.style.display = 'none';
+    let selColor = '#0079bf';
+    const WS_COLORS = ['#0079bf','#eb5a46','#61bd4f','#f2d600','#ff9f1a','#c377e0','#00c2e0','#51e898'];
+
+    const form = document.createElement('div');
+    form.className = 'kb-ws-new-form';
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'kb-ws-new-input';
+    inp.placeholder = 'Nombre del workspace…';
+    form.appendChild(inp);
+
+    const colorRow = document.createElement('div');
+    colorRow.style.cssText = 'display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;';
+    WS_COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.style.cssText = `width:18px;height:18px;border-radius:3px;background:${c};cursor:pointer;border:2px solid ${c === selColor ? '#fff' : 'transparent'};`;
+      sw.addEventListener('click', () => {
+        selColor = c;
+        colorRow.querySelectorAll('div').forEach(s => s.style.borderColor = 'transparent');
+        sw.style.borderColor = '#fff';
+      });
+      colorRow.appendChild(sw);
+    });
+    form.appendChild(colorRow);
+
+    const btns = document.createElement('div');
+    btns.className = 'kb-ws-new-btns';
+    const createBtn = document.createElement('button');
+    createBtn.className = 'kb-btn kb-btn--primary';
+    createBtn.style.fontSize = '0.75rem';
+    createBtn.textContent = 'Crear';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'kb-btn';
+    cancelBtn.style.fontSize = '0.75rem';
+    cancelBtn.textContent = 'Cancelar';
+    btns.appendChild(createBtn);
+    btns.appendChild(cancelBtn);
+    form.appendChild(btns);
+    sidebar.appendChild(form);
+    inp.focus();
+
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      triggerBtn.style.display = '';
+    });
+
+    createBtn.addEventListener('click', async () => {
+      const name = inp.value.trim();
+      if (!name) { inp.focus(); return; }
+      try {
+        const ws = await createWorkspaceApi(name, selColor);
+        _workspaces.push(ws);
+        _selectedWorkspaceId = ws.id;
+        form.remove();
+        triggerBtn.style.display = '';
+        renderWorkspaceSidebar();
+        renderWorkspaceMain();
+      } catch (e) {
+        showToast('Error creando workspace');
+      }
+    });
+  }
+
+  function renderWorkspaceMain() {
+    const main = document.getElementById('kbWsMain');
+    if (!main) return;
+    main.innerHTML = '';
+
+    const ws = _workspaces.find(w => w.id === _selectedWorkspaceId);
+    if (!ws) {
+      main.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem">Selecciona un workspace</div>';
+      return;
+    }
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'kb-ws-main-header';
+    const icon = document.createElement('div');
+    icon.className = 'kb-ws-main-icon';
+    icon.style.background = ws.color || '#0079bf';
+    icon.textContent = ws.name.charAt(0).toUpperCase();
+    const nameEl = document.createElement('div');
+    nameEl.className = 'kb-ws-main-name';
+    nameEl.textContent = ws.name;
+    header.appendChild(icon);
+    header.appendChild(nameEl);
+    main.appendChild(header);
+
+    const sublabel = document.createElement('div');
+    sublabel.className = 'kb-ws-boards-label';
+    sublabel.innerHTML = '&#9646; Tus tableros';
+    main.appendChild(sublabel);
+
+    // Boards grid
+    const grid = document.createElement('div');
+    grid.className = 'kb-boards-grid';
+
+    const wsBoards = _boards.filter(b => b.workspace_id === ws.id);
+    wsBoards.forEach(b => {
+      const tile = document.createElement('div');
+      tile.className = 'kb-board-tile';
+      tile.dataset.id = b.id;
+
+      const bg = document.createElement('div');
+      bg.className = 'kb-board-tile-bg';
+      if (b.background) {
+        bg.style.background = b.background;
+      } else {
+        bg.style.background = b.color || '#1793d1';
+      }
+
+      const footer = document.createElement('div');
+      footer.className = 'kb-board-tile-footer';
+      const tileName = document.createElement('div');
+      tileName.className = 'kb-board-tile-name';
+      tileName.textContent = b.name;
+      footer.appendChild(tileName);
+
+      tile.appendChild(bg);
+      tile.appendChild(footer);
+      tile.addEventListener('click', () => {
+        _currentWorkspaceId = ws.id;
+        showBoard(b.id);
+      });
+      grid.appendChild(tile);
+    });
+
+    // New board tile
+    const newTile = document.createElement('div');
+    newTile.className = 'kb-board-tile--new';
+    newTile.textContent = '+ Crear tablero';
+    newTile.addEventListener('click', () => openCreateModal(ws.id));
+    grid.appendChild(newTile);
+
+    main.appendChild(grid);
   }
 
   // ---- Create board modal ----
-  function openCreateModal() {
+  function openCreateModal(workspaceId) {
     let sel = BOARD_COLORS[0];
+    const wsId = workspaceId || _selectedWorkspaceId;
     const overlay = document.createElement('div');
     overlay.className = 'kb-create-overlay';
+
+    // Build workspace selector options
+    const wsOptions = _workspaces.map(w =>
+      `<option value="${escHtml(w.id)}" ${w.id === wsId ? 'selected' : ''}>${escHtml(w.name)}</option>`
+    ).join('');
+
     overlay.innerHTML = `
       <div class="kb-create-modal">
         <h3>Nuevo tablero</h3>
@@ -232,6 +422,7 @@
           <label>Color</label>
           <div class="kb-color-row" id="kbcColors"></div>
         </div>
+        ${_workspaces.length > 1 ? `<div class="kb-create-field"><label>Workspace</label><select id="kbcWorkspace" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:5px 8px;font-size:0.8rem;width:100%;">${wsOptions}</select></div>` : ''}
         <div class="kb-create-actions">
           <button class="kb-btn" id="kbcCancel">Cancelar</button>
           <button class="kb-btn kb-btn--primary" id="kbcCreate">Crear</button>
@@ -265,11 +456,13 @@
       const name = nameInput.value.trim();
       if (!name) { nameInput.focus(); return; }
       const desc = overlay.querySelector('#kbcDesc').value.trim();
+      const wsSel = overlay.querySelector('#kbcWorkspace');
+      const selectedWsId = wsSel ? wsSel.value : wsId;
       try {
-        const board = await createBoardApi(name, desc, sel);
+        const board = await createBoardApi(name, desc, sel, selectedWsId);
         overlay.remove();
         await loadBoards();
-        renderBoardsGrid();
+        _currentWorkspaceId = selectedWsId;
         if (window._loadKanbanSidebar) window._loadKanbanSidebar();
         showBoard(board.id);
       } catch (e) {
@@ -332,7 +525,7 @@
         </div>
       </div>`;
 
-    document.getElementById('kbBackBtn').addEventListener('click', showBoards);
+    document.getElementById('kbBackBtn').addEventListener('click', () => showBoards(_currentWorkspaceId));
 
     // Board title inline edit
     const titleInput = document.getElementById('kbBoardTitle');
