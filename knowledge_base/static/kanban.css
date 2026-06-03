@@ -413,6 +413,10 @@
   gap: 0;
   box-shadow: var(--glass-shadow);
 }
+.kb-modal--trello {
+  width: 768px;
+  max-width: calc(100vw - 40px);
+}
 .kb-modal-header {
   display: flex;
   align-items: flex-start;
@@ -463,6 +467,7 @@
   flex-direction: column;
   gap: 18px;
   overflow-y: auto;
+  min-width: 0;
 }
 .kb-modal-sidebar {
   width: 170px;
@@ -473,6 +478,414 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* ---- Trello modal topbar ---- */
+.kb-modal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--border-light, var(--border));
+  flex-shrink: 0;
+}
+.kb-modal-topbar-board {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kb-modal-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.kb-modal-topbar-btn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 3px 6px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.kb-modal-topbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+/* ---- Trello modal cover ---- */
+.kb-modal-cover {
+  height: 160px;
+  width: 100%;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border-radius: 0;
+}
+.kb-modal-cover-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  background: rgba(0,0,0,0.45);
+  border: none;
+  color: #fff;
+  font-size: 0.72rem;
+  font-family: var(--font-ui);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.kb-modal-cover:hover .kb-modal-cover-btn { opacity: 1; }
+.kb-modal-cover-btn:hover { background: rgba(0,0,0,0.7); }
+
+/* ---- Trello sidebar (activity column) ---- */
+.kb-modal-sidebar--trello {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 16px 16px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.kb-modal-sidebar-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* ---- Trello title row ---- */
+.kb-modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.kb-modal-done-circle {
+  background: none;
+  border: 2px solid var(--text-faint);
+  color: var(--text-faint);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 3px;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  padding: 0;
+}
+.kb-modal-done-circle:hover { border-color: var(--accent); color: var(--accent); }
+.kb-modal-done-circle--done {
+  border-color: #61bd4f;
+  color: #61bd4f;
+  background: rgba(97,189,79,0.12);
+}
+.kb-modal-title-trello {
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--font-ui);
+  outline: none;
+  resize: none;
+  line-height: 1.4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: background 0.12s;
+}
+.kb-modal-title-trello:focus {
+  background: var(--bg-elevated);
+}
+.kb-modal-inlist {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  margin-left: 30px;
+  margin-top: -12px;
+}
+.kb-modal-inlist strong { color: var(--text-muted); }
+
+/* ---- Action pills row ---- */
+.kb-modal-action-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: 30px;
+}
+.kb-modal-pill-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  padding: 4px 10px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.kb-modal-pill-btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
+
+/* ---- Labels inline in modal ---- */
+.kb-modal-labels-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: 30px;
+  min-height: 4px;
+}
+
+/* ---- Section blocks in modal main column ---- */
+.kb-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kb-modal-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kb-modal-section-icon {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+.kb-modal-section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex: 1;
+}
+.kb-modal-section-edit-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  padding: 3px 8px;
+  transition: background 0.12s, color 0.12s;
+}
+.kb-modal-section-edit-btn:hover { background: var(--bg-hover); color: var(--text); }
+.kb-modal-desc-display {
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.5;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 24px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 32px;
+  transition: background 0.12s;
+}
+.kb-modal-desc-display:hover { background: var(--bg-elevated); }
+.kb-modal-desc-placeholder { color: var(--text-faint); font-style: italic; }
+.kb-modal-desc-edit-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 24px;
+}
+.kb-modal-desc-btns {
+  display: flex;
+  gap: 6px;
+}
+.kb-modal-actions-section {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ---- Comment input ---- */
+.kb-comment-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kb-comment-input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  resize: none;
+  outline: none;
+  min-height: 60px;
+  transition: border-color 0.12s;
+  box-sizing: border-box;
+}
+.kb-comment-input:focus { border-color: var(--accent); }
+.kb-comment-save-btn {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  padding: 4px 14px;
+}
+
+/* ---- Comment / activity list ---- */
+.kb-comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kb-comment-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.kb-comment-item--system .kb-comment-body {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.kb-comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  user-select: none;
+  margin-top: 1px;
+}
+.kb-comment-body {
+  flex: 1;
+  min-width: 0;
+}
+.kb-comment-author {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 4px;
+}
+.kb-comment-text-inline {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.kb-comment-ts {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  margin-left: 4px;
+}
+.kb-comment-text {
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.45;
+  margin-top: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  word-break: break-word;
+}
+.kb-comment-del {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 4px;
+  transition: color 0.12s;
+  font-family: var(--font-ui);
+}
+.kb-comment-del:hover { color: var(--danger); }
+
+/* ---- Attachments ---- */
+.kb-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 24px;
+}
+.kb-attachment-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+.kb-attachment-thumb {
+  width: 60px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+.kb-attachment-icon {
+  width: 60px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-radius: 3px;
+}
+.kb-attachment-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kb-attachment-name {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+  font-weight: 500;
+}
+.kb-attachment-name:hover { text-decoration: underline; }
+.kb-attachment-ts {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+.kb-attachment-del {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-ui);
+  transition: color 0.12s;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.kb-attachment-del:hover { color: var(--danger); }
 
 .kb-modal-section-label {
   font-size: 0.68rem;
