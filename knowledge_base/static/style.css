@@ -1232,10 +1232,8 @@ input, textarea, select { font-family: inherit; }
   padding: 20px;
 }
 .modal {
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   width: 100%;
   max-width: 740px;
   max-height: 90vh;
