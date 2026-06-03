@@ -391,17 +391,17 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px 4px 42px;
+  padding: 4px 12px 4px 32px;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--text-muted);
   cursor: pointer;
   border-left: 1px solid var(--border-light);
-  margin-left: 22px;
+  margin-left: 14px;
   transition: color 0.1s, background 0.1s, border-color 0.1s;
   min-width: 0;
 }
-.tree-entry::before { content: "·"; color: var(--text-muted); flex: 0 0 auto; }
+.tree-entry::before { content: "├─"; color: var(--text-faint); font-size: 0.65rem; flex: 0 0 auto; }
 .tree-entry:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--text-faint); }
 .tree-entry.active {
   color: var(--accent);

@@ -910,8 +910,10 @@ async function loadEntry(id, opts = {}) {
   const wordCount = getWordCount($("entryBody"));
   const readMin = Math.max(1, Math.round(wordCount / 200));
 
-  const catLabel   = m.type === "course" ? (m.course_label  || m.course)  : (m.category_label || m.category);
-  const topicLabel = m.type === "course" ? (m.module_label  || m.module)  : (m.topic_label    || m.topic);
+  const catLabel   = m.type === "course"     ? (m.course_label     || m.course)     :
+                    m.type === "teamspace"  ? (m.teamspace_label  || m.teamspace)  :
+                    (m.category_label || m.category);
+  const topicLabel = m.type === "course"    ? (m.module_label  || m.module)  : (m.topic_label    || m.topic);
   const entryIconHtml = m.icon
     ? renderIconMarkup(m.icon, "meta-entry-icon-glyph", "")
     : `<span class="meta-seg-icon">󰣇</span>`;
@@ -1656,13 +1658,9 @@ function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
     dropdownEl.classList.remove("hidden");
   }
 
-  let _userInteracted = false;
-  inputEl.addEventListener("mousedown", () => { _userInteracted = true; });
-  inputEl.addEventListener("keydown", e => { if (e.key !== "Tab") _userInteracted = true; });
-
-  inputEl.addEventListener("focus", () => { if (_userInteracted) showDropdown(inputEl.value); });
-  inputEl.addEventListener("input", () => { _userInteracted = true; showDropdown(inputEl.value); });
-  inputEl.addEventListener("blur", () => { setTimeout(() => { dropdownEl.classList.add("hidden"); _userInteracted = false; }, 150); });
+  inputEl.addEventListener("click", () => showDropdown(inputEl.value));
+  inputEl.addEventListener("input", () => showDropdown(inputEl.value));
+  inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
   inputEl.addEventListener("keydown", e => {
     if (e.key === "Escape") dropdownEl.classList.add("hidden");
     if (e.key === "ArrowDown") {
