@@ -876,12 +876,14 @@ input, textarea, select { font-family: inherit; }
 }
 
 .entry-body blockquote {
-  border-left: 2px solid var(--accent-dim);
-  padding: 8px 16px;
-  margin: 14px 0;
+  border-left: 3px solid var(--accent);
+  padding: 6px 14px;
+  margin: 10px 0;
   color: var(--text-muted);
   font-style: italic;
-  background: var(--accent-light);
+  background: rgba(23, 147, 209, 0.07);
+  border-radius: 0 4px 4px 0;
+  line-height: 1.6;
 }
 
 .entry-body table {
@@ -2335,12 +2337,16 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--quote {
   border-left: 0;
   padding-left: 58px;
-  margin: 4px 0;
+  margin: 6px 0;
 }
 .eb--quote .eb-content {
   color: var(--text-muted);
   font-style: italic;
-  box-shadow: inset 3px 0 0 var(--accent);
+  border-left: 3px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 0 4px 4px 0;
+  background: rgba(23, 147, 209, 0.07);
+  line-height: 1.6;
 }
 
 /* Divider */
