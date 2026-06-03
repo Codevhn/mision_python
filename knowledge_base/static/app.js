@@ -1571,9 +1571,13 @@ function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
     dropdownEl.classList.remove("hidden");
   }
 
-  inputEl.addEventListener("focus", () => showDropdown(inputEl.value));
-  inputEl.addEventListener("input", () => showDropdown(inputEl.value));
-  inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
+  let _userInteracted = false;
+  inputEl.addEventListener("mousedown", () => { _userInteracted = true; });
+  inputEl.addEventListener("keydown", e => { if (e.key !== "Tab") _userInteracted = true; });
+
+  inputEl.addEventListener("focus", () => { if (_userInteracted) showDropdown(inputEl.value); });
+  inputEl.addEventListener("input", () => { _userInteracted = true; showDropdown(inputEl.value); });
+  inputEl.addEventListener("blur", () => { setTimeout(() => { dropdownEl.classList.add("hidden"); _userInteracted = false; }, 150); });
   inputEl.addEventListener("keydown", e => {
     if (e.key === "Escape") dropdownEl.classList.add("hidden");
     if (e.key === "ArrowDown") {
