@@ -285,9 +285,22 @@ window.BlockEditor = (() => {
       return true;
     }
 
+    function normalizePastedText(text) {
+      if (!text) return '';
+      return text
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .map(line => line
+          .replace(/^\s*[•◦▪▸▹►▻]\s+/, '* ')
+          .replace(/^(\s*)(\d+)\)\s+/, '$1$2. ')
+        )
+        .join('\n');
+    }
+
     // Detect if text looks like markdown (should be parsed as blocks)
     function looksLikeMarkdown(text) {
-      const lines = text.split('\n');
+      const normalized = normalizePastedText(text);
+      const lines = normalized.split('\n');
       if (lines.length > 3) return true;
       return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
@@ -2812,6 +2825,7 @@ window.BlockEditor = (() => {
 
       const html = e.clipboardData?.getData('text/html') || '';
       const text = e.clipboardData?.getData('text/plain') || '';
+      const normalizedText = normalizePastedText(text);
       const focusedWrap = focused?.closest?.('[data-id]');
       const focusedId = focusedWrap?.dataset?.id;
       const focusedIdx = focusedId ? _blocks.findIndex(x => x.id === focusedId) : -1;
@@ -2862,7 +2876,7 @@ window.BlockEditor = (() => {
         }
       }
 
-      const tsvMd = text ? tsvToMd(text) : null;
+      const tsvMd = normalizedText ? tsvToMd(normalizedText) : null;
       if (tsvMd) {
         e.preventDefault();
         insertBlocks([{ id: uid(), type: 'table', content: tsvMd, indent: insertIndent }]);
@@ -2870,9 +2884,9 @@ window.BlockEditor = (() => {
       }
 
       // Markdown paste: works whether clipboard has HTML or only plain text
-      if (text && looksLikeMarkdown(text)) {
+      if (normalizedText && looksLikeMarkdown(normalizedText)) {
         e.preventDefault();
-        const newBlocks = mdToBlocks(text);
+        const newBlocks = mdToBlocks(normalizedText);
         newBlocks.forEach(b => {
           if (b.type === 'code' && !b.lang) b.lang = inferCodeLang(b.content || '');
         });
@@ -2891,9 +2905,9 @@ window.BlockEditor = (() => {
       }
 
       // Plain text paste: let browser handle, sync plaintext tracking after
-      if (_selected.size > 0 && text) {
+      if (_selected.size > 0 && normalizedText) {
         e.preventDefault();
-        const blocks = mdToBlocks(text);
+        const blocks = mdToBlocks(normalizedText);
         replaceSelectedBlocks(blocks);
         return;
       }
