@@ -258,13 +258,17 @@
         <div class="form-row two-col">
           <div class="form-group">
             <label>Categoría</label>
-            <input type="text" id="fieldCategory" placeholder="Ej: Linux" list="categorySuggestions" />
-            <datalist id="categorySuggestions"></datalist>
+            <div class="smart-select" id="catSmartSelect">
+              <input type="text" id="fieldCategory" placeholder="Escribe o elige una…" autocomplete="off" />
+              <div class="smart-select-dropdown hidden" id="catDropdown"></div>
+            </div>
           </div>
           <div class="form-group">
             <label>Tema</label>
-            <input type="text" id="fieldTopic" placeholder="Ej: Python, Rust, Docker, Redes…" list="topicSuggestions" autocomplete="off" />
-            <datalist id="topicSuggestions"></datalist>
+            <div class="smart-select" id="topicSmartSelect">
+              <input type="text" id="fieldTopic" placeholder="Ej: Redes, Docker, Python…" autocomplete="off" />
+              <div class="smart-select-dropdown hidden" id="topicDropdown"></div>
+            </div>
           </div>
         </div>
         </div><!-- /#knowledgeFields -->

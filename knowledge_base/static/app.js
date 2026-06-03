@@ -101,8 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHome();
 
   loadTree();
-  loadCategorySuggestions();
-  loadTopicSuggestions();
+  loadCategorySuggestions().then(() => loadTopicSuggestions().then(initSmartSelects));
   loadCourseSuggestions();
   bindEvents();
   loadKanbanSidebar();
@@ -1347,8 +1346,7 @@ async function saveEntry() {
       closeModal();
       showToast("Entrada guardada");
       await loadTree();
-      loadCategorySuggestions();
-      loadTopicSuggestions();
+      loadCategorySuggestions().then(() => loadTopicSuggestions().then(initSmartSelects));
       loadEntry(data.id);
     } else {
       showToast("Error al guardar", "error");
@@ -1457,30 +1455,133 @@ async function switchTab(tab) {
   }
 }
 
-// ---- CATEGORY SUGGESTIONS ----
+// ---- SMART CATEGORY / TOPIC SELECT ----
+let _allCategories = [];   // [{ key, label }]
+let _allTopics = [];       // flat list of topic labels
+let _treeCache = null;
+
 async function loadCategorySuggestions() {
-  const res = await fetch("/api/categories");
-  const cats = await res.json();
-  const dl = $("categorySuggestions");
-  dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+  try {
+    const res = await fetch("/api/categories");
+    const cats = await res.json();                    // { key: label }
+    _allCategories = Object.entries(cats).map(([k, v]) => ({ key: k, label: v }));
+  } catch {}
 }
 
 async function loadTopicSuggestions() {
-  const res = await fetch("/api/tree");
-  if (!res.ok) return;
-  const tree = await res.json();
-  const dl = $("topicSuggestions");
-  if (!dl) return;
-  const topics = new Set();
-  for (const catData of Object.values(tree)) {
-    const topicsMap = catData._topics || catData;
-    for (const [key, topicData] of Object.entries(topicsMap)) {
-      if (key.startsWith("_")) continue;
-      const label = topicData._label || key;
-      topics.add(label);
+  try {
+    const res = await fetch("/api/tree");
+    if (!res.ok) return;
+    _treeCache = await res.json();
+    const topics = new Set();
+    for (const catData of Object.values(_treeCache)) {
+      const topicsMap = catData._topics || catData;
+      for (const [key, topicData] of Object.entries(topicsMap)) {
+        if (key.startsWith("_")) continue;
+        topics.add(topicData._label || key);
+      }
     }
+    _allTopics = [...topics].sort();
+  } catch {}
+}
+
+function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
+  function showDropdown(filter) {
+    const items = getItems(filter);
+    if (!items.length) { dropdownEl.classList.add("hidden"); return; }
+    dropdownEl.innerHTML = items.map((item, i) =>
+      `<div class="ss-item" data-value="${escapeHtml(item)}">${escapeHtml(item)}</div>`
+    ).join("");
+    dropdownEl.querySelectorAll(".ss-item").forEach(el => {
+      el.addEventListener("mousedown", e => {
+        e.preventDefault();
+        onSelect(el.dataset.value);
+        dropdownEl.classList.add("hidden");
+      });
+    });
+    dropdownEl.classList.remove("hidden");
   }
-  dl.innerHTML = [...topics].sort().map(t => `<option value="${escapeHtml(t)}">`).join("");
+
+  inputEl.addEventListener("focus", () => showDropdown(inputEl.value));
+  inputEl.addEventListener("input", () => showDropdown(inputEl.value));
+  inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
+  inputEl.addEventListener("keydown", e => {
+    if (e.key === "Escape") dropdownEl.classList.add("hidden");
+    if (e.key === "ArrowDown") {
+      const first = dropdownEl.querySelector(".ss-item");
+      if (first) { e.preventDefault(); first.focus(); }
+    }
+  });
+  dropdownEl.addEventListener("keydown", e => {
+    const items = [...dropdownEl.querySelectorAll(".ss-item")];
+    const idx = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown" && idx < items.length - 1) { e.preventDefault(); items[idx + 1].focus(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); idx > 0 ? items[idx - 1].focus() : inputEl.focus(); }
+    if (e.key === "Enter" && idx >= 0) { e.preventDefault(); items[idx].dispatchEvent(new Event("mousedown")); }
+  });
+}
+
+function initSmartSelects() {
+  const catInput    = $("fieldCategory");
+  const catDrop     = $("catDropdown");
+  const topicInput  = $("fieldTopic");
+  const topicDrop   = $("topicDropdown");
+  if (!catInput || !catDrop) return;
+
+  _buildSmartSelect(catInput, catDrop,
+    filter => {
+      const f = filter.toLowerCase();
+      const matches = _allCategories
+        .map(c => c.label)
+        .filter(l => !f || l.toLowerCase().includes(f));
+      // If typed value not in list, offer "Nueva: <typed>" item
+      if (filter.trim() && !matches.find(l => l.toLowerCase() === f)) {
+        matches.push(`+ Nueva: "${filter.trim()}"`);
+      }
+      return matches;
+    },
+    val => {
+      catInput.value = val.startsWith('+ Nueva: "') ? val.slice(10, -1) : val;
+      // Auto-populate topics for this category
+      _refreshTopicDropdown(val);
+    }
+  );
+
+  _buildSmartSelect(topicInput, topicDrop,
+    filter => {
+      const f = filter.toLowerCase();
+      // First try topics from selected category
+      const catVal = catInput.value.trim().toLowerCase();
+      let catTopics = [];
+      if (_treeCache) {
+        for (const [catKey, catData] of Object.entries(_treeCache)) {
+          const label = (catData._label || catKey).toLowerCase();
+          if (label === catVal || catKey.toLowerCase() === catVal) {
+            const topicsMap = catData._topics || catData;
+            for (const [k, td] of Object.entries(topicsMap)) {
+              if (!k.startsWith("_")) catTopics.push(td._label || k);
+            }
+            break;
+          }
+        }
+      }
+      const pool = catTopics.length ? catTopics : _allTopics;
+      const matches = pool.filter(t => !f || t.toLowerCase().includes(f));
+      if (filter.trim() && !matches.find(t => t.toLowerCase() === f)) {
+        matches.push(`+ Nuevo: "${filter.trim()}"`);
+      }
+      return matches;
+    },
+    val => {
+      topicInput.value = val.startsWith('+ Nuevo: "') ? val.slice(10, -1) : val;
+    }
+  );
+}
+
+function _refreshTopicDropdown(catLabel) {
+  // When category changes, clear topic and hint
+  const topicInput = $("fieldTopic");
+  if (topicInput) topicInput.value = "";
 }
 
 let _coursesTree = {};
