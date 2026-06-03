@@ -2787,10 +2787,15 @@
         grid.appendChild(empty);
       }
 
+      // Drag state
+      let dragCardId = null;
+      let dragColId = null;
+
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const cell = document.createElement('div');
         cell.className = 'kb-cal-cell' + (dateStr === todayStr ? ' kb-cal-cell--today' : '');
+        cell.dataset.date = dateStr;
 
         const dayNum = document.createElement('div');
         dayNum.className = 'kb-cal-day-num';
@@ -2801,10 +2806,19 @@
         cards.slice(0, 3).forEach(({ card, colId }) => {
           const chip = document.createElement('div');
           chip.className = 'kb-cal-card-chip';
+          chip.draggable = true;
           const lblColor = card.labels && card.labels[0] ? card.labels[0].color : 'var(--accent)';
           chip.style.borderLeftColor = lblColor;
           chip.textContent = card.title;
           chip.title = card.title;
+
+          chip.addEventListener('dragstart', e => {
+            dragCardId = card.id;
+            dragColId = colId;
+            chip.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          chip.addEventListener('dragend', () => { chip.style.opacity = ''; });
           chip.addEventListener('click', e => { e.stopPropagation(); openCardModal(card, colId); });
           cell.appendChild(chip);
         });
@@ -2814,6 +2828,32 @@
           more.textContent = `+${cards.length - 3} más`;
           cell.appendChild(more);
         }
+
+        // Drop target: highlight on dragover
+        cell.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          cell.classList.add('kb-cal-cell--dragover');
+        });
+        cell.addEventListener('dragleave', e => {
+          if (!cell.contains(e.relatedTarget)) cell.classList.remove('kb-cal-cell--dragover');
+        });
+        cell.addEventListener('drop', async e => {
+          e.preventDefault();
+          cell.classList.remove('kb-cal-cell--dragover');
+          if (!dragCardId || cell.dataset.date === dateStr) return;
+          // Find and update the card
+          let found = false;
+          for (const col of (_currentBoard.columns || [])) {
+            const c = col.cards.find(x => x.id === dragCardId);
+            if (c) { c.due = cell.dataset.date; found = true; break; }
+          }
+          if (found) {
+            await saveBoardData(_currentBoard.id, _currentBoard);
+            buildCal();
+          }
+          dragCardId = null; dragColId = null;
+        });
 
         // Click on empty area of cell → create card with that due date
         cell.addEventListener('click', async e => {

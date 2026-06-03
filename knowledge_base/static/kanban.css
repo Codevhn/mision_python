@@ -2346,6 +2346,9 @@ kbd {
 }
 .kb-cal-cell--empty { background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.05); }
 .kb-cal-cell--today { border-color: var(--accent) !important; background: rgba(23,147,209,0.22); }
+.kb-cal-cell--dragover { border-color: #fff !important; background: rgba(255,255,255,0.15) !important; outline: 2px dashed rgba(255,255,255,0.5); }
+.kb-cal-card-chip[draggable="true"] { cursor: grab; }
+.kb-cal-card-chip[draggable="true"]:active { cursor: grabbing; }
 .kb-cal-day-num {
   font-size: 0.72rem;
   font-weight: 700;
