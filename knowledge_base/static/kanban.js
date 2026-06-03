@@ -1045,7 +1045,7 @@
       <textarea placeholder="Título de la tarjeta…" id="kbQaText"></textarea>
       <div class="kb-quick-add-actions">
         <button class="kb-quick-add-save">Agregar</button>
-        <button class="kb-quick-add-cancel">×</button>
+        <button class="kb-quick-add-cancel">Cancelar</button>
       </div>`;
     cardsList.parentElement.insertBefore(qa, addBtn);
 
@@ -1146,19 +1146,17 @@
       topbar.innerHTML = `
         <span class="kb-modal-topbar-board">&#9646; ${escHtml(boardName)}</span>
         <div class="kb-modal-topbar-actions">
-          <button class="kb-modal-topbar-btn" id="kbModalArchiveTopBtn" title="Archivar">&#9632;</button>
+          <button class="kb-modal-topbar-btn kb-modal-cover-icon-btn" id="kbModalCoverBtn" title="Portada">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
           <button class="kb-modal-topbar-btn" id="kbModalMoreTopBtn" title="Más">&#8943;</button>
           <button class="kb-modal-close" id="kbModalClose">&times;</button>
         </div>`;
       modal.appendChild(topbar);
       topbar.querySelector('#kbModalClose').addEventListener('click', closeModal);
-      topbar.querySelector('#kbModalArchiveTopBtn').addEventListener('click', () => {
-        card.archived = true;
-        saveBoard(_currentBoard.id);
-        overlay.remove();
-        renderColumns();
-        updateArchiveBtnCount();
-        showToast('Tarjeta archivada');
+      topbar.querySelector('#kbModalCoverBtn').addEventListener('click', e => {
+        e.stopPropagation();
+        showCardCoverPicker(topbar.querySelector('#kbModalCoverBtn'), card, rebuildModal);
       });
 
       // ---- COVER ----
@@ -1271,10 +1269,6 @@
       // Members pill
       pillsRow.appendChild(makePill('👤', 'Miembros', btn => {
         showMembersPopover(btn, card, rebuildModal);
-      }));
-      // Portada pill
-      pillsRow.appendChild(makePill('🎨', 'Portada', btn => {
-        showCardCoverPicker(btn, card, rebuildModal);
       }));
       main.appendChild(pillsRow);
 

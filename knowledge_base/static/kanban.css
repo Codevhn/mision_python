@@ -375,12 +375,14 @@
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.78rem;
+  font-family: var(--font-ui);
   cursor: pointer;
-  line-height: 1;
-  padding: 2px 4px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
 }
-.kb-quick-add-cancel:hover { color: var(--danger); }
+.kb-quick-add-cancel:hover { background: var(--bg-hover); color: var(--text); }
 
 /* ---- Card Modal ---- */
 .kb-modal-overlay {
@@ -503,12 +505,16 @@
   color: var(--text-faint);
   cursor: pointer;
   font-size: 0.82rem;
-  padding: 3px 6px;
-  border-radius: 3px;
+  padding: 5px 7px;
+  border-radius: 4px;
   line-height: 1;
   transition: background 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .kb-modal-topbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+.kb-modal-cover-icon-btn svg { display: block; }
 
 /* ---- Trello modal cover ---- */
 .kb-modal-cover {
@@ -622,18 +628,19 @@
   margin-left: 30px;
 }
 .kb-modal-pill-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  color: var(--text-muted);
-  font-size: 0.73rem;
+  background: var(--bg-hover);
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.78rem;
   font-family: var(--font-ui);
   cursor: pointer;
-  padding: 4px 10px;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  padding: 6px 12px;
+  transition: background 0.12s, color 0.12s;
   white-space: nowrap;
+  font-weight: 500;
 }
-.kb-modal-pill-btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
+.kb-modal-pill-btn:hover { background: var(--border); color: var(--text); }
 
 /* ---- Labels inline in modal ---- */
 .kb-modal-labels-section {
@@ -656,16 +663,16 @@
   gap: 6px;
 }
 .kb-modal-section-icon {
-  font-size: 0.9rem;
-  color: var(--text-muted);
+  font-size: 1rem;
+  color: var(--text);
   flex-shrink: 0;
-  width: 18px;
+  width: 20px;
   text-align: center;
 }
 .kb-modal-section-title {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text);
   flex: 1;
 }
 .kb-modal-section-edit-btn {
@@ -684,17 +691,18 @@
   font-size: 0.82rem;
   color: var(--text);
   line-height: 1.5;
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
   cursor: pointer;
   margin-left: 24px;
   white-space: pre-wrap;
   word-break: break-word;
-  min-height: 32px;
+  min-height: 56px;
+  background: var(--bg-hover);
   transition: background 0.12s;
 }
-.kb-modal-desc-display:hover { background: var(--bg-elevated); }
-.kb-modal-desc-placeholder { color: var(--text-faint); font-style: italic; }
+.kb-modal-desc-display:hover { background: var(--border); }
+.kb-modal-desc-placeholder { color: var(--text-muted); font-style: normal; }
 .kb-modal-desc-edit-area {
   display: flex;
   flex-direction: column;
@@ -897,7 +905,7 @@
   font-family: var(--font-ui);
   font-size: 0.82rem;
   padding: 8px 10px;
-  resize: vertical;
+  resize: none;
   outline: none;
   min-height: 90px;
   transition: border-color 0.12s;
