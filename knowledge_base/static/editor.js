@@ -1987,7 +1987,8 @@ window.BlockEditor = (() => {
 
     function convertBlock(id, newType) {
       saveHistory();
-      const b = _blocks.find(b => b.id === id);
+      const idx = _blocks.findIndex(b => b.id === id);
+      const b = idx >= 0 ? _blocks[idx] : null;
       if (!b) return;
       const isToggleSrc = b.type.startsWith('toggle');
       const isToggleDst = newType.startsWith('toggle');
@@ -2000,7 +2001,6 @@ window.BlockEditor = (() => {
         b.content = readContent(id) ?? b.content;
         if (isToggleDst) {
           // Adopt following sibling blocks as toggle children by indenting them.
-          const idx = _blocks.findIndex(x => x.id === id);
           const baseIndent = getIndent(_blocks[idx]);
           for (let j = idx + 1; j < _blocks.length; j++) {
             const nb = _blocks[j];
@@ -2015,12 +2015,10 @@ window.BlockEditor = (() => {
       }
       b.type = newType;
       if (isToggleDst && b.open === undefined) b.open = true;
-      const old = container.querySelector(`[data-id="${id}"]`);
-      const newEl = makeEl(b);
-      old.replaceWith(newEl);
-      const c = newEl.querySelector('.eb-toggle-header, .eb-content');
-      if (c) { c.focus(); placeCursorEnd(c); }
       render();
+      const newEl = container.querySelector(`[data-id="${id}"]`);
+      const c = newEl?.querySelector('.eb-toggle-header, .eb-content');
+      if (c) { c.focus(); placeCursorEnd(c); }
       sync();
     }
 
