@@ -15,6 +15,23 @@
     'linear-gradient(135deg,#240046,#7b2d8b)',
     'linear-gradient(135deg,#2d2d2d,#1a1a1a)',
     'linear-gradient(135deg,#0d1117,#161b22)',
+    'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
+    'linear-gradient(135deg,#16222a,#3a6073)',
+    'linear-gradient(135deg,#3a1c71,#d76d77,#ffaf7b)',
+    'linear-gradient(135deg,#134e5e,#71b280)',
+    'linear-gradient(135deg,#1f4037,#99f2c8)',
+    'linear-gradient(135deg,#42275a,#734b6d)',
+    'linear-gradient(135deg,#232526,#414345)',
+    'linear-gradient(135deg,#141e30,#243b55)',
+  ];
+
+  const BG_IMAGE_PRESETS = [
+    { label: 'Aurora', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80' },
+    { label: 'Montanas', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80' },
+    { label: 'Costa', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80' },
+    { label: 'Bosque', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80' },
+    { label: 'Ciudad', url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80' },
+    { label: 'Escritorio', url: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80' },
   ];
 
   const LABEL_COLORS = [
@@ -74,6 +91,10 @@
 
   function avatarColor(name) {
     return AVATAR_PALETTE[name.length % AVATAR_PALETTE.length];
+  }
+
+  function imageBackground(url) {
+    return `linear-gradient(rgba(15,23,42,0.22),rgba(15,23,42,0.22)), url("${url}") center center / cover no-repeat`;
   }
 
   function showToast(msg) {
@@ -438,37 +459,96 @@
 
     const pop = document.createElement('div');
     pop.className = 'kb-bg-picker';
+    pop.innerHTML = `
+      <div class="kb-bg-picker-section">
+        <div class="kb-bg-picker-label">Sin fondo</div>
+        <div class="kb-bg-swatch-grid kb-bg-swatch-grid--single" id="kbBgResetRow"></div>
+      </div>
+      <div class="kb-bg-picker-section">
+        <div class="kb-bg-picker-label">Degradados</div>
+        <div class="kb-bg-swatch-grid" id="kbBgGradientGrid"></div>
+      </div>
+      <div class="kb-bg-picker-section">
+        <div class="kb-bg-picker-label">Imagenes</div>
+        <div class="kb-bg-swatch-grid" id="kbBgPhotoGrid"></div>
+      </div>
+      <div class="kb-bg-picker-section">
+        <div class="kb-bg-picker-label">URL de imagen</div>
+        <div class="kb-bg-custom-row">
+          <input type="url" id="kbBgCustomUrl" placeholder="https://..." autocomplete="off" />
+          <button type="button" id="kbBgApply">Aplicar</button>
+        </div>
+      </div>
+    `;
+
+    const resetRow = pop.querySelector('#kbBgResetRow');
+    const gradientGrid = pop.querySelector('#kbBgGradientGrid');
+    const photoGrid = pop.querySelector('#kbBgPhotoGrid');
+    const customUrl = pop.querySelector('#kbBgCustomUrl');
+    const applyBtn = pop.querySelector('#kbBgApply');
+
+    const applyBackground = async bg => {
+      board.background = bg;
+      _area.style.background = bg;
+      try {
+        await updateBoardApi(board.id, { background: bg });
+      } catch (e) {
+        showToast('Error guardando fondo');
+      }
+      pop.remove();
+    };
 
     const reset = document.createElement('div');
     reset.className = 'kb-bg-swatch kb-bg-swatch--reset' + (!board.background ? ' selected' : '');
     reset.textContent = '✕';
     reset.title = 'Sin fondo';
     reset.addEventListener('click', async () => {
-      board.background = '';
-      _area.style.background = '';
-      try { await updateBoardApi(board.id, { background: '' }); } catch (e) { showToast('Error guardando fondo'); }
-      pop.remove();
+      await applyBackground('');
     });
-    pop.appendChild(reset);
+    resetRow.appendChild(reset);
 
     BG_PRESETS.forEach(bg => {
       const sw = document.createElement('div');
       sw.className = 'kb-bg-swatch' + (board.background === bg ? ' selected' : '');
       sw.style.background = bg;
-      sw.title = bg;
+      sw.title = 'Degradado';
       sw.addEventListener('click', async () => {
-        board.background = bg;
-        _area.style.background = bg;
-        try { await updateBoardApi(board.id, { background: bg }); } catch (e) { showToast('Error guardando fondo'); }
-        pop.remove();
+        await applyBackground(bg);
       });
-      pop.appendChild(sw);
+      gradientGrid.appendChild(sw);
+    });
+
+    BG_IMAGE_PRESETS.forEach(preset => {
+      const bg = imageBackground(preset.url);
+      const sw = document.createElement('div');
+      sw.className = 'kb-bg-swatch kb-bg-swatch--photo' + (board.background === bg ? ' selected' : '');
+      sw.style.background = bg;
+      sw.title = preset.label;
+      sw.addEventListener('click', async () => {
+        await applyBackground(bg);
+      });
+      photoGrid.appendChild(sw);
+    });
+
+    applyBtn.addEventListener('click', async () => {
+      const url = customUrl.value.trim();
+      if (!url) {
+        customUrl.focus();
+        return;
+      }
+      await applyBackground(imageBackground(url));
+    });
+    customUrl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyBtn.click();
+      }
     });
 
     pop.style.position = 'fixed';
     document.body.appendChild(pop);
     const rect = anchor.getBoundingClientRect();
-    const popW = 220;
+    const popW = Math.min(356, window.innerWidth - 16);
     let left = rect.left;
     if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
     pop.style.left = left + 'px';

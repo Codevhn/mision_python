@@ -18,6 +18,46 @@ let _inlineEditor = null;  // inline entry editor instance
 let _autoSaveTimer = null;
 let _restoreInProgress = false;
 
+const ENTRY_ICON_DEFAULTS = {
+  knowledge: "lucide:file-text",
+  course: "lucide:graduation-cap",
+  teamspace: "lucide:briefcase",
+  page: "lucide:file",
+};
+
+const ICON_CATALOG = [
+  { group: "General", label: "Documento", icon: "lucide:file-text", tags: ["page", "documento", "nota", "entry"] },
+  { group: "General", label: "Carpeta", icon: "lucide:folder-open", tags: ["folder", "categoria", "tema"] },
+  { group: "General", label: "Libro", icon: "lucide:book-open", tags: ["book", "curso", "guia"] },
+  { group: "General", label: "Capa", icon: "lucide:layers-3", tags: ["stack", "modulo", "coleccion"] },
+  { group: "General", label: "Meta", icon: "lucide:target", tags: ["objetivo", "target"] },
+  { group: "General", label: "Idea", icon: "lucide:lightbulb", tags: ["idea", "brainstorm"] },
+  { group: "General", label: "Cohete", icon: "lucide:rocket", tags: ["launch", "proyecto"] },
+  { group: "General", label: "Paleta", icon: "lucide:palette", tags: ["design", "ui", "ux"] },
+  { group: "Workspace", label: "Teamspace", icon: "lucide:briefcase", tags: ["workspace", "space", "equipo"] },
+  { group: "Workspace", label: "Personas", icon: "lucide:users", tags: ["team", "usuarios", "miembros"] },
+  { group: "Workspace", label: "Empresa", icon: "lucide:building-2", tags: ["org", "company"] },
+  { group: "Workspace", label: "Tablero", icon: "lucide:kanban-square", tags: ["kanban", "trello", "board"] },
+  { group: "Workspace", label: "Base de datos", icon: "lucide:database", tags: ["db", "datos"] },
+  { group: "Workspace", label: "Servidor", icon: "lucide:server", tags: ["backend", "infra"] },
+  { group: "Workspace", label: "Red", icon: "lucide:network", tags: ["network", "topologia"] },
+  { group: "Workspace", label: "Escudo", icon: "lucide:shield", tags: ["security", "seguridad"] },
+  { group: "Tech", label: "Python", icon: "simple-icons:python", tags: ["python", "lenguaje"] },
+  { group: "Tech", label: "JavaScript", icon: "simple-icons:javascript", tags: ["javascript", "js"] },
+  { group: "Tech", label: "TypeScript", icon: "simple-icons:typescript", tags: ["typescript", "ts"] },
+  { group: "Tech", label: "HTML", icon: "simple-icons:html5", tags: ["html", "frontend"] },
+  { group: "Tech", label: "CSS", icon: "simple-icons:css", tags: ["css", "styles"] },
+  { group: "Tech", label: "React", icon: "simple-icons:react", tags: ["react"] },
+  { group: "Tech", label: "Node", icon: "simple-icons:nodedotjs", tags: ["node", "nodejs"] },
+  { group: "Tech", label: "Docker", icon: "simple-icons:docker", tags: ["docker", "contenedor"] },
+  { group: "Tech", label: "Git", icon: "simple-icons:git", tags: ["git", "control de versiones"] },
+  { group: "Tech", label: "GitHub", icon: "simple-icons:github", tags: ["github", "repo"] },
+  { group: "Tech", label: "Linux", icon: "simple-icons:linux", tags: ["linux", "sistema"] },
+  { group: "Tech", label: "PostgreSQL", icon: "simple-icons:postgresql", tags: ["postgres", "database"] },
+  { group: "Tech", label: "MySQL", icon: "simple-icons:mysql", tags: ["mysql", "database"] },
+  { group: "Tech", label: "MongoDB", icon: "simple-icons:mongodb", tags: ["mongodb", "database"] },
+];
+
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
   // Modal block editor (for new entries)
@@ -57,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window._loadEntryById = (id) => loadEntry(id);
 
   initPageNameModal();
+  initIconPickers();
   renderHome();
 
   loadTree();
@@ -94,6 +135,10 @@ document.addEventListener("DOMContentLoaded", () => {
       $("courseFields").classList.toggle("hidden",     currentModalMode !== "course");
       $("teamspaceFields").classList.toggle("hidden",  currentModalMode !== "teamspace");
       $("templatePickerGroup").classList.toggle("hidden", currentModalMode !== "knowledge");
+      const iconBtn = $("entryIconBtn");
+      if (iconBtn && iconBtn.dataset.userPicked !== "true") {
+        setIconButtonValue(iconBtn, getDefaultIconForMode(currentModalMode), getDefaultIconForMode(currentModalMode));
+      }
     });
   });
 });
@@ -406,7 +451,10 @@ function renderTree(tree) {
         const dot = document.createElement("span");
         dot.className = `status-dot status-${status}`;
         entryEl.appendChild(dot);
-        entryEl.appendChild(document.createTextNode(entry.title));
+        const label = document.createElement("span");
+        label.className = "tree-entry-label";
+        label.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.knowledge);
+        entryEl.appendChild(label);
 
         entryEl.addEventListener("click", () => loadEntry(entry.id));
 
@@ -539,7 +587,8 @@ function renderCoursesTree(tree) {
         const dot = document.createElement("span");
         dot.className = `status-dot status-${entry.status || "pendiente"}`;
         const nameSpan = document.createElement("span");
-        nameSpan.textContent = entry.title;
+        nameSpan.className = "tree-entry-label";
+        nameSpan.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.course);
         entryEl.appendChild(dot);
         entryEl.appendChild(nameSpan);
         if (entry.id === currentEntryId) entryEl.classList.add("active");
@@ -594,7 +643,7 @@ function renderTeamspaceTree(tree) {
   for (const [spaceSlug, spaceData] of Object.entries(tree)) {
     const spaceLabel = spaceData._label || spaceSlug;
     const entries    = spaceData._entries || [];
-    const icon       = spaceData._icon || spaceLabel.charAt(0).toUpperCase();
+    const icon       = spaceData._icon || ENTRY_ICON_DEFAULTS.teamspace;
 
     const spaceDiv = document.createElement("div");
     spaceDiv.className = "tree-cat ts-space-block";
@@ -603,7 +652,7 @@ function renderTeamspaceTree(tree) {
     spaceHeader.className = "tree-cat-header ts-space-header";
     spaceHeader.innerHTML = `
       <span class="tree-arrow">▾</span>
-      <span class="ts-space-icon">${escapeHtml(icon)}</span>
+      <span class="ts-space-icon">${renderIconMarkup(icon, "ts-space-icon-glyph", ENTRY_ICON_DEFAULTS.teamspace)}</span>
       <span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>
       <button class="ts-add-page-btn" data-space="${escapeHtml(spaceSlug)}" data-label="${escapeHtml(spaceLabel)}" title="Nueva página en ${escapeHtml(spaceLabel)}">+</button>
     `;
@@ -629,7 +678,7 @@ function renderTeamspaceTree(tree) {
       const item = document.createElement("div");
       item.className = "tree-entry ts-item";
       item.dataset.id = entry.id;
-      item.innerHTML = `<span class="ts-entry-icon">⬡</span>${escapeHtml(entry.title)}`;
+      item.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.page);
       item.addEventListener("click", () => loadEntry(entry.id));
       entryList.appendChild(item);
     }
@@ -650,7 +699,7 @@ function renderTeamspaceTree(tree) {
 function openNewTeamspaceModal() {
   $("ntsName").value = "";
   $("ntsDesc").value = "";
-  $("ntsIconBtn").textContent = "T";
+  setIconButtonValue($("ntsIconBtn"), ENTRY_ICON_DEFAULTS.teamspace, ENTRY_ICON_DEFAULTS.teamspace);
   $("newTeamspaceOverlay").classList.remove("hidden");
   setTimeout(() => $("ntsName").focus(), 50);
 }
@@ -660,28 +709,19 @@ $("ntsClose").addEventListener("click", () => $("newTeamspaceOverlay").classList
 $("ntsCancel").addEventListener("click", () => $("newTeamspaceOverlay").classList.add("hidden"));
 $("newTeamspaceOverlay").addEventListener("click", e => { if (e.target === $("newTeamspaceOverlay")) $("newTeamspaceOverlay").classList.add("hidden"); });
 
-// Icon picker: cycle through letters/emojis on click
-const TS_ICONS = ["T","⚡","🚀","📁","🛠","📚","🔬","💡","🎯","🔧","⬡","◈","▣","◉"];
-let _ntsIconIdx = 0;
-$("ntsIconBtn").addEventListener("click", () => {
-  _ntsIconIdx = (_ntsIconIdx + 1) % TS_ICONS.length;
-  $("ntsIconBtn").textContent = TS_ICONS[_ntsIconIdx];
-});
-
 $("ntsName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("ntsCreate").click(); } });
 
 $("ntsCreate").addEventListener("click", async () => {
   const name = $("ntsName").value.trim();
   if (!name) { $("ntsName").focus(); return; }
-  const icon = $("ntsIconBtn").textContent;
+  const icon = getIconButtonValue("ntsIconBtn");
   const desc = $("ntsDesc").value.trim();
   // Create a teamspace by creating a special index entry
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const content = desc ? `> ${desc}` : "";
   const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: `${icon} ${name}`, raw_text: content }),
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: name, title: name, raw_text: content, icon, is_teamspace_home: true }),
   });
   if (res.ok) {
     $("newTeamspaceOverlay").classList.add("hidden");
@@ -700,6 +740,7 @@ function openTsPageModal(spaceSlug, spaceLabel) {
   _tsPageCurrentLabel = spaceLabel;
   $("tsPageSpaceName").textContent = spaceLabel;
   $("tsPageTitle").value = "";
+  setIconButtonValue($("tsPageIconBtn"), ENTRY_ICON_DEFAULTS.page, ENTRY_ICON_DEFAULTS.page);
   $("tsPageOverlay").classList.remove("hidden");
   setTimeout(() => $("tsPageTitle").focus(), 50);
 }
@@ -712,10 +753,11 @@ $("tsPageTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.p
 $("tsPageCreate").addEventListener("click", async () => {
   const title = $("tsPageTitle").value.trim();
   if (!title) { $("tsPageTitle").focus(); return; }
+  const icon = getIconButtonValue("tsPageIconBtn");
   const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "" }),
+    body: JSON.stringify({ entry_type: "teamspace", teamspace: _tsPageCurrentSpace, title, raw_text: "", icon }),
   });
   if (res.ok) {
     const data = await res.json();
@@ -962,6 +1004,9 @@ function openNewModal() {
   $("fieldTopic").value = "";
   $("fieldTitle").value = "";
   $("fieldContent").value = "";
+  $("fieldTeamspace").value = "";
+  $("fieldCourse").value = "";
+  $("fieldModule").value = "";
   BlockEditor.loadMarkdown("");
   $("previewPane").innerHTML = "";
   switchTab("write");
@@ -978,6 +1023,11 @@ function openNewModal() {
   $("courseFields").classList.add("hidden");
   $("teamspaceFields").classList.add("hidden");
   $("templatePickerGroup").classList.remove("hidden");
+  const iconBtn = $("entryIconBtn");
+  if (iconBtn) {
+    iconBtn.dataset.userPicked = "false";
+    setIconButtonValue(iconBtn, ENTRY_ICON_DEFAULTS.knowledge, ENTRY_ICON_DEFAULTS.knowledge);
+  }
   setTimeout(() => $("fieldCategory").focus(), 60);
 }
 
@@ -989,6 +1039,11 @@ async function openEditModal() {
   // Edit modal is metadata-only (title, category/topic) — content is inline
   $("modalTitle").textContent = "Editar información";
   $("fieldTitle").value = m.title;
+  const iconBtn = $("entryIconBtn");
+  if (iconBtn) {
+    iconBtn.dataset.userPicked = "true";
+    setIconButtonValue(iconBtn, m.icon || getDefaultIconForMode(m.type === "teamspace" ? "page" : (m.type || "knowledge")), getDefaultIconForMode(m.type === "teamspace" ? "page" : (m.type || "knowledge")));
+  }
   $("saveBtn").dataset.mode = "edit";
   $("saveBtn").dataset.id = currentEntryId;
   $("saveBtn").textContent = "Actualizar";
@@ -1014,6 +1069,13 @@ async function openEditModal() {
     $("fieldCourse").value = m.course_label || m.course || "";
     $("fieldModule").value = m.module_label || m.module || "";
     updateModuleSuggestions();
+  } else if (m.type === "teamspace") {
+    if (window._setModalMode) window._setModalMode("teamspace");
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "teamspace"));
+    $("knowledgeFields").classList.add("hidden");
+    $("courseFields").classList.add("hidden");
+    $("teamspaceFields").classList.remove("hidden");
+    $("fieldTeamspace").value = m.teamspace_label || m.teamspace || "";
   } else {
     if (window._setModalMode) window._setModalMode("knowledge");
     document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
@@ -1045,6 +1107,7 @@ async function saveEntry() {
   const title = $("fieldTitle").value.trim();
   const content = BlockEditor.getMarkdown().trim();
   const currentModalMode = window._getModalMode ? window._getModalMode() : "knowledge";
+  const icon = getIconButtonValue("entryIconBtn");
 
   if (currentModalMode === "course") {
     const course  = $("fieldCourse").value.trim();
@@ -1056,7 +1119,7 @@ async function saveEntry() {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ course, module, title, raw_text: content }),
+      body: JSON.stringify({ course, module, title, raw_text: content, icon }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -1077,11 +1140,35 @@ async function saveEntry() {
   if (mode === "edit") {
     // Metadata-only update — content is auto-saved inline
     const id = $("saveBtn").dataset.id;
+    if (currentModalMode === "teamspace") {
+      const teamspace = $("fieldTeamspace").value.trim() || "General";
+      if (!title) { showToast("Ingresa un título", "error"); return; }
+      const res = await fetch(`/api/entry/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, teamspace, icon }),
+      });
+      if (res.ok) {
+        closeModal();
+        showToast("Información actualizada");
+        await loadTree();
+        if (currentEntryMeta) {
+          currentEntryMeta.title = title;
+          currentEntryMeta.teamspace_label = teamspace;
+          currentEntryMeta.icon = icon;
+        }
+        const titleEl = $("inlineTitle");
+        if (titleEl) titleEl.textContent = title;
+      } else {
+        showToast("Error al actualizar", "error");
+      }
+      return;
+    }
     if (!title || !category || !topic) { showToast("Completa los campos", "error"); return; }
     const res = await fetch(`/api/entry/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, category, topic }),
+      body: JSON.stringify({ title, category, topic, icon }),
     });
     if (res.ok) {
       closeModal();
@@ -1094,6 +1181,7 @@ async function saveEntry() {
         currentEntryMeta.title = title;
         currentEntryMeta.category_label = category;
         currentEntryMeta.topic_label = topic;
+        currentEntryMeta.icon = icon;
       }
     } else {
       showToast("Error al actualizar", "error");
@@ -1108,7 +1196,7 @@ async function saveEntry() {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content }),
+      body: JSON.stringify({ entry_type: "teamspace", teamspace, title, raw_text: content, icon }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -1131,7 +1219,7 @@ async function saveEntry() {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, topic, title, raw_text }),
+      body: JSON.stringify({ category, topic, title, raw_text, icon }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -1310,6 +1398,133 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function getDefaultIconForMode(mode) {
+  return ENTRY_ICON_DEFAULTS[mode] || ENTRY_ICON_DEFAULTS.knowledge;
+}
+
+function renderIconMarkup(icon, className = "", fallback = ENTRY_ICON_DEFAULTS.knowledge) {
+  const value = icon || fallback;
+  const cls = className ? ` class="${className}"` : "";
+  if (value && value.includes(":")) {
+    return `<iconify-icon icon="${escapeHtml(value)}"${cls}></iconify-icon>`;
+  }
+  return `<span${cls}>${escapeHtml(value || "•")}</span>`;
+}
+
+function setIconButtonValue(button, icon, fallback) {
+  if (!button) return;
+  const preview = icon || fallback;
+  button.dataset.icon = icon || preview;
+  button.dataset.fallback = fallback;
+  button.innerHTML = renderIconMarkup(preview, "icon-preview-glyph", fallback);
+}
+
+function getIconButtonValue(id) {
+  return $(id)?.dataset.icon || "";
+}
+
+function renderTreeEntryLabel(icon, title, fallback = ENTRY_ICON_DEFAULTS.knowledge) {
+  return `<span class="tree-entry-icon">${renderIconMarkup(icon || fallback, "tree-entry-icon-glyph", fallback)}</span><span class="tree-entry-title">${escapeHtml(title)}</span>`;
+}
+
+function openIconPicker(anchor, initialIcon, onPick) {
+  document.querySelectorAll(".icon-picker-popover").forEach(el => el.remove());
+  const pop = document.createElement("div");
+  pop.className = "icon-picker-popover";
+  pop.innerHTML = `
+    <div class="icon-picker-head">
+      <div class="icon-picker-title">Seleccionar icono</div>
+      <input class="icon-picker-search" type="text" placeholder="Buscar icono…" autocomplete="off" />
+    </div>
+    <div class="icon-picker-body"></div>
+  `;
+
+  const body = pop.querySelector(".icon-picker-body");
+  const search = pop.querySelector(".icon-picker-search");
+
+  function renderCatalog(query = "") {
+    const q = query.trim().toLowerCase();
+    const items = ICON_CATALOG.filter(item => {
+      if (!q) return true;
+      return item.label.toLowerCase().includes(q)
+        || item.icon.toLowerCase().includes(q)
+        || item.tags.some(tag => tag.includes(q));
+    });
+    const groups = [];
+    items.forEach(item => {
+      let group = groups.find(g => g.name === item.group);
+      if (!group) {
+        group = { name: item.group, items: [] };
+        groups.push(group);
+      }
+      group.items.push(item);
+    });
+
+    body.innerHTML = groups.map(group => `
+      <section class="icon-picker-group">
+        <div class="icon-picker-group-title">${escapeHtml(group.name)}</div>
+        <div class="icon-picker-grid">
+          ${group.items.map(item => `
+            <button type="button" class="icon-picker-item${item.icon === initialIcon ? " selected" : ""}" data-icon="${escapeHtml(item.icon)}" title="${escapeHtml(item.label)}">
+              ${renderIconMarkup(item.icon, "icon-picker-item-glyph", item.icon)}
+              <span>${escapeHtml(item.label)}</span>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    `).join("") || '<div class="icon-picker-empty">Sin coincidencias.</div>';
+
+    body.querySelectorAll(".icon-picker-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        onPick(btn.dataset.icon);
+        pop.remove();
+      });
+    });
+  }
+
+  renderCatalog("");
+  search.addEventListener("input", () => renderCatalog(search.value));
+
+  document.body.appendChild(pop);
+  const rect = anchor.getBoundingClientRect();
+  const popWidth = Math.min(420, window.innerWidth - 24);
+  let left = rect.left;
+  if (left + popWidth > window.innerWidth - 12) left = window.innerWidth - popWidth - 12;
+  pop.style.width = `${popWidth}px`;
+  pop.style.left = `${Math.max(12, left)}px`;
+  pop.style.top = `${rect.bottom + 8}px`;
+  search.focus();
+
+  const closePicker = e => {
+    if (!pop.contains(e.target) && e.target !== anchor) {
+      pop.remove();
+      document.removeEventListener("mousedown", closePicker);
+    }
+  };
+  setTimeout(() => document.addEventListener("mousedown", closePicker), 0);
+}
+
+function initIconButton(buttonId, modeOrFallback) {
+  const btn = $(buttonId);
+  if (!btn) return;
+  const resolveFallback = () => typeof modeOrFallback === "function" ? modeOrFallback() : modeOrFallback;
+  setIconButtonValue(btn, btn.dataset.icon || "", resolveFallback());
+  btn.addEventListener("click", () => {
+    const fallback = resolveFallback();
+    openIconPicker(btn, btn.dataset.icon || fallback, icon => {
+      setIconButtonValue(btn, icon, fallback);
+      btn.dataset.userPicked = "true";
+    });
+  });
+}
+
+function initIconPickers() {
+  initIconButton("entryIconBtn", () => getDefaultIconForMode(window._getModalMode ? window._getModalMode() : "knowledge"));
+  initIconButton("ntsIconBtn", ENTRY_ICON_DEFAULTS.teamspace);
+  initIconButton("tsPageIconBtn", ENTRY_ICON_DEFAULTS.page);
+  initIconButton("pageNameIconBtn", ENTRY_ICON_DEFAULTS.page);
 }
 
 function showToast(msg, type = "success") {
@@ -1767,6 +1982,7 @@ function initPageNameModal() {
   window._promptPageName = (blockId) => {
     _pendingPageBlockId = blockId;
     $("pageNameInput").value = "";
+    setIconButtonValue($("pageNameIconBtn"), ENTRY_ICON_DEFAULTS.page, ENTRY_ICON_DEFAULTS.page);
     $("pageNameOverlay").classList.remove("hidden");
     setTimeout(() => $("pageNameInput").focus(), 50);
   };
@@ -1780,6 +1996,7 @@ function closePageNameModal() {
 async function confirmPageCreate() {
   const name = $("pageNameInput").value.trim();
   if (!name) return;
+  const icon = getIconButtonValue("pageNameIconBtn");
   closePageNameModal();
 
   // Create a new entry as sub-page of current
@@ -1793,6 +2010,7 @@ async function confirmPageCreate() {
       topic: "subpages",
       raw_text: "# " + name + "\n\n",
       parent_id: parentId || null,
+      icon,
     }),
   });
   if (res.ok) {
@@ -1823,7 +2041,7 @@ async function loadEntryChildren(entryId) {
   div.innerHTML = `<div class="entry-children-label">⬡ Sub-páginas</div>` +
     children.map(c => `
       <div class="entry-child-link" data-id="${c.id}">
-        <span class="entry-child-icon">⬡</span>
+        <span class="entry-child-icon">${renderIconMarkup(c.icon, "entry-child-icon-glyph", ENTRY_ICON_DEFAULTS.page)}</span>
         <span>${escapeHtml(c.title)}</span>
       </div>`).join("");
   div.querySelectorAll(".entry-child-link").forEach(el => {

@@ -794,16 +794,33 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  width: 220px;
+  gap: 12px;
+  width: 356px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.kb-bg-picker-section {
+  display: grid;
+  gap: 8px;
+}
+.kb-bg-picker-label {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+.kb-bg-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.kb-bg-swatch-grid--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 .kb-bg-swatch {
   width: 100%;
-  height: 32px;
+  height: 40px;
   border-radius: 5px;
   border: 2px solid transparent;
   cursor: pointer;
@@ -811,6 +828,7 @@
 }
 .kb-bg-swatch:hover { border-color: #fff; transform: scale(1.07); }
 .kb-bg-swatch.selected { border-color: var(--accent); }
+.kb-bg-swatch--photo { background-size: cover; background-position: center; }
 .kb-bg-swatch--reset {
   background: var(--bg-elevated);
   color: var(--text-muted);
@@ -822,6 +840,34 @@
   border-style: dashed;
 }
 .kb-bg-swatch--reset:hover { color: var(--danger); border-color: var(--danger); transform: none; }
+.kb-bg-custom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.kb-bg-custom-row input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  outline: none;
+}
+.kb-bg-custom-row input:focus { border-color: var(--accent); }
+.kb-bg-custom-row button {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+}
+.kb-bg-custom-row button:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---- Checklist in card thumbnail ---- */
 .kb-checklist-badge {

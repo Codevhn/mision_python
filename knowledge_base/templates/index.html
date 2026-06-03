@@ -281,7 +281,10 @@
         </div><!-- /#teamspaceFields -->
         <div class="form-group">
           <label>Título de la entrada</label>
-          <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
+          <div class="icon-field-row">
+            <button type="button" class="entry-icon-btn" id="entryIconBtn" title="Elegir icono"></button>
+            <input type="text" id="fieldTitle" placeholder="Ej: CRON — Planificador de tareas" />
+          </div>
         </div>
         <div class="form-group" id="templatePickerGroup">
           <label>Plantilla</label>
@@ -366,7 +369,7 @@
           Los teamspaces organizan páginas y entradas por proyecto o equipo.
         </p>
         <div class="nts-icon-name">
-          <button class="nts-icon-btn" id="ntsIconBtn" title="Cambiar icono">T</button>
+          <button type="button" class="nts-icon-btn" id="ntsIconBtn" title="Cambiar icono"></button>
           <input type="text" id="ntsName" placeholder="Nombre del teamspace" autocomplete="off" />
         </div>
         <div class="form-group" style="margin-top:16px;">
@@ -391,7 +394,10 @@
       <div class="modal-body" style="padding:24px 28px 8px;">
         <div class="form-group">
           <label>Título</label>
-          <input type="text" id="tsPageTitle" placeholder="Nombre de la página…" autocomplete="off" />
+          <div class="icon-field-row">
+            <button type="button" class="entry-icon-btn" id="tsPageIconBtn" title="Elegir icono"></button>
+            <input type="text" id="tsPageTitle" placeholder="Nombre de la página…" autocomplete="off" />
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -411,7 +417,10 @@
       <div class="modal-body">
         <div class="form-group">
           <label>Nombre de la sub-página</label>
-          <input type="text" id="pageNameInput" placeholder="Ej: Sección 1 — Introducción" />
+          <div class="icon-field-row">
+            <button type="button" class="entry-icon-btn" id="pageNameIconBtn" title="Elegir icono"></button>
+            <input type="text" id="pageNameInput" placeholder="Ej: Sección 1 — Introducción" />
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -431,6 +440,7 @@
   <script src="/static/codemirror/mode/shell/shell.js"></script>
   <script src="/static/codemirror/mode/sql/sql.js"></script>
   <script src="/static/codemirror/mode/yaml/yaml.js"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
   <script src="/static/editor.js?v={{ v }}"></script>
   <script src="/static/properties.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>

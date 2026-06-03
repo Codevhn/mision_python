@@ -335,10 +335,15 @@ def get_teamspace_tree():
             continue
         space = meta.get("teamspace", "general")
         space_label = meta.get("teamspace_label") or space.replace("-", " ").title()
-        tree.setdefault(space, {"_label": space_label, "_entries": []})
+        tree.setdefault(space, {"_label": space_label, "_icon": "", "_entries": []})
+        if meta.get("is_teamspace_home") and meta.get("icon"):
+            tree[space]["_icon"] = meta["icon"]
+        elif not tree[space]["_icon"] and meta.get("icon"):
+            tree[space]["_icon"] = meta["icon"]
         tree[space]["_entries"].append({
             "id": entry_id,
             "title": meta["title"],
+            "icon": meta.get("icon", ""),
             "created_at": meta.get("created_at", ""),
             "status": meta.get("status", "pendiente"),
             "order": meta.get("order", 0),
@@ -364,6 +369,7 @@ def get_tree():
         tree.setdefault(cat, {}).setdefault(topic, []).append({
             "id": entry_id,
             "title": meta["title"],
+            "icon": meta.get("icon", ""),
             "created_at": meta.get("created_at", ""),
             "status": meta.get("status", "pendiente"),
             "order": meta.get("order", 0),
@@ -408,6 +414,7 @@ def create_entry():
     raw_text = data.get("raw_text", "").strip()
     title = data.get("title", "").strip()
     entry_type = data.get("entry_type", "knowledge")
+    icon = data.get("icon", "").strip()
 
     if not title:
         return jsonify({"error": "Missing title"}), 400
@@ -441,6 +448,8 @@ def create_entry():
             "order": 0,
             "tags": tags,
             "parent_id": parent_id,
+            "icon": icon,
+            "is_teamspace_home": bool(data.get("is_teamspace_home")),
         }
         save_index(index)
         return jsonify({"id": entry_id, "message": "Saved"})
@@ -466,6 +475,7 @@ def create_entry():
         "order": 0,
         "tags": tags,
         "parent_id": parent_id,
+        "icon": icon,
     }
     save_index(index)
     return jsonify({"id": entry_id, "message": "Saved"})
@@ -492,6 +502,7 @@ def update_entry(entry_id):
     title = data.get("title", "").strip()
     category = data.get("category", "").strip()
     topic = data.get("topic", "").strip()
+    icon = data.get("icon")
 
     meta = index[entry_id]
     old_path = _entry_path(entry_id, meta)
@@ -521,6 +532,32 @@ def update_entry(entry_id):
         if module_raw:
             index[entry_id]["module"] = new_module
             index[entry_id]["module_label"] = module_raw
+        if icon is not None:
+            index[entry_id]["icon"] = icon.strip()
+        save_index(index)
+        return jsonify({"message": "Updated"})
+
+    if meta.get("type") == "teamspace":
+        teamspace_raw = data.get("teamspace", "").strip()
+        new_teamspace = slugify(teamspace_raw) if teamspace_raw else meta["teamspace"]
+        new_path = KNOWLEDGE_DIR / "teamspace" / new_teamspace / f"{entry_id}.md"
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        if raw_text:
+            _save_history_snapshot(entry_id, meta, old_path)
+            if old_path != new_path and old_path.exists():
+                old_path.unlink()
+            new_path.write_text(smart_parse(raw_text))
+        elif old_path != new_path and old_path.exists():
+            import shutil
+            shutil.copy2(old_path, new_path)
+            old_path.unlink()
+        if title:
+            index[entry_id]["title"] = title
+        if teamspace_raw:
+            index[entry_id]["teamspace"] = new_teamspace
+            index[entry_id]["teamspace_label"] = teamspace_raw
+        if icon is not None:
+            index[entry_id]["icon"] = icon.strip()
         save_index(index)
         return jsonify({"message": "Updated"})
 
@@ -549,6 +586,8 @@ def update_entry(entry_id):
     if topic:
         index[entry_id]["topic"] = new_topic
         index[entry_id]["topic_label"] = topic
+    if icon is not None:
+        index[entry_id]["icon"] = icon.strip()
 
     save_index(index)
     return jsonify({"message": "Updated"})
@@ -922,7 +961,7 @@ def restore_entry_history_snapshot(entry_id, timestamp):
 def get_children(entry_id):
     index = load_index()
     children = [
-        {"id": eid, "title": m.get("title", eid)}
+        {"id": eid, "title": m.get("title", eid), "icon": m.get("icon", "")}
         for eid, m in index.items()
         if m.get("parent_id") == entry_id
     ]
@@ -1060,6 +1099,7 @@ def get_courses_tree():
         tree[course]["modules"][module]["entries"].append({
             "id": entry_id,
             "title": meta["title"],
+            "icon": meta.get("icon", ""),
             "status": meta.get("status", "pendiente"),
             "order": meta.get("order", 0),
         })
@@ -1078,6 +1118,7 @@ def create_course_entry():
     module = data.get("module", "").strip()
     title  = data.get("title", "").strip()
     raw    = data.get("raw_text", "").strip()
+    icon   = data.get("icon", "").strip()
     if not all([course, module, title, raw]):
         return jsonify({"error": "Faltan campos"}), 400
     course_slug = slugify(course)
@@ -1107,6 +1148,7 @@ def create_course_entry():
         "pinned": False,
         "status": "pendiente",
         "order": 0,
+        "icon": icon,
     }
     save_index(index)
     return jsonify({"id": entry_id})
