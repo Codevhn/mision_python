@@ -1708,139 +1708,187 @@
     setTimeout(() => document.addEventListener('click', close), 10);
   }
 
-  // ---- Card cover picker ----
-  const COVER_GRADIENTS = [
-    'linear-gradient(135deg,#1793d1,#00c2e0)',
-    'linear-gradient(135deg,#61bd4f,#51e898)',
-    'linear-gradient(135deg,#f2d600,#ff9f1a)',
-    'linear-gradient(135deg,#eb5a46,#c377e0)',
-    'linear-gradient(135deg,#0079bf,#533483)',
-    'linear-gradient(135deg,#1b4332,#2d6a4f)',
-    'linear-gradient(135deg,#370617,#6a040f)',
-    'linear-gradient(135deg,#42275a,#734b6d)',
+  // ---- Card cover picker (Trello-style side panel) ----
+  const COVER_SOLID_COLORS = [
+    '#61bd4f','#f2d600','#ff9f1a','#eb5a46','#c377e0',
+    '#0079bf','#00c2e0','#51e898','#ff78cb','#344563',
   ];
 
-  function showCardCoverPicker(anchor, card, onUpdate) {
-    document.querySelectorAll('.kb-card-cover-picker').forEach(p => p.remove());
+  function showCardCoverPicker(pillBtn, card, onUpdate) {
+    // Toggle: if already open, close it
+    const existing = document.querySelector('.kb-cover-panel');
+    if (existing) { existing.remove(); return; }
 
-    const pop = document.createElement('div');
-    pop.className = 'kb-card-cover-picker kb-bg-picker';
-    pop.style.width = '300px';
+    const modal = document.getElementById('kbCardModal')?.querySelector('.kb-modal--trello');
+    if (!modal) return;
 
-    // Colors row
-    const colorSection = document.createElement('div');
-    colorSection.className = 'kb-bg-picker-section';
+    const panel = document.createElement('div');
+    panel.className = 'kb-cover-panel';
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'kb-cover-panel-hdr';
+    hdr.innerHTML = `<span>Portada</span><button class="kb-cover-panel-close">&times;</button>`;
+    hdr.querySelector('.kb-cover-panel-close').addEventListener('click', () => panel.remove());
+    panel.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = 'kb-cover-panel-body';
+    panel.appendChild(body);
+
+    // ---- Size selector ----
+    if (card.cover) {
+      const sizeLabel = document.createElement('div');
+      sizeLabel.className = 'kb-cover-panel-section-label';
+      sizeLabel.textContent = 'Tamaño';
+      body.appendChild(sizeLabel);
+
+      const sizeRow = document.createElement('div');
+      sizeRow.className = 'kb-cover-size-row';
+
+      const makeSize = (isHalf, active) => {
+        const btn = document.createElement('button');
+        btn.className = 'kb-cover-size-btn' + (active ? ' active' : '');
+        btn.title = isHalf ? 'Franja lateral' : 'Encabezado completo';
+        const preview = document.createElement('div');
+        preview.className = 'kb-cover-size-preview' + (isHalf ? ' kb-cover-size-half' : ' kb-cover-size-full');
+        preview.style.background = card.cover;
+        btn.appendChild(preview);
+        btn.addEventListener('click', () => {
+          card.cover_full = !isHalf;
+          saveBoard(_currentBoard.id);
+          onUpdate();
+          // refresh size buttons
+          sizeRow.querySelectorAll('.kb-cover-size-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+        return btn;
+      };
+      sizeRow.appendChild(makeSize(false, !card.cover_full === false)); // full
+      sizeRow.appendChild(makeSize(true, card.cover_full === false));   // half
+      body.appendChild(sizeRow);
+
+      // Remove cover
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'kb-cover-remove-btn';
+      removeBtn.textContent = 'Quitar portada';
+      removeBtn.addEventListener('click', () => {
+        card.cover = '';
+        card.cover_full = false;
+        saveBoard(_currentBoard.id);
+        onUpdate();
+        panel.remove();
+      });
+      body.appendChild(removeBtn);
+    }
+
+    // ---- Colors ----
     const colorLabel = document.createElement('div');
-    colorLabel.className = 'kb-bg-picker-label';
+    colorLabel.className = 'kb-cover-panel-section-label';
     colorLabel.textContent = 'Colores';
-    const colorGrid = document.createElement('div');
-    colorGrid.className = 'kb-bg-swatch-grid';
-    colorGrid.style.gridTemplateColumns = 'repeat(5, 1fr)';
+    body.appendChild(colorLabel);
 
-    COVER_COLORS.forEach(c => {
-      const sw = document.createElement('div');
-      sw.className = 'kb-bg-swatch' + (card.cover === c ? ' selected' : '');
+    const colorGrid = document.createElement('div');
+    colorGrid.className = 'kb-cover-color-grid';
+    COVER_SOLID_COLORS.forEach(c => {
+      const sw = document.createElement('button');
+      sw.className = 'kb-cover-color-swatch' + (card.cover === c ? ' active' : '');
       sw.style.background = c;
-      sw.style.height = '28px';
+      sw.title = c;
       sw.addEventListener('click', () => {
         card.cover = c;
         card.cover_full = true;
         saveBoard(_currentBoard.id);
         onUpdate();
-        pop.remove();
+        panel.remove();
       });
       colorGrid.appendChild(sw);
     });
-    colorSection.appendChild(colorLabel);
-    colorSection.appendChild(colorGrid);
-    pop.appendChild(colorSection);
+    body.appendChild(colorGrid);
 
-    // Gradients
-    const gradSection = document.createElement('div');
-    gradSection.className = 'kb-bg-picker-section';
-    const gradLabel = document.createElement('div');
-    gradLabel.className = 'kb-bg-picker-label';
-    gradLabel.textContent = 'Degradados';
-    const gradGrid = document.createElement('div');
-    gradGrid.className = 'kb-bg-swatch-grid';
-    gradGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    // ---- Upload ----
+    const attachLabel = document.createElement('div');
+    attachLabel.className = 'kb-cover-panel-section-label';
+    attachLabel.textContent = 'Adjuntos';
+    body.appendChild(attachLabel);
 
-    COVER_GRADIENTS.forEach(g => {
-      const sw = document.createElement('div');
-      sw.className = 'kb-bg-swatch' + (card.cover === g ? ' selected' : '');
-      sw.style.background = g;
-      sw.style.height = '28px';
-      sw.addEventListener('click', () => {
-        card.cover = g;
-        card.cover_full = true;
-        saveBoard(_currentBoard.id);
-        onUpdate();
-        pop.remove();
-      });
-      gradGrid.appendChild(sw);
+    const uploadBtn = document.createElement('label');
+    uploadBtn.className = 'kb-cover-upload-btn';
+    uploadBtn.textContent = '📎 Subir imagen de portada';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        fetch('/api/upload/cover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl: ev.target.result, filename: file.name })
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.url) {
+            card.cover = `url("${d.url}") center/cover no-repeat`;
+            card.cover_full = true;
+            saveBoard(_currentBoard.id);
+            onUpdate();
+            panel.remove();
+          }
+        });
+      };
+      reader.readAsDataURL(file);
     });
-    gradSection.appendChild(gradLabel);
-    gradSection.appendChild(gradGrid);
-    pop.appendChild(gradSection);
+    uploadBtn.appendChild(fileInput);
+    body.appendChild(uploadBtn);
 
-    // Unsplash presets
-    const imgSection = document.createElement('div');
-    imgSection.className = 'kb-bg-picker-section';
-    const imgLabel = document.createElement('div');
-    imgLabel.className = 'kb-bg-picker-label';
-    imgLabel.textContent = 'Imágenes';
-    const imgGrid = document.createElement('div');
-    imgGrid.className = 'kb-bg-swatch-grid';
-    imgGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    // ---- Photos from Unsplash ----
+    const photoLabel = document.createElement('div');
+    photoLabel.className = 'kb-cover-panel-section-label';
+    photoLabel.textContent = 'Fotos de Unsplash';
+    body.appendChild(photoLabel);
 
+    const photoGrid = document.createElement('div');
+    photoGrid.className = 'kb-cover-photo-grid';
     BG_IMAGE_PRESETS.forEach(preset => {
       const bg = `url("${preset.url}") center/cover no-repeat`;
-      const sw = document.createElement('div');
-      sw.className = 'kb-bg-swatch kb-bg-swatch--photo';
+      const sw = document.createElement('button');
+      sw.className = 'kb-cover-photo-swatch' + (card.cover === bg ? ' active' : '');
       sw.style.background = bg;
-      sw.style.height = '40px';
       sw.title = preset.label;
       sw.addEventListener('click', () => {
         card.cover = bg;
         card.cover_full = true;
         saveBoard(_currentBoard.id);
         onUpdate();
-        pop.remove();
+        panel.remove();
       });
-      imgGrid.appendChild(sw);
+      photoGrid.appendChild(sw);
     });
-    imgSection.appendChild(imgLabel);
-    imgSection.appendChild(imgGrid);
-    pop.appendChild(imgSection);
+    body.appendChild(photoGrid);
 
-    // Remove cover
-    const noneSection = document.createElement('div');
-    noneSection.className = 'kb-bg-picker-section';
-    const noneBtn = document.createElement('div');
-    noneBtn.className = 'kb-bg-swatch kb-bg-swatch--reset';
-    noneBtn.style.height = '28px';
-    noneBtn.textContent = '✕ Sin portada';
-    noneBtn.style.gridColumn = '1 / -1';
-    noneBtn.addEventListener('click', () => {
-      card.cover = '';
-      card.cover_full = false;
-      saveBoard(_currentBoard.id);
-      onUpdate();
-      pop.remove();
-    });
-    noneSection.appendChild(noneBtn);
-    pop.appendChild(noneSection);
+    // Position panel: to the RIGHT of the modal
+    document.body.appendChild(panel);
+    const modalRect = modal.getBoundingClientRect();
+    panel.style.position = 'fixed';
+    panel.style.top = modalRect.top + 'px';
+    panel.style.left = (modalRect.right + 8) + 'px';
+    panel.style.maxHeight = modalRect.height + 'px';
 
-    pop.style.position = 'fixed';
-    document.body.appendChild(pop);
-    const rect = anchor.getBoundingClientRect();
-    let left = rect.left;
-    if (left + 310 > window.innerWidth - 8) left = window.innerWidth - 318;
-    pop.style.left = left + 'px';
-    pop.style.top = (rect.bottom + 6) + 'px';
+    // If panel goes off-screen, flip to left side
+    const panelW = 240;
+    if (modalRect.right + 8 + panelW > window.innerWidth - 8) {
+      panel.style.left = (modalRect.left - panelW - 8) + 'px';
+    }
 
     const closePicker = e => {
-      if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('click', closePicker); }
+      if (!panel.contains(e.target) && e.target !== pillBtn) {
+        panel.remove();
+        document.removeEventListener('click', closePicker);
+      }
     };
     setTimeout(() => document.addEventListener('click', closePicker), 10);
   }
