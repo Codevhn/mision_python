@@ -715,11 +715,12 @@ input, textarea, select { font-family: inherit; }
   padding: 0 28px 0 10px;
 }
 .meta-entry-icon-glyph {
-  font-size: 1.05rem;
-  display: flex;
+  font-size: 0.88rem;
+  display: inline-flex;
   align-items: center;
+  opacity: 0.95;
 }
-.meta-entry-icon-glyph iconify-icon { font-size: 1.05rem; }
+.meta-entry-icon-glyph iconify-icon { font-size: 0.88rem; }
 
 /* z-index: first on top so its arrow covers the next */
 .meta-seg-cat   { background: var(--accent); color: #fff;    z-index: 5; position: relative; }
