@@ -933,8 +933,7 @@ async function loadEntry(id, opts = {}) {
       ${date}
     </span>
     <span class="meta-seg meta-seg-words">
-      <span class="meta-seg-icon">⌨</span>
-      ${wordCount} words
+      <iconify-icon icon="lucide:keyboard" class="meta-seg-icon" style="font-size:0.82rem;width:0.82rem;height:0.82rem;margin-right:5px"></iconify-icon>${wordCount} words
     </span>
     <span class="meta-seg meta-seg-readtime">
       <span class="meta-seg-icon">◷</span>
