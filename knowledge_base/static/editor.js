@@ -2869,15 +2869,6 @@ window.BlockEditor = (() => {
         return;
       }
 
-      if (html && /<(h[1-4]|p|div|ul|ol|li|blockquote|pre|table|hr)\b/i.test(html)) {
-        const htmlBlocks = htmlToPasteBlocks(html, insertIndent);
-        if (htmlBlocks.length) {
-          e.preventDefault();
-          insertBlocks(htmlBlocks);
-          return;
-        }
-      }
-
       // Markdown paste: works whether clipboard has HTML or only plain text
       if (text && looksLikeMarkdown(text)) {
         e.preventDefault();
@@ -2888,6 +2879,15 @@ window.BlockEditor = (() => {
         bumpIndent(newBlocks, insertIndent);
         insertBlocks(newBlocks);
         return;
+      }
+
+      if (html && /<(h[1-4]|p|div|ul|ol|li|blockquote|pre|table|hr)\b/i.test(html)) {
+        const htmlBlocks = htmlToPasteBlocks(html, insertIndent);
+        if (htmlBlocks.length) {
+          e.preventDefault();
+          insertBlocks(htmlBlocks);
+          return;
+        }
       }
 
       // Plain text paste: let browser handle, sync plaintext tracking after
