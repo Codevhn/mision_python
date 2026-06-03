@@ -2202,6 +2202,8 @@
       populateCols(_currentBoard.id);
     };
     fillBoards();
+
+    function populateCols(boardId) {
       colSel.innerHTML = '';
       posSel.innerHTML = '';
       let cols;
