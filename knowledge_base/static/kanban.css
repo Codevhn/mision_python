@@ -475,23 +475,42 @@
   gap: 10px;
 }
 
-/* ---- Trello modal topbar ---- */
+/* ---- Trello modal topbar (floats over cover) ---- */
 .kb-modal-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px 6px;
-  border-bottom: 1px solid var(--border-light, var(--border));
+  padding: 8px 10px 6px;
   flex-shrink: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: transparent;
+}
+.kb-modal--trello {
+  position: relative;
+}
+/* When no cover: topbar needs space so body isn't hidden behind it */
+.kb-modal--no-cover .kb-modal-topbar {
+  position: relative;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
 }
 .kb-modal-topbar-board {
   font-size: 0.72rem;
-  color: var(--text-faint);
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
   font-family: var(--font-ui);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.kb-modal--no-cover .kb-modal-topbar-board {
+  color: var(--text-faint);
+  text-shadow: none;
 }
 .kb-modal-topbar-actions {
   display: flex;
@@ -500,9 +519,9 @@
   flex-shrink: 0;
 }
 .kb-modal-topbar-btn {
-  background: none;
+  background: rgba(0,0,0,0.25);
   border: none;
-  color: var(--text-faint);
+  color: #fff;
   cursor: pointer;
   font-size: 0.82rem;
   padding: 5px 7px;
@@ -513,7 +532,12 @@
   align-items: center;
   justify-content: center;
 }
-.kb-modal-topbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+.kb-modal-topbar-btn:hover { background: rgba(0,0,0,0.5); color: #fff; }
+.kb-modal--no-cover .kb-modal-topbar-btn {
+  background: none;
+  color: var(--text-faint);
+}
+.kb-modal--no-cover .kb-modal-topbar-btn:hover { background: var(--bg-hover); color: var(--text); }
 .kb-modal-cover-icon-btn svg { display: block; }
 
 /* ---- Trello modal cover ---- */
@@ -525,7 +549,7 @@
   overflow: hidden;
   background-size: cover;
   background-position: center;
-  border-radius: 0;
+  border-radius: 8px 8px 0 0;
 }
 .kb-modal-cover-btn {
   position: absolute;
