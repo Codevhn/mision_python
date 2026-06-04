@@ -4806,3 +4806,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   margin: 0 var(--space-1);
   flex-shrink: 0;
 }
+
+/* ctx toolbar replaces entry-actions — hide the old strip */
+.entry-header { display: none; }
