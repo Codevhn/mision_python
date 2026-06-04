@@ -119,12 +119,12 @@
   --bg-hover:    rgba(205, 218, 235, 0.90);
   --bg-code:     #edf2f8;
 
-  --border:       rgba(0,0,0,0.10);
-  --border-light: rgba(0,0,0,0.06);
+  --border:       rgba(0,0,0,0.14);
+  --border-light: rgba(0,0,0,0.08);
 
-  --text:       #111120;
-  --text-muted: #52527a;
-  --text-faint: #9898b8;
+  --text:       #0d0d1c;
+  --text-muted: #3a3a60;
+  --text-faint: #7878a0;
 
   --accent:         #0f72a8;
   --accent-hover:   #0e61910;
@@ -353,7 +353,7 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--radius-sm);
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.15); background: var(--bg-hover); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border); background: var(--bg-hover); }
 .btn-ghost.danger { color: var(--danger); border-color: var(--danger); }
 .btn-ghost.danger:hover { background: rgba(239,68,68,0.08); }
 .btn-primary.danger { background: var(--danger); border-color: var(--danger); }
@@ -4809,3 +4809,48 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 
 /* ctx toolbar replaces entry-actions — hide the old strip */
 .entry-header { display: none; }
+
+/* Light mode topbar contrast fixes */
+[data-theme="light"] .topbar {
+  background: rgba(200, 212, 228, 0.95);
+  border-bottom-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .btn-ghost {
+  color: var(--text-muted);
+  border-color: rgba(0,0,0,0.15);
+}
+[data-theme="light"] .btn-ghost:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+  border-color: rgba(0,0,0,0.22);
+}
+[data-theme="light"] .btn-icon {
+  color: var(--text-muted);
+  border-color: rgba(0,0,0,0.15);
+}
+[data-theme="light"] .btn-icon:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+}
+[data-theme="light"] .activity-bar {
+  background: rgba(200, 212, 228, 0.95);
+  border-right-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .ab-item {
+  color: #3a3a60;
+}
+[data-theme="light"] .ab-item:hover {
+  background: rgba(0,0,0,0.07);
+  color: #0d0d1c;
+}
+[data-theme="light"] .ctx-bar {
+  background: rgba(215, 225, 240, 0.92);
+  border-bottom-color: rgba(0,0,0,0.10);
+}
+[data-theme="light"] .ctx-btn {
+  color: #3a3a60;
+}
+[data-theme="light"] .ctx-btn:hover {
+  background: rgba(0,0,0,0.07);
+  color: #0d0d1c;
+}
