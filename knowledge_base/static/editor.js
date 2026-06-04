@@ -1001,6 +1001,136 @@ window.BlockEditor = (() => {
         td.appendChild(editor);
       }
 
+      // ---- Row Peek Panel (Notion-style side panel) ----
+      function openRowPeek(d, row) {
+        // Remove existing peek
+        const existing = document.getElementById('ebDbPeek');
+        if (existing) {
+          if (existing.dataset.rowId === row.id) { existing.remove(); return; }
+          existing.remove();
+        }
+
+        // Ensure row has a page object
+        if (!row.page) row.page = { content: '' };
+
+        const panel = document.createElement('div');
+        panel.id = 'ebDbPeek';
+        panel.className = 'eb-db-peek';
+        panel.dataset.rowId = row.id;
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'eb-db-peek-header';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'eb-db-peek-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => panel.remove());
+
+        const titleInput = document.createElement('div');
+        titleInput.className = 'eb-db-peek-title';
+        titleInput.contentEditable = 'true';
+        titleInput.textContent = (row.cells[d.cols[0]?.id] || '').toString() || 'Sin título';
+        titleInput.addEventListener('input', () => {
+          if (d.cols[0]) {
+            row.cells[d.cols[0].id] = titleInput.textContent.trim();
+            saveData(d);
+            buildTable();
+          }
+        });
+
+        header.appendChild(closeBtn);
+        header.appendChild(titleInput);
+        panel.appendChild(header);
+
+        // Properties (all columns as property rows)
+        const propsSection = document.createElement('div');
+        propsSection.className = 'eb-db-peek-props';
+
+        d.cols.forEach((col, i) => {
+          if (i === 0) return; // skip title column
+          const propRow = document.createElement('div');
+          propRow.className = 'eb-db-peek-prop-row';
+
+          const propLabel = document.createElement('div');
+          propLabel.className = 'eb-db-peek-prop-label';
+          const typeIcons = { text:'T', number:'#', select:'○', 'multi-select':'◎', checkbox:'☑', date:'⬚', url:'⤤' };
+          propLabel.innerHTML = `<span class="eb-db-peek-prop-icon">${typeIcons[col.type]||'T'}</span>${col.name}`;
+
+          const propVal = document.createElement('div');
+          propVal.className = 'eb-db-peek-prop-val';
+
+          // Render editable value based on type
+          const val = row.cells[col.id];
+          if (col.type === 'checkbox') {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = !!val;
+            cb.addEventListener('change', () => { row.cells[col.id] = cb.checked; saveData(d); buildTable(); });
+            propVal.appendChild(cb);
+          } else if (col.type === 'select') {
+            const sel = document.createElement('select');
+            sel.innerHTML = `<option value="">—</option>` + (col.options||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('');
+            sel.addEventListener('change', () => { row.cells[col.id] = sel.value; saveData(d); buildTable(); });
+            propVal.appendChild(sel);
+          } else if (col.type === 'date') {
+            const inp = document.createElement('input');
+            inp.type = 'date'; inp.value = val||'';
+            inp.addEventListener('change', () => { row.cells[col.id] = inp.value; saveData(d); buildTable(); });
+            propVal.appendChild(inp);
+          } else {
+            const inp = document.createElement('div');
+            inp.contentEditable = 'true';
+            inp.className = 'eb-db-peek-prop-input';
+            inp.textContent = Array.isArray(val) ? val.join(', ') : (val||'');
+            inp.addEventListener('blur', () => { row.cells[col.id] = inp.textContent.trim(); saveData(d); buildTable(); });
+            propVal.appendChild(inp);
+          }
+
+          propRow.appendChild(propLabel);
+          propRow.appendChild(propVal);
+          propsSection.appendChild(propRow);
+        });
+        panel.appendChild(propsSection);
+
+        // Divider
+        const divider = document.createElement('div');
+        divider.className = 'eb-db-peek-divider';
+        panel.appendChild(divider);
+
+        // Content area (mini markdown editor as textarea)
+        const contentLabel = document.createElement('div');
+        contentLabel.className = 'eb-db-peek-content-label';
+        contentLabel.textContent = 'Contenido';
+        panel.appendChild(contentLabel);
+
+        const contentArea = document.createElement('textarea');
+        contentArea.className = 'eb-db-peek-content';
+        contentArea.placeholder = 'Escribe aquí el contenido de esta página…';
+        contentArea.value = row.page.content || '';
+        contentArea.addEventListener('input', () => {
+          row.page.content = contentArea.value;
+          // Auto-resize
+          contentArea.style.height = 'auto';
+          contentArea.style.height = contentArea.scrollHeight + 'px';
+          saveData(d);
+        });
+        panel.appendChild(contentArea);
+
+        // Append peek panel to the editor's parent container
+        const editorRoot = wrap.closest('.entry-body') || wrap.closest('.editor-root') || document.body;
+        editorRoot.appendChild(panel);
+
+        // Animate in
+        requestAnimationFrame(() => panel.classList.add('eb-db-peek--open'));
+
+        // Auto-resize textarea
+        setTimeout(() => {
+          contentArea.style.height = 'auto';
+          contentArea.style.height = (contentArea.scrollHeight || 120) + 'px';
+        }, 50);
+      }
+
       function buildTable() {
         wrap.innerHTML = '';
         const d = normalizeData(getData());
@@ -1225,7 +1355,7 @@ window.BlockEditor = (() => {
           gutterTd.appendChild(delRowBtn);
           tr.appendChild(gutterTd);
 
-          d.cols.forEach(col => {
+          d.cols.forEach((col, colIdx) => {
             const td = document.createElement('td');
             td.className = `eb-db-cell eb-db-cell--${col.type}`;
             td.dataset.colId = col.id;
@@ -1240,6 +1370,20 @@ window.BlockEditor = (() => {
               }
             });
             renderCellEditor(td, d, row, col);
+
+            // First column: add OPEN peek button
+            if (colIdx === 0) {
+              const openBtn = document.createElement('button');
+              openBtn.className = 'eb-db-open-btn';
+              openBtn.textContent = 'OPEN';
+              openBtn.title = 'Abrir página';
+              openBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                openRowPeek(d, row);
+              });
+              td.appendChild(openBtn);
+            }
+
             tr.appendChild(td);
           });
 

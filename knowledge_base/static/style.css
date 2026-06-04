@@ -4163,3 +4163,158 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   font-size: 0.8rem;
   padding: 10px 4px;
 }
+
+/* ---- Database row OPEN button ---- */
+.eb-db-open-btn {
+  display: none;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  z-index: 2;
+}
+.eb-db-row:hover .eb-db-open-btn { display: block; }
+.eb-db-open-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.eb-db-cell:first-of-type { position: relative; }
+
+/* ---- Database row Peek Panel ---- */
+.eb-db-peek {
+  position: fixed;
+  top: 0; right: 0;
+  width: 480px;
+  max-width: 48vw;
+  height: 100vh;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(0,0,0,0.25);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.eb-db-peek--open { transform: translateX(0); }
+
+.eb-db-peek-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 24px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.eb-db-peek-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  margin-top: 2px;
+}
+.eb-db-peek-close:hover { color: var(--text); }
+.eb-db-peek-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  flex: 1;
+  min-height: 1.4em;
+  word-break: break-word;
+}
+.eb-db-peek-title:empty::before { content: 'Sin título'; color: var(--text-faint); }
+
+.eb-db-peek-props {
+  padding: 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.eb-db-peek-prop-row {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.eb-db-peek-prop-row:hover { background: var(--bg-hover); }
+.eb-db-peek-prop-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 160px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.eb-db-peek-prop-icon {
+  width: 16px;
+  text-align: center;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.eb-db-peek-prop-val {
+  flex: 1;
+  font-size: 0.83rem;
+  color: var(--text);
+}
+.eb-db-peek-prop-val input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
+.eb-db-peek-prop-val input[type="date"],
+.eb-db-peek-prop-val select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.83rem;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+.eb-db-peek-prop-input {
+  outline: none;
+  width: 100%;
+  min-height: 1.2em;
+  color: var(--text);
+}
+.eb-db-peek-prop-input:empty::before { content: 'Vacío'; color: var(--text-faint); }
+
+.eb-db-peek-divider { height: 1px; background: var(--border); margin: 0; }
+
+.eb-db-peek-content-label {
+  padding: 12px 24px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.eb-db-peek-content {
+  flex: 1;
+  margin: 0 16px 16px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  overflow-y: auto;
+  min-height: 120px;
+  transition: border-color 0.15s;
+}
+.eb-db-peek-content:focus { border-color: var(--accent); }
