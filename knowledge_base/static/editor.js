@@ -1335,7 +1335,7 @@ window.BlockEditor = (() => {
         table.appendChild(thead);
 
         const tbody = document.createElement('tbody');
-        visibleRows(d).forEach(row => {
+        visibleRows(d).forEach((row, rowIdx) => {
           const ri = d.rows.findIndex(r => r.id === row.id);
           const tr = document.createElement('tr');
           tr.className = 'eb-db-row';
@@ -1343,6 +1343,10 @@ window.BlockEditor = (() => {
 
           const gutterTd = document.createElement('td');
           gutterTd.className = 'eb-db-gutter';
+          // Row number (hidden on hover, shows delete btn)
+          const rowNum = document.createElement('span');
+          rowNum.className = 'eb-db-row-num';
+          rowNum.textContent = rowIdx + 1;
           const delRowBtn = document.createElement('button');
           delRowBtn.className = 'eb-db-row-del';
           delRowBtn.title = 'Eliminar fila';
@@ -1352,6 +1356,7 @@ window.BlockEditor = (() => {
             d.rows.splice(ri, 1);
             saveData(d); buildTable();
           });
+          gutterTd.appendChild(rowNum);
           gutterTd.appendChild(delRowBtn);
           tr.appendChild(gutterTd);
 
@@ -1400,12 +1405,18 @@ window.BlockEditor = (() => {
 
         const addRowBtn = document.createElement('button');
         addRowBtn.className = 'eb-db-add-row';
-        addRowBtn.textContent = '+ Nueva fila';
+        addRowBtn.innerHTML = '<span style="font-size:0.9rem;opacity:0.6">+</span> Nueva página';
         addRowBtn.addEventListener('click', e => {
           e.preventDefault();
           addRow(d);
         });
         tableWrap.appendChild(addRowBtn);
+
+        // Row count footer (like Notion)
+        const countBar = document.createElement('div');
+        countBar.className = 'eb-db-count';
+        countBar.textContent = `COUNT  ${visibleRows(d).length}`;
+        tableWrap.appendChild(countBar);
 
         wrap.appendChild(tableWrap);
       }
