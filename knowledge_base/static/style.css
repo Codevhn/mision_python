@@ -4854,3 +4854,290 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: rgba(0,0,0,0.07);
   color: #0d0d1c;
 }
+
+/* =============================================
+   TERMINAL OVERHAUL — Arch/Terminal Aesthetic
+   Everything mono · Sharp · Flat · One accent
+   ============================================= */
+
+/* ── 1. Global tokens reset ── */
+:root {
+  /* Mono everywhere */
+  --font-ui:   "JetBrains Mono", "Fira Code", monospace;
+  --font-body: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Sharper radius */
+  --radius:    2px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+
+  /* Kill glassmorphism */
+  --glass-blur:   none;
+  --glass-border: rgba(255,255,255,0.07);
+  --glass-shadow: 0 2px 12px rgba(0,0,0,0.5);
+
+  /* Deeper background */
+  --layer-0: #05050c;
+  --layer-1: #08080f;
+  --layer-2: #0c0c14;
+  --layer-3: #101018;
+  --layer-4: #14141e;
+
+  --bg:          var(--layer-0);
+  --bg-sidebar:  var(--layer-1);
+  --bg-surface:  var(--layer-2);
+  --bg-elevated: var(--layer-3);
+  --bg-hover:    var(--layer-4);
+  --bg-code:     var(--layer-1);
+
+  --border:       rgba(255,255,255,0.07);
+  --border-light: rgba(255,255,255,0.04);
+
+  --text:       #c8c8d8;
+  --text-muted: #5a5a7a;
+  --text-faint: #28283a;
+}
+
+/* ── 2. Body — no background blobs ── */
+body {
+  background: var(--bg) !important;
+  background-image: none !important;
+}
+
+/* ── 3. Topbar — flat terminal bar ── */
+.topbar {
+  background: var(--bg-sidebar) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* ── 4. Sidebar — flat ── */
+.sidebar {
+  background: var(--bg-sidebar) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+/* ── 5. Activity bar ── */
+.activity-bar {
+  background: var(--bg-sidebar) !important;
+  backdrop-filter: none !important;
+}
+
+/* ── 6. Home cards — terminal file cards ── */
+.home-card {
+  background: var(--bg-surface) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: border-color 0.1s, background 0.1s !important;
+  min-height: 80px !important;
+}
+.home-card:hover {
+  background: var(--bg-elevated) !important;
+  border-color: var(--accent) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.home-card-title {
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  color: var(--text) !important;
+}
+.home-card-meta {
+  opacity: 0.45 !important;
+  font-size: 0.62rem !important;
+}
+
+/* ── 7. Greeting ── */
+.home-greeting {
+  font-size: 1.6rem !important;
+  font-weight: 400 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.02em;
+}
+.home-greeting::before { content: "$ "; color: var(--accent); }
+
+/* ── 8. Section labels ── */
+.home-section-label {
+  font-size: 0.65rem !important;
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
+  letter-spacing: 0.12em !important;
+}
+.home-section-label::before { content: "# "; color: var(--text-faint); }
+
+/* ── 9. Modal — terminal window ── */
+.modal-overlay {
+  background: rgba(0,0,0,0.82) !important;
+  backdrop-filter: none !important;
+}
+.modal {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 0 0 1px var(--border), 0 16px 48px rgba(0,0,0,0.6) !important;
+}
+.modal-header {
+  background: var(--bg-elevated) !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 10px 16px !important;
+}
+.modal-header h2 { font-size: 0.76rem !important; }
+.modal-body {
+  background: var(--bg-surface) !important;
+}
+.modal-footer {
+  background: var(--bg-elevated) !important;
+}
+
+/* ── 10. Form inputs ── */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  color: var(--text) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.8rem !important;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--accent) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ── 11. Buttons ── */
+.btn-primary {
+  border-radius: 0 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.04em !important;
+  box-shadow: none !important;
+}
+.btn-primary:hover { box-shadow: none !important; }
+
+.btn-ghost {
+  border-radius: 0 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ── 12. Meta segments — fix hardcoded rgba ── */
+.meta-seg { border-radius: 0 !important; }
+.meta-seg-cat   { background: var(--accent) !important; color: #fff !important; }
+.meta-seg-topic { background: rgba(23,147,209,0.10) !important; color: var(--accent) !important; }
+.meta-seg-date  { background: rgba(16,185,129,0.08) !important; color: var(--accent-green) !important; }
+.meta-seg-words {
+  background: rgba(124,58,237,0.08) !important;
+  color: var(--accent-purple) !important;
+}
+.meta-seg-readtime {
+  background: rgba(23,147,209,0.06) !important;
+  color: var(--text-muted) !important;
+}
+
+/* ── 13. Sidebar tree ── */
+.tree-category-label {
+  font-size: 0.64rem !important;
+  letter-spacing: 0.1em !important;
+}
+.tree-entry.active {
+  background: var(--accent-light) !important;
+  border-left: 2px solid var(--accent) !important;
+}
+.tree-entry:hover { background: var(--bg-elevated) !important; }
+
+/* ── 14. Fix hardcoded semantic colors ── */
+.tree-starred-entry:hover { color: var(--accent-amber) !important; }
+.tree-entry.starred { color: var(--accent-amber) !important; }
+.status-dot.status-pendiente  { background: var(--text-faint) !important; }
+.status-dot.status-estudiando { background: var(--accent) !important; }
+.status-dot.status-dominado   { background: var(--accent-green) !important; }
+.status-dot.status-completado { background: var(--accent-green) !important; }
+.status-dot.status-bloqueado  { background: var(--danger) !important; }
+
+/* ── 15. Workspace header ── */
+.workspace-header {
+  border-bottom: 1px solid var(--border) !important;
+  background: transparent !important;
+}
+.workspace-avatar {
+  border-radius: 2px !important;
+  font-family: var(--font-mono) !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+}
+
+/* ── 16. Ctx bar ── */
+.ctx-bar {
+  background: var(--bg-sidebar) !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.breadcrumb-current { font-weight: 400 !important; }
+
+/* ── 17. Content area ── */
+.content-area { background: var(--bg) !important; }
+.entry-view {
+  max-width: 760px !important;
+  margin: 0 auto !important;
+}
+
+/* ── 18. Inline title ── */
+.inline-title {
+  font-family: var(--font-mono) !important;
+  font-size: 1.8rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* ── 19. Code blocks ── */
+pre, code {
+  border-radius: 0 !important;
+  font-size: 0.82rem !important;
+}
+
+/* ── 20. Prop chips / status chips ── */
+.prop-chip,
+.prop-status-chip {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* ── 21. Light mode overrides for terminal feel ── */
+[data-theme="light"] {
+  --layer-0: #f5f5f7;
+  --layer-1: #eeeef2;
+  --layer-2: #e8e8ee;
+  --layer-3: #e2e2ea;
+  --layer-4: #dcdce6;
+
+  --bg:          var(--layer-0);
+  --bg-sidebar:  var(--layer-1);
+  --bg-surface:  var(--layer-2);
+  --bg-elevated: var(--layer-3);
+  --bg-hover:    var(--layer-4);
+
+  --border:       rgba(0,0,0,0.10);
+  --border-light: rgba(0,0,0,0.06);
+
+  --text:       #0a0a14;
+  --text-muted: #44445a;
+  --text-faint: #8888aa;
+
+  --glass-blur:   none;
+  --glass-border: rgba(0,0,0,0.08);
+}
+
