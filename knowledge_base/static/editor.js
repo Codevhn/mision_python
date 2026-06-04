@@ -1004,31 +1004,30 @@ window.BlockEditor = (() => {
 
       // ---- Row Peek Panel (Notion-style side panel) ----
       function openRowPeek(d, row) {
-        // Remove existing peek
         const existing = document.getElementById('ebDbPeek');
         if (existing) {
           if (existing.dataset.rowId === row.id) { existing.remove(); return; }
           existing.remove();
         }
-
-        // Ensure row has a page object
         if (!row.page) row.page = { content: '' };
 
         const panel = document.createElement('div');
         panel.id = 'ebDbPeek';
         panel.className = 'eb-db-peek';
         panel.dataset.rowId = row.id;
+        // Stop all clicks from bubbling out of the peek panel
+        panel.addEventListener('click', e => e.stopPropagation());
+        panel.addEventListener('mousedown', e => e.stopPropagation());
 
-        // ── Resize handle (drag left edge) ──
+        // ── Resize handle ──
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'eb-db-peek-resize';
         resizeHandle.addEventListener('mousedown', e => {
-          e.preventDefault();
+          e.preventDefault(); e.stopPropagation();
           const startX = e.clientX;
           const startW = panel.getBoundingClientRect().width;
           const onMove = mv => {
-            const newW = Math.max(300, Math.min(window.innerWidth * 0.85, startW + (startX - mv.clientX)));
-            panel.style.width = newW + 'px';
+            panel.style.width = Math.max(320, Math.min(window.innerWidth * 0.85, startW + (startX - mv.clientX))) + 'px';
           };
           const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
           document.addEventListener('mousemove', onMove);
@@ -1036,64 +1035,68 @@ window.BlockEditor = (() => {
         });
         panel.appendChild(resizeHandle);
 
-        // Header
+        // ── Header: close + breadcrumb + title ──
         const header = document.createElement('div');
         header.className = 'eb-db-peek-header';
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'eb-db-peek-close';
+        closeBtn.title = 'Cerrar';
         closeBtn.innerHTML = '&times;';
         closeBtn.addEventListener('click', () => panel.remove());
+
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'eb-db-peek-title-wrap';
 
         const titleInput = document.createElement('div');
         titleInput.className = 'eb-db-peek-title';
         titleInput.contentEditable = 'true';
-        titleInput.textContent = (row.cells[d.cols[0]?.id] || '').toString() || 'Sin título';
+        titleInput.spellcheck = false;
+        const firstColId = d.cols[0]?.id;
+        titleInput.textContent = firstColId ? (row.cells[firstColId] || '').toString() || 'Sin título' : 'Sin título';
         titleInput.addEventListener('input', () => {
-          if (d.cols[0]) {
-            row.cells[d.cols[0].id] = titleInput.textContent.trim();
-            saveData(d);
-            buildTable();
-          }
+          if (firstColId) { row.cells[firstColId] = titleInput.textContent.trim(); saveData(d); buildTable(); }
         });
 
+        titleWrap.appendChild(titleInput);
         header.appendChild(closeBtn);
-        header.appendChild(titleInput);
+        header.appendChild(titleWrap);
         panel.appendChild(header);
 
-        // Properties (all columns as property rows)
+        // ── Properties section (Notion style) ──
         const propsSection = document.createElement('div');
         propsSection.className = 'eb-db-peek-props';
 
+        const COL_ICONS = { text:'Aa', number:'#', select:'⊙', 'multi-select':'⊕', checkbox:'☑', date:'⊡', url:'↗', email:'@', phone:'☎' };
+
         d.cols.forEach((col, i) => {
-          if (i === 0) return; // skip title column
+          if (i === 0) return;
           const propRow = document.createElement('div');
           propRow.className = 'eb-db-peek-prop-row';
 
           const propLabel = document.createElement('div');
           propLabel.className = 'eb-db-peek-prop-label';
-          const typeIcons = { text:'T', number:'#', select:'○', 'multi-select':'◎', checkbox:'☑', date:'⬚', url:'⤤' };
-          propLabel.innerHTML = `<span class="eb-db-peek-prop-icon">${typeIcons[col.type]||'T'}</span>${col.name}`;
+          propLabel.innerHTML = `<span class="eb-db-peek-prop-icon">${COL_ICONS[col.type] || 'Aa'}</span><span>${col.name}</span>`;
 
           const propVal = document.createElement('div');
           propVal.className = 'eb-db-peek-prop-val';
 
-          // Render editable value based on type
           const val = row.cells[col.id];
           if (col.type === 'checkbox') {
             const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = !!val;
+            cb.type = 'checkbox'; cb.checked = !!val;
             cb.addEventListener('change', () => { row.cells[col.id] = cb.checked; saveData(d); buildTable(); });
             propVal.appendChild(cb);
           } else if (col.type === 'select') {
             const sel = document.createElement('select');
+            sel.className = 'eb-db-peek-select';
             sel.innerHTML = `<option value="">—</option>` + (col.options||[]).map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('');
             sel.addEventListener('change', () => { row.cells[col.id] = sel.value; saveData(d); buildTable(); });
             propVal.appendChild(sel);
           } else if (col.type === 'date') {
             const inp = document.createElement('input');
             inp.type = 'date'; inp.value = val||'';
+            inp.className = 'eb-db-peek-date';
             inp.addEventListener('change', () => { row.cells[col.id] = inp.value; saveData(d); buildTable(); });
             propVal.appendChild(inp);
           } else {
@@ -1101,6 +1104,8 @@ window.BlockEditor = (() => {
             inp.contentEditable = 'true';
             inp.className = 'eb-db-peek-prop-input';
             inp.textContent = Array.isArray(val) ? val.join(', ') : (val||'');
+            inp.dataset.empty = (!val || val === '') ? 'true' : 'false';
+            inp.addEventListener('input', () => { inp.dataset.empty = inp.textContent.trim() ? 'false' : 'true'; });
             inp.addEventListener('blur', () => { row.cells[col.id] = inp.textContent.trim(); saveData(d); buildTable(); });
             propVal.appendChild(inp);
           }
@@ -1109,44 +1114,48 @@ window.BlockEditor = (() => {
           propRow.appendChild(propVal);
           propsSection.appendChild(propRow);
         });
+
+        // "+ Agregar propiedad" at bottom of props
+        const addPropRow = document.createElement('div');
+        addPropRow.className = 'eb-db-peek-prop-row eb-db-peek-add-prop';
+        addPropRow.innerHTML = `<span style="font-size:0.8rem;color:var(--text-faint)">+ Agregar propiedad</span>`;
+        addPropRow.addEventListener('click', () => { addColumn(d); panel.remove(); openRowPeek(normalizeData(getData()), normalizeData(getData()).rows.find(r=>r.id===row.id) || row); });
+        propsSection.appendChild(addPropRow);
         panel.appendChild(propsSection);
 
-        // Divider
-        const divider = document.createElement('div');
-        divider.className = 'eb-db-peek-divider';
-        panel.appendChild(divider);
+        // ── Content area: real block editor ──
+        const contentSection = document.createElement('div');
+        contentSection.className = 'eb-db-peek-content-section';
 
-        // Content area (mini markdown editor as textarea)
-        const contentLabel = document.createElement('div');
-        contentLabel.className = 'eb-db-peek-content-label';
-        contentLabel.textContent = 'Contenido';
-        panel.appendChild(contentLabel);
+        const peekMenuEl = document.createElement('div');
+        peekMenuEl.className = 'eb-cmd-menu eb-db-peek-menu';
+        contentSection.appendChild(peekMenuEl);
 
-        const contentArea = document.createElement('textarea');
-        contentArea.className = 'eb-db-peek-content';
-        contentArea.placeholder = 'Escribe aquí el contenido de esta página…';
-        contentArea.value = row.page.content || '';
-        contentArea.addEventListener('input', () => {
-          row.page.content = contentArea.value;
-          // Auto-resize
-          contentArea.style.height = 'auto';
-          contentArea.style.height = contentArea.scrollHeight + 'px';
-          saveData(d);
-        });
-        panel.appendChild(contentArea);
+        const peekEditorContainer = document.createElement('div');
+        peekEditorContainer.className = 'eb-db-peek-editor eb-container';
+        contentSection.appendChild(peekEditorContainer);
+        panel.appendChild(contentSection);
 
-        // Append peek panel to the editor's parent container
-        const editorRoot = wrap.closest('.entry-body') || wrap.closest('.editor-root') || document.body;
-        editorRoot.appendChild(panel);
-
-        // Animate in
+        // Mount panel to body (fixed position, avoids all editor DOM issues)
+        document.body.appendChild(panel);
         requestAnimationFrame(() => panel.classList.add('eb-db-peek--open'));
 
-        // Auto-resize textarea
-        setTimeout(() => {
-          contentArea.style.height = 'auto';
-          contentArea.style.height = (contentArea.scrollHeight || 120) + 'px';
-        }, 50);
+        // Init block editor inside peek
+        if (window.BlockEditor) {
+          const peekEd = window.BlockEditor.create({
+            container: peekEditorContainer,
+            menuEl: peekMenuEl,
+            onChange: () => {
+              row.page.content = peekEd.getMarkdown();
+              saveData(d);
+            }
+          });
+          if (row.page.content) {
+            peekEd.load(row.page.content);
+          } else {
+            peekEd.load('');
+          }
+        }
       }
 
       // ── Body-level column menu (fixed position, avoids overflow clipping) ──
@@ -1604,10 +1613,6 @@ window.BlockEditor = (() => {
           d.rows.push(newRow);
           saveData(d);
           buildTable();
-          // Open peek for the newly added row
-          const fresh = normalizeData(getData());
-          const added = fresh.rows[fresh.rows.length - 1];
-          if (added) openRowPeek(fresh, added);
         });
         tableWrap.appendChild(addRowBtn);
 
