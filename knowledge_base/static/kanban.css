@@ -37,7 +37,7 @@
 .kb-board-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0;
   overflow: hidden;
@@ -135,7 +135,7 @@
   text-shadow: 0 1px 4px rgba(0,0,0,0.5);
   font-family: var(--font-ui);
   padding: 3px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   flex: 1;
   min-width: 0;
@@ -273,7 +273,7 @@
 .kb-card {
   background: rgba(26, 28, 38, 0.96);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 10px 12px;
   cursor: pointer;
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
@@ -300,7 +300,7 @@
 }
 .kb-label-chip {
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   min-width: 32px;
   display: inline-block;
 }
@@ -340,7 +340,7 @@
   font-size: 0.78rem;
   font-family: var(--font-ui);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   text-align: left;
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
@@ -384,7 +384,7 @@
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.8rem;
@@ -403,7 +403,7 @@
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 5px 12px;
   font-size: 0.78rem;
   font-family: var(--font-ui);
@@ -418,7 +418,7 @@
   font-family: var(--font-ui);
   cursor: pointer;
   padding: 5px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: background 0.12s, color 0.12s;
 }
 .kb-quick-add-cancel:hover { background: var(--bg-hover); color: var(--text); }
@@ -440,7 +440,7 @@
 .kb-modal {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   width: 640px;
   max-width: 100%;
   display: flex;
@@ -564,7 +564,7 @@
   cursor: pointer;
   font-size: 0.82rem;
   padding: 5px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   line-height: 1;
   transition: background 0.12s, color 0.12s;
   display: flex;
@@ -588,7 +588,7 @@
   overflow: hidden;
   background-size: cover;
   background-position: center;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius) 8px 0 0;
 }
 .kb-modal-cover-btn {
   position: absolute;
@@ -600,7 +600,7 @@
   font-size: 0.72rem;
   font-family: var(--font-ui);
   padding: 5px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s, background 0.15s;
@@ -668,7 +668,7 @@
   resize: none;
   line-height: 1.4;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
   transition: background 0.12s;
 }
@@ -693,7 +693,7 @@
 .kb-modal-pill-btn {
   background: var(--bg-hover);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-size: 0.78rem;
   font-family: var(--font-ui);
@@ -741,7 +741,7 @@
 .kb-modal-section-edit-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.7rem;
   font-family: var(--font-ui);
@@ -755,7 +755,7 @@
   color: var(--text);
   line-height: 1.5;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   margin-left: 24px;
   white-space: pre-wrap;
@@ -794,7 +794,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.8rem;
@@ -867,7 +867,7 @@
   margin-top: 4px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 6px 10px;
   word-break: break-word;
 }
@@ -963,7 +963,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.82rem;
@@ -990,7 +990,7 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px 3px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 0.72rem;
   color: #fff;
   font-weight: 500;
@@ -1009,7 +1009,7 @@
 .kb-add-label-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.72rem;
   font-family: var(--font-ui);
@@ -1025,7 +1025,7 @@
   z-index: 1400;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 12px;
   width: 230px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
@@ -1033,7 +1033,7 @@
 .kb-label-preview-chip {
   width: 100%;
   min-height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   margin-bottom: 8px;
   padding: 3px 8px;
   font-size: 0.75rem;
@@ -1091,7 +1091,7 @@
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 0.78rem;
   font-family: var(--font-ui);
   padding: 5px;
@@ -1103,7 +1103,7 @@
 .kb-due-input {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.8rem;
@@ -1118,7 +1118,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.75rem;
   font-family: var(--font-ui);
@@ -1145,7 +1145,7 @@
 .kb-create-modal {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: 420px;
   max-width: calc(100vw - 32px);
   padding: 28px 32px;
@@ -1177,7 +1177,7 @@
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.85rem;
@@ -1198,7 +1198,7 @@
   width: 100%;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.82rem;
@@ -1234,7 +1234,7 @@
 }
 .kb-btn {
   padding: 6px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 0.8rem;
   font-family: var(--font-ui);
   cursor: pointer;
@@ -1307,7 +1307,7 @@
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
   color: var(--text);
   font-size: 0.85rem;
@@ -1339,7 +1339,7 @@
   z-index: 9000;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 12px;
   display: grid;
   gap: 12px;
@@ -1397,7 +1397,7 @@
   border: 1px solid var(--border);
   color: var(--text);
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.76rem;
   font-family: var(--font-mono);
   outline: none;
@@ -1407,7 +1407,7 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 0 12px;
   cursor: pointer;
   font-size: 0.76rem;
@@ -1424,7 +1424,7 @@
   color: var(--text);
   background: var(--bg-hover);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 2px 7px;
   margin-top: 6px;
   font-family: var(--font-mono);
@@ -1473,14 +1473,14 @@
   flex: 1;
   height: 8px;
   background: var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 .kb-checklist-edit-input {
   flex: 1;
   background: var(--bg-surface);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.82rem;
@@ -1527,7 +1527,7 @@
   align-self: flex-start;
   background: none;
   border: 1px dashed var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.75rem;
   font-family: var(--font-ui);
@@ -1541,7 +1541,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 0.8rem;
@@ -1553,14 +1553,14 @@
 /* ---- Feature 1: Card cover color ---- */
 .kb-card-cover {
   height: 112px;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-sm) 6px 0 0;
   margin: -10px -12px 8px -12px;
   flex-shrink: 0;
 }
 .kb-cover-preview {
   width: 100%;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   margin-bottom: 4px;
 }
 .kb-cover-picker {
@@ -1617,7 +1617,7 @@
   background: var(--bg-hover);
   border: 1px solid var(--border);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 500;
 }
 .kb-card-avatars {
@@ -1674,7 +1674,7 @@
   flex-grow: 1;
   background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: #fff;
   font-family: var(--font-ui);
   font-size: 0.8rem;
@@ -1796,7 +1796,7 @@
   gap: 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 6px 8px;
 }
 .kb-archive-card-title {
@@ -1827,7 +1827,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.75rem;
   font-family: var(--font-ui);
@@ -1890,7 +1890,7 @@
   z-index: 9000;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 12px;
   width: 180px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
@@ -1931,7 +1931,7 @@
   z-index: 9000;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 12px;
   width: 210px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
@@ -1977,7 +1977,7 @@
 .kb-shortcuts-modal {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 0;
   min-width: 320px;
   max-width: 420px;
@@ -2041,7 +2041,7 @@ kbd {
 .kb-lightbox-img {
   max-width: 90vw;
   max-height: 90vh;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 8px 40px rgba(0,0,0,0.7);
   cursor: default;
 }
@@ -2052,7 +2052,7 @@ kbd {
   z-index: 2000;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   width: 234px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
   overflow-y: auto;
@@ -2104,7 +2104,7 @@ kbd {
   flex: 1;
   background: var(--bg-elevated);
   border: 2px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 4px;
   transition: border-color 0.12s;
@@ -2127,7 +2127,7 @@ kbd {
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.75rem;
   font-family: var(--font-ui);
@@ -2145,7 +2145,7 @@ kbd {
 .kb-cover-color-swatch {
   width: 100%;
   height: 28px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 2px solid transparent;
   cursor: pointer;
   transition: border-color 0.12s, transform 0.1s;
@@ -2160,7 +2160,7 @@ kbd {
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-size: 0.75rem;
   font-family: var(--font-ui);
@@ -2179,7 +2179,7 @@ kbd {
   box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 0.8rem;
   padding: 6px 10px;
@@ -2196,7 +2196,7 @@ kbd {
 .kb-cover-photo-swatch {
   width: 100%;
   height: 40px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: 2px solid transparent;
   cursor: pointer;
   transition: border-color 0.12s, transform 0.1s;
@@ -2210,7 +2210,7 @@ kbd {
   gap: 3px;
   background: rgba(0,0,0,0.25);
   border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 3px;
 }
 .kb-view-btn {
@@ -2221,7 +2221,7 @@ kbd {
   font-family: var(--font-ui);
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
   white-space: nowrap;
@@ -2280,7 +2280,7 @@ kbd {
 }
 .kb-tbl-due-chip {
   font-size: 0.72rem; font-family: var(--font-mono);
-  padding: 2px 8px; border-radius: 4px;
+  padding: 2px 8px; border-radius: var(--radius-xs);
   background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
 }
 .kb-tbl-due--soon .kb-tbl-due-chip, .kb-tbl-due-chip.kb-tbl-due--soon { color: #f2d600; background: rgba(242,214,0,0.18); }
@@ -2309,7 +2309,7 @@ kbd {
   border: 1px solid rgba(255,255,255,0.25);
   color: #fff;
   font-size: 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 6px 14px;
   cursor: pointer;
   line-height: 1.4;
@@ -2350,7 +2350,7 @@ kbd {
 .kb-cal-cell {
   background: rgba(0,0,0,0.42);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   min-height: 100px;
   padding: 7px;
   display: flex;
@@ -2414,27 +2414,27 @@ kbd {
 .kb-ws-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; transition: background 0.12s; border-radius: 0; }
 .kb-ws-item:hover { background: var(--bg-hover); }
 .kb-ws-item--active { background: var(--accent-light); }
-.kb-ws-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.kb-ws-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #fff; flex-shrink: 0; }
 .kb-ws-name { font-size: 0.82rem; font-weight: 600; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kb-ws-main { flex: 1; overflow-y: auto; padding: 32px 40px; }
 .kb-ws-main-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-.kb-ws-main-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.kb-ws-main-icon { width: 40px; height: 40px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: #fff; flex-shrink: 0; }
 .kb-ws-main-name { font-size: 1.1rem; font-weight: 700; color: var(--text); }
 .kb-ws-boards-label { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 6px; }
 
 /* Board tiles in workspace grid */
 .kb-boards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-.kb-board-tile { border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.kb-board-tile { border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 .kb-board-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
 .kb-board-tile-bg { height: 96px; background: var(--accent); background-size: cover; background-position: center; }
 .kb-board-tile-footer { background: var(--bg-elevated); padding: 8px 12px; }
 .kb-board-tile-name { font-size: 0.82rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kb-board-tile--new { background: var(--bg-hover); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; height: 130px; border-radius: 8px; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; transition: background 0.15s, color 0.15s; }
+.kb-board-tile--new { background: var(--bg-hover); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; height: 130px; border-radius: var(--radius); cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; transition: background 0.15s, color 0.15s; }
 .kb-board-tile--new:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
 
 /* New workspace inline form */
 .kb-ws-new-form { padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; }
-.kb-ws-new-input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; padding: 5px 8px; outline: none; font-family: var(--font-ui); }
+.kb-ws-new-input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text); font-size: 0.8rem; padding: 5px 8px; outline: none; font-family: var(--font-ui); }
 .kb-ws-new-input:focus { border-color: var(--accent); }
 .kb-ws-new-btns { display: flex; gap: 6px; }
 
@@ -2464,7 +2464,7 @@ kbd {
 .kb-board-menu-close {
   background: none; border: none; cursor: pointer;
   font-size: 1.2rem; color: var(--text-muted);
-  padding: 2px 6px; border-radius: 4px;
+  padding: 2px 6px; border-radius: var(--radius-xs);
 }
 .kb-board-menu-close:hover { background: var(--bg-hover); }
 .kb-board-menu-body { flex: 1; overflow-y: auto; padding: 8px 0; }
@@ -2483,28 +2483,28 @@ kbd {
 .kb-board-menu-badge {
   font-size: 0.65rem; background: var(--bg-hover);
   color: var(--text-faint); padding: 2px 6px;
-  border-radius: 8px; white-space: nowrap;
+  border-radius: var(--radius); white-space: nowrap;
 }
 /* Custom Fields */
 .kb-cf-list { padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; }
 .kb-cf-item {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; background: var(--bg-surface, rgba(255,255,255,0.04));
-  border-radius: 6px; border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: var(--radius-sm); border: 1px solid var(--border, rgba(255,255,255,0.08));
 }
 .kb-cf-item-name { flex: 1; font-size: 0.83rem; }
 .kb-cf-item-type { font-size: 0.7rem; color: var(--text-faint, #888); }
 .kb-cf-add-btn {
   margin: 8px 16px; padding: 8px 12px;
   background: none; border: 1px dashed var(--border, rgba(255,255,255,0.15));
-  border-radius: 6px; color: var(--text-muted, #aaa);
+  border-radius: var(--radius-sm); color: var(--text-muted, #aaa);
   cursor: pointer; font-size: 0.82rem; width: calc(100% - 32px);
   transition: background 0.1s, border-color 0.1s;
 }
 .kb-cf-add-btn:hover { background: var(--bg-hover); border-color: var(--accent, #3b82f6); color: var(--accent); }
 .kb-cf-form {
   margin: 8px 16px; padding: 12px;
-  background: var(--bg-surface); border-radius: 8px;
+  background: var(--bg-surface); border-radius: var(--radius);
   border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;
 }
 .kb-cf-form input, .kb-cf-form select, .kb-cf-form textarea {
@@ -2524,7 +2524,7 @@ kbd {
 .kb-modal-cf-value { flex: 1; }
 .kb-modal-cf-value input, .kb-modal-cf-value select {
   background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text); padding: 4px 8px;
+  border-radius: var(--radius-xs); color: var(--text); padding: 4px 8px;
   font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box;
 }
 .kb-modal-cf-value input:focus, .kb-modal-cf-value select:focus { border-color: var(--accent); }
@@ -2532,7 +2532,7 @@ kbd {
 .kb-card-cf-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .kb-card-cf-badge {
   font-size: 0.65rem; padding: 1px 6px;
-  background: var(--bg-hover); border-radius: 4px;
+  background: var(--bg-hover); border-radius: var(--radius-xs);
   color: var(--text-muted); border: 1px solid var(--border);
   max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -2593,7 +2593,7 @@ kbd {
   position: absolute;
   display: flex; flex-wrap: wrap; gap: 4px;
   background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px;
+  border-radius: var(--radius); padding: 8px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.45);
   z-index: 9999; width: 160px;
   margin-top: 24px;
