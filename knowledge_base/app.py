@@ -1487,7 +1487,182 @@ def save_kanban(data):
     KANBAN_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-@app.route("/api/kanban/boards", methods=["GET"])
+# ── RELATIONS ───────────────────────────────────────────────────────────────
+
+RELATIONS_FILE = DATA_DIR / "relations.json"
+
+
+def load_relations():
+    if RELATIONS_FILE.exists():
+        return json.loads(RELATIONS_FILE.read_text())
+    return {"version": 1, "relations": {}}
+
+
+def save_relations(data):
+    RELATIONS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def _build_uid_index():
+    """Return a dict {uid -> {type, id, title}} covering all known entities."""
+    registry = {}
+
+    # KB entries (pages, notes, courses, roadmaps, teamspace)
+    for entry_id, meta in load_index().items():
+        uid = meta.get("uid")
+        if not uid:
+            continue
+        etype = meta.get("type") or "page"   # default type for KB entries
+        registry[uid] = {
+            "type": etype,
+            "id": entry_id,
+            "title": meta.get("title", entry_id),
+        }
+
+    # Kanban boards and cards
+    try:
+        kanban = load_kanban()
+    except Exception:
+        kanban = {"boards": {}, "workspaces": {}}
+
+    for board in kanban["boards"].values():
+        board_uid = board.get("id")   # boards use id as uid
+        if board_uid:
+            registry[board_uid] = {
+                "type": "kanban_board",
+                "id": board_uid,
+                "title": board.get("name", board_uid),
+            }
+        for col in board.get("columns", []):
+            for card in col.get("cards", []):
+                card_uid = card.get("id")
+                if card_uid:
+                    registry[card_uid] = {
+                        "type": "kanban_card",
+                        "id": card_uid,
+                        "title": card.get("title", card_uid),
+                    }
+
+    return registry
+
+
+def _resolve_uid(uid):
+    """Resolve a single uid to its entity descriptor, or None if not found."""
+    return _build_uid_index().get(uid)
+
+
+def _relation_key(from_uid, to_uid, rel_type):
+    """Canonical dedup key for a relation (directional)."""
+    return f"{from_uid}:{to_uid}:{rel_type}"
+
+
+def _find_duplicate(relations, from_uid, to_uid, rel_type):
+    """Return existing relation id if (from, to, type) already exists, else None."""
+    key = _relation_key(from_uid, to_uid, rel_type)
+    for rel_id, rel in relations.items():
+        if _relation_key(rel["from_uid"], rel["to_uid"], rel["rel_type"]) == key:
+            return rel_id
+    # For 'related' (symmetric) also check reverse
+    if rel_type == "related":
+        rev_key = _relation_key(to_uid, from_uid, rel_type)
+        for rel_id, rel in relations.items():
+            if _relation_key(rel["from_uid"], rel["to_uid"], rel["rel_type"]) == rev_key:
+                return rel_id
+    return None
+
+
+VALID_REL_TYPES = {"references", "implements", "belongs_to", "blocks", "related", "derived_from"}
+
+
+@app.route("/api/relations", methods=["POST"])
+def create_relation():
+    body = request.json or {}
+    from_uid  = (body.get("from_uid") or "").strip()
+    to_uid    = (body.get("to_uid") or "").strip()
+    rel_type  = (body.get("rel_type") or "related").strip()
+
+    if not from_uid or not to_uid:
+        return jsonify({"error": "from_uid and to_uid are required"}), 400
+    if from_uid == to_uid:
+        return jsonify({"error": "Self-relations are not allowed"}), 400
+    if rel_type not in VALID_REL_TYPES:
+        return jsonify({"error": f"Invalid rel_type. Valid: {sorted(VALID_REL_TYPES)}"}), 400
+
+    data = load_relations()
+    dup = _find_duplicate(data["relations"], from_uid, to_uid, rel_type)
+    if dup:
+        return jsonify({"error": "Relation already exists", "existing_id": dup}), 409
+
+    rel_id = "rel_" + uuid.uuid4().hex[:8]
+    data["relations"][rel_id] = {
+        "id": rel_id,
+        "from_uid": from_uid,
+        "to_uid": to_uid,
+        "rel_type": rel_type,
+        "created_at": datetime.utcnow().isoformat(timespec="seconds"),
+    }
+    save_relations(data)
+    return jsonify(data["relations"][rel_id]), 201
+
+
+@app.route("/api/relations/<rel_id>", methods=["DELETE"])
+def delete_relation(rel_id):
+    data = load_relations()
+    if rel_id not in data["relations"]:
+        return jsonify({"error": "Not found"}), 404
+    del data["relations"][rel_id]
+    save_relations(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/relations", methods=["GET"])
+def get_relations():
+    uid       = request.args.get("uid", "").strip()
+    from_uid  = request.args.get("from_uid", "").strip()
+    to_uid    = request.args.get("to_uid", "").strip()
+    rel_type  = request.args.get("rel_type", "").strip()
+
+    data      = load_relations()
+    uid_index = _build_uid_index()
+
+    def enrich(rel):
+        """Attach entity descriptors; mark missing entities as orphaned."""
+        r = dict(rel)
+        r["from_entity"] = uid_index.get(r["from_uid"]) or {"type": "unknown", "id": None, "title": None, "orphaned": True}
+        r["to_entity"]   = uid_index.get(r["to_uid"])   or {"type": "unknown", "id": None, "title": None, "orphaned": True}
+        return r
+
+    rels = list(data["relations"].values())
+
+    # Filter by rel_type if given
+    if rel_type:
+        rels = [r for r in rels if r["rel_type"] == rel_type]
+
+    # Mode 1: uid= → return split outgoing/incoming
+    if uid:
+        outgoing = [enrich(r) for r in rels if r["from_uid"] == uid]
+        incoming = [enrich(r) for r in rels if r["to_uid"] == uid]
+        # symmetric 'related' appears in both directions
+        for r in rels:
+            if r["rel_type"] == "related" and r["to_uid"] == uid:
+                if not any(o["id"] == r["id"] for o in outgoing):
+                    outgoing.append(enrich(r))
+        return jsonify({"uid": uid, "outgoing": outgoing, "incoming": incoming})
+
+    # Mode 2: from_uid= → outgoing only
+    if from_uid:
+        result = [enrich(r) for r in rels if r["from_uid"] == from_uid]
+        return jsonify({"relations": result})
+
+    # Mode 3: to_uid= → incoming only (backlinks)
+    if to_uid:
+        result = [enrich(r) for r in rels if r["to_uid"] == to_uid]
+        return jsonify({"relations": result})
+
+    # Mode 4: no filter → return all
+    return jsonify({"relations": [enrich(r) for r in rels]})
+
+
+
 def kanban_list_boards():
     data = load_kanban()
     workspace_id_filter = request.args.get("workspace_id", "").strip()
