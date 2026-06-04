@@ -263,6 +263,7 @@ function showKanbanArea() {
   $("entryView").classList.add("hidden");
   $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
   $("welcome").classList.add("hidden");
+  if ($("ctxBar")) $("ctxBar").classList.add("hidden");
   $("kanbanArea").classList.remove("hidden");
 }
 
@@ -875,6 +876,7 @@ async function loadEntry(id, opts = {}) {
   $("welcome").classList.add("hidden");
   $("kanbanArea").classList.add("hidden");
   $("entryView").classList.remove("hidden");
+  if ($("ctxBar")) $("ctxBar").classList.remove("hidden");
 
   // Close move panel and history panel on new entry load
   $("movePanel").classList.add("hidden");
@@ -1553,6 +1555,7 @@ async function deleteEntry() {
     $("entryView").classList.add("hidden");
     $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
     $("kanbanArea").classList.add("hidden");
+    if ($("ctxBar")) $("ctxBar").classList.add("hidden");
     $("welcome").classList.remove("hidden");
     renderHome();
     showToast("Entrada eliminada");
@@ -2041,6 +2044,8 @@ function updateStarBtn(starred) {
     btn.textContent = "☆ star";
     btn.classList.remove("starred");
   }
+  const ctx = $("ctxStar");
+  if (ctx) { ctx.textContent = starred ? "★" : "☆"; ctx.classList.toggle("active", !!starred); }
 }
 
 function renderStarredSection(index) {
@@ -2762,6 +2767,8 @@ function updatePinBtn(pinned) {
     btn.textContent = "⊞ pin";
     btn.classList.remove("pinned");
   }
+  const ctx = $("ctxPin");
+  if (ctx) { ctx.textContent = pinned ? "⊟" : "⊞"; ctx.classList.toggle("active", !!pinned); }
 }
 
 function renderPinnedSection() {
@@ -2809,6 +2816,8 @@ const STATUS_LABELS = { pendiente: "● pend", progreso: "◐ prog", dominado: "
 function updateStatusBtn(btn, status) {
   btn.textContent = STATUS_LABELS[status] || "● pend";
   btn.className = `btn-ghost status-${status}`;
+  const ctx = $("ctxStatus");
+  if (ctx) { ctx.textContent = STATUS_LABELS[status] || "● pend"; ctx.className = `ctx-btn status-${status}`; }
 }
 
 async function cycleStatus(id, btn, refreshSidebar) {
@@ -2914,26 +2923,68 @@ function exitReview() {
 // ============================================================
 function buildBreadcrumb(meta) {
   if (!$("breadcrumb")) return;
-  const catLabel = escapeHtml(meta.type === "course" ? (meta.course_label || meta.course) : (meta.category_label || meta.category));
-  const topicLabel = escapeHtml(meta.type === "course" ? (meta.module_label || meta.module) : (meta.topic_label || meta.topic));
-  const entryTitle = escapeHtml(meta.title);
-  $("breadcrumb").innerHTML = `
-    <span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category)}">${catLabel}</span>
-    <span class="breadcrumb-sep">›</span>
-    <span class="breadcrumb-seg" data-topic="${escapeHtml(meta.topic)}">${topicLabel}</span>
-    <span class="breadcrumb-sep">›</span>
-    <span class="breadcrumb-seg last">${entryTitle}</span>
-  `;
+
+  const isCourse    = meta.type === "course"    || !!meta.course;
+  const isTeamspace = meta.type === "teamspace" || !!meta.teamspace;
+
+  // Space root label
+  let spaceLabel = "KB";
+  let spaceSpace = "knowledge";
+  if (isCourse)    { spaceLabel = "Cursos";   spaceSpace = "courses"; }
+  if (isTeamspace) { spaceLabel = "Team";     spaceSpace = "teamspace"; }
+
+  const catLabel   = escapeHtml(isCourse ? (meta.course_label || meta.course)    : isTeamspace ? "Teamspace" : (meta.category_label || meta.category)) || "";
+  const topicLabel = escapeHtml(isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : (meta.topic_label || meta.topic)) || "";
+  const entryTitle = escapeHtml(meta.title || "Sin título");
+
+  const segs = [
+    `<span class="breadcrumb-seg breadcrumb-space" data-space="${spaceSpace}">${spaceLabel}</span>`,
+    catLabel   ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category || meta.course || "")}">${catLabel}</span>` : "",
+    topicLabel ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg">${topicLabel}</span>` : "",
+    `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg breadcrumb-current">${entryTitle}</span>`,
+  ];
+  $("breadcrumb").innerHTML = segs.join("");
+
+  // Space click → switch sidebar space
+  $("breadcrumb").querySelector(".breadcrumb-space")?.addEventListener("click", () => {
+    if (typeof switchSpace === "function") switchSpace(spaceSpace);
+  });
+
+  // Category click → expand + scroll to category in sidebar
   $("breadcrumb").querySelectorAll(".breadcrumb-seg[data-cat]").forEach(seg => {
     seg.addEventListener("click", () => {
       const cat = seg.dataset.cat;
       const catEl = document.querySelector(`.tree-category[data-cat="${cat}"]`);
-      if (catEl && !catEl.classList.contains("open")) {
-        catEl.querySelector(".tree-category-header").click();
-      }
+      if (catEl && !catEl.classList.contains("open")) catEl.querySelector(".tree-category-header").click();
       if (catEl) catEl.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   });
+
+  // Wire ctx-toolbar buttons to their existing action buttons
+  _wireCtxBtn("ctxStar",     "starBtn");
+  _wireCtxBtn("ctxPin",      "pinBtn");
+  _wireCtxBtn("ctxToc",      "tocBtn");
+  _wireCtxBtn("ctxHistory",  "historyBtn");
+  _wireCtxBtn("ctxFocus",    "focusBtn");
+  _wireCtxBtn("ctxExportMd", "exportMdBtn");
+  _wireCtxBtn("ctxDelete",   "deleteBtn");
+
+  // ctxStatus proxies statusBtn (keep label in sync)
+  const ctxStatus = $("ctxStatus");
+  const statusBtn = $("statusBtn");
+  if (ctxStatus && statusBtn) {
+    ctxStatus.textContent = statusBtn.textContent;
+    ctxStatus.className = statusBtn.className.replace("btn-ghost", "ctx-btn");
+    ctxStatus.onclick = () => statusBtn.click();
+  }
+}
+
+function _wireCtxBtn(ctxId, sourceId) {
+  const ctxBtn = $(ctxId);
+  const src    = $(sourceId);
+  if (!ctxBtn || !src) return;
+  // Clone click handler by proxy
+  ctxBtn.onclick = () => src.click();
 }
 
 // ============================================================
@@ -3263,4 +3314,7 @@ function buildBreadcrumb(meta) {
   } else {
     init();
   }
+
+  // Expose for use in buildBreadcrumb
+  window.switchSpace = switchSpace;
 })();

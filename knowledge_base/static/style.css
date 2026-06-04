@@ -4682,3 +4682,125 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   .activity-bar { display: none; }
   .layout { margin-left: 0; }
 }
+
+/* =============================================
+   PHASE D — Breadcrumb + Context Toolbar
+   ============================================= */
+
+/* ── Ctx Bar (sticky strip below topbar) ── */
+.ctx-bar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-6);
+  height: 36px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ctx-bar.hidden { display: none; }
+
+/* ── Breadcrumb ── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumb-seg {
+  font-size: 0.72rem;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  cursor: default;
+}
+
+.breadcrumb-space {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.breadcrumb-seg[data-cat] {
+  cursor: pointer;
+}
+
+.breadcrumb-seg[data-cat]:hover,
+.breadcrumb-space:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-weight: 500;
+  max-width: 220px;
+}
+
+.breadcrumb-sep {
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+/* ── Context Toolbar ── */
+.ctx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ctx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.ctx-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.ctx-btn.active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.ctx-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+}
+
+.ctx-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 var(--space-1);
+  flex-shrink: 0;
+}
