@@ -1490,7 +1490,7 @@ window.BlockEditor = (() => {
           tr.className = 'eb-db-row';
           tr.dataset.rowId = row.id;
 
-          // ── Block-style gutter (like Notion rows) ──
+          // ── Gutter: row number, drag handle on hover (Notion style) ──
           const gutterTd = document.createElement('td');
           gutterTd.className = 'eb-db-gutter';
 
@@ -1498,69 +1498,56 @@ window.BlockEditor = (() => {
           rowNum.className = 'eb-db-row-num';
           rowNum.textContent = rowIdx + 1;
 
-          // Block controls shown on hover: drag handle + block menu button
-          const blockControls = document.createElement('span');
-          blockControls.className = 'eb-db-block-controls';
-
           const dragHandle = document.createElement('span');
           dragHandle.className = 'eb-db-drag-handle';
           dragHandle.textContent = '⠿';
-          dragHandle.title = 'Arrastrar';
+          dragHandle.title = 'Arrastrar fila';
 
-          const blockMenuBtn = document.createElement('button');
-          blockMenuBtn.className = 'eb-db-block-menu-btn';
-          blockMenuBtn.type = 'button';
-          blockMenuBtn.textContent = '+';
-          blockMenuBtn.title = 'Opciones de fila';
-
-          // Block popover (Open, Duplicate, Delete)
-          const blockPopover = document.createElement('div');
-          blockPopover.className = 'eb-db-block-popover';
-
-          const BLOCK_ACTIONS = [
-            { icon: '⤢', label: 'Abrir página', action: () => { openRowPeek(d, row); blockPopover.classList.remove('is-open'); } },
-            { icon: '⧉', label: 'Duplicar fila', action: () => {
-              const nc = { id: dbUid(), cells: { ...row.cells }, page: { ...(row.page || {}) } };
-              d.rows.splice(ri + 1, 0, nc);
-              saveData(d); buildTable();
-            }},
-            { sep: true },
-            { icon: '🗑', label: 'Eliminar fila', danger: true, action: () => {
-              d.rows.splice(ri, 1);
-              saveData(d); buildTable();
-            }},
-          ];
-          BLOCK_ACTIONS.forEach(item => {
-            if (item.sep) {
-              const sep = document.createElement('div');
-              sep.className = 'eb-db-col-menu-sep';
-              blockPopover.appendChild(sep);
-              return;
-            }
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'eb-db-col-menu-item' + (item.danger ? ' is-danger' : '');
-            btn.innerHTML = `<span class="eb-db-col-menu-icon">${item.icon}</span><span>${item.label}</span>`;
-            btn.addEventListener('click', e => { e.stopPropagation(); item.action(); });
-            blockPopover.appendChild(btn);
-          });
-
-          blockMenuBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            // Position popover using fixed coords
-            blockPopover.classList.toggle('is-open');
-            if (blockPopover.classList.contains('is-open')) {
-              setTimeout(() => { document.addEventListener('click', () => blockPopover.classList.remove('is-open'), { once: true }); }, 0);
-            }
-          });
-          blockPopover.addEventListener('click', e => e.stopPropagation());
-
-          blockControls.appendChild(dragHandle);
-          blockControls.appendChild(blockMenuBtn);
-          blockControls.appendChild(blockPopover);
           gutterTd.appendChild(rowNum);
-          gutterTd.appendChild(blockControls);
+          gutterTd.appendChild(dragHandle);
           tr.appendChild(gutterTd);
+
+          // Right-click context menu on row
+          tr.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Remove existing row context menus
+            document.querySelectorAll('.eb-db-row-ctx').forEach(m => m.remove());
+            const ctx = document.createElement('div');
+            ctx.className = 'eb-db-col-menu--notion eb-db-row-ctx';
+            ctx.style.position = 'fixed';
+            ctx.style.top = e.clientY + 'px';
+            ctx.style.left = Math.min(e.clientX, window.innerWidth - 210) + 'px';
+            ctx.style.zIndex = '9500';
+            const ROW_CTX = [
+              { icon: '⤢', label: 'Abrir página', action: () => openRowPeek(d, row) },
+              { sep: true },
+              { icon: '⧉', label: 'Duplicar fila', action: () => {
+                const nc = { id: dbUid(), cells: { ...row.cells }, page: { ...(row.page || {}) } };
+                d.rows.splice(ri + 1, 0, nc); saveData(d); buildTable();
+              }},
+              { sep: true },
+              { icon: '🗑', label: 'Eliminar fila', danger: true, action: () => {
+                d.rows.splice(ri, 1); saveData(d); buildTable();
+              }},
+            ];
+            ROW_CTX.forEach(item => {
+              if (item.sep) {
+                const sep = document.createElement('div');
+                sep.className = 'eb-db-col-menu-sep';
+                ctx.appendChild(sep); return;
+              }
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'eb-db-col-menu-item' + (item.danger ? ' is-danger' : '');
+              btn.innerHTML = `<span class="eb-db-col-menu-icon">${item.icon}</span><span>${item.label}</span>`;
+              btn.addEventListener('click', ev => { ev.stopPropagation(); item.action(); ctx.remove(); });
+              ctx.appendChild(btn);
+            });
+            document.body.appendChild(ctx);
+            ctx.addEventListener('click', e => e.stopPropagation());
+            setTimeout(() => { document.addEventListener('click', () => ctx.remove(), { once: true }); }, 0);
+          });
 
           d.cols.forEach((col, colIdx) => {
             const td = document.createElement('td');
@@ -1610,6 +1597,7 @@ window.BlockEditor = (() => {
         addRowBtn.innerHTML = '<span style="font-size:0.9rem;opacity:0.6">+</span> Nueva página';
         addRowBtn.addEventListener('click', e => {
           e.preventDefault();
+          e.stopPropagation();
           const cells = {};
           d.cols.forEach(col => { cells[col.id] = defaultCellValue(col.type); });
           const newRow = { id: dbUid(), cells, page: { content: '' } };
