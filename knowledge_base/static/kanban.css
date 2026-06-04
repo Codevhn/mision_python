@@ -2437,3 +2437,99 @@ kbd {
 .kb-ws-new-input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; padding: 5px 8px; outline: none; font-family: var(--font-ui); }
 .kb-ws-new-input:focus { border-color: var(--accent); }
 .kb-ws-new-btns { display: flex; gap: 6px; }
+
+/* Board Menu Panel */
+.kb-board-menu {
+  position: fixed; top: 0; right: 0;
+  width: 320px; height: 100vh;
+  background: var(--bg-elevated, #2d2d2d);
+  border-left: 1px solid var(--border, rgba(255,255,255,0.08));
+  box-shadow: -8px 0 32px rgba(0,0,0,0.35);
+  z-index: 1200;
+  display: flex; flex-direction: column;
+  transform: translateX(102%);
+  transition: transform 0.2s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.kb-board-menu--open { transform: translateX(0); }
+.kb-board-menu-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+  font-weight: 600; font-size: 0.9rem;
+}
+.kb-board-menu-close {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.2rem; color: var(--text-muted, #aaa);
+  padding: 2px 6px; border-radius: 4px;
+}
+.kb-board-menu-close:hover { background: var(--bg-hover, rgba(255,255,255,0.07)); }
+.kb-board-menu-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+.kb-board-menu-sep { height: 1px; background: var(--border, rgba(255,255,255,0.08)); margin: 6px 0; }
+.kb-board-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; cursor: pointer; font-size: 0.85rem;
+  color: var(--text, #e8e8e8); border: none; background: none;
+  width: 100%; text-align: left;
+  transition: background 0.1s;
+}
+.kb-board-menu-item:hover:not(.is-disabled) { background: var(--bg-hover, rgba(255,255,255,0.07)); }
+.kb-board-menu-item.is-disabled { opacity: 0.45; cursor: default; }
+.kb-board-menu-icon { width: 20px; text-align: center; font-size: 1rem; flex-shrink: 0; }
+.kb-board-menu-label { flex: 1; }
+.kb-board-menu-badge {
+  font-size: 0.65rem; background: rgba(120,120,120,0.25);
+  color: var(--text-faint, #888); padding: 2px 6px;
+  border-radius: 8px; white-space: nowrap;
+}
+/* Custom Fields */
+.kb-cf-list { padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; }
+.kb-cf-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: var(--bg-surface, rgba(255,255,255,0.04));
+  border-radius: 6px; border: 1px solid var(--border, rgba(255,255,255,0.08));
+}
+.kb-cf-item-name { flex: 1; font-size: 0.83rem; }
+.kb-cf-item-type { font-size: 0.7rem; color: var(--text-faint, #888); }
+.kb-cf-add-btn {
+  margin: 8px 16px; padding: 8px 12px;
+  background: none; border: 1px dashed var(--border, rgba(255,255,255,0.15));
+  border-radius: 6px; color: var(--text-muted, #aaa);
+  cursor: pointer; font-size: 0.82rem; width: calc(100% - 32px);
+  transition: background 0.1s, border-color 0.1s;
+}
+.kb-cf-add-btn:hover { background: var(--bg-hover); border-color: var(--accent, #3b82f6); color: var(--accent); }
+.kb-cf-form {
+  margin: 8px 16px; padding: 12px;
+  background: var(--bg-surface); border-radius: 8px;
+  border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;
+}
+.kb-cf-form input, .kb-cf-form select, .kb-cf-form textarea {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 6px 10px;
+  font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box;
+}
+.kb-cf-form-actions { display: flex; gap: 6px; }
+.kb-cf-form-actions button {
+  flex: 1; padding: 6px; border-radius: 5px; cursor: pointer;
+  font-size: 0.8rem; border: none;
+}
+/* Custom field values in card modal */
+.kb-modal-cf-section { padding: 0 16px 12px; }
+.kb-modal-cf-field { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.kb-modal-cf-label { font-size: 0.78rem; color: var(--text-muted); width: 120px; flex-shrink: 0; }
+.kb-modal-cf-value { flex: 1; }
+.kb-modal-cf-value input, .kb-modal-cf-value select {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); padding: 4px 8px;
+  font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box;
+}
+.kb-modal-cf-value input:focus, .kb-modal-cf-value select:focus { border-color: var(--accent); }
+/* CF badges on card preview */
+.kb-card-cf-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.kb-card-cf-badge {
+  font-size: 0.65rem; padding: 1px 6px;
+  background: var(--bg-hover); border-radius: 4px;
+  color: var(--text-muted); border: 1px solid var(--border);
+  max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
