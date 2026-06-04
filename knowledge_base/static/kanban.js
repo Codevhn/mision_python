@@ -2607,17 +2607,13 @@
       (col.cards || []).filter(c => !c.archived).forEach(c => allCards.push({ card: c, colName: col.name, colId: col.id }));
     });
 
-    // Filter bar
+    // Filter bar — only list selector; text search uses the global topbar search
     const filterBar = document.createElement('div');
-    filterBar.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:center;';
-    const searchInput = document.createElement('input');
-    searchInput.placeholder = 'Filtrar tarjetas…';
-    searchInput.style.cssText = 'flex:1;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;outline:none;';
+    filterBar.style.cssText = 'display:flex;gap:10px;margin-bottom:14px;align-items:center;justify-content:flex-end;';
     const colNames = [...new Set(allCards.map(x => x.colName))];
     const colSel = document.createElement('select');
-    colSel.style.cssText = 'background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 12px;font-size:0.82rem;cursor:pointer;';
+    colSel.style.cssText = 'background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;padding:7px 14px;font-size:0.82rem;cursor:pointer;';
     colSel.innerHTML = `<option value="">Todas las listas</option>` + colNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
-    filterBar.appendChild(searchInput);
     filterBar.appendChild(colSel);
     div.appendChild(filterBar);
 
@@ -2633,7 +2629,7 @@
     const tbody = document.createElement('tbody');
 
     function applyFilter() {
-      const q = searchInput.value.toLowerCase();
+      const q = _filterText.toLowerCase();
       const col = colSel.value;
       tbody.querySelectorAll('tr').forEach(tr => {
         const title = (tr.dataset.title || '').toLowerCase();
@@ -2641,7 +2637,9 @@
         tr.style.display = (!q || title.includes(q)) && (!col || list === col) ? '' : 'none';
       });
     }
-    searchInput.addEventListener('input', applyFilter);
+    // Hook into global search bar so typing there also filters table rows
+    const globalSearch = document.getElementById('kbFilterSearch');
+    if (globalSearch) globalSearch.addEventListener('input', applyFilter);
     colSel.addEventListener('change', applyFilter);
 
     allCards.forEach(({ card, colName, colId }) => {
