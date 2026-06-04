@@ -198,7 +198,7 @@ input, textarea, select { font-family: inherit; }
 /* ---- TOPBAR ---- */
 .topbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0; left: var(--activity-bar-w, 0); right: 0;
   height: var(--topbar-h);
   background: var(--bg-sidebar);
   backdrop-filter: var(--glass-blur);
@@ -4563,17 +4563,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
    PHASE B — Activity Bar + Contextual Sidebar
    ============================================= */
 
-/* ── Layout adjustment ── */
+/* ── Layout tokens ── */
 :root {
   --activity-bar-w: 48px;
 }
 
-/* Push layout content to the right of the activity bar */
-.layout {
-  margin-left: var(--activity-bar-w);
-}
-
-/* ── Activity Bar ── */
+/* ── Activity Bar — fixed left strip ── */
 .activity-bar {
   position: fixed;
   top: var(--topbar-h);
@@ -4586,9 +4581,10 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
   padding: var(--space-2) 0;
-  z-index: 90;
+  z-index: 95;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
 .activity-bar-top,
@@ -4596,7 +4592,18 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
+  gap: 2px;
+}
+
+/* ab-label hidden — icon-only 48px bar */
+.ab-label { display: none; }
+
+.ab-icon {
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ab-item {
@@ -4609,16 +4616,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
-  font-family: var(--font-ui);
-  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
   position: relative;
   padding: 0;
-  text-align: center;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  text-decoration: none;
+  flex-shrink: 0;
 }
 
 .ab-item:hover {
@@ -4643,19 +4646,18 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 .ab-item--brand {
-  font-size: 1rem;
-  font-weight: 700;
   color: var(--accent);
+  font-weight: 700;
   margin-bottom: var(--space-2);
 }
 
-.ab-item--brand:hover {
-  background: var(--accent-light);
-}
+.ab-item--brand:hover { background: var(--accent-light); }
 
-/* ── Sidebar ── */
-.sidebar {
-  /* no grid-area needed; sidebar position unchanged */
+/* ── Push layout + sidebar right of activity bar ── */
+/* The sidebar is a child of .layout which is display:flex */
+/* We offset the whole layout by --activity-bar-w         */
+.layout {
+  padding-left: var(--activity-bar-w);
 }
 
 /* ── Sidebar Space panels ── */
@@ -4676,11 +4678,11 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
 }
 
-/* ── Mobile / small screens ── */
+/* ── Mobile ── */
 @media (max-width: 768px) {
   :root { --activity-bar-w: 0px; }
   .activity-bar { display: none; }
-  .layout { margin-left: 0; }
+  .layout { padding-left: 0; }
 }
 
 /* =============================================
