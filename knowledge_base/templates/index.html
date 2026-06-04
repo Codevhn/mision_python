@@ -46,7 +46,43 @@
     <!-- SIDEBAR OVERLAY (mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- SIDEBAR -->
+    <!-- ── ACTIVITY BAR ── -->
+    <nav class="activity-bar" id="activityBar">
+      <div class="activity-bar-top">
+        <button class="ab-item ab-item--brand" id="abBrand" title="Inicio">
+          <span class="ab-icon">~</span>
+        </button>
+        <button class="ab-item" id="abKnowledge" data-space="knowledge" title="Conocimiento">
+          <span class="ab-icon">◈</span>
+          <span class="ab-label">KB</span>
+        </button>
+        <button class="ab-item" id="abCourses" data-space="courses" title="Cursos">
+          <span class="ab-icon">▶</span>
+          <span class="ab-label">Cursos</span>
+        </button>
+        <button class="ab-item" id="abBoards" data-space="boards" title="Tableros Kanban">
+          <span class="ab-icon">⊞</span>
+          <span class="ab-label">Boards</span>
+        </button>
+        <button class="ab-item" id="abTeamspace" data-space="teamspace" title="Teamspace">
+          <span class="ab-icon">⋯</span>
+          <span class="ab-label">Team</span>
+        </button>
+      </div>
+      <div class="activity-bar-bottom">
+        <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
+          <span class="ab-icon">⌕</span>
+        </button>
+        <button class="ab-item" id="themeToggleSidebar" title="Cambiar tema">
+          <span class="ab-icon" id="abThemeIcon">◐</span>
+        </button>
+        <a class="ab-item" href="/logout" title="Salir" style="text-decoration:none">
+          <span class="ab-icon">⏻</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- ── SIDEBAR (contextual) ── -->
     <aside class="sidebar" id="sidebar">
 
       <!-- WORKSPACE HEADER -->
@@ -56,51 +92,62 @@
           <span class="workspace-name">knowledge_base</span>
           <span class="workspace-plan">personal</span>
         </div>
-        <button id="themeToggleSidebar" class="btn-icon ws-theme-btn" title="Cambiar tema">[L]</button>
       </div>
 
-      <!-- WORKSPACE QUICK NAV -->
-      <nav class="workspace-nav">
-        <a class="workspace-nav-item" id="wsHome" href="#">
-          <span class="ws-icon">⌂</span><span>Inicio</span>
-        </a>
-        <a class="workspace-nav-item" id="wsStarred" href="#">
-          <span class="ws-icon">☆</span><span>Favoritos</span>
-        </a>
-        <a class="workspace-nav-item" id="wsSearch" href="#">
-          <span class="ws-icon">⌕</span><span>Buscar</span>
-        </a>
-        <a class="workspace-nav-item" href="/logout" style="text-decoration:none">
-          <span class="ws-icon">⏻</span><span>Salir</span>
-        </a>
-      </nav>
-
-      <div class="sidebar-section-label">CONOCIMIENTO</div>
-      <nav class="tree" id="tree">
-        <div class="tree-empty">No hay entradas aún.</div>
-      </nav>
-      <div class="sidebar-section-label" id="coursesSectionLabel">CURSOS</div>
-      <nav class="tree" id="coursesTree">
-        <div class="tree-empty">No hay cursos aún.</div>
-      </nav>
-
-      <!-- TEAMSPACE -->
-      <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>TEAMSPACE</span>
-        <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Crear nuevo teamspace">+</button>
+      <!-- SPACE: KNOWLEDGE -->
+      <div class="sidebar-space" id="spaceKnowledge">
+        <div class="sidebar-space-header">
+          <span>Conocimiento</span>
+          <button class="ts-new-btn" id="newEntryBtnSidebar" title="Nueva entrada">+</button>
+        </div>
+        <nav class="tree" id="tree">
+          <div class="tree-empty">No hay entradas aún.</div>
+        </nav>
+        <div class="sidebar-section-label" id="coursesSectionLabel">CURSOS</div>
+        <nav class="tree" id="coursesTree">
+          <div class="tree-empty">No hay cursos aún.</div>
+        </nav>
       </div>
-      <nav class="tree" id="teamspaceTree">
-        <div class="tree-empty">No hay contenido aún.</div>
+
+      <!-- SPACE: COURSES (standalone view) -->
+      <div class="sidebar-space" id="spaceCourses" style="display:none">
+        <div class="sidebar-space-header">
+          <span>Cursos</span>
+        </div>
+        <nav class="tree" id="coursesTree2">
+          <div class="tree-empty">No hay cursos aún.</div>
+        </nav>
+      </div>
+
+      <!-- SPACE: BOARDS -->
+      <div class="sidebar-space" id="spaceBoards" style="display:none">
+        <div class="sidebar-space-header">
+          <span>Tableros</span>
+          <button class="ts-new-btn" id="newKanbanBoardBtn" title="Nuevo tablero">+</button>
+        </div>
+        <nav class="tree" id="kanbanTree">
+          <div class="tree-empty">No hay tableros aún.</div>
+        </nav>
+      </div>
+
+      <!-- SPACE: TEAMSPACE -->
+      <div class="sidebar-space" id="spaceTeamspace" style="display:none">
+        <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:flex;align-items:center;justify-content:space-between;margin-top:0">
+          <span>Teamspace</span>
+          <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Crear nuevo teamspace">+</button>
+        </div>
+        <nav class="tree" id="teamspaceTree">
+          <div class="tree-empty">No hay contenido aún.</div>
+        </nav>
+      </div>
+
+      <!-- LEGACY nav items kept for JS compatibility (hidden) -->
+      <nav class="workspace-nav" style="display:none">
+        <a class="workspace-nav-item" id="wsHome" href="#"></a>
+        <a class="workspace-nav-item" id="wsStarred" href="#"></a>
+        <a class="workspace-nav-item" id="wsSearch" href="#"></a>
       </nav>
 
-      <!-- KANBAN -->
-      <div class="sidebar-section-label" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>KANBAN</span>
-        <button class="ts-new-btn" id="newKanbanBoardBtn" title="Nuevo tablero">+</button>
-      </div>
-      <nav class="tree" id="kanbanTree">
-        <div class="tree-empty">No hay tableros aún.</div>
-      </nav>
     </aside>
 
     <!-- MAIN CONTENT -->
