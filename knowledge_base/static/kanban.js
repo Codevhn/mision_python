@@ -2184,23 +2184,59 @@
     photoLabel.textContent = 'Fotos de Unsplash';
     body.appendChild(photoLabel);
 
+    const photoSearchWrap = document.createElement('div');
+    photoSearchWrap.className = 'kb-cover-photo-search-wrap';
+    const photoSearchInput = document.createElement('input');
+    photoSearchInput.className = 'kb-cover-photo-search';
+    photoSearchInput.type = 'text';
+    photoSearchInput.placeholder = '🔍 Buscar fotos…';
+    photoSearchWrap.appendChild(photoSearchInput);
+    body.appendChild(photoSearchWrap);
+
     const photoGrid = document.createElement('div');
     photoGrid.className = 'kb-cover-photo-grid';
-    BG_IMAGE_PRESETS.forEach(preset => {
-      const bg = `url("${preset.url}") center/cover no-repeat`;
-      const sw = document.createElement('button');
-      sw.className = 'kb-cover-photo-swatch' + (card.cover === bg ? ' active' : '');
-      sw.style.background = bg;
-      sw.title = preset.label;
-      sw.addEventListener('click', () => {
-        card.cover = bg;
-        card.cover_full = true;
-        saveBoard(_currentBoard.id);
-        onUpdate();
-        panel.remove();
+
+    function renderPhotoGrid(presets) {
+      photoGrid.innerHTML = '';
+      presets.forEach(preset => {
+        const bg = `url("${preset.url}") center/cover no-repeat`;
+        const sw = document.createElement('button');
+        sw.className = 'kb-cover-photo-swatch' + (card.cover === bg ? ' active' : '');
+        sw.style.background = bg;
+        sw.title = preset.label;
+        sw.addEventListener('click', () => {
+          card.cover = bg;
+          card.cover_full = true;
+          saveBoard(_currentBoard.id);
+          onUpdate();
+          panel.remove();
+        });
+        photoGrid.appendChild(sw);
       });
-      photoGrid.appendChild(sw);
+      if (presets.length === 0) {
+        photoGrid.innerHTML = '<div style="color:var(--text-faint);font-size:0.78rem;padding:8px 0">Sin resultados</div>';
+      }
+    }
+
+    renderPhotoGrid(BG_IMAGE_PRESETS);
+
+    // Search with debounce — queries Unsplash Source (no API key needed)
+    let _photoSearchTimer = null;
+    photoSearchInput.addEventListener('input', () => {
+      clearTimeout(_photoSearchTimer);
+      const q = photoSearchInput.value.trim();
+      if (!q) { renderPhotoGrid(BG_IMAGE_PRESETS); return; }
+      _photoSearchTimer = setTimeout(() => {
+        photoGrid.innerHTML = '<div style="color:var(--text-faint);font-size:0.75rem;padding:6px 0">Buscando…</div>';
+        // Generate 6 search result images via Unsplash Source
+        const results = Array.from({ length: 6 }, (_, i) => ({
+          label: `${q} ${i + 1}`,
+          url: `https://source.unsplash.com/400x250/?${encodeURIComponent(q)}&sig=${Date.now() + i}`
+        }));
+        renderPhotoGrid(results);
+      }, 500);
     });
+
     body.appendChild(photoGrid);
 
     // Position panel: to the RIGHT of the modal
