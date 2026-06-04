@@ -1487,6 +1487,51 @@ def save_kanban(data):
     KANBAN_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 
+def _build_card_index(kanban=None):
+    """Return {card_id -> descriptor} by scanning kanban.json once.
+
+    descriptor = {
+        "type": "kanban_card",
+        "id": card_id,
+        "title": str,
+        "board_id": str,
+        "board_name": str,
+        "col_id": str,
+        "col_name": str,
+        "card": <original card dict>   ← full card data, no copy of kanban needed
+    }
+    Never persisted — rebuilt from kanban.json on demand.
+    """
+    if kanban is None:
+        try:
+            kanban = load_kanban()
+        except Exception:
+            return {}
+
+    index = {}
+    for board in kanban["boards"].values():
+        board_id   = board.get("id", "")
+        board_name = board.get("name", "")
+        for col in board.get("columns", []):
+            col_id   = col.get("id", "")
+            col_name = col.get("name", "")
+            for card in col.get("cards", []):
+                card_id = card.get("id")
+                if not card_id:
+                    continue
+                index[card_id] = {
+                    "type":       "kanban_card",
+                    "id":         card_id,
+                    "title":      card.get("title", ""),
+                    "board_id":   board_id,
+                    "board_name": board_name,
+                    "col_id":     col_id,
+                    "col_name":   col_name,
+                    "card":       card,
+                }
+    return index
+
+
 # ── RELATIONS ───────────────────────────────────────────────────────────────
 
 RELATIONS_FILE = DATA_DIR / "relations.json"
@@ -1503,7 +1548,12 @@ def save_relations(data):
 
 
 def _build_uid_index():
-    """Return a dict {uid -> {type, id, title}} covering all known entities."""
+    """Return {uid -> descriptor} covering all known entities.
+
+    For KB entries  → descriptor has type, id (slug), title.
+    For kanban boards → type=kanban_board, id=board_id, title.
+    For kanban cards  → full _build_card_index descriptor (board_id, col_id, card).
+    """
     registry = {}
 
     # KB entries (pages, notes, courses, roadmaps, teamspace)
@@ -1511,36 +1561,31 @@ def _build_uid_index():
         uid = meta.get("uid")
         if not uid:
             continue
-        etype = meta.get("type") or "page"   # default type for KB entries
+        etype = meta.get("type") or "page"
         registry[uid] = {
-            "type": etype,
-            "id": entry_id,
+            "type":  etype,
+            "id":    entry_id,
             "title": meta.get("title", entry_id),
         }
 
-    # Kanban boards and cards
+    # Load kanban once and reuse for both boards and cards
     try:
         kanban = load_kanban()
     except Exception:
         kanban = {"boards": {}, "workspaces": {}}
 
     for board in kanban["boards"].values():
-        board_uid = board.get("id")   # boards use id as uid
+        board_uid = board.get("id")
         if board_uid:
             registry[board_uid] = {
-                "type": "kanban_board",
-                "id": board_uid,
+                "type":  "kanban_board",
+                "id":    board_uid,
                 "title": board.get("name", board_uid),
             }
-        for col in board.get("columns", []):
-            for card in col.get("cards", []):
-                card_uid = card.get("id")
-                if card_uid:
-                    registry[card_uid] = {
-                        "type": "kanban_card",
-                        "id": card_uid,
-                        "title": card.get("title", card_uid),
-                    }
+
+    # Cards via dedicated index (single scan)
+    for card_id, desc in _build_card_index(kanban).items():
+        registry[card_id] = desc
 
     return registry
 
@@ -1776,6 +1821,26 @@ def kanban_save_columns(board_id):
         board["customFields"] = body["customFields"]
     save_kanban(data)
     return jsonify({"ok": True})
+
+
+@app.route("/api/kanban/cards/<card_id>", methods=["GET"])
+def kanban_get_card(card_id):
+    """Resolve a card by id without knowing its board or column.
+    Uses _build_card_index() — single scan of kanban.json, no iteration at call site.
+    """
+    card_index = _build_card_index()
+    desc = card_index.get(card_id)
+    if not desc:
+        return jsonify({"error": "Card not found"}), 404
+    return jsonify({
+        "id":         desc["id"],
+        "title":      desc["title"],
+        "board_id":   desc["board_id"],
+        "board_name": desc["board_name"],
+        "col_id":     desc["col_id"],
+        "col_name":   desc["col_name"],
+        "card":       desc["card"],
+    })
 
 
 @app.route("/api/kanban/workspaces", methods=["GET"])
