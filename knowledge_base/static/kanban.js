@@ -2860,8 +2860,8 @@
           if (e.target !== cell && e.target !== dayNum) return;
           const col = (_currentBoard.columns || [])[0];
           if (!col) return;
-          const title = prompt(`Nueva tarjeta para ${dateStr}:`);
-          if (!title || !title.trim()) return;
+          const title = await kbPrompt(`Nueva tarjeta para ${dateStr}:`, 'Título de la tarjeta…');
+          if (!title) return;
           const newCard = {
             id: 'c' + Date.now(),
             title: title.trim(),
