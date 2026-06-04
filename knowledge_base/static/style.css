@@ -4856,288 +4856,328 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 /* =============================================
-   TERMINAL OVERHAUL — Arch/Terminal Aesthetic
-   Everything mono · Sharp · Flat · One accent
+   TASKADE-INSPIRED OVERHAUL
+   Dark · Glassmorphism · Inter · Rounded · Modern
    ============================================= */
 
-/* ── 1. Global tokens reset ── */
+/* ── 1. Global tokens ── */
 :root {
-  /* Mono everywhere */
-  --font-ui:   "JetBrains Mono", "Fira Code", monospace;
-  --font-body: "JetBrains Mono", "Fira Code", monospace;
+  /* Back to Inter for modern feel */
+  --font-ui:   "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 
-  /* Sharper radius */
-  --radius:    2px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 6px;
+  /* Modern radius scale */
+  --radius:    8px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
 
-  /* Kill glassmorphism */
-  --glass-blur:   none;
-  --glass-border: rgba(255,255,255,0.07);
-  --glass-shadow: 0 2px 12px rgba(0,0,0,0.5);
-
-  /* Deeper background */
-  --layer-0: #05050c;
-  --layer-1: #08080f;
-  --layer-2: #0c0c14;
-  --layer-3: #101018;
-  --layer-4: #14141e;
+  /* Near-black Taskade palette */
+  --layer-0: #0d0d10;
+  --layer-1: #111115;
+  --layer-2: #16161c;
+  --layer-3: #1c1c24;
+  --layer-4: #22222c;
 
   --bg:          var(--layer-0);
-  --bg-sidebar:  var(--layer-1);
-  --bg-surface:  var(--layer-2);
-  --bg-elevated: var(--layer-3);
-  --bg-hover:    var(--layer-4);
-  --bg-code:     var(--layer-1);
+  --bg-sidebar:  rgba(13,13,16,0.95);
+  --bg-surface:  rgba(22,22,28,0.85);
+  --bg-elevated: rgba(28,28,36,0.92);
+  --bg-hover:    rgba(34,34,44,0.95);
+  --bg-code:     #0f0f14;
 
   --border:       rgba(255,255,255,0.07);
   --border-light: rgba(255,255,255,0.04);
 
-  --text:       #c8c8d8;
-  --text-muted: #5a5a7a;
-  --text-faint: #28283a;
+  --text:       #e2e2ee;
+  --text-muted: #6b6b8a;
+  --text-faint: #2e2e42;
+
+  /* Glassmorphism restored */
+  --glass-blur:   blur(20px) saturate(160%);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #1793d1 0%, #7c3aed 100%);
+  --grad-surface: linear-gradient(160deg, rgba(23,147,209,0.04) 0%, rgba(124,58,237,0.04) 100%);
 }
 
-/* ── 2. Body — no background blobs ── */
+/* ── 2. Body background ── */
 body {
-  background: var(--bg) !important;
-  background-image: none !important;
+  background: var(--layer-0) !important;
+  background-image: radial-gradient(ellipse 70% 50% at 20% 0%, rgba(23,147,209,0.06) 0%, transparent 60%),
+                    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(124,58,237,0.05) 0%, transparent 60%) !important;
+  background-attachment: fixed !important;
 }
 
-/* ── 3. Topbar — flat terminal bar ── */
+/* ── 3. Topbar ── */
 .topbar {
-  background: var(--bg-sidebar) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid var(--border) !important;
+  background: rgba(13,13,16,0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
   box-shadow: none !important;
 }
 
-/* ── 4. Sidebar — flat ── */
+/* ── 4. Sidebar ── */
 .sidebar {
-  background: var(--bg-sidebar) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(13,13,16,0.90) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-right: 1px solid var(--glass-border) !important;
   background-image: none !important;
-  border-right: 1px solid var(--border) !important;
 }
 
 /* ── 5. Activity bar ── */
 .activity-bar {
-  background: var(--bg-sidebar) !important;
-  backdrop-filter: none !important;
+  background: rgba(10,10,13,0.96) !important;
+  backdrop-filter: blur(16px) !important;
+  border-right: 1px solid var(--glass-border) !important;
 }
 
-/* ── 6. Home cards — terminal file cards ── */
-.home-card {
-  background: var(--bg-surface) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  transition: border-color 0.1s, background 0.1s !important;
-  min-height: 80px !important;
-}
-.home-card:hover {
-  background: var(--bg-elevated) !important;
-  border-color: var(--accent) !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-.home-card-title {
-  font-size: 0.78rem !important;
-  font-weight: 500 !important;
-  color: var(--text) !important;
-}
-.home-card-meta {
-  opacity: 0.45 !important;
-  font-size: 0.62rem !important;
-}
-
-/* ── 7. Greeting ── */
+/* ── 6. Home greeting ── */
 .home-greeting {
-  font-size: 1.6rem !important;
-  font-weight: 400 !important;
+  font-size: 2.4rem !important;
+  font-weight: 700 !important;
   color: var(--text) !important;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em !important;
 }
-.home-greeting::before { content: "$ "; color: var(--accent); }
+.home-greeting::before { content: none !important; }
 
-/* ── 8. Section labels ── */
 .home-section-label {
-  font-size: 0.65rem !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
   color: var(--text-muted) !important;
   opacity: 1 !important;
-  letter-spacing: 0.12em !important;
 }
-.home-section-label::before { content: "# "; color: var(--text-faint); }
+.home-section-label::before { content: none !important; }
 
-/* ── 9. Modal — terminal window ── */
+/* ── 7. Home cards — Taskade project cards ── */
+.home-recent-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+  gap: 14px !important;
+}
+.home-card {
+  background: var(--bg-surface) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3) !important;
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s !important;
+  min-height: 100px !important;
+  overflow: hidden !important;
+}
+.home-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(23,147,209,0.25) !important;
+  border-color: rgba(23,147,209,0.3) !important;
+  background: var(--bg-elevated) !important;
+}
+.home-card-cover {
+  height: 80px !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+}
+.home-card-body { padding: 14px 16px 16px !important; }
+.home-card-title {
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.01em !important;
+}
+.home-card-meta {
+  font-size: 0.67rem !important;
+  color: var(--text-muted) !important;
+  opacity: 0.8 !important;
+}
+
+/* ── 8. Modal ── */
 .modal-overlay {
-  background: rgba(0,0,0,0.82) !important;
-  backdrop-filter: none !important;
+  background: rgba(0,0,0,0.72) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 .modal {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 0 !important;
-  box-shadow: 0 0 0 1px var(--border), 0 16px 48px rgba(0,0,0,0.6) !important;
+  background: rgba(20,20,28,0.96) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.06) inset !important;
 }
 .modal-header {
-  background: var(--bg-elevated) !important;
-  border-bottom: 1px solid var(--border) !important;
-  padding: 10px 16px !important;
+  background: rgba(255,255,255,0.025) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+  padding: 16px 22px !important;
 }
-.modal-header h2 { font-size: 0.76rem !important; }
-.modal-body {
-  background: var(--bg-surface) !important;
+.modal-header h2 {
+  font-family: var(--font-ui) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.01em !important;
 }
+.modal-header h2::before { content: none !important; }
+.modal-body { background: transparent !important; padding: 20px 22px !important; }
 .modal-footer {
-  background: var(--bg-elevated) !important;
+  background: rgba(255,255,255,0.02) !important;
+  border-top: 1px solid var(--glass-border) !important;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl) !important;
+  padding: 14px 22px !important;
 }
 
-/* ── 10. Form inputs ── */
+/* ── 9. Form inputs ── */
 .form-group input,
 .form-group select,
 .form-group textarea {
-  background: var(--bg-elevated) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 0 !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-sm) !important;
   color: var(--text) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.8rem !important;
+  font-family: var(--font-ui) !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
 }
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(23,147,209,0.15) !important;
   outline: none !important;
-  box-shadow: none !important;
 }
 
-/* ── 11. Buttons ── */
+/* ── 10. Buttons ── */
 .btn-primary {
-  border-radius: 0 !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.75rem !important;
-  letter-spacing: 0.04em !important;
-  box-shadow: none !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-ui) !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  background: var(--grad-primary) !important;
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(23,147,209,0.25) !important;
+  letter-spacing: -0.01em !important;
 }
-.btn-primary:hover { box-shadow: none !important; }
-
+.btn-primary:hover {
+  box-shadow: 0 4px 20px rgba(23,147,209,0.4) !important;
+  transform: translateY(-1px) !important;
+}
 .btn-ghost {
-  border-radius: 0 !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.72rem !important;
-  letter-spacing: 0.02em !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 0.76rem !important;
 }
 
-/* ── 12. Meta segments — fix hardcoded rgba ── */
-.meta-seg { border-radius: 0 !important; }
-.meta-seg-cat   { background: var(--accent) !important; color: #fff !important; }
-.meta-seg-topic { background: rgba(23,147,209,0.10) !important; color: var(--accent) !important; }
+/* ── 11. Breadcrumb & ctx toolbar ── */
+.ctx-bar {
+  background: rgba(13,13,16,0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+
+/* ── 12. Meta segments ── */
+.meta-seg { border-radius: var(--radius-sm) !important; }
+.meta-seg-cat   { background: rgba(23,147,209,0.18) !important; color: #60b8e8 !important; }
+.meta-seg-topic { background: rgba(23,147,209,0.08) !important; color: var(--accent) !important; }
 .meta-seg-date  { background: rgba(16,185,129,0.08) !important; color: var(--accent-green) !important; }
-.meta-seg-words {
-  background: rgba(124,58,237,0.08) !important;
-  color: var(--accent-purple) !important;
-}
-.meta-seg-readtime {
-  background: rgba(23,147,209,0.06) !important;
-  color: var(--text-muted) !important;
+.meta-seg-words { background: rgba(124,58,237,0.08) !important; color: #a78bfa !important; }
+.meta-seg-readtime { background: rgba(255,255,255,0.04) !important; color: var(--text-muted) !important; }
+
+/* ── 13. Workspace header ── */
+.workspace-avatar {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 700 !important;
+  font-size: 0.72rem !important;
+  background: var(--grad-primary) !important;
+  color: #fff !important;
 }
 
-/* ── 13. Sidebar tree ── */
-.tree-category-label {
-  font-size: 0.64rem !important;
-  letter-spacing: 0.1em !important;
-}
+/* ── 14. Tree active state ── */
 .tree-entry.active {
-  background: var(--accent-light) !important;
+  background: rgba(23,147,209,0.1) !important;
   border-left: 2px solid var(--accent) !important;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
 }
-.tree-entry:hover { background: var(--bg-elevated) !important; }
 
-/* ── 14. Fix hardcoded semantic colors ── */
+/* ── 15. Content area ── */
+.content-area { background: transparent !important; }
+
+/* ── 16. Fix hardcoded semantic colors ── */
 .tree-starred-entry:hover { color: var(--accent-amber) !important; }
-.tree-entry.starred { color: var(--accent-amber) !important; }
+.tree-entry.starred       { color: var(--accent-amber) !important; }
 .status-dot.status-pendiente  { background: var(--text-faint) !important; }
 .status-dot.status-estudiando { background: var(--accent) !important; }
 .status-dot.status-dominado   { background: var(--accent-green) !important; }
 .status-dot.status-completado { background: var(--accent-green) !important; }
 .status-dot.status-bloqueado  { background: var(--danger) !important; }
 
-/* ── 15. Workspace header ── */
-.workspace-header {
-  border-bottom: 1px solid var(--border) !important;
-  background: transparent !important;
-}
-.workspace-avatar {
-  border-radius: 2px !important;
-  font-family: var(--font-mono) !important;
-  font-weight: 700 !important;
-  font-size: 0.75rem !important;
-}
-
-/* ── 16. Ctx bar ── */
-.ctx-bar {
-  background: var(--bg-sidebar) !important;
-  backdrop-filter: none !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-.breadcrumb-current { font-weight: 400 !important; }
-
-/* ── 17. Content area ── */
-.content-area { background: var(--bg) !important; }
-.entry-view {
-  max-width: 760px !important;
-  margin: 0 auto !important;
-}
-
-/* ── 18. Inline title ── */
-.inline-title {
-  font-family: var(--font-mono) !important;
-  font-size: 1.8rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.02em !important;
-}
-
-/* ── 19. Code blocks ── */
-pre, code {
-  border-radius: 0 !important;
-  font-size: 0.82rem !important;
-}
-
-/* ── 20. Prop chips / status chips ── */
-.prop-chip,
-.prop-status-chip {
-  border-radius: var(--radius-pill) !important;
-}
-
-/* ── 21. Light mode overrides for terminal feel ── */
+/* ── 17. Light mode — Taskade light ── */
 [data-theme="light"] {
-  --layer-0: #f5f5f7;
-  --layer-1: #eeeef2;
-  --layer-2: #e8e8ee;
-  --layer-3: #e2e2ea;
-  --layer-4: #dcdce6;
+  --layer-0: #f7f7f9;
+  --layer-1: #f0f0f4;
+  --layer-2: #eaeaef;
+  --layer-3: #e4e4eb;
+  --layer-4: #dddde6;
 
   --bg:          var(--layer-0);
-  --bg-sidebar:  var(--layer-1);
-  --bg-surface:  var(--layer-2);
-  --bg-elevated: var(--layer-3);
-  --bg-hover:    var(--layer-4);
+  --bg-sidebar:  rgba(240,240,244,0.95);
+  --bg-surface:  rgba(234,234,239,0.90);
+  --bg-elevated: rgba(228,228,235,0.95);
+  --bg-hover:    rgba(220,220,230,0.95);
 
-  --border:       rgba(0,0,0,0.10);
-  --border-light: rgba(0,0,0,0.06);
+  --border:       rgba(0,0,0,0.08);
+  --border-light: rgba(0,0,0,0.05);
+  --glass-border: rgba(0,0,0,0.07);
+  --glass-blur:   blur(16px) saturate(140%);
+  --glass-shadow: 0 4px 24px rgba(0,0,0,0.10);
 
-  --text:       #0a0a14;
-  --text-muted: #44445a;
-  --text-faint: #8888aa;
-
-  --glass-blur:   none;
-  --glass-border: rgba(0,0,0,0.08);
+  --text:       #0e0e18;
+  --text-muted: #5a5a78;
+  --text-faint: #aaaac0;
 }
+
+[data-theme="light"] body {
+  background-image: radial-gradient(ellipse 70% 50% at 20% 0%, rgba(23,147,209,0.05) 0%, transparent 60%),
+                    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(124,58,237,0.04) 0%, transparent 60%) !important;
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(247,247,249,0.92) !important;
+  border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+[data-theme="light"] .sidebar {
+  background: rgba(240,240,244,0.92) !important;
+  border-right-color: rgba(0,0,0,0.07) !important;
+}
+[data-theme="light"] .activity-bar {
+  background: rgba(235,235,242,0.96) !important;
+  border-right-color: rgba(0,0,0,0.07) !important;
+}
+[data-theme="light"] .ab-item { color: #5a5a78; }
+[data-theme="light"] .ab-item:hover { background: rgba(0,0,0,0.06); color: #0e0e18; }
+[data-theme="light"] .btn-ghost { color: #5a5a78; border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .btn-ghost:hover { background: rgba(0,0,0,0.05); color: #0e0e18; }
+[data-theme="light"] .ctx-bar {
+  background: rgba(240,240,244,0.92) !important;
+  border-bottom-color: rgba(0,0,0,0.07) !important;
+}
+[data-theme="light"] .modal {
+  background: rgba(247,247,252,0.97) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+[data-theme="light"] .modal-header { background: rgba(0,0,0,0.02) !important; }
+[data-theme="light"] .modal-footer { background: rgba(0,0,0,0.02) !important; }
+[data-theme="light"] .home-card {
+  background: rgba(255,255,255,0.7) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+}
+[data-theme="light"] .home-card:hover {
+  background: rgba(255,255,255,0.95) !important;
+  border-color: rgba(23,147,209,0.3) !important;
+}
+[data-theme="light"] .meta-seg-cat { background: rgba(23,147,209,0.12) !important; color: var(--accent) !important; }
 
