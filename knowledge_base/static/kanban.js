@@ -242,9 +242,10 @@
   }
 
   async function saveColumnsApi(boardId, columns) {
+    const board = _currentBoard && _currentBoard.id === boardId ? _currentBoard : null;
     return apiFetch(`/api/kanban/boards/${boardId}/columns`, {
       method: 'PUT',
-      body: JSON.stringify({ columns }),
+      body: JSON.stringify({ columns, customFields: board ? (board.customFields || []) : undefined }),
     });
   }
 

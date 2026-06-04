@@ -1540,6 +1540,8 @@ def kanban_update_board(board_id):
         board["color"] = body["color"]
     if "background" in body:
         board["background"] = body["background"]
+    if "customFields" in body:
+        board["customFields"] = body["customFields"]
     save_kanban(data)
     return jsonify(board)
 
@@ -1562,6 +1564,8 @@ def kanban_save_columns(board_id):
         return jsonify({"error": "Not found"}), 404
     body = request.json
     board["columns"] = body.get("columns", [])
+    if "customFields" in body and body["customFields"] is not None:
+        board["customFields"] = body["customFields"]
     save_kanban(data)
     return jsonify({"ok": True})
 
