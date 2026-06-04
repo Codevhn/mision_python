@@ -504,9 +504,7 @@
             <button class="kb-view-btn" id="kbViewTable" title="Vista tabla">☰ Tabla</button>
             <button class="kb-view-btn" id="kbViewCal" title="Vista calendario">📅 Calendario</button>
           </div>
-          <button class="kb-btn" id="kbBgBoardBtn" title="Cambiar fondo" style="font-size:0.72rem;padding:4px 10px;">🎨 Fondo</button>
-          <button class="kb-btn kb-archive-topbar-btn" id="kbArchiveBtn" title="Ver archivo">📦 Archivo${archiveCount > 0 ? ` (${archiveCount})` : ''}</button>
-          <button class="kb-btn" id="kbDeleteBoardBtn" title="Eliminar tablero" style="font-size:0.72rem;padding:4px 10px;">× tablero</button>
+          <button class="kb-btn" id="kbBoardMenuBtn" title="Menú del tablero" style="font-size:0.82rem;padding:4px 12px;">&#8801; Menú</button>
         </div>
         <div class="kb-filters-bar" id="kbFiltersBar">
           <input class="kb-filter-search" id="kbFilterSearch" placeholder="🔍 Buscar tarjeta…" type="text" value="${escHtml(_filterText)}" />
@@ -539,20 +537,9 @@
       } catch (e) { showToast('Error actualizando nombre'); }
     });
 
-    document.getElementById('kbDeleteBoardBtn').addEventListener('click', async () => {
-      const ok = await kbConfirm(`¿Eliminar el tablero "${b.name}"? Esta acción no se puede deshacer.`);
-      if (!ok) return;
-      try {
-        await deleteBoardApi(b.id);
-        await loadBoards();
-        if (window._loadKanbanSidebar) window._loadKanbanSidebar();
-        showBoards();
-      } catch (e) { showToast('Error eliminando tablero'); }
-    });
-
-    document.getElementById('kbBgBoardBtn').addEventListener('click', e => {
+    document.getElementById('kbBoardMenuBtn').addEventListener('click', e => {
       e.stopPropagation();
-      showBgPicker(document.getElementById('kbBgBoardBtn'), b);
+      openBoardMenu(b);
     });
 
     // View switcher
@@ -585,8 +572,7 @@
     document.getElementById('kbViewTable').addEventListener('click', () => switchView('table'));
     document.getElementById('kbViewCal').addEventListener('click', () => switchView('cal'));
 
-    // Archive button
-    document.getElementById('kbArchiveBtn').addEventListener('click', toggleArchivePanel);
+    // Archive panel close button
     document.getElementById('kbArchivePanelClose').addEventListener('click', toggleArchivePanel);
 
     // Filter bar events
@@ -692,6 +678,214 @@
     if (!btn) return;
     const count = getArchivedCards().length;
     btn.textContent = '📦 Archivo' + (count > 0 ? ` (${count})` : '');
+  }
+
+  // ---- Board Menu (Trello-style slide-in panel) ----
+  function openBoardMenu(b) {
+    // Remove existing if any
+    const existing = document.querySelector('.kb-board-menu');
+    if (existing) { existing.classList.remove('kb-board-menu--open'); setTimeout(() => existing.remove(), 220); return; }
+
+    const panel = document.createElement('div');
+    panel.className = 'kb-board-menu';
+    document.body.appendChild(panel);
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'kb-board-menu-header';
+    header.innerHTML = `<span>Menú</span><button class="kb-board-menu-close">&times;</button>`;
+    header.querySelector('.kb-board-menu-close').addEventListener('click', closeMenu);
+    panel.appendChild(header);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'kb-board-menu-body';
+    panel.appendChild(body);
+
+    function closeMenu() {
+      panel.classList.remove('kb-board-menu--open');
+      setTimeout(() => panel.remove(), 220);
+      document.removeEventListener('click', outsideClose);
+    }
+
+    function outsideClose(e) {
+      if (!panel.contains(e.target) && !e.target.closest('#kbBoardMenuBtn')) closeMenu();
+    }
+
+    function makeItem(icon, label, badge, onClick) {
+      const btn = document.createElement('button');
+      btn.className = 'kb-board-menu-item' + (onClick ? '' : ' is-disabled');
+      btn.innerHTML = `<span class="kb-board-menu-icon">${icon}</span><span class="kb-board-menu-label">${label}</span>` +
+        (badge ? `<span class="kb-board-menu-badge">${badge}</span>` : '');
+      if (onClick) btn.addEventListener('click', e => { e.stopPropagation(); onClick(e); });
+      return btn;
+    }
+
+    function makeSep() {
+      const s = document.createElement('div');
+      s.className = 'kb-board-menu-sep';
+      return s;
+    }
+
+    // Share row
+    const shareRow = document.createElement('div');
+    shareRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 16px;';
+    shareRow.innerHTML = `<span style="font-size:1rem">&#128100;</span><span style="flex:1;font-size:0.85rem">Compartir</span><div style="width:28px;height:28px;border-radius:50%;background:#1773ea;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff">U</div>`;
+    body.appendChild(shareRow);
+    body.appendChild(makeSep());
+
+    body.appendChild(makeItem('ℹ', 'Sobre este tablero', '', null));
+    body.appendChild(makeItem('🔒', 'Visibilidad: Privado', '', null));
+    body.appendChild(makeItem('↗', 'Imprimir, exportar y compartir', 'Próximo', null));
+    body.appendChild(makeItem('★', 'Destacar tablero', '', null));
+    body.appendChild(makeSep());
+
+    body.appendChild(makeItem('⚙', 'Ajustes del tablero', '', null));
+
+    const bgItem = makeItem('🎨', 'Cambiar fondo', '', () => {
+      closeMenu();
+      const menuBtn = document.getElementById('kbBoardMenuBtn');
+      showBgPicker(menuBtn || document.body, b);
+    });
+    body.appendChild(bgItem);
+
+    const cfItem = makeItem('⊞', 'Campos personalizados', '', () => {
+      showCustomFieldsPanel(body, header, b);
+    });
+    body.appendChild(cfItem);
+
+    body.appendChild(makeSep());
+    body.appendChild(makeItem('⚡', 'Automatización', 'Próximo', null));
+    body.appendChild(makeItem('🔌', 'Power-Ups', 'Próximo', null));
+
+    body.appendChild(makeItem('🏷', 'Etiquetas', '', () => {
+      closeMenu();
+      // Open label manager on a random card if available, else do nothing
+      const firstCard = (b.columns[0] && b.columns[0].cards[0]) || null;
+      if (firstCard) showLabelPopover(document.getElementById('kbBoardMenuBtn') || document.body, firstCard, () => renderColumns());
+    }));
+
+    body.appendChild(makeItem('📌', 'Stickers', 'Próximo', null));
+    body.appendChild(makeItem('📋', 'Usar como plantilla', 'Próximo', null));
+    body.appendChild(makeSep());
+
+    body.appendChild(makeItem('🕐', 'Actividad', '', null));
+
+    body.appendChild(makeItem('📦', 'Elementos archivados', '', () => {
+      closeMenu();
+      toggleArchivePanel();
+    }));
+
+    body.appendChild(makeSep());
+    body.appendChild(makeItem('👁', 'Observar', 'Próximo', null));
+    body.appendChild(makeItem('⧉', 'Copiar tablero', 'Próximo', null));
+
+    body.appendChild(makeItem('✕', 'Cerrar tablero', '', async () => {
+      closeMenu();
+      const ok = await kbConfirm(`¿Eliminar el tablero "${b.name}"? Esta acción no se puede deshacer.`);
+      if (!ok) return;
+      try {
+        await deleteBoardApi(b.id);
+        await loadBoards();
+        if (window._loadKanbanSidebar) window._loadKanbanSidebar();
+        showBoards();
+      } catch (e) { showToast('Error eliminando tablero'); }
+    }));
+
+    // Animate in
+    requestAnimationFrame(() => {
+      panel.classList.add('kb-board-menu--open');
+      setTimeout(() => document.addEventListener('click', outsideClose), 50);
+    });
+  }
+
+  // ---- Custom Fields Panel ----
+  function showCustomFieldsPanel(body, header, b) {
+    if (!b.customFields) b.customFields = [];
+
+    // Replace header
+    header.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><button class="kb-board-menu-close" id="kbCfBackBtn">&#8592;</button><span>Campos personalizados</span></div><button class="kb-board-menu-close" id="kbCfCloseBtn">&times;</button>`;
+    header.querySelector('#kbCfCloseBtn').addEventListener('click', () => {
+      const panel = body.closest('.kb-board-menu');
+      if (panel) { panel.classList.remove('kb-board-menu--open'); setTimeout(() => panel.remove(), 220); }
+    });
+    header.querySelector('#kbCfBackBtn').addEventListener('click', () => {
+      const panel = body.closest('.kb-board-menu');
+      if (panel) { panel.classList.remove('kb-board-menu--open'); setTimeout(() => panel.remove(), 220); }
+      setTimeout(() => openBoardMenu(b), 230);
+    });
+
+    body.innerHTML = '';
+    renderCfList();
+
+    function renderCfList() {
+      body.innerHTML = '';
+      const listDiv = document.createElement('div');
+      listDiv.className = 'kb-cf-list';
+      b.customFields.forEach((field, idx) => {
+        const row = document.createElement('div');
+        row.className = 'kb-cf-item';
+        row.innerHTML = `<span class="kb-cf-item-name">${escHtml(field.name)}</span><span class="kb-cf-item-type">${escHtml(field.type)}</span>`;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'kb-board-menu-close';
+        delBtn.title = 'Eliminar campo';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', () => {
+          b.customFields.splice(idx, 1);
+          saveBoard(b.id);
+          renderCfList();
+        });
+        row.appendChild(delBtn);
+        listDiv.appendChild(row);
+      });
+      body.appendChild(listDiv);
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'kb-cf-add-btn';
+      addBtn.textContent = '+ Agregar campo';
+      addBtn.addEventListener('click', () => showCfForm());
+      body.appendChild(addBtn);
+    }
+
+    function showCfForm() {
+      body.innerHTML = '';
+      const form = document.createElement('div');
+      form.className = 'kb-cf-form';
+      form.innerHTML = `
+        <input id="kbCfName" type="text" placeholder="Nombre del campo" />
+        <select id="kbCfType">
+          <option value="text">Texto</option>
+          <option value="number">Número</option>
+          <option value="date">Fecha</option>
+          <option value="checkbox">Checkbox</option>
+          <option value="dropdown">Lista desplegable</option>
+        </select>
+        <div id="kbCfOptionsWrap" style="display:none">
+          <textarea id="kbCfOptions" placeholder="Opciones separadas por coma" rows="3"></textarea>
+        </div>
+        <div class="kb-cf-form-actions">
+          <button id="kbCfSave" style="background:var(--accent);color:#fff;">Guardar</button>
+          <button id="kbCfCancel" style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border);">Cancelar</button>
+        </div>`;
+      body.appendChild(form);
+
+      const typeSelect = form.querySelector('#kbCfType');
+      const optWrap = form.querySelector('#kbCfOptionsWrap');
+      typeSelect.addEventListener('change', () => {
+        optWrap.style.display = typeSelect.value === 'dropdown' ? '' : 'none';
+      });
+      form.querySelector('#kbCfCancel').addEventListener('click', renderCfList);
+      form.querySelector('#kbCfSave').addEventListener('click', () => {
+        const name = form.querySelector('#kbCfName').value.trim();
+        if (!name) return;
+        const type = typeSelect.value;
+        const opts = type === 'dropdown' ? form.querySelector('#kbCfOptions').value.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const field = { id: 'cf_' + Date.now(), name, type, options: opts };
+        b.customFields.push(field);
+        saveBoard(b.id);
+        renderCfList();
+      });
+    }
   }
 
   function showBgPicker(anchor, board) {
@@ -1092,6 +1286,28 @@
     titleEl.className = 'kb-card-title';
     titleEl.textContent = card.title;
     el.appendChild(titleEl);
+
+    // Custom field value badges
+    const cfBoard2 = _currentBoard;
+    if (cfBoard2 && cfBoard2.customFields && cfBoard2.customFields.length > 0 && card.customFieldValues) {
+      const nonEmpty = cfBoard2.customFields.filter(f => {
+        const v = card.customFieldValues[f.id];
+        return v !== undefined && v !== '' && v !== false && v !== null;
+      });
+      if (nonEmpty.length > 0) {
+        const badgesEl = document.createElement('div');
+        badgesEl.className = 'kb-card-cf-badges';
+        nonEmpty.forEach(f => {
+          const v = card.customFieldValues[f.id];
+          const badge = document.createElement('span');
+          badge.className = 'kb-card-cf-badge';
+          badge.title = f.name;
+          badge.textContent = f.type === 'checkbox' ? (v ? '☑ ' + f.name : '') : (f.name + ': ' + v);
+          if (badge.textContent) badgesEl.appendChild(badge);
+        });
+        if (badgesEl.children.length) el.appendChild(badgesEl);
+      }
+    }
 
     // Enhanced due date badge
     if (card.due) {
@@ -1669,6 +1885,74 @@
         descEditBtn.style.display = '';
         descEditArea.style.display = 'none';
       });
+
+      // Custom Fields section
+      const cfBoard = _currentBoard;
+      if (cfBoard && cfBoard.customFields && cfBoard.customFields.length > 0) {
+        if (!card.customFieldValues) card.customFieldValues = {};
+        const cfSection = document.createElement('div');
+        cfSection.className = 'kb-modal-section';
+        const cfHeader = document.createElement('div');
+        cfHeader.className = 'kb-modal-section-header';
+        cfHeader.innerHTML = `<span class="kb-modal-section-icon">&#8862;</span><span class="kb-modal-section-title">Campos personalizados</span>`;
+        cfSection.appendChild(cfHeader);
+        const cfBody = document.createElement('div');
+        cfBody.className = 'kb-modal-cf-section';
+        cfBoard.customFields.forEach(field => {
+          const row = document.createElement('div');
+          row.className = 'kb-modal-cf-field';
+          const lbl = document.createElement('div');
+          lbl.className = 'kb-modal-cf-label';
+          lbl.textContent = field.name;
+          const valWrap = document.createElement('div');
+          valWrap.className = 'kb-modal-cf-value';
+          let inp;
+          const curVal = card.customFieldValues[field.id];
+          if (field.type === 'text') {
+            inp = document.createElement('input');
+            inp.type = 'text';
+            inp.value = curVal || '';
+          } else if (field.type === 'number') {
+            inp = document.createElement('input');
+            inp.type = 'number';
+            inp.value = curVal !== undefined ? curVal : '';
+          } else if (field.type === 'date') {
+            inp = document.createElement('input');
+            inp.type = 'date';
+            inp.value = curVal || '';
+          } else if (field.type === 'checkbox') {
+            inp = document.createElement('input');
+            inp.type = 'checkbox';
+            inp.checked = !!curVal;
+            inp.style.width = 'auto';
+          } else if (field.type === 'dropdown') {
+            inp = document.createElement('select');
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '— Seleccionar —';
+            inp.appendChild(emptyOpt);
+            (field.options || []).forEach(opt => {
+              const o = document.createElement('option');
+              o.value = opt;
+              o.textContent = opt;
+              if (curVal === opt) o.selected = true;
+              inp.appendChild(o);
+            });
+          }
+          if (inp) {
+            inp.addEventListener('change', () => {
+              card.customFieldValues[field.id] = field.type === 'checkbox' ? inp.checked : inp.value;
+              saveBoard(_currentBoard.id);
+            });
+            valWrap.appendChild(inp);
+          }
+          row.appendChild(lbl);
+          row.appendChild(valWrap);
+          cfBody.appendChild(row);
+        });
+        cfSection.appendChild(cfBody);
+        main.appendChild(cfSection);
+      }
 
       // Checklists container
       const checklistsContainer = document.createElement('div');
