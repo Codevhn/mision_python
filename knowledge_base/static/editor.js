@@ -1152,28 +1152,73 @@ window.BlockEditor = (() => {
         wrap.innerHTML = '';
         const d = normalizeData(getData());
 
+        // ── Notion-style compact icon toolbar ──────────────────
         const toolbar = document.createElement('div');
         toolbar.className = 'eb-db-toolbar';
-        const search = document.createElement('input');
-        search.className = 'eb-db-search';
-        search.type = 'search';
-        search.placeholder = 'Buscar';
-        search.value = d.view.search || '';
-        search.addEventListener('input', () => {
-          d.view.search = search.value;
+
+        // Left: view label
+        const viewLabel = document.createElement('span');
+        viewLabel.className = 'eb-db-view-label';
+        viewLabel.innerHTML = '<span class="eb-db-view-icon">⊞</span> Tabla';
+        toolbar.appendChild(viewLabel);
+
+        // Spacer
+        const spacer = document.createElement('span');
+        spacer.style.flex = '1';
+        toolbar.appendChild(spacer);
+
+        // Icon buttons: filter, sort, search, fullscreen
+        const TOOLBAR_BTNS = [
+          { icon: '⊟', title: 'Filtrar', action: () => {
+            const q = wrap.querySelector('.eb-db-search-inline');
+            if (q) { q.style.display = q.style.display === 'none' ? 'flex' : 'none'; if (q.style.display === 'flex') q.querySelector('input').focus(); }
+          }},
+          { icon: '↕', title: 'Ordenar', action: null },
+          { icon: '⊕', title: 'Propiedades', action: null },
+        ];
+        TOOLBAR_BTNS.forEach(({ icon, title, action }) => {
+          const btn = document.createElement('button');
+          btn.className = 'eb-db-icon-btn';
+          btn.type = 'button';
+          btn.title = title;
+          btn.textContent = icon;
+          if (action) btn.addEventListener('click', action);
+          toolbar.appendChild(btn);
+        });
+
+        // New button
+        const newBtn = document.createElement('button');
+        newBtn.className = 'eb-db-new-btn';
+        newBtn.type = 'button';
+        newBtn.textContent = 'New';
+        newBtn.addEventListener('click', e => { e.preventDefault(); addRow(d); });
+        toolbar.appendChild(newBtn);
+        wrap.appendChild(toolbar);
+
+        // Inline search bar (hidden by default, shown on filter icon click)
+        const searchBar = document.createElement('div');
+        searchBar.className = 'eb-db-search-inline';
+        searchBar.style.display = 'none';
+        const searchIcon = document.createElement('span');
+        searchIcon.textContent = '🔍';
+        searchIcon.style.cssText = 'font-size:0.75rem;opacity:0.5;';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'search';
+        searchInput.className = 'eb-db-search';
+        searchInput.placeholder = 'Buscar en la tabla…';
+        searchInput.value = d.view.search || '';
+        searchInput.addEventListener('input', () => {
+          d.view.search = searchInput.value;
           saveData(d);
           buildTable();
           const next = wrap.querySelector('.eb-db-search');
-          if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+          if (next) next.focus();
         });
-        const addRowTop = document.createElement('button');
-        addRowTop.className = 'eb-db-toolbar-btn';
-        addRowTop.type = 'button';
-        addRowTop.textContent = '+ Fila';
-        addRowTop.addEventListener('click', e => { e.preventDefault(); addRow(d); });
-        toolbar.appendChild(search);
-        toolbar.appendChild(addRowTop);
-        wrap.appendChild(toolbar);
+        searchBar.appendChild(searchIcon);
+        searchBar.appendChild(searchInput);
+        wrap.appendChild(searchBar);
+
+        if (d.view.search) searchBar.style.display = 'flex';
 
         const tableWrap = document.createElement('div');
         tableWrap.className = 'eb-db-wrap';
@@ -1188,6 +1233,8 @@ window.BlockEditor = (() => {
         const gutterTh = document.createElement('th');
         gutterTh.className = 'eb-db-gutter-th';
         htr.appendChild(gutterTh);
+
+        const COL_ICONS = { text:'Aa', number:'#', select:'⊙', 'multi-select':'⊕', checkbox:'☑', date:'⊡', url:'↗', email:'@', phone:'☎' };
 
         d.cols.forEach(col => {
           const th = document.createElement('th');
@@ -1210,7 +1257,6 @@ window.BlockEditor = (() => {
           const headMain = document.createElement('div');
           headMain.className = 'eb-db-head-main';
 
-          const COL_ICONS = { text:'Aa', number:'#', select:'⊙', 'multi-select':'⊕', checkbox:'☑', date:'⊡', url:'↗', email:'@', phone:'☎' };
           const typeIconSpan = document.createElement('span');
           typeIconSpan.className = 'eb-db-col-type-icon';
           typeIconSpan.textContent = COL_ICONS[col.type] || 'Aa';
@@ -1221,108 +1267,127 @@ window.BlockEditor = (() => {
           nameSpan.contentEditable = 'true';
           nameSpan.spellcheck = false;
           nameSpan.textContent = col.name;
-          nameSpan.addEventListener('input', () => {
+          nameSpan.addEventListener('blur', () => {
             col.name = nameSpan.innerText.trim() || col.name;
             saveData(d);
           });
 
-          const sortBtn = document.createElement('button');
-          sortBtn.className = 'eb-db-sort';
-          sortBtn.type = 'button';
-          const sortActive = d.view.sort?.col === col.id ? d.view.sort.dir : '';
-          sortBtn.textContent = sortActive === 'asc' ? '↑' : sortActive === 'desc' ? '↓' : '↕';
-          sortBtn.title = 'Ordenar';
-          sortBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!d.view.sort || d.view.sort.col !== col.id) d.view.sort = { col: col.id, dir: 'asc' };
-            else if (d.view.sort.dir === 'asc') d.view.sort = { col: col.id, dir: 'desc' };
-            else d.view.sort = null;
-            saveData(d);
-            buildTable();
-          });
-
+          // ── Notion-style column context menu ──
           const menuWrap = document.createElement('div');
           menuWrap.className = 'eb-db-col-menu-wrap';
           const menuBtn = document.createElement('button');
           menuBtn.className = 'eb-db-col-menu-btn';
           menuBtn.type = 'button';
           menuBtn.title = 'Opciones de propiedad';
-          menuBtn.textContent = '...';
+          menuBtn.textContent = '···';
+
           const menu = document.createElement('div');
-          menu.className = 'eb-db-col-menu';
+          menu.className = 'eb-db-col-menu eb-db-col-menu--notion';
 
-          const delBtn = document.createElement('button');
-          delBtn.className = 'eb-db-col-del';
-          delBtn.type = 'button';
-          delBtn.title = 'Eliminar propiedad';
-          delBtn.textContent = 'Eliminar propiedad';
-          delBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            removeColumn(d, col);
-          });
-
-          headMain.appendChild(nameSpan);
-          headMain.appendChild(sortBtn);
-          headMain.appendChild(menuWrap);
-          th.appendChild(headMain);
-
-          const meta = document.createElement('div');
-          meta.className = 'eb-db-head-meta';
-          const typeSelect = document.createElement('select');
-          typeSelect.className = 'eb-db-type';
-          DB_TYPES.forEach(([value, label]) => {
-            const opt = document.createElement('option');
-            opt.value = value;
-            opt.textContent = label;
-            typeSelect.appendChild(opt);
-          });
-          typeSelect.value = col.type;
-          typeSelect.addEventListener('change', () => {
-            col.type = typeSelect.value;
-            d.rows.forEach(row => { if (row.cells[col.id] === undefined) row.cells[col.id] = defaultCellValue(col.type); });
+          // Column name header in menu
+          const menuHeader = document.createElement('div');
+          menuHeader.className = 'eb-db-col-menu-header';
+          const menuNameInput = document.createElement('input');
+          menuNameInput.className = 'eb-db-col-menu-name';
+          menuNameInput.value = col.name;
+          menuNameInput.addEventListener('input', () => {
+            col.name = menuNameInput.value.trim() || col.name;
+            nameSpan.textContent = col.name;
+            typeIconSpan.textContent = COL_ICONS[col.type] || 'Aa';
             saveData(d);
-            buildTable();
           });
-          meta.appendChild(typeSelect);
-          const filter = document.createElement('input');
-          filter.className = 'eb-db-filter';
-          filter.placeholder = 'Filtrar esta propiedad';
-          filter.value = d.view.filters[col.id] || '';
-          filter.addEventListener('input', () => {
-            d.view.filters[col.id] = filter.value;
-            saveData(d);
-            buildTable();
-          });
-          meta.appendChild(filter);
-          if (col.type === 'select' || col.type === 'multi-select') {
-            const opts = document.createElement('input');
-            opts.className = 'eb-db-options';
-            opts.placeholder = 'Opciones';
-            opts.value = col.options.join(', ');
-            opts.addEventListener('change', () => {
-              col.options = optionList(opts.value);
-              saveData(d);
-              buildTable();
-            });
-            meta.appendChild(opts);
-          }
+          menuHeader.appendChild(menuNameInput);
+          menu.appendChild(menuHeader);
 
-          menu.appendChild(meta);
-          menu.appendChild(delBtn);
+          // Menu items
+          const MENU_ITEMS = [
+            { label: 'Cambiar tipo', icon: '⇄', sub: true, action: null },
+            { sep: true },
+            { label: 'Filtrar', icon: '⊟', action: () => { searchBar.style.display = 'flex'; searchInput.focus(); menu.classList.remove('is-open'); } },
+            { label: 'Orden A→Z', icon: '↑', action: () => { d.view.sort = { col: col.id, dir: 'asc' }; saveData(d); buildTable(); } },
+            { label: 'Orden Z→A', icon: '↓', action: () => { d.view.sort = { col: col.id, dir: 'desc' }; saveData(d); buildTable(); } },
+            { sep: true },
+            { label: 'Insertar a la izquierda', icon: '←', action: () => {
+              const idx = d.cols.findIndex(c => c.id === col.id);
+              const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
+              d.cols.splice(idx, 0, nc);
+              d.rows.forEach(r => { r.cells[nc.id] = ''; });
+              saveData(d); buildTable();
+            }},
+            { label: 'Insertar a la derecha', icon: '→', action: () => {
+              const idx = d.cols.findIndex(c => c.id === col.id);
+              const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
+              d.cols.splice(idx + 1, 0, nc);
+              d.rows.forEach(r => { r.cells[nc.id] = ''; });
+              saveData(d); buildTable();
+            }},
+            { label: 'Duplicar propiedad', icon: '⧉', action: () => {
+              const idx = d.cols.findIndex(c => c.id === col.id);
+              const nc = { ...col, id: dbUid(), name: col.name + ' (copia)' };
+              d.cols.splice(idx + 1, 0, nc);
+              d.rows.forEach(r => { r.cells[nc.id] = r.cells[col.id]; });
+              saveData(d); buildTable();
+            }},
+            { sep: true },
+            { label: 'Eliminar propiedad', icon: '🗑', danger: true, action: () => removeColumn(d, col) },
+          ];
+
+          MENU_ITEMS.forEach(item => {
+            if (item.sep) {
+              const sep = document.createElement('div');
+              sep.className = 'eb-db-col-menu-sep';
+              menu.appendChild(sep);
+              return;
+            }
+            const btn = document.createElement('button');
+            btn.className = 'eb-db-col-menu-item' + (item.danger ? ' is-danger' : '');
+            btn.type = 'button';
+            btn.innerHTML = `<span class="eb-db-col-menu-icon">${item.icon}</span><span>${item.label}</span>${item.sub ? '<span class="eb-db-col-menu-arrow">›</span>' : ''}`;
+            if (item.action) btn.addEventListener('click', e => { e.stopPropagation(); item.action(); });
+
+            // Change type: show type picker submenu
+            if (item.sub) {
+              const subMenu = document.createElement('div');
+              subMenu.className = 'eb-db-col-submenu';
+              const PROP_TYPES = [
+                ['text','Text','Aa'],['number','Number','#'],['select','Select','⊙'],
+                ['multi-select','Multi-select','⊕'],['checkbox','Checkbox','☑'],
+                ['date','Date','⊡'],['url','URL','↗'],['email','Email','@'],['phone','Phone','☏'],
+              ];
+              PROP_TYPES.forEach(([value, label, icon]) => {
+                const si = document.createElement('button');
+                si.className = 'eb-db-col-menu-item' + (col.type === value ? ' is-active' : '');
+                si.type = 'button';
+                si.innerHTML = `<span class="eb-db-col-menu-icon">${icon}</span><span>${label}</span>`;
+                si.addEventListener('click', e => {
+                  e.stopPropagation();
+                  col.type = value;
+                  d.rows.forEach(r => { if (r.cells[col.id] === undefined) r.cells[col.id] = defaultCellValue(value); });
+                  saveData(d); buildTable();
+                });
+                subMenu.appendChild(si);
+              });
+              btn.appendChild(subMenu);
+              btn.classList.add('has-submenu');
+            }
+            menu.appendChild(btn);
+          });
+
           menuBtn.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            wrap.querySelectorAll('.eb-db-col-menu.is-open').forEach(open => {
-              if (open !== menu) open.classList.remove('is-open');
-            });
+            wrap.querySelectorAll('.eb-db-col-menu--notion.is-open').forEach(m => { if (m !== menu) m.classList.remove('is-open'); });
             menu.classList.toggle('is-open');
+            if (menu.classList.contains('is-open')) setTimeout(() => menuNameInput.focus(), 50);
           });
+          document.addEventListener('click', () => menu.classList.remove('is-open'), { capture: true });
           menu.addEventListener('click', e => e.stopPropagation());
-          menuWrap.addEventListener('mouseleave', () => menu.classList.remove('is-open'));
           menuWrap.appendChild(menuBtn);
           menuWrap.appendChild(menu);
+
+          headMain.appendChild(nameSpan);
+          headMain.appendChild(menuWrap);
+          th.appendChild(headMain);
 
           const resizer = document.createElement('span');
           resizer.className = 'eb-db-resizer';
@@ -1335,75 +1400,15 @@ window.BlockEditor = (() => {
           htr.appendChild(th);
         });
 
+        // Simple + button at end (like Notion corner)
         const addColTh = document.createElement('th');
         addColTh.className = 'eb-db-add-col-th';
-
-        // Notion-style "add property" th — shows input + type picker
-        const addPropWrap = document.createElement('div');
-        addPropWrap.className = 'eb-db-add-prop-wrap';
-
-        const addPropInput = document.createElement('input');
-        addPropInput.className = 'eb-db-add-prop-input';
-        addPropInput.placeholder = 'Tipo de propiedad…';
-        addPropInput.readOnly = true;
-
-        const addPropPicker = document.createElement('div');
-        addPropPicker.className = 'eb-db-prop-picker';
-
-        const PROP_TYPES = [
-          ['text','Text','Aa'],['number','Number','#'],['select','Select','⊙'],
-          ['multi-select','Multi-select','⊕'],['checkbox','Checkbox','☑'],
-          ['date','Date','⊡'],['url','URL','↗'],['email','Email','@'],
-          ['phone','Phone','☏'],
-        ];
-
-        const pickerSearch = document.createElement('input');
-        pickerSearch.className = 'eb-db-prop-picker-search';
-        pickerSearch.placeholder = 'Buscar tipo…';
-        addPropPicker.appendChild(pickerSearch);
-
-        const pickerGrid = document.createElement('div');
-        pickerGrid.className = 'eb-db-prop-picker-grid';
-
-        function renderPickerGrid(filter) {
-          pickerGrid.innerHTML = '';
-          PROP_TYPES.filter(([v, l]) => !filter || l.toLowerCase().includes(filter.toLowerCase())).forEach(([value, label, icon]) => {
-            const item = document.createElement('button');
-            item.className = 'eb-db-prop-picker-item';
-            item.type = 'button';
-            item.innerHTML = `<span class="eb-db-prop-picker-icon">${icon}</span><span>${label}</span>`;
-            item.addEventListener('mousedown', e => {
-              e.preventDefault();
-              const newCol = { id: dbUid(), name: label, type: value, width: 140, options: [] };
-              d.cols.push(newCol);
-              d.rows.forEach(row => { row.cells[newCol.id] = defaultCellValue(newCol.type); });
-              saveData(d);
-              buildTable();
-            });
-            pickerGrid.appendChild(item);
-          });
-        }
-
-        renderPickerGrid('');
-        pickerSearch.addEventListener('input', () => renderPickerGrid(pickerSearch.value));
-        addPropPicker.appendChild(pickerGrid);
-
-        addPropInput.addEventListener('click', e => {
-          e.stopPropagation();
-          wrap.querySelectorAll('.eb-db-prop-picker.is-open').forEach(p => p.classList.remove('is-open'));
-          addPropPicker.classList.toggle('is-open');
-          if (addPropPicker.classList.contains('is-open')) {
-            pickerSearch.value = '';
-            renderPickerGrid('');
-            setTimeout(() => pickerSearch.focus(), 50);
-          }
-        });
-        document.addEventListener('click', () => addPropPicker.classList.remove('is-open'), { capture: true });
-        addPropPicker.addEventListener('click', e => e.stopPropagation());
-
-        addPropWrap.appendChild(addPropInput);
-        addPropWrap.appendChild(addPropPicker);
-        addColTh.appendChild(addPropWrap);
+        const addColBtn = document.createElement('button');
+        addColBtn.className = 'eb-db-add-col';
+        addColBtn.title = 'Agregar propiedad';
+        addColBtn.textContent = '+';
+        addColBtn.addEventListener('click', e => { e.preventDefault(); addColumn(d); });
+        addColTh.appendChild(addColBtn);
         htr.appendChild(addColTh);
 
         thead.appendChild(htr);
