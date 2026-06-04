@@ -2442,11 +2442,11 @@ kbd {
 .kb-board-menu {
   position: fixed; top: 0; right: 0;
   width: 320px; height: 100vh;
-  background: rgba(22, 22, 24, 0.97);
+  background: var(--bg-elevated);
   backdrop-filter: blur(28px) saturate(1.5);
   -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border-left: 1px solid rgba(255,255,255,0.1);
-  box-shadow: -14px 0 56px rgba(0,0,0,0.65);
+  border-left: 1px solid var(--border);
+  box-shadow: -14px 0 56px rgba(0,0,0,0.35);
   z-index: 1200;
   display: flex; flex-direction: column;
   transform: translateX(102%);
@@ -2457,31 +2457,32 @@ kbd {
 .kb-board-menu-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-bottom: 1px solid var(--border);
   font-weight: 600; font-size: 0.9rem;
+  color: var(--text);
 }
 .kb-board-menu-close {
   background: none; border: none; cursor: pointer;
-  font-size: 1.2rem; color: var(--text-muted, #aaa);
+  font-size: 1.2rem; color: var(--text-muted);
   padding: 2px 6px; border-radius: 4px;
 }
-.kb-board-menu-close:hover { background: var(--bg-hover, rgba(255,255,255,0.07)); }
+.kb-board-menu-close:hover { background: var(--bg-hover); }
 .kb-board-menu-body { flex: 1; overflow-y: auto; padding: 8px 0; }
-.kb-board-menu-sep { height: 1px; background: var(--border, rgba(255,255,255,0.08)); margin: 6px 0; }
+.kb-board-menu-sep { height: 1px; background: var(--border); margin: 6px 0; }
 .kb-board-menu-item {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 16px; cursor: pointer; font-size: 0.85rem;
-  color: var(--text, #e8e8e8); border: none; background: none;
+  color: var(--text); border: none; background: none;
   width: 100%; text-align: left;
   transition: background 0.1s;
 }
-.kb-board-menu-item:hover:not(.is-disabled) { background: var(--bg-hover, rgba(255,255,255,0.07)); }
+.kb-board-menu-item:hover:not(.is-disabled) { background: var(--bg-hover); }
 .kb-board-menu-item.is-disabled { opacity: 0.45; cursor: default; }
-.kb-board-menu-icon { width: 20px; text-align: center; font-size: 1rem; flex-shrink: 0; }
+.kb-board-menu-icon { width: 20px; text-align: center; font-size: 1rem; flex-shrink: 0; color: var(--text-muted); }
 .kb-board-menu-label { flex: 1; }
 .kb-board-menu-badge {
-  font-size: 0.65rem; background: rgba(120,120,120,0.25);
-  color: var(--text-faint, #888); padding: 2px 6px;
+  font-size: 0.65rem; background: var(--bg-hover);
+  color: var(--text-faint); padding: 2px 6px;
   border-radius: 8px; white-space: nowrap;
 }
 /* Custom Fields */
