@@ -3567,18 +3567,61 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-db-add-col-th {
   position: sticky; top: 0; z-index: 3;
-  width: 36px; min-width: 36px;
+  min-width: 180px; width: 180px;
   border-bottom: 1px solid var(--border);
   border-left: 1px solid var(--border);
-  text-align: center;
   background: var(--bg-elevated);
+  padding: 0;
 }
-.eb-db-add-col {
-  background: none; border: none; color: var(--text-muted);
-  cursor: pointer; font-size: 1rem; padding: 4px 8px;
-  border-radius: 3px; width: 100%;
+.eb-db-add-prop-wrap { position: relative; width: 100%; }
+.eb-db-add-prop-input {
+  display: flex; align-items: center;
+  width: 100%; box-sizing: border-box;
+  background: none; border: none; outline: none;
+  padding: 0 12px; height: 34px;
+  font-size: 0.78rem; color: var(--text-faint);
+  cursor: pointer; font-style: italic;
 }
-.eb-db-add-col:hover { color: var(--accent); background: var(--accent-light); }
+.eb-db-add-prop-input::placeholder { color: var(--text-faint); }
+.eb-db-add-prop-input:hover { color: var(--text-muted); background: var(--bg-hover); }
+
+/* Notion-style type picker dropdown */
+.eb-db-prop-picker {
+  display: none;
+  position: absolute; top: calc(100% + 2px); left: 0;
+  width: 280px; z-index: 200;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  padding: 8px;
+  overflow: hidden;
+}
+.eb-db-prop-picker.is-open { display: block; }
+.eb-db-prop-picker-search {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 10px;
+  font-size: 0.78rem; color: var(--text); outline: none;
+  margin-bottom: 8px;
+}
+.eb-db-prop-picker-search::placeholder { color: var(--text-faint); }
+.eb-db-prop-picker-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+.eb-db-prop-picker-item {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer;
+  padding: 6px 10px; border-radius: 5px;
+  font-size: 0.8rem; color: var(--text); text-align: left;
+  transition: background 0.1s;
+}
+.eb-db-prop-picker-item:hover { background: var(--bg-hover); }
+.eb-db-prop-picker-icon {
+  font-size: 0.85rem; color: var(--text-muted);
+  width: 18px; text-align: center; flex-shrink: 0;
+}
 /* Rows — no alternating background, clean like Notion */
 .eb-db-row { transition: background 0.08s; }
 .eb-db-row:hover { background: var(--bg-hover); }
@@ -3680,6 +3723,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 [data-theme="light"] .eb-db-th { background: #f7f7f5; }
 [data-theme="light"] .eb-db-gutter-th { background: #f7f7f5; }
 [data-theme="light"] .eb-db-add-col-th { background: #f7f7f5; }
+[data-theme="light"] .eb-db-prop-picker { background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+[data-theme="light"] .eb-db-prop-picker-search { background: #f7f7f5; }
+[data-theme="light"] .eb-db-prop-picker-item:hover { background: #f1f1ef; }
 
 /* ── TOGGLE BLOCK ─────────────────────────────────────────── */
 .eb--toggle,

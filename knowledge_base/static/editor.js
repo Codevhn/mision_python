@@ -1171,14 +1171,8 @@ window.BlockEditor = (() => {
         addRowTop.type = 'button';
         addRowTop.textContent = '+ Fila';
         addRowTop.addEventListener('click', e => { e.preventDefault(); addRow(d); });
-        const addColTop = document.createElement('button');
-        addColTop.className = 'eb-db-toolbar-btn';
-        addColTop.type = 'button';
-        addColTop.textContent = '+ Propiedad';
-        addColTop.addEventListener('click', e => { e.preventDefault(); addColumn(d); });
         toolbar.appendChild(search);
         toolbar.appendChild(addRowTop);
-        toolbar.appendChild(addColTop);
         wrap.appendChild(toolbar);
 
         const tableWrap = document.createElement('div');
@@ -1343,15 +1337,73 @@ window.BlockEditor = (() => {
 
         const addColTh = document.createElement('th');
         addColTh.className = 'eb-db-add-col-th';
-        const addColBtn = document.createElement('button');
-        addColBtn.className = 'eb-db-add-col';
-        addColBtn.title = 'Agregar columna';
-        addColBtn.textContent = '+';
-        addColBtn.addEventListener('click', e => {
-          e.preventDefault();
-          addColumn(d);
+
+        // Notion-style "add property" th — shows input + type picker
+        const addPropWrap = document.createElement('div');
+        addPropWrap.className = 'eb-db-add-prop-wrap';
+
+        const addPropInput = document.createElement('input');
+        addPropInput.className = 'eb-db-add-prop-input';
+        addPropInput.placeholder = 'Tipo de propiedad…';
+        addPropInput.readOnly = true;
+
+        const addPropPicker = document.createElement('div');
+        addPropPicker.className = 'eb-db-prop-picker';
+
+        const PROP_TYPES = [
+          ['text','Text','Aa'],['number','Number','#'],['select','Select','⊙'],
+          ['multi-select','Multi-select','⊕'],['checkbox','Checkbox','☑'],
+          ['date','Date','⊡'],['url','URL','↗'],['email','Email','@'],
+          ['phone','Phone','☏'],
+        ];
+
+        const pickerSearch = document.createElement('input');
+        pickerSearch.className = 'eb-db-prop-picker-search';
+        pickerSearch.placeholder = 'Buscar tipo…';
+        addPropPicker.appendChild(pickerSearch);
+
+        const pickerGrid = document.createElement('div');
+        pickerGrid.className = 'eb-db-prop-picker-grid';
+
+        function renderPickerGrid(filter) {
+          pickerGrid.innerHTML = '';
+          PROP_TYPES.filter(([v, l]) => !filter || l.toLowerCase().includes(filter.toLowerCase())).forEach(([value, label, icon]) => {
+            const item = document.createElement('button');
+            item.className = 'eb-db-prop-picker-item';
+            item.type = 'button';
+            item.innerHTML = `<span class="eb-db-prop-picker-icon">${icon}</span><span>${label}</span>`;
+            item.addEventListener('mousedown', e => {
+              e.preventDefault();
+              const newCol = { id: dbUid(), name: label, type: value, width: 140, options: [] };
+              d.cols.push(newCol);
+              d.rows.forEach(row => { row.cells[newCol.id] = defaultCellValue(newCol.type); });
+              saveData(d);
+              buildTable();
+            });
+            pickerGrid.appendChild(item);
+          });
+        }
+
+        renderPickerGrid('');
+        pickerSearch.addEventListener('input', () => renderPickerGrid(pickerSearch.value));
+        addPropPicker.appendChild(pickerGrid);
+
+        addPropInput.addEventListener('click', e => {
+          e.stopPropagation();
+          wrap.querySelectorAll('.eb-db-prop-picker.is-open').forEach(p => p.classList.remove('is-open'));
+          addPropPicker.classList.toggle('is-open');
+          if (addPropPicker.classList.contains('is-open')) {
+            pickerSearch.value = '';
+            renderPickerGrid('');
+            setTimeout(() => pickerSearch.focus(), 50);
+          }
         });
-        addColTh.appendChild(addColBtn);
+        document.addEventListener('click', () => addPropPicker.classList.remove('is-open'), { capture: true });
+        addPropPicker.addEventListener('click', e => e.stopPropagation());
+
+        addPropWrap.appendChild(addPropInput);
+        addPropWrap.appendChild(addPropPicker);
+        addColTh.appendChild(addPropWrap);
         htr.appendChild(addColTh);
 
         thead.appendChild(htr);
