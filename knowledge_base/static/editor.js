@@ -1018,6 +1018,23 @@ window.BlockEditor = (() => {
         panel.className = 'eb-db-peek';
         panel.dataset.rowId = row.id;
 
+        // ── Resize handle (drag left edge) ──
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'eb-db-peek-resize';
+        resizeHandle.addEventListener('mousedown', e => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startW = panel.getBoundingClientRect().width;
+          const onMove = mv => {
+            const newW = Math.max(300, Math.min(window.innerWidth * 0.85, startW + (startX - mv.clientX)));
+            panel.style.width = newW + 'px';
+          };
+          const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        panel.appendChild(resizeHandle);
+
         // Header
         const header = document.createElement('div');
         header.className = 'eb-db-peek-header';
@@ -1199,6 +1216,12 @@ window.BlockEditor = (() => {
           const headMain = document.createElement('div');
           headMain.className = 'eb-db-head-main';
 
+          const COL_ICONS = { text:'Aa', number:'#', select:'⊙', 'multi-select':'⊕', checkbox:'☑', date:'⊡', url:'↗', email:'@', phone:'☎' };
+          const typeIconSpan = document.createElement('span');
+          typeIconSpan.className = 'eb-db-col-type-icon';
+          typeIconSpan.textContent = COL_ICONS[col.type] || 'Aa';
+          headMain.appendChild(typeIconSpan);
+
           const nameSpan = document.createElement('span');
           nameSpan.className = 'eb-db-col-name';
           nameSpan.contentEditable = 'true';
@@ -1343,10 +1366,18 @@ window.BlockEditor = (() => {
 
           const gutterTd = document.createElement('td');
           gutterTd.className = 'eb-db-gutter';
-          // Row number (hidden on hover, shows delete btn)
+          // Row number: shown normally, hidden on row hover
           const rowNum = document.createElement('span');
           rowNum.className = 'eb-db-row-num';
           rowNum.textContent = rowIdx + 1;
+          // Hover actions: open + delete
+          const gutterActions = document.createElement('span');
+          gutterActions.className = 'eb-db-gutter-actions';
+          const gutterOpenBtn = document.createElement('button');
+          gutterOpenBtn.className = 'eb-db-gutter-open';
+          gutterOpenBtn.title = 'Abrir página';
+          gutterOpenBtn.textContent = '⤢';
+          gutterOpenBtn.addEventListener('click', e => { e.preventDefault(); openRowPeek(d, row); });
           const delRowBtn = document.createElement('button');
           delRowBtn.className = 'eb-db-row-del';
           delRowBtn.title = 'Eliminar fila';
@@ -1356,8 +1387,10 @@ window.BlockEditor = (() => {
             d.rows.splice(ri, 1);
             saveData(d); buildTable();
           });
+          gutterActions.appendChild(gutterOpenBtn);
+          gutterActions.appendChild(delRowBtn);
           gutterTd.appendChild(rowNum);
-          gutterTd.appendChild(delRowBtn);
+          gutterTd.appendChild(gutterActions);
           tr.appendChild(gutterTd);
 
           d.cols.forEach((col, colIdx) => {
@@ -1408,7 +1441,16 @@ window.BlockEditor = (() => {
         addRowBtn.innerHTML = '<span style="font-size:0.9rem;opacity:0.6">+</span> Nueva página';
         addRowBtn.addEventListener('click', e => {
           e.preventDefault();
-          addRow(d);
+          const cells = {};
+          d.cols.forEach(col => { cells[col.id] = defaultCellValue(col.type); });
+          const newRow = { id: dbUid(), cells, page: { content: '' } };
+          d.rows.push(newRow);
+          saveData(d);
+          buildTable();
+          // Open peek for the newly added row
+          const fresh = normalizeData(getData());
+          const added = fresh.rows[fresh.rows.length - 1];
+          if (added) openRowPeek(fresh, added);
         });
         tableWrap.appendChild(addRowBtn);
 

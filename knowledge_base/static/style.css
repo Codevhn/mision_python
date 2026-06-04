@@ -3483,7 +3483,15 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 4px;
   min-height: 34px;
-  padding: 0 6px 0 10px;
+  padding: 0 6px 0 8px;
+}
+.eb-db-col-type-icon {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  min-width: 14px;
+  text-align: center;
+  font-weight: 400;
 }
 .eb-db-col-name {
   flex: 1;
@@ -3592,14 +3600,29 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   color: var(--text-faint);
   display: block;
 }
-.eb-db-row:hover .eb-db-row-num { display: none; }
-.eb-db-row-del {
-  opacity: 0; background: none; border: none;
-  color: var(--text-muted); cursor: pointer;
-  font-size: 0.85rem; padding: 2px 4px;
-  border-radius: 2px; transition: opacity 0.15s, color 0.1s;
+.eb-db-gutter-actions {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
-.eb-db-row-del:hover { color: var(--danger); }
+.eb-db-row:hover .eb-db-row-num { display: none; }
+.eb-db-row:hover .eb-db-gutter-actions { display: flex; }
+.eb-db-gutter-open {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-faint); font-size: 0.78rem; padding: 1px 3px;
+  border-radius: 3px; transition: color 0.1s, background 0.1s;
+  line-height: 1;
+}
+.eb-db-gutter-open:hover { color: var(--accent); background: var(--bg-hover); }
+.eb-db-row-del {
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 0.85rem; padding: 1px 3px;
+  border-radius: 3px; transition: color 0.1s, background 0.1s;
+  line-height: 1;
+}
+.eb-db-row-del:hover { color: var(--danger); background: var(--bg-hover); }
 .eb-db-cell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -4075,6 +4098,15 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-db-cell:first-of-type { position: relative; }
 
 /* ---- Database row Peek Panel ---- */
+.eb-db-peek-resize {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.15s;
+}
+.eb-db-peek-resize:hover { background: var(--accent); opacity: 0.5; }
 .eb-db-peek {
   position: fixed;
   top: 0; right: 0;
