@@ -688,6 +688,8 @@
 
     const panel = document.createElement('div');
     panel.className = 'kb-board-menu';
+    panel.addEventListener('click', e => e.stopPropagation());
+    panel.addEventListener('mousedown', e => e.stopPropagation());
     document.body.appendChild(panel);
 
     // Header
@@ -822,15 +824,19 @@
       body.innerHTML = '';
       const listDiv = document.createElement('div');
       listDiv.className = 'kb-cf-list';
+      const TYPE_ICONS = { text:'T', number:'#', date:'⊡', checkbox:'☑', dropdown:'⊙' };
       b.customFields.forEach((field, idx) => {
         const row = document.createElement('div');
         row.className = 'kb-cf-item';
-        row.innerHTML = `<span class="kb-cf-item-name">${escHtml(field.name)}</span><span class="kb-cf-item-type">${escHtml(field.type)}</span>`;
+        row.style.cursor = 'pointer';
+        row.innerHTML = `<span style="font-size:0.85rem;color:var(--text-faint);width:20px;text-align:center">${TYPE_ICONS[field.type]||'T'}</span><span class="kb-cf-item-name">${escHtml(field.name)}</span><span class="kb-cf-item-type">${escHtml(field.type)}</span>`;
+        row.addEventListener('click', e => { e.stopPropagation(); showCfForm(field, idx); });
         const delBtn = document.createElement('button');
-        delBtn.className = 'kb-board-menu-close';
+        delBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:1rem;padding:2px 4px;border-radius:3px;';
         delBtn.title = 'Eliminar campo';
         delBtn.textContent = '×';
-        delBtn.addEventListener('click', () => {
+        delBtn.addEventListener('click', e => {
+          e.stopPropagation();
           b.customFields.splice(idx, 1);
           saveBoard(b.id);
           renderCfList();
@@ -843,48 +849,130 @@
       const addBtn = document.createElement('button');
       addBtn.className = 'kb-cf-add-btn';
       addBtn.textContent = '+ Agregar campo';
-      addBtn.addEventListener('click', () => showCfForm());
+      addBtn.addEventListener('click', e => { e.stopPropagation(); showCfForm(); });
       body.appendChild(addBtn);
     }
 
-    function showCfForm() {
+    function showCfForm(editField = null, editIdx = null) {
       body.innerHTML = '';
-      const form = document.createElement('div');
-      form.className = 'kb-cf-form';
-      form.innerHTML = `
-        <input id="kbCfName" type="text" placeholder="Nombre del campo" />
-        <select id="kbCfType">
-          <option value="text">Texto</option>
-          <option value="number">Número</option>
-          <option value="date">Fecha</option>
-          <option value="checkbox">Checkbox</option>
-          <option value="dropdown">Lista desplegable</option>
-        </select>
-        <div id="kbCfOptionsWrap" style="display:none">
-          <textarea id="kbCfOptions" placeholder="Opciones separadas por coma" rows="3"></textarea>
-        </div>
-        <div class="kb-cf-form-actions">
-          <button id="kbCfSave" style="background:var(--accent);color:#fff;">Guardar</button>
-          <button id="kbCfCancel" style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border);">Cancelar</button>
-        </div>`;
-      body.appendChild(form);
+      const isEdit = editField !== null;
 
-      const typeSelect = form.querySelector('#kbCfType');
-      const optWrap = form.querySelector('#kbCfOptionsWrap');
-      typeSelect.addEventListener('change', () => {
-        optWrap.style.display = typeSelect.value === 'dropdown' ? '' : 'none';
+      const formWrap = document.createElement('div');
+      formWrap.style.padding = '12px 16px';
+      formWrap.addEventListener('click', e => e.stopPropagation());
+      formWrap.addEventListener('mousedown', e => e.stopPropagation());
+
+      const TYPE_INFO = {
+        text:     { icon: 'T',  label: 'Texto',            desc: 'Texto libre de una línea' },
+        number:   { icon: '#',  label: 'Número',            desc: 'Entero o decimal' },
+        date:     { icon: '⊡', label: 'Fecha',             desc: 'Selector de fecha' },
+        checkbox: { icon: '☑', label: 'Casilla',           desc: 'Activado / Desactivado' },
+        dropdown: { icon: '⊙', label: 'Lista desplegable', desc: 'Elige entre opciones' },
+      };
+
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'font-weight:700;font-size:0.9rem;margin-bottom:14px;display:flex;align-items:center;gap:8px;';
+      const backBtn2 = document.createElement('button');
+      backBtn2.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:0 4px;';
+      backBtn2.textContent = '←';
+      backBtn2.addEventListener('click', e => { e.stopPropagation(); renderCfList(); });
+      titleRow.appendChild(backBtn2);
+      titleRow.appendChild(document.createTextNode(isEdit ? 'Editar campo' : 'Nuevo campo'));
+      formWrap.appendChild(titleRow);
+
+      // Name
+      const nameLabel = document.createElement('div');
+      nameLabel.style.cssText = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:4px;';
+      nameLabel.textContent = 'Nombre';
+      formWrap.appendChild(nameLabel);
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = 'Nombre del campo…';
+      nameInput.value = isEdit ? editField.name : '';
+      nameInput.style.cssText = 'width:100%;box-sizing:border-box;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:7px 10px;font-size:0.83rem;outline:none;margin-bottom:14px;';
+      nameInput.addEventListener('focus', e => e.stopPropagation());
+      formWrap.appendChild(nameInput);
+
+      // Type visual selector
+      const typeLabel2 = document.createElement('div');
+      typeLabel2.style.cssText = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:6px;';
+      typeLabel2.textContent = 'Tipo';
+      formWrap.appendChild(typeLabel2);
+
+      let selectedType = isEdit ? editField.type : 'text';
+      const typeGrid = document.createElement('div');
+      typeGrid.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:14px;';
+
+      const optWrap = document.createElement('div');
+
+      Object.entries(TYPE_INFO).forEach(([value, info]) => {
+        const typeBtn = document.createElement('button');
+        typeBtn.type = 'button';
+        typeBtn.dataset.type = value;
+        const isSel = () => selectedType === value;
+        const updateStyle = () => {
+          typeBtn.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border:1px solid ${isSel()?'var(--accent)':'var(--border)'};background:${isSel()?'rgba(59,130,246,0.10)':'var(--bg-surface)'};cursor:pointer;text-align:left;width:100%;`;
+        };
+        updateStyle();
+        typeBtn.innerHTML = `<span style="width:22px;text-align:center;font-size:0.9rem;color:var(--text-muted)">${info.icon}</span><div><div style="font-size:0.83rem;font-weight:600;color:var(--text)">${info.label}</div><div style="font-size:0.7rem;color:var(--text-faint)">${info.desc}</div></div>`;
+        typeBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          selectedType = value;
+          typeGrid.querySelectorAll('button').forEach(b2 => {
+            const s = b2.dataset.type === value;
+            b2.style.borderColor = s ? 'var(--accent)' : 'var(--border)';
+            b2.style.background = s ? 'rgba(59,130,246,0.10)' : 'var(--bg-surface)';
+          });
+          optWrap.style.display = value === 'dropdown' ? '' : 'none';
+        });
+        typeGrid.appendChild(typeBtn);
       });
-      form.querySelector('#kbCfCancel').addEventListener('click', renderCfList);
-      form.querySelector('#kbCfSave').addEventListener('click', () => {
-        const name = form.querySelector('#kbCfName').value.trim();
-        if (!name) return;
-        const type = typeSelect.value;
-        const opts = type === 'dropdown' ? form.querySelector('#kbCfOptions').value.split(',').map(s => s.trim()).filter(Boolean) : [];
-        const field = { id: 'cf_' + Date.now(), name, type, options: opts };
-        b.customFields.push(field);
+      formWrap.appendChild(typeGrid);
+
+      // Dropdown options
+      optWrap.style.display = selectedType === 'dropdown' ? '' : 'none';
+      optWrap.style.marginBottom = '14px';
+      const optLabel2 = document.createElement('div');
+      optLabel2.style.cssText = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:4px;';
+      optLabel2.textContent = 'Opciones (una por línea)';
+      const optInput = document.createElement('textarea');
+      optInput.rows = 4;
+      optInput.style.cssText = 'width:100%;box-sizing:border-box;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:7px 10px;font-size:0.82rem;outline:none;resize:vertical;';
+      optInput.placeholder = 'Opción 1\nOpción 2\nOpción 3';
+      optInput.value = isEdit && editField.options ? editField.options.join('\n') : '';
+      optInput.addEventListener('focus', e => e.stopPropagation());
+      optWrap.appendChild(optLabel2);
+      optWrap.appendChild(optInput);
+      formWrap.appendChild(optWrap);
+
+      // Save / Cancel
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:8px;';
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = isEdit ? 'Guardar cambios' : 'Crear campo';
+      saveBtn.style.cssText = 'flex:1;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.83rem;font-weight:600;';
+      saveBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const name = nameInput.value.trim();
+        if (!name) { nameInput.style.borderColor='#e03e3e'; nameInput.focus(); return; }
+        const opts = selectedType === 'dropdown' ? optInput.value.split('\n').map(s=>s.trim()).filter(Boolean) : [];
+        if (isEdit) {
+          b.customFields[editIdx] = { ...editField, name, type: selectedType, options: opts };
+        } else {
+          b.customFields.push({ id: 'cf_' + uid(), name, type: selectedType, options: opts });
+        }
         saveBoard(b.id);
         renderCfList();
       });
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancelar';
+      cancelBtn.style.cssText = 'padding:8px 14px;background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:0.83rem;';
+      cancelBtn.addEventListener('click', e => { e.stopPropagation(); renderCfList(); });
+      actions.appendChild(saveBtn);
+      actions.appendChild(cancelBtn);
+      formWrap.appendChild(actions);
+      body.appendChild(formWrap);
+      setTimeout(() => nameInput.focus(), 60);
     }
   }
 
