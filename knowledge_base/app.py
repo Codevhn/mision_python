@@ -53,8 +53,18 @@ INDEX_FILE = DATA_DIR / "index.json"
 
 def load_index():
     if INDEX_FILE.exists():
-        return json.loads(INDEX_FILE.read_text())
-    return {}
+        index = json.loads(INDEX_FILE.read_text())
+    else:
+        index = {}
+    # One-shot migration: assign uid to any entry that lacks one
+    changed = False
+    for meta in index.values():
+        if "uid" not in meta:
+            meta["uid"] = uuid.uuid4().hex[:8]
+            changed = True
+    if changed:
+        save_index(index)
+    return index
 
 
 def save_index(index):
@@ -431,6 +441,26 @@ def get_tree():
     return jsonify(result)
 
 
+def resolve_entry_id(ref, index):
+    """Return slug (entry_id) for a given uid or slug. uid takes priority."""
+    for entry_id, meta in index.items():
+        if meta.get("uid") == ref:
+            return entry_id
+    return ref if ref in index else None
+
+
+@app.route("/api/entry-by-uid/<uid>")
+def get_entry_by_uid(uid):
+    index = load_index()
+    entry_id = resolve_entry_id(uid, index)
+    if not entry_id:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    path = _entry_path(entry_id, meta)
+    md = path.read_text(encoding="utf-8") if path.exists() else ""
+    return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": md})
+
+
 @app.route("/api/entry/<entry_id>")
 def get_entry(entry_id):
     index = load_index()
@@ -442,7 +472,7 @@ def get_entry(entry_id):
         return jsonify({"error": "File not found"}), 404
     raw = path.read_text()
     html = render_markdown(raw)
-    return jsonify({"meta": meta, "markdown": raw, "html": html})
+    return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": raw, "html": html})
 
 
 @app.route("/api/entry", methods=["POST"])
@@ -479,6 +509,7 @@ def create_entry():
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{entry_id}.md").write_text(md_content)
         index[entry_id] = {
+            "uid": uuid.uuid4().hex[:8],
             "title": title,
             "type": "teamspace",
             "teamspace": slugify(teamspace),
@@ -505,6 +536,7 @@ def create_entry():
     (folder / f"{entry_id}.md").write_text(md_content)
 
     index[entry_id] = {
+        "uid": uuid.uuid4().hex[:8],
         "title": title,
         "category": slugify(category),
         "category_label": category,
@@ -1326,6 +1358,7 @@ def create_course_entry():
     now = datetime.utcnow().isoformat()
     (history_dir / f"{now.replace(':','-')}.md").write_text(raw, encoding="utf-8")
     index[entry_id] = {
+        "uid": uuid.uuid4().hex[:8],
         "type": "course",
         "title": title,
         "course": course_slug,
