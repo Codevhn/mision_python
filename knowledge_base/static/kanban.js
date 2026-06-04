@@ -54,14 +54,47 @@
     '#d6409f','#99a1b3',
   ];
 
+  // Semantic color map: value label → color (used as fallback when no explicit color is stored)
+  const CF_SEMANTIC_COLORS = {
+    // Tipo
+    'Tema':             '#3e63dd',
+    'Laboratorio':      '#f76b15',
+    'Ejercicio':        '#c29343',
+    'Proyecto':         '#46a758',
+    'Evaluación':       '#e5484d',
+    // Dominio / nivel
+    'No iniciado':      '#99a1b3',
+    'Estudiando':       '#3e63dd',
+    'Practicando':      '#c29343',
+    'Comprendido':      '#46a758',
+    'Dominado':         '#0f7b6c',
+    'Requiere repaso':  '#e5484d',
+    // Prioridad
+    'Alta':             '#e5484d',
+    'Media':            '#c29343',
+    'Baja':             '#46a758',
+    // Estado genérico
+    'Pendiente':        '#99a1b3',
+    'En progreso':      '#3e63dd',
+    'Completado':       '#0f7b6c',
+    'Bloqueado':        '#e54d2e',
+  };
+
   function normalizeOpts(opts) {
-    return (opts || []).map(o => typeof o === 'string' ? { label: o, color: CF_OPT_COLORS[0] } : o);
+    return (opts || []).map((o, i) => {
+      if (typeof o === 'string') {
+        return { label: o, color: CF_SEMANTIC_COLORS[o] || CF_OPT_COLORS[i % CF_OPT_COLORS.length] };
+      }
+      return o;
+    });
   }
 
   function getOptMeta(field, value) {
     const opts = normalizeOpts(field.options);
     const found = opts.find(o => o.label === value);
-    return found || { label: value, color: CF_OPT_COLORS[0] };
+    if (found) return found;
+    // Not in options list — still try semantic color
+    return { label: value, color: CF_SEMANTIC_COLORS[value] || CF_OPT_COLORS[0] };
   }
 
   function isLightColor(hex) {
@@ -977,7 +1010,8 @@
       const optRows = [];
 
       function addOptRow(opt) {
-        const data = { label: opt ? opt.label : '', color: opt ? opt.color : CF_OPT_COLORS[optRows.length % CF_OPT_COLORS.length] };
+        const defaultColor = opt ? opt.color : CF_OPT_COLORS[optRows.length % CF_OPT_COLORS.length];
+        const data = { label: opt ? opt.label : '', color: defaultColor };
         optRows.push(data);
 
         const row = document.createElement('div');
@@ -1018,7 +1052,13 @@
         lInput.value = data.label;
         lInput.placeholder = 'Nombre de opción';
         lInput.style.cssText = 'flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 8px;font-size:0.81rem;outline:none;';
-        lInput.addEventListener('input', e => { data.label = lInput.value; e.stopPropagation(); });
+        lInput.addEventListener('input', e => {
+          data.label = lInput.value;
+          // Auto-apply semantic color when label matches
+          const sem = CF_SEMANTIC_COLORS[lInput.value.trim()];
+          if (sem) { data.color = sem; swatch.style.background = sem; }
+          e.stopPropagation();
+        });
         lInput.addEventListener('focus', e => e.stopPropagation());
 
         const delBtn = document.createElement('button');
