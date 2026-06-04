@@ -4558,3 +4558,127 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   padding: 1px 5px;
   flex-shrink: 0;
 }
+
+/* =============================================
+   PHASE B — Activity Bar + Contextual Sidebar
+   ============================================= */
+
+/* ── Layout adjustment ── */
+:root {
+  --activity-bar-w: 48px;
+}
+
+/* Push layout content to the right of the activity bar */
+.layout {
+  margin-left: var(--activity-bar-w);
+}
+
+/* ── Activity Bar ── */
+.activity-bar {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: var(--activity-bar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: var(--space-2) 0;
+  z-index: 90;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.activity-bar-top,
+.activity-bar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ab-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  position: relative;
+  padding: 0;
+  text-align: center;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.ab-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.ab-item--active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.ab-item--active::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.ab-item--brand {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+.ab-item--brand:hover {
+  background: var(--accent-light);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  /* no grid-area needed; sidebar position unchanged */
+}
+
+/* ── Sidebar Space panels ── */
+.sidebar-space {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-space-header {
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+/* ── Mobile / small screens ── */
+@media (max-width: 768px) {
+  :root { --activity-bar-w: 0px; }
+  .activity-bar { display: none; }
+  .layout { margin-left: 0; }
+}

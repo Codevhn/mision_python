@@ -3199,3 +3199,68 @@ function buildBreadcrumb(meta) {
   // Expose for programmatic use
   window.CommandPalette = { open, close };
 })();
+
+/* =============================================
+   PHASE B — Activity Bar + Space Switcher
+   ============================================= */
+(function() {
+  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace'];
+
+  function switchSpace(space) {
+    // Show/hide panels
+    SPACES.forEach(s => {
+      const panel = document.getElementById('space' + s.charAt(0).toUpperCase() + s.slice(1));
+      if (panel) panel.style.display = s === space ? '' : 'none';
+    });
+
+    // Update active state on activity bar buttons
+    document.querySelectorAll('.ab-item[data-space]').forEach(btn => {
+      btn.classList.toggle('ab-item--active', btn.dataset.space === space);
+    });
+
+    // Store current space
+    try { sessionStorage.setItem('activeSpace', space); } catch(e) {}
+  }
+
+  function init() {
+    // Wire space buttons
+    document.querySelectorAll('.ab-item[data-space]').forEach(btn => {
+      btn.addEventListener('click', () => switchSpace(btn.dataset.space));
+    });
+
+    // Brand → navigate home
+    const abBrand = document.getElementById('abBrand');
+    if (abBrand) {
+      abBrand.addEventListener('click', () => {
+        const wsHome = document.getElementById('wsHome');
+        if (wsHome) wsHome.click();
+      });
+    }
+
+    // Search icon → Command Palette
+    const abSearch = document.getElementById('abSearch');
+    if (abSearch) {
+      abSearch.addEventListener('click', () => {
+        if (window.CommandPalette) window.CommandPalette.open();
+      });
+    }
+
+    // Theme toggle in sidebar
+    const themeSidebar = document.getElementById('themeToggleSidebar');
+    const themeMain = document.getElementById('themeToggle');
+    if (themeSidebar && themeMain) {
+      themeSidebar.addEventListener('click', () => themeMain.click());
+    }
+
+    // Restore last active space or default to 'knowledge'
+    let saved;
+    try { saved = sessionStorage.getItem('activeSpace'); } catch(e) {}
+    switchSpace(saved || 'knowledge');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
