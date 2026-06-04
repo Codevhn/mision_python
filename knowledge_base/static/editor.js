@@ -812,6 +812,7 @@ window.BlockEditor = (() => {
       }
       function normalizeData(d) {
         d = d && typeof d === 'object' ? d : {};
+        if (!d.name && d.name !== '') d.name = '';
         d.cols = Array.isArray(d.cols) ? d.cols : [];
         d.rows = Array.isArray(d.rows) ? d.rows : [];
         if (!d.cols.length) {
@@ -1148,45 +1149,224 @@ window.BlockEditor = (() => {
         }, 50);
       }
 
+      // ── Body-level column menu (fixed position, avoids overflow clipping) ──
+      let _colMenuEl = null;
+      function closeColMenu() {
+        if (_colMenuEl) { _colMenuEl.remove(); _colMenuEl = null; }
+      }
+      function openColMenu(th, col, d, searchBarRef) {
+        closeColMenu();
+        const COL_ICONS = { text:'Aa', number:'#', select:'⊙', 'multi-select':'⊕', checkbox:'☑', date:'⊡', url:'↗', email:'@', phone:'☎' };
+        const panel = document.createElement('div');
+        panel.className = 'eb-db-col-menu--notion';
+        document.body.appendChild(panel);
+        _colMenuEl = panel;
+
+        // Position panel below the th
+        function positionPanel() {
+          const rect = th.getBoundingClientRect();
+          panel.style.top = (rect.bottom + 2) + 'px';
+          const left = Math.min(rect.left, window.innerWidth - 260);
+          panel.style.left = Math.max(4, left) + 'px';
+        }
+        positionPanel();
+
+        // Name input header
+        const menuHeader = document.createElement('div');
+        menuHeader.className = 'eb-db-col-menu-header';
+        const menuNameInput = document.createElement('input');
+        menuNameInput.className = 'eb-db-col-menu-name';
+        menuNameInput.value = col.name;
+        menuNameInput.addEventListener('input', () => {
+          col.name = menuNameInput.value || col.name;
+          // Update th display
+          const nameEl = th.querySelector('.eb-db-col-name');
+          if (nameEl) nameEl.textContent = col.name;
+          saveData(d);
+        });
+        menuHeader.appendChild(menuNameInput);
+        panel.appendChild(menuHeader);
+        setTimeout(() => menuNameInput.focus(), 40);
+
+        // Build menu items
+        const PROP_TYPES = [
+          ['text','Text','Aa'],['number','Number','#'],['select','Select','⊙'],
+          ['multi-select','Multi-select','⊕'],['checkbox','Checkbox','☑'],
+          ['date','Date','⊡'],['url','URL','↗'],['email','Email','@'],['phone','Phone','☏'],
+        ];
+
+        function addSep() {
+          const s = document.createElement('div');
+          s.className = 'eb-db-col-menu-sep';
+          panel.appendChild(s);
+        }
+        function addItem(icon, label, action, opts = {}) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'eb-db-col-menu-item' +
+            (opts.danger ? ' is-danger' : '') +
+            (opts.disabled ? ' is-disabled' : '') +
+            (opts.sub ? ' has-submenu' : '');
+          btn.innerHTML = `<span class="eb-db-col-menu-icon">${icon}</span><span>${label}</span>` +
+            (opts.sub ? '<span class="eb-db-col-menu-arrow">›</span>' : '') +
+            (opts.badge ? `<span class="eb-db-col-menu-badge">${opts.badge}</span>` : '');
+          if (action && !opts.disabled) btn.addEventListener('click', e => { e.stopPropagation(); action(); closeColMenu(); });
+
+          if (opts.sub) {
+            const sub = document.createElement('div');
+            sub.className = 'eb-db-col-submenu';
+            PROP_TYPES.forEach(([value, lbl, ico]) => {
+              const si = document.createElement('button');
+              si.type = 'button';
+              si.className = 'eb-db-col-menu-item' + (col.type === value ? ' is-active' : '');
+              si.innerHTML = `<span class="eb-db-col-menu-icon">${ico}</span><span>${lbl}</span>`;
+              si.addEventListener('click', e => {
+                e.stopPropagation();
+                col.type = value;
+                d.rows.forEach(r => { if (r.cells[col.id] === undefined) r.cells[col.id] = defaultCellValue(value); });
+                saveData(d); buildTable(); closeColMenu();
+              });
+              sub.appendChild(si);
+            });
+            btn.addEventListener('mouseenter', () => {
+              sub.style.display = 'block';
+              // Position the sub to the right, or left if no space
+              const br = btn.getBoundingClientRect();
+              const spaceRight = window.innerWidth - br.right;
+              if (spaceRight > 200) {
+                sub.style.left = '100%';
+                sub.style.right = 'auto';
+              } else {
+                sub.style.left = 'auto';
+                sub.style.right = '100%';
+              }
+              sub.style.top = '0';
+            });
+            btn.addEventListener('mouseleave', e => {
+              if (!sub.contains(e.relatedTarget)) sub.style.display = 'none';
+            });
+            sub.addEventListener('mouseleave', e => {
+              if (!btn.contains(e.relatedTarget)) sub.style.display = 'none';
+            });
+            btn.style.position = 'relative';
+            btn.appendChild(sub);
+          }
+          panel.appendChild(btn);
+          return btn;
+        }
+
+        addItem('⇄', 'Cambiar tipo', null, { sub: true });
+        addSep();
+        addItem('✦', 'AI Autofill', null, { disabled: true, badge: 'Pronto' });
+        addSep();
+        addItem('⊟', 'Filtrar', () => {
+          searchBarRef.style.display = 'flex';
+          const inp = searchBarRef.querySelector('input');
+          if (inp) inp.focus();
+        });
+        addItem('↑', 'Orden A→Z', () => { d.view.sort = { col: col.id, dir: 'asc' }; saveData(d); buildTable(); });
+        addItem('↓', 'Orden Z→A', () => { d.view.sort = { col: col.id, dir: 'desc' }; saveData(d); buildTable(); });
+        addItem('▦', 'Agrupar', null, { disabled: true });
+        addItem('Σ', 'Calcular', null, { disabled: true });
+        addSep();
+        addItem('❄', 'Fijar columna', null, { disabled: true });
+        addItem('◎', 'Ocultar propiedad', () => {
+          if (!d.view.hidden) d.view.hidden = [];
+          const hi = d.view.hidden.indexOf(col.id);
+          if (hi === -1) d.view.hidden.push(col.id);
+          else d.view.hidden.splice(hi, 1);
+          saveData(d); buildTable();
+        });
+        addItem('↔', 'Desajustar contenido', null, { disabled: true });
+        addSep();
+        addItem('←', 'Insertar a la izquierda', () => {
+          const idx = d.cols.findIndex(c => c.id === col.id);
+          const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
+          d.cols.splice(idx, 0, nc); d.rows.forEach(r => { r.cells[nc.id] = ''; });
+          saveData(d); buildTable();
+        });
+        addItem('→', 'Insertar a la derecha', () => {
+          const idx = d.cols.findIndex(c => c.id === col.id);
+          const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
+          d.cols.splice(idx + 1, 0, nc); d.rows.forEach(r => { r.cells[nc.id] = ''; });
+          saveData(d); buildTable();
+        });
+        addItem('⧉', 'Duplicar propiedad', () => {
+          const idx = d.cols.findIndex(c => c.id === col.id);
+          const nc = { ...col, id: dbUid(), name: col.name + ' (copia)' };
+          d.cols.splice(idx + 1, 0, nc); d.rows.forEach(r => { r.cells[nc.id] = r.cells[col.id]; });
+          saveData(d); buildTable();
+        });
+        addSep();
+        addItem('🗑', 'Eliminar propiedad', () => removeColumn(d, col), { danger: true });
+
+        panel.addEventListener('click', e => e.stopPropagation());
+
+        // Close on outside click (next tick)
+        setTimeout(() => {
+          document.addEventListener('click', closeColMenu, { once: true });
+        }, 0);
+      }
+
       function buildTable() {
         wrap.innerHTML = '';
         const d = normalizeData(getData());
 
-        // ── Notion-style compact icon toolbar ──────────────────
+        // ── Toolbar ──
         const toolbar = document.createElement('div');
         toolbar.className = 'eb-db-toolbar';
 
-        // Left: view label
-        const viewLabel = document.createElement('span');
-        viewLabel.className = 'eb-db-view-label';
-        viewLabel.innerHTML = '<span class="eb-db-view-icon">⊞</span> Tabla';
-        toolbar.appendChild(viewLabel);
+        // Editable DB name
+        const nameInput = document.createElement('input');
+        nameInput.className = 'eb-db-name-input';
+        nameInput.value = d.name || '';
+        nameInput.placeholder = 'Sin título';
+        nameInput.addEventListener('blur', () => { d.name = nameInput.value.trim(); saveData(d); });
+        nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') nameInput.blur(); });
+        toolbar.appendChild(nameInput);
 
-        // Spacer
         const spacer = document.createElement('span');
         spacer.style.flex = '1';
         toolbar.appendChild(spacer);
 
-        // Icon buttons: filter, sort, search, fullscreen
-        const TOOLBAR_BTNS = [
-          { icon: '⊟', title: 'Filtrar', action: () => {
-            const q = wrap.querySelector('.eb-db-search-inline');
-            if (q) { q.style.display = q.style.display === 'none' ? 'flex' : 'none'; if (q.style.display === 'flex') q.querySelector('input').focus(); }
-          }},
-          { icon: '↕', title: 'Ordenar', action: null },
-          { icon: '⊕', title: 'Propiedades', action: null },
-        ];
-        TOOLBAR_BTNS.forEach(({ icon, title, action }) => {
-          const btn = document.createElement('button');
-          btn.className = 'eb-db-icon-btn';
-          btn.type = 'button';
-          btn.title = title;
-          btn.textContent = icon;
-          if (action) btn.addEventListener('click', action);
-          toolbar.appendChild(btn);
+        // Filter icon
+        const filterBtn = document.createElement('button');
+        filterBtn.className = 'eb-db-icon-btn';
+        filterBtn.type = 'button';
+        filterBtn.title = 'Filtrar';
+        filterBtn.textContent = '⊟';
+        filterBtn.addEventListener('click', () => {
+          const q = wrap.querySelector('.eb-db-search-inline');
+          if (q) { const vis = q.style.display !== 'none'; q.style.display = vis ? 'none' : 'flex'; if (!vis) q.querySelector('input')?.focus(); }
         });
+        toolbar.appendChild(filterBtn);
 
-        // New button
+        const sortBtn2 = document.createElement('button');
+        sortBtn2.className = 'eb-db-icon-btn';
+        sortBtn2.type = 'button';
+        sortBtn2.title = 'Ordenar';
+        sortBtn2.textContent = '↕';
+        toolbar.appendChild(sortBtn2);
+
+        const propsBtn = document.createElement('button');
+        propsBtn.className = 'eb-db-icon-btn';
+        propsBtn.type = 'button';
+        propsBtn.title = 'Propiedades';
+        propsBtn.textContent = '⊕';
+        toolbar.appendChild(propsBtn);
+
+        const searchIcoBtn = document.createElement('button');
+        searchIcoBtn.className = 'eb-db-icon-btn';
+        searchIcoBtn.type = 'button';
+        searchIcoBtn.title = 'Buscar';
+        searchIcoBtn.textContent = '🔍';
+        searchIcoBtn.style.fontSize = '0.75rem';
+        searchIcoBtn.addEventListener('click', () => {
+          const q = wrap.querySelector('.eb-db-search-inline');
+          if (q) { const vis = q.style.display !== 'none'; q.style.display = vis ? 'none' : 'flex'; if (!vis) q.querySelector('input')?.focus(); }
+        });
+        toolbar.appendChild(searchIcoBtn);
+
         const newBtn = document.createElement('button');
         newBtn.className = 'eb-db-new-btn';
         newBtn.type = 'button';
@@ -1195,13 +1375,10 @@ window.BlockEditor = (() => {
         toolbar.appendChild(newBtn);
         wrap.appendChild(toolbar);
 
-        // Inline search bar (hidden by default, shown on filter icon click)
+        // Inline search (hidden by default)
         const searchBar = document.createElement('div');
         searchBar.className = 'eb-db-search-inline';
-        searchBar.style.display = 'none';
-        const searchIcon = document.createElement('span');
-        searchIcon.textContent = '🔍';
-        searchIcon.style.cssText = 'font-size:0.75rem;opacity:0.5;';
+        searchBar.style.display = d.view.search ? 'flex' : 'none';
         const searchInput = document.createElement('input');
         searchInput.type = 'search';
         searchInput.className = 'eb-db-search';
@@ -1209,16 +1386,13 @@ window.BlockEditor = (() => {
         searchInput.value = d.view.search || '';
         searchInput.addEventListener('input', () => {
           d.view.search = searchInput.value;
-          saveData(d);
-          buildTable();
+          saveData(d); buildTable();
           const next = wrap.querySelector('.eb-db-search');
           if (next) next.focus();
         });
-        searchBar.appendChild(searchIcon);
+        searchBar.innerHTML = '<span style="font-size:0.75rem;opacity:0.5">🔍</span>';
         searchBar.appendChild(searchInput);
         wrap.appendChild(searchBar);
-
-        if (d.view.search) searchBar.style.display = 'flex';
 
         const tableWrap = document.createElement('div');
         tableWrap.className = 'eb-db-wrap';
@@ -1254,6 +1428,14 @@ window.BlockEditor = (() => {
             moveColumn(d, e.dataTransfer.getData('text/plain'), col.id);
           });
 
+          // Clicking the th opens the column menu (but not on resizer or contentEditable)
+          th.addEventListener('click', e => {
+            if (e.target.classList.contains('eb-db-resizer')) return;
+            if (e.target.classList.contains('eb-db-col-name')) return; // let user rename inline
+            e.stopPropagation();
+            openColMenu(th, col, d, searchBar);
+          });
+
           const headMain = document.createElement('div');
           headMain.className = 'eb-db-head-main';
 
@@ -1271,122 +1453,9 @@ window.BlockEditor = (() => {
             col.name = nameSpan.innerText.trim() || col.name;
             saveData(d);
           });
-
-          // ── Notion-style column context menu ──
-          const menuWrap = document.createElement('div');
-          menuWrap.className = 'eb-db-col-menu-wrap';
-          const menuBtn = document.createElement('button');
-          menuBtn.className = 'eb-db-col-menu-btn';
-          menuBtn.type = 'button';
-          menuBtn.title = 'Opciones de propiedad';
-          menuBtn.textContent = '···';
-
-          const menu = document.createElement('div');
-          menu.className = 'eb-db-col-menu eb-db-col-menu--notion';
-
-          // Column name header in menu
-          const menuHeader = document.createElement('div');
-          menuHeader.className = 'eb-db-col-menu-header';
-          const menuNameInput = document.createElement('input');
-          menuNameInput.className = 'eb-db-col-menu-name';
-          menuNameInput.value = col.name;
-          menuNameInput.addEventListener('input', () => {
-            col.name = menuNameInput.value.trim() || col.name;
-            nameSpan.textContent = col.name;
-            typeIconSpan.textContent = COL_ICONS[col.type] || 'Aa';
-            saveData(d);
-          });
-          menuHeader.appendChild(menuNameInput);
-          menu.appendChild(menuHeader);
-
-          // Menu items
-          const MENU_ITEMS = [
-            { label: 'Cambiar tipo', icon: '⇄', sub: true, action: null },
-            { sep: true },
-            { label: 'Filtrar', icon: '⊟', action: () => { searchBar.style.display = 'flex'; searchInput.focus(); menu.classList.remove('is-open'); } },
-            { label: 'Orden A→Z', icon: '↑', action: () => { d.view.sort = { col: col.id, dir: 'asc' }; saveData(d); buildTable(); } },
-            { label: 'Orden Z→A', icon: '↓', action: () => { d.view.sort = { col: col.id, dir: 'desc' }; saveData(d); buildTable(); } },
-            { sep: true },
-            { label: 'Insertar a la izquierda', icon: '←', action: () => {
-              const idx = d.cols.findIndex(c => c.id === col.id);
-              const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
-              d.cols.splice(idx, 0, nc);
-              d.rows.forEach(r => { r.cells[nc.id] = ''; });
-              saveData(d); buildTable();
-            }},
-            { label: 'Insertar a la derecha', icon: '→', action: () => {
-              const idx = d.cols.findIndex(c => c.id === col.id);
-              const nc = { id: dbUid(), name: 'Propiedad', type: 'text', width: 180, options: [] };
-              d.cols.splice(idx + 1, 0, nc);
-              d.rows.forEach(r => { r.cells[nc.id] = ''; });
-              saveData(d); buildTable();
-            }},
-            { label: 'Duplicar propiedad', icon: '⧉', action: () => {
-              const idx = d.cols.findIndex(c => c.id === col.id);
-              const nc = { ...col, id: dbUid(), name: col.name + ' (copia)' };
-              d.cols.splice(idx + 1, 0, nc);
-              d.rows.forEach(r => { r.cells[nc.id] = r.cells[col.id]; });
-              saveData(d); buildTable();
-            }},
-            { sep: true },
-            { label: 'Eliminar propiedad', icon: '🗑', danger: true, action: () => removeColumn(d, col) },
-          ];
-
-          MENU_ITEMS.forEach(item => {
-            if (item.sep) {
-              const sep = document.createElement('div');
-              sep.className = 'eb-db-col-menu-sep';
-              menu.appendChild(sep);
-              return;
-            }
-            const btn = document.createElement('button');
-            btn.className = 'eb-db-col-menu-item' + (item.danger ? ' is-danger' : '');
-            btn.type = 'button';
-            btn.innerHTML = `<span class="eb-db-col-menu-icon">${item.icon}</span><span>${item.label}</span>${item.sub ? '<span class="eb-db-col-menu-arrow">›</span>' : ''}`;
-            if (item.action) btn.addEventListener('click', e => { e.stopPropagation(); item.action(); });
-
-            // Change type: show type picker submenu
-            if (item.sub) {
-              const subMenu = document.createElement('div');
-              subMenu.className = 'eb-db-col-submenu';
-              const PROP_TYPES = [
-                ['text','Text','Aa'],['number','Number','#'],['select','Select','⊙'],
-                ['multi-select','Multi-select','⊕'],['checkbox','Checkbox','☑'],
-                ['date','Date','⊡'],['url','URL','↗'],['email','Email','@'],['phone','Phone','☏'],
-              ];
-              PROP_TYPES.forEach(([value, label, icon]) => {
-                const si = document.createElement('button');
-                si.className = 'eb-db-col-menu-item' + (col.type === value ? ' is-active' : '');
-                si.type = 'button';
-                si.innerHTML = `<span class="eb-db-col-menu-icon">${icon}</span><span>${label}</span>`;
-                si.addEventListener('click', e => {
-                  e.stopPropagation();
-                  col.type = value;
-                  d.rows.forEach(r => { if (r.cells[col.id] === undefined) r.cells[col.id] = defaultCellValue(value); });
-                  saveData(d); buildTable();
-                });
-                subMenu.appendChild(si);
-              });
-              btn.appendChild(subMenu);
-              btn.classList.add('has-submenu');
-            }
-            menu.appendChild(btn);
-          });
-
-          menuBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            wrap.querySelectorAll('.eb-db-col-menu--notion.is-open').forEach(m => { if (m !== menu) m.classList.remove('is-open'); });
-            menu.classList.toggle('is-open');
-            if (menu.classList.contains('is-open')) setTimeout(() => menuNameInput.focus(), 50);
-          });
-          document.addEventListener('click', () => menu.classList.remove('is-open'), { capture: true });
-          menu.addEventListener('click', e => e.stopPropagation());
-          menuWrap.appendChild(menuBtn);
-          menuWrap.appendChild(menu);
+          nameSpan.addEventListener('click', e => e.stopPropagation()); // don't open menu on name click
 
           headMain.appendChild(nameSpan);
-          headMain.appendChild(menuWrap);
           th.appendChild(headMain);
 
           const resizer = document.createElement('span');
@@ -1400,7 +1469,7 @@ window.BlockEditor = (() => {
           htr.appendChild(th);
         });
 
-        // Simple + button at end (like Notion corner)
+        // + button (corner)
         const addColTh = document.createElement('th');
         addColTh.className = 'eb-db-add-col-th';
         const addColBtn = document.createElement('button');
@@ -1421,33 +1490,76 @@ window.BlockEditor = (() => {
           tr.className = 'eb-db-row';
           tr.dataset.rowId = row.id;
 
+          // ── Block-style gutter (like Notion rows) ──
           const gutterTd = document.createElement('td');
           gutterTd.className = 'eb-db-gutter';
-          // Row number: shown normally, hidden on row hover
+
           const rowNum = document.createElement('span');
           rowNum.className = 'eb-db-row-num';
           rowNum.textContent = rowIdx + 1;
-          // Hover actions: open + delete
-          const gutterActions = document.createElement('span');
-          gutterActions.className = 'eb-db-gutter-actions';
-          const gutterOpenBtn = document.createElement('button');
-          gutterOpenBtn.className = 'eb-db-gutter-open';
-          gutterOpenBtn.title = 'Abrir página';
-          gutterOpenBtn.textContent = '⤢';
-          gutterOpenBtn.addEventListener('click', e => { e.preventDefault(); openRowPeek(d, row); });
-          const delRowBtn = document.createElement('button');
-          delRowBtn.className = 'eb-db-row-del';
-          delRowBtn.title = 'Eliminar fila';
-          delRowBtn.textContent = '×';
-          delRowBtn.addEventListener('click', e => {
-            e.preventDefault();
-            d.rows.splice(ri, 1);
-            saveData(d); buildTable();
+
+          // Block controls shown on hover: drag handle + block menu button
+          const blockControls = document.createElement('span');
+          blockControls.className = 'eb-db-block-controls';
+
+          const dragHandle = document.createElement('span');
+          dragHandle.className = 'eb-db-drag-handle';
+          dragHandle.textContent = '⠿';
+          dragHandle.title = 'Arrastrar';
+
+          const blockMenuBtn = document.createElement('button');
+          blockMenuBtn.className = 'eb-db-block-menu-btn';
+          blockMenuBtn.type = 'button';
+          blockMenuBtn.textContent = '+';
+          blockMenuBtn.title = 'Opciones de fila';
+
+          // Block popover (Open, Duplicate, Delete)
+          const blockPopover = document.createElement('div');
+          blockPopover.className = 'eb-db-block-popover';
+
+          const BLOCK_ACTIONS = [
+            { icon: '⤢', label: 'Abrir página', action: () => { openRowPeek(d, row); blockPopover.classList.remove('is-open'); } },
+            { icon: '⧉', label: 'Duplicar fila', action: () => {
+              const nc = { id: dbUid(), cells: { ...row.cells }, page: { ...(row.page || {}) } };
+              d.rows.splice(ri + 1, 0, nc);
+              saveData(d); buildTable();
+            }},
+            { sep: true },
+            { icon: '🗑', label: 'Eliminar fila', danger: true, action: () => {
+              d.rows.splice(ri, 1);
+              saveData(d); buildTable();
+            }},
+          ];
+          BLOCK_ACTIONS.forEach(item => {
+            if (item.sep) {
+              const sep = document.createElement('div');
+              sep.className = 'eb-db-col-menu-sep';
+              blockPopover.appendChild(sep);
+              return;
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'eb-db-col-menu-item' + (item.danger ? ' is-danger' : '');
+            btn.innerHTML = `<span class="eb-db-col-menu-icon">${item.icon}</span><span>${item.label}</span>`;
+            btn.addEventListener('click', e => { e.stopPropagation(); item.action(); });
+            blockPopover.appendChild(btn);
           });
-          gutterActions.appendChild(gutterOpenBtn);
-          gutterActions.appendChild(delRowBtn);
+
+          blockMenuBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            // Position popover using fixed coords
+            blockPopover.classList.toggle('is-open');
+            if (blockPopover.classList.contains('is-open')) {
+              setTimeout(() => { document.addEventListener('click', () => blockPopover.classList.remove('is-open'), { once: true }); }, 0);
+            }
+          });
+          blockPopover.addEventListener('click', e => e.stopPropagation());
+
+          blockControls.appendChild(dragHandle);
+          blockControls.appendChild(blockMenuBtn);
+          blockControls.appendChild(blockPopover);
           gutterTd.appendChild(rowNum);
-          gutterTd.appendChild(gutterActions);
+          gutterTd.appendChild(blockControls);
           tr.appendChild(gutterTd);
 
           d.cols.forEach((col, colIdx) => {

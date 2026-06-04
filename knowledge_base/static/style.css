@@ -3428,12 +3428,17 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: var(--bg-elevated);
   min-height: 36px;
 }
-.eb-db-view-label {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 0.78rem; font-weight: 600;
-  color: var(--text-muted);
+.eb-db-name-input {
+  background: none; border: none; outline: none;
+  font-size: 0.9rem; font-weight: 700;
+  color: var(--text);
+  padding: 2px 4px; border-radius: 3px;
+  min-width: 60px; max-width: 200px;
+  transition: background 0.1s;
 }
-.eb-db-view-icon { font-size: 0.85rem; }
+.eb-db-name-input:hover { background: var(--bg-hover); }
+.eb-db-name-input:focus { background: var(--bg-hover); }
+.eb-db-name-input::placeholder { color: var(--text-faint); font-weight: 400; font-style: italic; }
 .eb-db-icon-btn {
   background: none; border: none; cursor: pointer;
   color: var(--text-faint); font-size: 0.9rem;
@@ -3458,14 +3463,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: var(--bg-elevated);
 }
 .eb-db-search {
-  flex: 1;
-  min-width: 140px;
-  height: 26px;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.8rem;
-  outline: none;
+  flex: 1; min-width: 140px; height: 26px;
+  border: none; background: transparent;
+  color: var(--text); font-size: 0.8rem; outline: none;
 }
 .eb-db-search::placeholder { color: var(--text-faint); }
 .eb-db-wrap { display: block; min-width: 100%; }
@@ -3598,30 +3598,18 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .eb-db-add-col:hover { color: var(--text); background: var(--bg-hover); }
 
-/* ── Notion column context menu ── */
-.eb-db-col-menu-wrap { position: relative; flex-shrink: 0; }
-.eb-db-col-menu-btn {
-  display: none;
-  background: none; border: none; cursor: pointer;
-  color: var(--text-faint); font-size: 0.75rem;
-  padding: 2px 5px; border-radius: 3px;
-  transition: color 0.1s, background 0.1s; line-height: 1;
-}
-.eb-db-th:hover .eb-db-col-menu-btn { display: block; }
-.eb-db-col-menu-btn:hover { color: var(--text); background: var(--bg-hover); }
-
+/* ── Notion column context menu (body-level, fixed pos) ── */
+.eb-db-th { cursor: pointer; }
 .eb-db-col-menu--notion {
-  display: none;
-  position: absolute; top: calc(100% + 2px); left: 0;
-  min-width: 240px; z-index: 300;
+  position: fixed;
+  min-width: 250px; z-index: 9000;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
   padding: 6px 0;
   overflow: visible;
 }
-.eb-db-col-menu--notion.is-open { display: block; }
 .eb-db-col-menu-header {
   padding: 6px 12px 8px;
   border-bottom: 1px solid var(--border);
@@ -3631,46 +3619,82 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   width: 100%; box-sizing: border-box;
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: 5px; padding: 5px 10px;
-  font-size: 0.83rem; font-weight: 600; color: var(--text);
-  outline: none;
+  font-size: 0.83rem; font-weight: 600; color: var(--text); outline: none;
 }
 .eb-db-col-menu-name:focus { border-color: var(--accent); }
-.eb-db-col-menu-sep {
-  height: 1px; background: var(--border);
-  margin: 4px 0;
-}
+.eb-db-col-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .eb-db-col-menu-item {
   display: flex; align-items: center; gap: 10px;
   width: 100%; background: none; border: none; cursor: pointer;
   padding: 6px 14px; font-size: 0.82rem; color: var(--text);
   text-align: left; position: relative;
   transition: background 0.08s;
+  white-space: nowrap;
 }
 .eb-db-col-menu-item:hover { background: var(--bg-hover); }
 .eb-db-col-menu-item.is-danger { color: #e03e3e; }
 .eb-db-col-menu-item.is-active { background: var(--bg-hover); }
-.eb-db-col-menu-icon { width: 18px; text-align: center; font-size: 0.85rem; color: var(--text-muted); flex-shrink: 0; }
+.eb-db-col-menu-item.is-disabled { opacity: 0.45; cursor: default; }
+.eb-db-col-menu-icon { width: 18px; text-align: center; font-size: 0.82rem; color: var(--text-muted); flex-shrink: 0; }
 .eb-db-col-menu-item.is-danger .eb-db-col-menu-icon { color: #e03e3e; }
-.eb-db-col-menu-arrow { margin-left: auto; color: var(--text-faint); font-size: 0.9rem; }
+.eb-db-col-menu-arrow { margin-left: auto; color: var(--text-faint); font-size: 0.9rem; padding-left: 8px; }
+.eb-db-col-menu-badge {
+  margin-left: auto; font-size: 0.65rem;
+  background: var(--bg-hover); color: var(--text-faint);
+  padding: 1px 6px; border-radius: 8px; white-space: nowrap;
+}
 
-/* Submenu (change type) */
+/* Change-type submenu (positioned via JS) */
 .eb-db-col-submenu {
   display: none;
-  position: absolute; left: 100%; top: -6px;
-  min-width: 180px; z-index: 400;
+  position: absolute; top: 0;
+  min-width: 180px; z-index: 9100;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 28px rgba(0,0,0,0.3);
   padding: 6px 0;
 }
-.has-submenu:hover .eb-db-col-submenu { display: block; }
+
+/* ── Block-style row gutter ── */
+.eb-db-row-num {
+  font-size: 0.72rem; color: var(--text-faint); display: block; line-height: 1;
+}
+.eb-db-block-controls {
+  display: none; align-items: center; gap: 1px; justify-content: center;
+  position: relative;
+}
+.eb-db-row:hover .eb-db-row-num { display: none; }
+.eb-db-row:hover .eb-db-block-controls { display: flex; }
+.eb-db-drag-handle {
+  cursor: grab; color: var(--text-faint); font-size: 0.8rem;
+  padding: 2px 2px; border-radius: 3px; line-height: 1;
+  transition: color 0.1s, background 0.1s; user-select: none;
+}
+.eb-db-drag-handle:hover { color: var(--text-muted); background: var(--bg-hover); }
+.eb-db-block-menu-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-faint); font-size: 0.85rem;
+  padding: 1px 3px; border-radius: 3px; line-height: 1;
+  transition: color 0.1s, background 0.1s;
+}
+.eb-db-block-menu-btn:hover { color: var(--text); background: var(--bg-hover); }
+.eb-db-block-popover {
+  display: none;
+  position: absolute; left: 110%; top: 0;
+  min-width: 180px; z-index: 8000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  padding: 6px 0;
+}
+.eb-db-block-popover.is-open { display: block; }
 /* Rows — no alternating background, clean like Notion */
 .eb-db-row { transition: background 0.08s; }
 .eb-db-row:hover { background: var(--bg-hover); }
 .eb-db-row:hover .eb-db-cell,
 .eb-db-row:hover .eb-db-gutter { background: var(--bg-hover); }
-.eb-db-row:hover .eb-db-row-del { opacity: 1; }
 .eb-db-gutter {
   position: sticky; left: 0; z-index: 2;
   width: 36px; min-width: 36px; max-width: 36px;
@@ -3686,29 +3710,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   color: var(--text-faint);
   display: block;
 }
-.eb-db-gutter-actions {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-.eb-db-row:hover .eb-db-row-num { display: none; }
-.eb-db-row:hover .eb-db-gutter-actions { display: flex; }
-.eb-db-gutter-open {
-  background: none; border: none; cursor: pointer;
-  color: var(--text-faint); font-size: 0.78rem; padding: 1px 3px;
-  border-radius: 3px; transition: color 0.1s, background 0.1s;
-  line-height: 1;
-}
-.eb-db-gutter-open:hover { color: var(--accent); background: var(--bg-hover); }
-.eb-db-row-del {
-  background: none; border: none;
-  color: var(--text-muted); cursor: pointer;
-  font-size: 0.85rem; padding: 1px 3px;
-  border-radius: 3px; transition: color 0.1s, background 0.1s;
-  line-height: 1;
-}
-.eb-db-row-del:hover { color: var(--danger); background: var(--bg-hover); }
 .eb-db-cell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
