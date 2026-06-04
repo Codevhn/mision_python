@@ -62,6 +62,16 @@
     'Ejercicio':        '#c29343',
     'Proyecto':         '#46a758',
     'Evaluación':       '#e5484d',
+    // Módulos Python
+    'M0 Entorno':       '#5e6ad2',
+    'M1 Fundamentos':   '#3e63dd',
+    'M2 Estructuras':   '#8e4ec6',
+    'M3 Archivos':      '#0f7b6c',
+    'M4 Procesos':      '#f76b15',
+    'M5 Networking':    '#26b5ce',
+    'M6 Web Security':  '#c0392b',
+    'M7 Cybersecurity': '#e5484d',
+    'M8 Profesionalización': '#c29343',
     // Dominio / nivel
     'No iniciado':      '#99a1b3',
     'Estudiando':       '#3e63dd',
@@ -1533,17 +1543,20 @@
         nonEmpty.forEach(f => {
           const v = card.customFieldValues[f.id];
           let badge;
-          if (f.type === 'dropdown' && v) {
-            const meta = getOptMeta(f, v);
-            badge = makeCfPill(v, meta.color);
-            badge.title = f.name + ': ' + v;
-          } else {
+          if (f.type === 'checkbox') {
+            if (!v) return;
             badge = document.createElement('span');
             badge.className = 'kb-card-cf-badge';
-            badge.title = f.name;
-            badge.textContent = f.type === 'checkbox' ? (v ? '☑ ' + f.name : '') : (f.name + ': ' + v);
+            badge.textContent = '☑ ' + f.name;
+          } else {
+            // Render ALL non-empty text/number/date/dropdown values as colored pills
+            const strVal = String(v);
+            const color = CF_SEMANTIC_COLORS[strVal] ||
+              (f.type === 'dropdown' ? getOptMeta(f, strVal).color : '#4a5568');
+            badge = makeCfPill(strVal, color);
+            badge.title = f.name + ': ' + strVal;
           }
-          if (badge.textContent) badgesEl.appendChild(badge);
+          if (badge && badge.textContent) badgesEl.appendChild(badge);
         });
         if (badgesEl.children.length) el.appendChild(badgesEl);
       }

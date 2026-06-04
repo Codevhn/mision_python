@@ -2547,7 +2547,7 @@ kbd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 160px;
   letter-spacing: 0.02em;
   line-height: 1.6;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
