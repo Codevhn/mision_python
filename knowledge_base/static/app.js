@@ -175,8 +175,12 @@ function bindEvents() {
   });
   $("wsSearch").addEventListener("click", e => {
     e.preventDefault();
-    $("searchInput").focus();
-    $("searchInput").select();
+    if (window.CommandPalette) window.CommandPalette.open();
+    else { $("searchInput").focus(); $("searchInput").select(); }
+  });
+  const _cmdTriggerBtn = document.getElementById("cmdTriggerBtn");
+  if (_cmdTriggerBtn) _cmdTriggerBtn.addEventListener("click", () => {
+    if (window.CommandPalette) window.CommandPalette.open();
   });
   $("wsStarred").addEventListener("click", e => {
     e.preventDefault();
@@ -2931,3 +2935,267 @@ function buildBreadcrumb(meta) {
     });
   });
 }
+
+// ============================================================
+// COMMAND PALETTE  (Cmd+K / Ctrl+K)
+// ============================================================
+(function () {
+  'use strict';
+
+  // ── Static actions shown when query is empty ──────────────
+  const ACTIONS = [
+    { id: 'act:new-entry',    label: 'Nueva entrada',      icon: '✦', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('newEntryBtn')?.click(); } },
+    { id: 'act:new-board',    label: 'Nuevo tablero Kanban', icon: '⊞', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('newKanbanBoardBtn')?.click(); } },
+    { id: 'act:home',         label: 'Ir al Inicio',        icon: '⌂', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('wsHome')?.click(); } },
+    { id: 'act:starred',      label: 'Ver Favoritos',       icon: '☆', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('wsStarred')?.click(); } },
+    { id: 'act:reindex',      label: 'Reindexar archivos',  icon: '⟳', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('reindexBtn')?.click(); } },
+    { id: 'act:theme',        label: 'Cambiar tema',         icon: '◐', group: 'Acciones', shortcut: null,
+      run: () => { document.getElementById('themeToggle')?.click(); } },
+  ];
+
+  // ── State ─────────────────────────────────────────────────
+  let _open   = false;
+  let _items  = [];     // current result list
+  let _active = -1;     // keyboard cursor index
+  let _debounce = null;
+
+  // ── DOM refs (built once on first open) ───────────────────
+  let _overlay, _modal, _input, _list, _built = false;
+
+  function _build() {
+    if (_built) return;
+    _built = true;
+
+    _overlay = document.createElement('div');
+    _overlay.id = 'cmdOverlay';
+    _overlay.className = 'cmd-overlay';
+    _overlay.addEventListener('click', close);
+
+    _modal = document.createElement('div');
+    _modal.className = 'cmd-modal';
+    _modal.addEventListener('click', e => e.stopPropagation());
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'cmd-header';
+
+    const searchIcon = document.createElement('span');
+    searchIcon.className = 'cmd-search-icon';
+    searchIcon.textContent = '⌕';
+
+    _input = document.createElement('input');
+    _input.type = 'text';
+    _input.className = 'cmd-input';
+    _input.placeholder = 'Buscar entradas, cards, acciones…';
+    _input.setAttribute('autocomplete', 'off');
+    _input.setAttribute('spellcheck', 'false');
+    _input.addEventListener('input', _onInput);
+    _input.addEventListener('keydown', _onKey);
+
+    const kbdHint = document.createElement('kbd');
+    kbdHint.className = 'cmd-kbd-hint';
+    kbdHint.textContent = 'ESC';
+    kbdHint.addEventListener('click', close);
+
+    header.appendChild(searchIcon);
+    header.appendChild(_input);
+    header.appendChild(kbdHint);
+
+    _list = document.createElement('div');
+    _list.className = 'cmd-list';
+
+    _modal.appendChild(header);
+    _modal.appendChild(_list);
+    _overlay.appendChild(_modal);
+    document.body.appendChild(_overlay);
+  }
+
+  // ── Open / Close ──────────────────────────────────────────
+  function open() {
+    _build();
+    _open = true;
+    _overlay.classList.add('cmd-overlay--open');
+    _input.value = '';
+    _active = -1;
+    _renderItems(ACTIONS);
+    setTimeout(() => _input.focus(), 40);
+  }
+
+  function close() {
+    if (!_open) return;
+    _open = false;
+    _overlay.classList.remove('cmd-overlay--open');
+    _input.value = '';
+    _list.innerHTML = '';
+    _items = [];
+  }
+
+  // ── Input / debounce ─────────────────────────────────────
+  function _onInput() {
+    clearTimeout(_debounce);
+    const q = _input.value.trim();
+    if (!q) { _active = -1; _renderItems(ACTIONS); return; }
+    _debounce = setTimeout(() => _search(q), 140);
+  }
+
+  async function _search(q) {
+    const ql = q.toLowerCase();
+    const results = [];
+
+    // 1. KB entries via existing API
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      data.forEach(r => results.push({
+        id:    'kb:' + r.id,
+        label: r.title,
+        sub:   [r.category_label, r.topic_label].filter(Boolean).join(' › '),
+        icon:  '◈',
+        group: 'Páginas',
+        run:   () => { if (window._loadEntryById) window._loadEntryById(r.id); },
+      }));
+    } catch (_) {}
+
+    // 2. Kanban cards via _build_card_index equivalent — we scan live boards from KanbanApp
+    try {
+      const boards = await fetch('/api/kanban/boards').then(r => r.json());
+      for (const b of boards) {
+        if (!b.id) continue;
+        const board = await fetch(`/api/kanban/boards/${b.id}`).then(r => r.json());
+        for (const col of (board.columns || [])) {
+          for (const card of (col.cards || [])) {
+            if (!card.title) continue;
+            if (!card.title.toLowerCase().includes(ql)) continue;
+            results.push({
+              id:    'card:' + card.id,
+              label: card.title,
+              sub:   b.name + ' › ' + col.name,
+              icon:  '⊞',
+              group: 'Tarjetas',
+              run:   () => {
+                if (window.KanbanApp) window.KanbanApp.showBoard(b.id);
+              },
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Matching actions
+    ACTIONS.forEach(a => {
+      if (a.label.toLowerCase().includes(ql)) results.push(a);
+    });
+
+    _active = -1;
+    _renderItems(results.length ? results : [{
+      id: '_empty', label: `Sin resultados para "${q}"`,
+      icon: '·', group: null, sub: null, run: null,
+    }]);
+  }
+
+  // ── Keyboard navigation ───────────────────────────────────
+  function _onKey(e) {
+    const active = _list.querySelectorAll('.cmd-item[data-idx]');
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _active = Math.min(_active + 1, active.length - 1);
+      _highlight(active);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _active = Math.max(_active - 1, 0);
+      _highlight(active);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = active[_active];
+      if (sel) sel.click();
+    }
+  }
+
+  function _highlight(active) {
+    active.forEach((el, i) => {
+      el.classList.toggle('cmd-item--active', i === _active);
+      if (i === _active) el.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  // ── Render ────────────────────────────────────────────────
+  function _renderItems(items) {
+    _items = items;
+    _list.innerHTML = '';
+    let lastGroup = null;
+    let itemIdx = 0;
+
+    items.forEach((item) => {
+      if (item.group && item.group !== lastGroup) {
+        lastGroup = item.group;
+        const sep = document.createElement('div');
+        sep.className = 'cmd-group-label';
+        sep.textContent = item.group;
+        _list.appendChild(sep);
+      }
+
+      const el = document.createElement('div');
+      el.className = 'cmd-item';
+      el.dataset.idx = itemIdx++;
+
+      const iconEl = document.createElement('span');
+      iconEl.className = 'cmd-item-icon';
+      iconEl.textContent = item.icon || '·';
+
+      const textEl = document.createElement('div');
+      textEl.className = 'cmd-item-text';
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'cmd-item-label';
+      labelEl.textContent = item.label;
+
+      textEl.appendChild(labelEl);
+      if (item.sub) {
+        const subEl = document.createElement('span');
+        subEl.className = 'cmd-item-sub';
+        subEl.textContent = item.sub;
+        textEl.appendChild(subEl);
+      }
+
+      el.appendChild(iconEl);
+      el.appendChild(textEl);
+
+      if (item.shortcut) {
+        const sc = document.createElement('kbd');
+        sc.className = 'cmd-item-shortcut';
+        sc.textContent = item.shortcut;
+        el.appendChild(sc);
+      }
+
+      if (item.run) {
+        el.addEventListener('click', () => { close(); item.run(); });
+        el.addEventListener('mouseenter', () => {
+          _active = parseInt(el.dataset.idx);
+          _highlight(_list.querySelectorAll('.cmd-item[data-idx]'));
+        });
+      } else {
+        el.classList.add('cmd-item--empty');
+      }
+
+      _list.appendChild(el);
+    });
+  }
+
+  // ── Global keyboard shortcut ─────────────────────────────
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      _open ? close() : open();
+    }
+    if (e.key === 'Escape' && _open) close();
+  });
+
+  // Expose for programmatic use
+  window.CommandPalette = { open, close };
+})();
