@@ -47,6 +47,38 @@
   const AVATAR_PALETTE = ['#eb5a46','#61bd4f','#f2d600','#0079bf','#c377e0','#ff9f1a','#00c2e0','#51e898'];
   const COVER_COLORS = ['#61bd4f','#f2d600','#ff9f1a','#eb5a46','#c377e0','#0079bf','#00c2e0','#51e898'];
 
+  // Custom field dropdown option colors (Notion-inspired palette)
+  const CF_OPT_COLORS = [
+    '#5e6ad2','#26b5ce','#0f7b6c','#c29343','#e5484d',
+    '#e54d2e','#8e4ec6','#3e63dd','#46a758','#f76b15',
+    '#d6409f','#99a1b3',
+  ];
+
+  function normalizeOpts(opts) {
+    return (opts || []).map(o => typeof o === 'string' ? { label: o, color: CF_OPT_COLORS[0] } : o);
+  }
+
+  function getOptMeta(field, value) {
+    const opts = normalizeOpts(field.options);
+    const found = opts.find(o => o.label === value);
+    return found || { label: value, color: CF_OPT_COLORS[0] };
+  }
+
+  function isLightColor(hex) {
+    const c = hex.replace('#','');
+    const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+    return (r*299 + g*587 + b*114) / 1000 > 140;
+  }
+
+  function makeCfPill(label, color) {
+    const pill = document.createElement('span');
+    pill.className = 'kb-cf-pill';
+    pill.textContent = label;
+    pill.style.background = color || CF_OPT_COLORS[0];
+    pill.style.color = isLightColor(color || CF_OPT_COLORS[0]) ? '#111' : '#fff';
+    return pill;
+  }
+
   // ---- State ----
   let _area = null;          // #kanbanArea
   let _boards = [];          // cached boards list
@@ -929,20 +961,93 @@
       });
       formWrap.appendChild(typeGrid);
 
-      // Dropdown options
+      // Dropdown options with color pickers
       optWrap.style.display = selectedType === 'dropdown' ? '' : 'none';
       optWrap.style.marginBottom = '14px';
       const optLabel2 = document.createElement('div');
-      optLabel2.style.cssText = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:4px;';
-      optLabel2.textContent = 'Opciones (una por línea)';
-      const optInput = document.createElement('textarea');
-      optInput.rows = 4;
-      optInput.style.cssText = 'width:100%;box-sizing:border-box;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:7px 10px;font-size:0.82rem;outline:none;resize:vertical;';
-      optInput.placeholder = 'Opción 1\nOpción 2\nOpción 3';
-      optInput.value = isEdit && editField.options ? editField.options.join('\n') : '';
-      optInput.addEventListener('focus', e => e.stopPropagation());
+      optLabel2.style.cssText = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:6px;';
+      optLabel2.textContent = 'Opciones';
       optWrap.appendChild(optLabel2);
-      optWrap.appendChild(optInput);
+
+      const optList = document.createElement('div');
+      optList.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:8px;';
+      optWrap.appendChild(optList);
+
+      const initialOpts = isEdit && editField.options ? normalizeOpts(editField.options) : [];
+      const optRows = [];
+
+      function addOptRow(opt) {
+        const data = { label: opt ? opt.label : '', color: opt ? opt.color : CF_OPT_COLORS[optRows.length % CF_OPT_COLORS.length] };
+        optRows.push(data);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+        const swatch = document.createElement('div');
+        swatch.className = 'kb-cf-color-swatch';
+        swatch.style.background = data.color;
+        swatch.title = 'Cambiar color';
+
+        const palette = document.createElement('div');
+        palette.className = 'kb-cf-color-palette';
+        palette.style.display = 'none';
+        CF_OPT_COLORS.forEach(c => {
+          const dot = document.createElement('div');
+          dot.className = 'kb-cf-color-dot';
+          dot.style.background = c;
+          if (c === data.color) dot.classList.add('selected');
+          dot.addEventListener('click', e => {
+            e.stopPropagation();
+            data.color = c;
+            swatch.style.background = c;
+            palette.querySelectorAll('.kb-cf-color-dot').forEach(d => d.classList.toggle('selected', d.style.background === c || d.style.backgroundColor === c));
+            palette.style.display = 'none';
+          });
+          palette.appendChild(dot);
+        });
+
+        swatch.addEventListener('click', e => {
+          e.stopPropagation();
+          const isOpen = palette.style.display !== 'none';
+          document.querySelectorAll('.kb-cf-color-palette').forEach(p => { p.style.display = 'none'; });
+          palette.style.display = isOpen ? 'none' : 'flex';
+        });
+
+        const lInput = document.createElement('input');
+        lInput.type = 'text';
+        lInput.value = data.label;
+        lInput.placeholder = 'Nombre de opción';
+        lInput.style.cssText = 'flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 8px;font-size:0.81rem;outline:none;';
+        lInput.addEventListener('input', e => { data.label = lInput.value; e.stopPropagation(); });
+        lInput.addEventListener('focus', e => e.stopPropagation());
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '✕';
+        delBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:0.8rem;padding:2px 4px;';
+        delBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = optRows.indexOf(data);
+          if (i !== -1) optRows.splice(i, 1);
+          row.remove();
+        });
+
+        row.appendChild(swatch);
+        row.appendChild(palette);
+        row.appendChild(lInput);
+        row.appendChild(delBtn);
+        optList.appendChild(row);
+      }
+
+      initialOpts.forEach(opt => addOptRow(opt));
+
+      const addOptBtn = document.createElement('button');
+      addOptBtn.type = 'button';
+      addOptBtn.textContent = '+ Agregar opción';
+      addOptBtn.style.cssText = 'background:none;border:1px dashed var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:0.8rem;padding:5px 10px;width:100%;text-align:left;';
+      addOptBtn.addEventListener('click', e => { e.stopPropagation(); addOptRow(null); });
+      optWrap.appendChild(optList);
+      optWrap.appendChild(addOptBtn);
       formWrap.appendChild(optWrap);
 
       // Save / Cancel
@@ -955,7 +1060,7 @@
         e.stopPropagation();
         const name = nameInput.value.trim();
         if (!name) { nameInput.style.borderColor='#e03e3e'; nameInput.focus(); return; }
-        const opts = selectedType === 'dropdown' ? optInput.value.split('\n').map(s=>s.trim()).filter(Boolean) : [];
+        const opts = selectedType === 'dropdown' ? optRows.filter(r => r.label.trim()).map(r => ({ label: r.label.trim(), color: r.color })) : [];
         if (isEdit) {
           b.customFields[editIdx] = { ...editField, name, type: selectedType, options: opts };
         } else {
@@ -1387,10 +1492,17 @@
         badgesEl.className = 'kb-card-cf-badges';
         nonEmpty.forEach(f => {
           const v = card.customFieldValues[f.id];
-          const badge = document.createElement('span');
-          badge.className = 'kb-card-cf-badge';
-          badge.title = f.name;
-          badge.textContent = f.type === 'checkbox' ? (v ? '☑ ' + f.name : '') : (f.name + ': ' + v);
+          let badge;
+          if (f.type === 'dropdown' && v) {
+            const meta = getOptMeta(f, v);
+            badge = makeCfPill(v, meta.color);
+            badge.title = f.name + ': ' + v;
+          } else {
+            badge = document.createElement('span');
+            badge.className = 'kb-card-cf-badge';
+            badge.title = f.name;
+            badge.textContent = f.type === 'checkbox' ? (v ? '☑ ' + f.name : '') : (f.name + ': ' + v);
+          }
           if (badge.textContent) badgesEl.appendChild(badge);
         });
         if (badgesEl.children.length) el.appendChild(badgesEl);
@@ -2014,18 +2126,77 @@
             inp.checked = !!curVal;
             inp.style.width = 'auto';
           } else if (field.type === 'dropdown') {
-            inp = document.createElement('select');
-            const emptyOpt = document.createElement('option');
-            emptyOpt.value = '';
-            emptyOpt.textContent = '— Seleccionar —';
-            inp.appendChild(emptyOpt);
-            (field.options || []).forEach(opt => {
-              const o = document.createElement('option');
-              o.value = opt;
-              o.textContent = opt;
-              if (curVal === opt) o.selected = true;
-              inp.appendChild(o);
+            // Custom pill-based dropdown
+            const normOpts = normalizeOpts(field.options);
+            let selectedVal = curVal || '';
+
+            const pillDropWrap = document.createElement('div');
+            pillDropWrap.className = 'kb-cf-pill-dropdown';
+
+            const trigger = document.createElement('div');
+            trigger.className = 'kb-cf-pill-trigger';
+            const updateTrigger = () => {
+              trigger.innerHTML = '';
+              if (selectedVal) {
+                const meta = normOpts.find(o => o.label === selectedVal) || { label: selectedVal, color: CF_OPT_COLORS[0] };
+                trigger.appendChild(makeCfPill(meta.label, meta.color));
+              } else {
+                const ph = document.createElement('span');
+                ph.className = 'kb-cf-pill-placeholder';
+                ph.textContent = '— Seleccionar —';
+                trigger.appendChild(ph);
+              }
+              const arrow = document.createElement('span');
+              arrow.className = 'kb-cf-pill-arrow';
+              arrow.textContent = '▾';
+              trigger.appendChild(arrow);
+            };
+            updateTrigger();
+
+            const menu = document.createElement('div');
+            menu.className = 'kb-cf-pill-menu';
+            menu.style.display = 'none';
+
+            const emptyRow = document.createElement('div');
+            emptyRow.className = 'kb-cf-pill-menu-item kb-cf-pill-menu-empty';
+            emptyRow.textContent = '— Sin selección —';
+            emptyRow.addEventListener('click', e => {
+              e.stopPropagation();
+              selectedVal = '';
+              card.customFieldValues[field.id] = '';
+              saveBoard(_currentBoard.id);
+              updateTrigger();
+              menu.style.display = 'none';
             });
+            menu.appendChild(emptyRow);
+
+            normOpts.forEach(opt => {
+              const item = document.createElement('div');
+              item.className = 'kb-cf-pill-menu-item';
+              item.appendChild(makeCfPill(opt.label, opt.color));
+              if (selectedVal === opt.label) item.classList.add('selected');
+              item.addEventListener('click', e => {
+                e.stopPropagation();
+                selectedVal = opt.label;
+                card.customFieldValues[field.id] = opt.label;
+                saveBoard(_currentBoard.id);
+                updateTrigger();
+                menu.querySelectorAll('.kb-cf-pill-menu-item').forEach(it => it.classList.remove('selected'));
+                item.classList.add('selected');
+                menu.style.display = 'none';
+              });
+              menu.appendChild(item);
+            });
+
+            trigger.addEventListener('click', e => {
+              e.stopPropagation();
+              menu.style.display = menu.style.display === 'none' ? '' : 'none';
+            });
+
+            pillDropWrap.appendChild(trigger);
+            pillDropWrap.appendChild(menu);
+            valWrap.appendChild(pillDropWrap);
+            inp = null; // handled above
           }
           if (inp) {
             inp.addEventListener('change', () => {

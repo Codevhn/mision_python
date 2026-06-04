@@ -2535,3 +2535,68 @@ kbd {
   color: var(--text-muted); border: 1px solid var(--border);
   max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* CF colored pill */
+.kb-cf-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  letter-spacing: 0.01em;
+}
+
+/* Custom pill dropdown in card modal */
+.kb-cf-pill-dropdown { position: relative; }
+.kb-cf-pill-trigger {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; padding: 4px 2px;
+  border-radius: 5px; min-height: 28px;
+}
+.kb-cf-pill-trigger:hover { background: var(--bg-hover); }
+.kb-cf-pill-placeholder { color: var(--text-faint); font-size: 0.82rem; }
+.kb-cf-pill-arrow { color: var(--text-faint); font-size: 0.7rem; margin-left: auto; }
+.kb-cf-pill-menu {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  min-width: 160px; background: var(--bg-elevated);
+  border: 1px solid var(--border); border-radius: 7px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  z-index: 9999; padding: 4px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.kb-cf-pill-menu-item {
+  padding: 5px 8px; border-radius: 5px; cursor: pointer;
+  font-size: 0.82rem;
+}
+.kb-cf-pill-menu-item:hover { background: var(--bg-hover); }
+.kb-cf-pill-menu-item.selected { background: rgba(59,130,246,0.12); }
+.kb-cf-pill-menu-empty { color: var(--text-faint); }
+
+/* CF color swatch in form */
+.kb-cf-color-swatch {
+  width: 18px; height: 18px; border-radius: 50%;
+  cursor: pointer; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.15);
+  transition: transform 0.1s;
+}
+.kb-cf-color-swatch:hover { transform: scale(1.2); }
+.kb-cf-color-palette {
+  position: absolute;
+  display: flex; flex-wrap: wrap; gap: 4px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  z-index: 9999; width: 160px;
+  margin-top: 24px;
+}
+.kb-cf-color-dot {
+  width: 20px; height: 20px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.kb-cf-color-dot:hover { transform: scale(1.15); }
+.kb-cf-color-dot.selected { border-color: rgba(255,255,255,0.8); }
