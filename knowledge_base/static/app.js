@@ -3370,12 +3370,9 @@ function _wireCtxBtn(ctxId, sourceId) {
     initEditCourseModal();
     initMoveLessonModal();
 
-    // Restore last active space — but never restore 'courses' on fresh load
-    // because the main panel starts at Home/welcome and would mismatch the sidebar.
-    let saved;
-    try { saved = sessionStorage.getItem('activeSpace'); } catch(e) {}
-    if (saved === 'courses') saved = 'knowledge';
-    switchSpace(saved || 'knowledge');
+    // Always start at knowledge on load — restoring graph/courses/etc. causes
+    // sidebar+main mismatch because the main panel always starts at Home.
+    switchSpace('knowledge');
   }
 
   if (document.readyState === 'loading') {
