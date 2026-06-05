@@ -4196,7 +4196,8 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
   _lessonMenuCleanup = close;
 
   menu.querySelectorAll('button[data-a]').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
       close();
       const action = btn.dataset.a;
       if (action === 'edit') {
@@ -4223,7 +4224,11 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
     });
   });
 
-  setTimeout(() => document.addEventListener('click', close, { once: true }), 0);
+  // Close on outside click — use mousedown so it fires before the button's click
+  const onOutside = e => {
+    if (!menu.contains(e.target)) { close(); document.removeEventListener('mousedown', onOutside); }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
 }
 
 // ── Course actions (⚙ menu) ───────────────────────────────────────────────
