@@ -117,20 +117,24 @@
         <nav class="tree" id="tree">
           <div class="tree-empty">No hay entradas aún.</div>
         </nav>
-        <div class="sidebar-section-label" id="coursesSectionLabel">CURSOS</div>
-        <nav class="tree" id="coursesTree">
-          <div class="tree-empty">No hay cursos aún.</div>
-        </nav>
       </div>
 
-      <!-- SPACE: COURSES (standalone view) -->
+      <!-- SPACE: COURSES -->
       <div class="sidebar-space" id="spaceCourses" style="display:none">
         <div class="sidebar-space-header">
           <span>Cursos</span>
+          <button class="ts-new-btn" id="newCourseBtn" title="Nuevo curso">+</button>
         </div>
-        <nav class="tree" id="coursesTree2">
+        <!-- Course cards list -->
+        <div id="courseCardsList">
           <div class="tree-empty">No hay cursos aún.</div>
-        </nav>
+        </div>
+        <!-- Course detail: modules tree (shown when a course is open) -->
+        <div id="courseDetail" style="display:none">
+          <button class="course-back-btn" id="courseBackBtn">← Cursos</button>
+          <div class="course-detail-header" id="courseDetailHeader"></div>
+          <nav class="tree" id="coursesTree"></nav>
+        </div>
       </div>
 
       <!-- SPACE: BOARDS -->
@@ -217,6 +221,30 @@
           <g id="graphNodes"></g>
         </svg>
         <div class="graph-tooltip hidden" id="graphTooltip"></div>
+      </div>
+
+      <!-- COURSE VIEW -->
+      <div class="course-view hidden" id="courseView">
+        <div class="cv-header" id="cvHeader">
+          <div class="cv-cover" id="cvCover"></div>
+          <div class="cv-meta">
+            <h1 class="cv-title" id="cvTitle"></h1>
+            <p class="cv-desc" id="cvDesc"></p>
+            <div class="cv-badges" id="cvBadges"></div>
+          </div>
+        </div>
+        <div class="cv-progress-bar-wrap" id="cvProgressWrap">
+          <div class="cv-progress-bar" id="cvProgressBar"></div>
+          <span class="cv-progress-label" id="cvProgressLabel"></span>
+        </div>
+        <nav class="cv-tabs" id="cvTabs">
+          <button class="cv-tab cv-tab--active" data-tab="roadmap">Roadmap</button>
+          <button class="cv-tab" data-tab="modules">Módulos</button>
+          <button class="cv-tab" data-tab="stats">Estadísticas</button>
+        </nav>
+        <div class="cv-body" id="cvBody">
+          <!-- populated by loadCourseView() -->
+        </div>
       </div>
 
       <!-- Entry cover banner (outside entry-view for full-width) -->
@@ -489,6 +517,41 @@
       <button class="btn-ghost" id="reviewPrev">← prev</button>
       <button class="btn-ghost" id="reviewStatusBtn">● pend</button>
       <button class="btn-ghost" id="reviewNext">next →</button>
+    </div>
+  </div>
+
+  <!-- NEW COURSE MODAL -->
+  <div class="modal-overlay hidden" id="newCourseOverlay">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h2>Nuevo Curso</h2>
+        <button class="modal-close" id="newCourseClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nombre del curso</label>
+          <input type="text" id="newCourseLabel" placeholder="Ej: Python Profesional" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>Descripción <span style="color:var(--text-faint);font-size:0.75rem">— opcional</span></label>
+          <textarea id="newCourseDesc" rows="2" placeholder="¿De qué trata este curso?"></textarea>
+        </div>
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label>Nivel</label>
+            <select id="newCourseLevel">
+              <option value="">— Seleccionar —</option>
+              <option value="beginner">Principiante</option>
+              <option value="intermediate">Intermedio</option>
+              <option value="advanced">Avanzado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="newCourseCancelBtn">Cancelar</button>
+        <button class="btn-primary" id="newCourseCreateBtn">Crear curso</button>
+      </div>
     </div>
   </div>
 

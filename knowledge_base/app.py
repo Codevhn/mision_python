@@ -1318,6 +1318,125 @@ def resolve_wikilink():
     return jsonify({"id": None})
 
 
+# ── COURSES ENTITY ─────────────────────────────────────────────────────────
+COURSES_FILE = DATA_DIR / "courses.json"
+
+def load_courses():
+    if COURSES_FILE.exists():
+        return json.loads(COURSES_FILE.read_text())
+    return {"courses": {}}
+
+def save_courses(data):
+    COURSES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+def _sync_courses_from_index():
+    """Auto-register any course slugs found in index.json that lack a courses.json entry."""
+    index   = load_index()
+    courses = load_courses()
+    changed = False
+    for meta in index.values():
+        if meta.get("type") != "course":
+            continue
+        slug  = meta.get("course", "")
+        label = meta.get("course_label", slug)
+        if slug and slug not in courses["courses"]:
+            courses["courses"][slug] = {
+                "id":          slug,
+                "label":       label,
+                "description": "",
+                "cover":       "",
+                "level":       "",
+                "created_at":  meta.get("created_at", datetime.utcnow().isoformat()),
+            }
+            changed = True
+    if changed:
+        save_courses(courses)
+    return courses
+
+
+@app.route("/api/courses", methods=["GET"])
+def list_courses():
+    courses = _sync_courses_from_index()
+    index   = load_index()
+    result  = []
+    for slug, c in courses["courses"].items():
+        entries = [m for m in index.values() if m.get("type") == "course" and m.get("course") == slug]
+        total   = len(entries)
+        done    = sum(1 for e in entries if e.get("status") == "completado")
+        modules = len({e.get("module") for e in entries})
+        result.append({**c, "entry_count": total, "done_count": done, "module_count": modules})
+    result.sort(key=lambda c: c.get("created_at", ""))
+    return jsonify(result)
+
+
+@app.route("/api/courses", methods=["POST"])
+def create_course():
+    body  = request.json or {}
+    label = body.get("label", "").strip()
+    if not label:
+        return jsonify({"error": "label is required"}), 400
+    slug  = slugify(label)
+    courses = load_courses()
+    if slug in courses["courses"]:
+        return jsonify({"error": "Course already exists", "id": slug}), 409
+    now = datetime.utcnow().isoformat()
+    courses["courses"][slug] = {
+        "id":          slug,
+        "label":       label,
+        "description": body.get("description", "").strip(),
+        "cover":       body.get("cover", "").strip(),
+        "level":       body.get("level", "").strip(),
+        "created_at":  now,
+    }
+    save_courses(courses)
+    return jsonify(courses["courses"][slug]), 201
+
+
+@app.route("/api/courses/<course_id>", methods=["PATCH"])
+def update_course(course_id):
+    courses = load_courses()
+    if course_id not in courses["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    for field in ("label", "description", "cover", "level"):
+        if field in body:
+            courses["courses"][course_id][field] = body[field]
+    save_courses(courses)
+    return jsonify(courses["courses"][course_id])
+
+
+@app.route("/api/courses/<course_id>", methods=["DELETE"])
+def delete_course(course_id):
+    courses = load_courses()
+    if course_id not in courses["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    del courses["courses"][course_id]
+    save_courses(courses)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/courses/<course_id>/stats", methods=["GET"])
+def course_stats(course_id):
+    index   = load_index()
+    entries = [m for m in index.values() if m.get("type") == "course" and m.get("course") == course_id]
+    total   = len(entries)
+    done    = sum(1 for e in entries if e.get("status") == "completado")
+    pending = sum(1 for e in entries if e.get("status") in ("pendiente", ""))
+    modules = {}
+    for e in entries:
+        mod = e.get("module", "")
+        if mod not in modules:
+            modules[mod] = {"label": e.get("module_label", mod), "total": 0, "done": 0}
+        modules[mod]["total"] += 1
+        if e.get("status") == "completado":
+            modules[mod]["done"] += 1
+    return jsonify({
+        "course_id": course_id, "total": total, "done": done,
+        "pending": pending, "pct": round(done / total * 100) if total else 0,
+        "modules": list(modules.values()),
+    })
+
+
 @app.route("/api/courses/tree")
 def get_courses_tree():
     index = load_index()

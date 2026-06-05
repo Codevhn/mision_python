@@ -375,9 +375,10 @@ async function loadTree() {
   const coursesTree    = await r2.json();
   const teamspaceTree  = await r3.json();
   _index = await r4.json();
+  _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
-  renderCoursesTree(coursesTree);
   renderTeamspaceTree(teamspaceTree);
+  renderCourseCards(); // sidebar course cards (async)
   // Restore starred section from starredMap
   renderStarredSection(
     Object.fromEntries(
@@ -522,17 +523,19 @@ function getFirstEntry(topics) {
   return {};
 }
 
-function renderCoursesTree(tree) {
+// renderCoursesTree now only renders when a course is open in detail view
+// The sidebar card list is handled by renderCourseCards()
+function renderCoursesTree(tree, filterSlug) {
   const nav = $("coursesTree");
-  const label = $("coursesSectionLabel");
-  if (Object.keys(tree).length === 0) {
-    nav.innerHTML = '<div class="tree-empty">No hay cursos aún.</div>';
-    label.style.display = "none";
+  if (!nav) return;
+  if (!filterSlug || Object.keys(tree).length === 0) {
+    nav.innerHTML = '<div class="tree-empty">No hay lecciones aún.</div>';
     return;
   }
-  label.style.display = "";
+  // Only render the selected course's modules
+  const filtered = filterSlug && tree[filterSlug] ? { [filterSlug]: tree[filterSlug] } : tree;
   nav.innerHTML = "";
-  for (const [courseSlug, courseData] of Object.entries(tree)) {
+  for (const [courseSlug, courseData] of Object.entries(filtered)) {
     if (!coursesTreeState[courseSlug]) coursesTreeState[courseSlug] = { open: true, modules: {} };
     const state = coursesTreeState[courseSlug];
 
@@ -1819,6 +1822,8 @@ function _refreshTopicDropdown(catLabel) {
 }
 
 let _coursesTree = {};
+let _coursesTreeData = {}; // full courses tree from /api/courses/tree
+let _activeCourseSlug = null;
 
 async function loadCourseSuggestions() {
   const res = await fetch("/api/courses/tree");
@@ -3315,7 +3320,11 @@ function _wireCtxBtn(ctxId, sourceId) {
       if (typeof renderGraph === 'function') renderGraph();
     } else {
       if (graphView) graphView.classList.add('hidden');
-      if (welcome)   welcome.style.display = '';
+      // Hide course view when switching away from courses
+      const courseView = document.getElementById('courseView');
+      if (courseView && space !== 'courses') courseView.classList.add('hidden');
+      // Restore welcome only if no entry is open
+      if (!currentEntryId && welcome) welcome.style.display = '';
     }
 
     // Update active state on activity bar buttons
@@ -3356,6 +3365,9 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (themeSidebar && themeMain) {
       themeSidebar.addEventListener('click', () => themeMain.click());
     }
+
+    // Courses space
+    initCoursesSpace();
 
     // Restore last active space or default to 'knowledge'
     let saved;
@@ -3737,4 +3749,245 @@ async function renderGraph() {
   }
 
   _graphRendered = true;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// COURSES SPACE — entities, cards, detail view, course view
+// ══════════════════════════════════════════════════════════════════════════
+
+const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
+
+// ── Sidebar: course cards list ────────────────────────────────────────────
+async function renderCourseCards() {
+  const list = $('courseCardsList');
+  if (!list) return;
+  let courses;
+  try { courses = await fetch('/api/courses').then(r => r.json()); }
+  catch { return; }
+
+  if (!courses.length) {
+    list.innerHTML = '<div class="tree-empty">No hay cursos aún.<br>Pulsa + para crear uno.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  courses.forEach(c => {
+    const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
+    const card = document.createElement('div');
+    card.className = 'course-card';
+    card.innerHTML = `
+      <div class="course-card-inner">
+        <div class="course-card-label">${escapeHtml(c.label)}</div>
+        <div class="course-card-meta">${c.module_count} módulos · ${c.entry_count} lecciones</div>
+        <div class="course-card-progress">
+          <div class="course-card-bar"><div class="course-card-bar-fill" style="width:${pct}%"></div></div>
+          <span class="course-card-pct">${pct}%</span>
+        </div>
+      </div>`;
+    card.addEventListener('click', () => openCourseDetail(c.id));
+    list.appendChild(card);
+  });
+}
+
+// ── Open course detail in sidebar + load course view in main ─────────────
+async function openCourseDetail(courseSlug) {
+  _activeCourseSlug = courseSlug;
+
+  // Sidebar: show detail panel, hide cards
+  const cardsList   = $('courseCardsList');
+  const detailPanel = $('courseDetail');
+  const backBtn     = $('courseBackBtn');
+  const header      = $('courseDetailHeader');
+  if (cardsList)   cardsList.style.display = 'none';
+  if (detailPanel) detailPanel.style.display = '';
+
+  // Load course entity
+  let courses;
+  try { courses = await fetch('/api/courses').then(r => r.json()); }
+  catch { courses = []; }
+  const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
+
+  if (header) {
+    header.innerHTML = `<span class="course-detail-name">${escapeHtml(course.label)}</span>`;
+  }
+
+  // Render modules tree for this course in sidebar
+  renderCoursesTree(_coursesTreeData, courseSlug);
+
+  // Show course view in main content
+  loadCourseView(courseSlug, course);
+}
+
+// ── Back to course list ───────────────────────────────────────────────────
+function closeCourseDetail() {
+  _activeCourseSlug = null;
+  const cardsList   = $('courseCardsList');
+  const detailPanel = $('courseDetail');
+  if (cardsList)   cardsList.style.display = '';
+  if (detailPanel) detailPanel.style.display = 'none';
+
+  // Hide course view, show home
+  const cv = $('courseView');
+  const welcome = $('welcome');
+  if (cv) cv.classList.add('hidden');
+  if (welcome) welcome.style.display = '';
+}
+
+// ── Main: Course View ─────────────────────────────────────────────────────
+async function loadCourseView(courseSlug, courseEntity) {
+  const cv = $('courseView');
+  const welcome = $('welcome');
+  const entryView = $('entryView');
+  const entryCover = $('entryCover');
+  if (!cv) return;
+
+  // Hide other main panels
+  if (welcome) welcome.style.display = 'none';
+  if (entryView) entryView.classList.add('hidden');
+  if (entryCover) entryCover.classList.add('hidden');
+  cv.classList.remove('hidden');
+
+  // Populate header
+  $('cvTitle').textContent = courseEntity.label || courseSlug;
+  $('cvDesc').textContent  = courseEntity.description || '';
+
+  // Cover
+  const cover = $('cvCover');
+  if (courseEntity.cover) {
+    cover.style.backgroundImage = `url(${courseEntity.cover})`;
+    cover.style.display = '';
+  } else {
+    cover.style.display = 'none';
+  }
+
+  // Badges
+  const badges = $('cvBadges');
+  badges.innerHTML = '';
+  if (courseEntity.level) {
+    const b = document.createElement('span');
+    b.className = 'cv-badge';
+    b.textContent = LEVEL_LABELS[courseEntity.level] || courseEntity.level;
+    badges.appendChild(b);
+  }
+  const countB = document.createElement('span');
+  countB.className = 'cv-badge cv-badge--muted';
+  countB.textContent = `${courseEntity.entry_count || 0} lecciones`;
+  badges.appendChild(countB);
+
+  // Load stats for progress bar
+  let stats;
+  try { stats = await fetch(`/api/courses/${courseSlug}/stats`).then(r => r.json()); }
+  catch { stats = { pct: 0, done: 0, total: 0 }; }
+
+  $('cvProgressBar').style.width = stats.pct + '%';
+  $('cvProgressLabel').textContent = `${stats.done} / ${stats.total} completadas · ${stats.pct}%`;
+
+  // Wire tabs
+  const tabs = cv.querySelectorAll('.cv-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('cv-tab--active'));
+      tab.classList.add('cv-tab--active');
+      renderCourseTab(tab.dataset.tab, courseSlug, stats);
+    });
+  });
+
+  // Default tab
+  renderCourseTab('roadmap', courseSlug, stats);
+}
+
+function renderCourseTab(tab, courseSlug, stats) {
+  const body = $('cvBody');
+  if (tab === 'roadmap') {
+    const tree = _coursesTreeData[courseSlug];
+    if (!tree) { body.innerHTML = '<p class="cv-empty">Sin módulos aún.</p>'; return; }
+    body.innerHTML = '';
+    const modules = Object.values(tree.modules || {});
+    modules.forEach((mod, mi) => {
+      const section = document.createElement('div');
+      section.className = 'cv-roadmap-section';
+      section.innerHTML = `<div class="cv-roadmap-module">
+        <span class="cv-roadmap-mod-num">M${mi + 1}</span>
+        <span class="cv-roadmap-mod-label">${escapeHtml(mod.label)}</span>
+        <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
+      </div>`;
+      const entries = document.createElement('div');
+      entries.className = 'cv-roadmap-entries';
+      (mod.entries || []).forEach(e => {
+        const row = document.createElement('div');
+        row.className = `cv-roadmap-entry cv-roadmap-entry--${e.status || 'pendiente'}`;
+        row.innerHTML = `
+          <span class="cv-roadmap-status">${e.status === 'completado' ? '✓' : e.status === 'en_progreso' ? '→' : '○'}</span>
+          <span class="cv-roadmap-entry-title">${escapeHtml(e.title)}</span>`;
+        row.addEventListener('click', () => loadEntry(e.id));
+        entries.appendChild(row);
+      });
+      section.appendChild(entries);
+      body.appendChild(section);
+    });
+  } else if (tab === 'modules') {
+    // Same as roadmap but more compact tree style
+    body.innerHTML = '<div class="cv-modules-note">Selecciona una lección del panel izquierdo.</div>';
+  } else if (tab === 'stats') {
+    body.innerHTML = `
+      <div class="cv-stats-grid">
+        <div class="cv-stat-card"><div class="cv-stat-num">${stats.total}</div><div class="cv-stat-lbl">Lecciones</div></div>
+        <div class="cv-stat-card"><div class="cv-stat-num">${stats.done}</div><div class="cv-stat-lbl">Completadas</div></div>
+        <div class="cv-stat-card"><div class="cv-stat-num">${stats.pending}</div><div class="cv-stat-lbl">Pendientes</div></div>
+        <div class="cv-stat-card"><div class="cv-stat-num">${stats.pct}%</div><div class="cv-stat-lbl">Progreso</div></div>
+      </div>
+      <div class="cv-stats-modules">
+        ${(stats.modules || []).map(m => `
+          <div class="cv-stats-mod-row">
+            <span class="cv-stats-mod-label">${escapeHtml(m.label)}</span>
+            <div class="cv-stats-mod-bar">
+              <div class="cv-stats-mod-fill" style="width:${m.total ? Math.round(m.done/m.total*100) : 0}%"></div>
+            </div>
+            <span class="cv-stats-mod-pct">${m.done}/${m.total}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+}
+
+// ── New course modal ──────────────────────────────────────────────────────
+function initCoursesSpace() {
+  const newBtn    = $('newCourseBtn');
+  const overlay   = $('newCourseOverlay');
+  const closeBtn  = $('newCourseClose');
+  const cancelBtn = $('newCourseCancelBtn');
+  const createBtn = $('newCourseCreateBtn');
+  const backBtn   = $('courseBackBtn');
+
+  if (newBtn)    newBtn.addEventListener('click', () => overlay && overlay.classList.remove('hidden'));
+  if (closeBtn)  closeBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
+  if (cancelBtn) cancelBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
+  if (backBtn)   backBtn.addEventListener('click', closeCourseDetail);
+
+  if (createBtn) {
+    createBtn.addEventListener('click', async () => {
+      const label = ($('newCourseLabel') || {}).value?.trim();
+      if (!label) { showToast('El nombre es obligatorio', 'error'); return; }
+      const body = {
+        label,
+        description: ($('newCourseDesc') || {}).value?.trim() || '',
+        level:       ($('newCourseLevel') || {}).value || '',
+      };
+      const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        overlay.classList.add('hidden');
+        if ($('newCourseLabel')) $('newCourseLabel').value = '';
+        if ($('newCourseDesc'))  $('newCourseDesc').value  = '';
+        await renderCourseCards();
+        showToast(`Curso "${label}" creado`);
+      } else if (res.status === 409) {
+        showToast('Ya existe un curso con ese nombre', 'error');
+      } else {
+        showToast('Error al crear el curso', 'error');
+      }
+    });
+  }
 }
