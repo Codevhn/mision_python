@@ -3878,7 +3878,7 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
     <button data-action="duplicate">Duplicar</button>
     <button data-action="delete" class="danger">Eliminar curso</button>`;
   const rect = anchor.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 120}px;z-index:9999`;
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 130}px;width:168px;z-index:9999`;
   document.body.appendChild(menu);
   _courseGearMenuEl = menu;
   menu.querySelectorAll('button[data-action]').forEach(btn => {

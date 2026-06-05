@@ -6088,13 +6088,14 @@ body[data-accent="slate"] {
 .course-actions-menu {
   position: absolute; right: 0; top: 100%; z-index: 200;
   background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: var(--radius); min-width: 160px; padding: 4px 0;
+  border-radius: var(--radius); width: 168px; padding: 4px 0;
   box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
+/* When appended to body (fixed positioning), same width must be set inline via JS */
 .course-actions-menu button {
   display: block; width: 100%; text-align: left; padding: 7px 14px;
   background: none; border: none; color: var(--text); font-size: 0.78rem;
-  cursor: pointer;
+  cursor: pointer; white-space: nowrap;
 }
 .course-actions-menu button:hover { background: var(--bg-hover); color: var(--accent); }
 .course-actions-menu button.danger { color: #f87171; }
