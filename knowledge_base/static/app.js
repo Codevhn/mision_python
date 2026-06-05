@@ -317,16 +317,18 @@ function autoExtractTitle() {
 function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
-  $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = saved === "dark" ? "[L]" : "[D]";
+  const t = $("themeToggle"); if (t) t.textContent = "◐";
+  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
+  if (abIcon) abIcon.textContent = "◐";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
-  $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = next === "dark" ? "[L]" : "[D]";
+  const t = $("themeToggle"); if (t) t.textContent = "◐";
+  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
+  if (abIcon) abIcon.textContent = "◐";
 }
 
 // ---- SIDEBAR ----
