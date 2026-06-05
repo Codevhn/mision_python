@@ -5952,3 +5952,6 @@ body[data-accent="red"] {
 .cv-stats-mod-pct { font-size: 0.68rem; color: var(--text-faint); min-width: 36px; text-align: right; }
 
 .cv-modules-note { color: var(--text-faint); font-size: 0.82rem; padding: 20px 0; }
+
+/* Hide type-tabs in new-entry mode */
+#modal.modal--new-mode .entry-type-toggle { display: none !important; }

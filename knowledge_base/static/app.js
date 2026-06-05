@@ -144,7 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function bindEvents() {
-  $("newEntryBtn").addEventListener("click", openNewModal);
+  $("newEntryBtn").addEventListener("click", handleNewEntryTopbar);
+  // Knowledge sidebar + button
+  const sidebarNewBtn = $("newEntryBtnSidebar");
+  if (sidebarNewBtn) sidebarNewBtn.addEventListener("click", openNewModal);
   // newTeamspaceEntryBtn is now handled by openNewTeamspaceModal defined below
   // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
@@ -1361,10 +1364,12 @@ function openNewModal() {
   $("saveBtn").dataset.mode = "new";
   $("saveBtn").dataset.id = "";
   $("saveBtn").textContent = "Guardar entrada";
+  // Mark modal as new-mode so CSS hides the type tabs
+  $("modal").classList.add("modal--new-mode");
   $("modalOverlay").classList.remove("hidden");
   // Reset template chips
   document.querySelectorAll(".template-chip").forEach(c => c.classList.remove("active"));
-  // Reset to knowledge mode
+  // Force knowledge mode
   if (window._setModalMode) window._setModalMode("knowledge");
   document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
   $("knowledgeFields").classList.remove("hidden");
@@ -1436,6 +1441,7 @@ async function openEditModal() {
 
 function closeModal() {
   $("modalOverlay").classList.add("hidden");
+  $("modal").classList.remove("modal--new-mode");
   // Restore content section (hidden during metadata-only edit)
   const contentGroup = $("blockEditorWrap")?.closest(".form-group");
   if (contentGroup) contentGroup.style.display = "";
@@ -3368,6 +3374,7 @@ function _wireCtxBtn(ctxId, sourceId) {
 
     // Courses space
     initCoursesSpace();
+    initLessonModal();
 
     // Restore last active space or default to 'knowledge'
     let saved;
@@ -3949,6 +3956,120 @@ function renderCourseTab(tab, courseSlug, stats) {
   }
 }
 
+// ── Contextual "+" topbar button ─────────────────────────────────────────
+function handleNewEntryTopbar() {
+  const space = sessionStorage.getItem('activeSpace') || 'knowledge';
+  if (space === 'courses') {
+    if (_activeCourseSlug) {
+      openNewLessonModal(_activeCourseSlug);
+    } else {
+      const overlay = $('newCourseOverlay');
+      if (overlay) overlay.classList.remove('hidden');
+    }
+  } else if (space === 'boards') {
+    if (window.KanbanApp && KanbanApp.showCreateBoard) KanbanApp.showCreateBoard();
+  } else if (space === 'teamspace') {
+    if (window.openNewTeamspaceModal) openNewTeamspaceModal();
+  } else {
+    openNewModal();
+  }
+}
+
+// ── Single source of truth for active course ─────────────────────────────
+function setActiveCourse(slug) {
+  _activeCourseSlug = slug;
+  if (slug) {
+    openCourseDetail(slug);
+  } else {
+    closeCourseDetail();
+  }
+}
+
+// ── Lesson modal ──────────────────────────────────────────────────────────
+function openNewLessonModal(courseSlug) {
+  const overlay = $('newLessonOverlay');
+  if (!overlay) return;
+  const courseField = $('lessonCourseField');
+  if (courseField) courseField.value = courseSlug;
+  // Pre-populate module dropdown from tree
+  const moduleInput = $('lessonModuleField');
+  if (moduleInput) {
+    moduleInput.value = '';
+    _populateLessonModuleDropdown(courseSlug, '');
+    moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
+  }
+  if ($('lessonTitleField')) $('lessonTitleField').value = '';
+  if ($('lessonContentField')) $('lessonContentField').value = '';
+  overlay.classList.remove('hidden');
+  setTimeout(() => $('lessonModuleField')?.focus(), 60);
+}
+
+function _populateLessonModuleDropdown(courseSlug, filter) {
+  const dropdown = $('lessonModuleDropdown');
+  if (!dropdown) return;
+  const courseTree = _coursesTreeData[courseSlug];
+  const modules = courseTree ? Object.keys(courseTree) : [];
+  const f = filter.trim().toLowerCase();
+  const matches = modules.filter(m => !f || m.toLowerCase().includes(f));
+  if (!matches.length) { dropdown.classList.add('hidden'); return; }
+  dropdown.innerHTML = matches.map(m =>
+    `<div class="smart-select-option" data-value="${escapeHtml(m)}">${escapeHtml(m)}</div>`
+  ).join('');
+  dropdown.classList.remove('hidden');
+  dropdown.querySelectorAll('.smart-select-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      if ($('lessonModuleField')) $('lessonModuleField').value = opt.dataset.value;
+      dropdown.classList.add('hidden');
+    });
+  });
+}
+
+function initLessonModal() {
+  const overlay   = $('newLessonOverlay');
+  const closeBtn  = $('newLessonClose');
+  const cancelBtn = $('newLessonCancelBtn');
+  const createBtn = $('newLessonCreateBtn');
+  if (!overlay) return;
+
+  const _close = () => overlay.classList.add('hidden');
+  if (closeBtn)  closeBtn.addEventListener('click', _close);
+  if (cancelBtn) cancelBtn.addEventListener('click', _close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+
+  if (createBtn) {
+    createBtn.addEventListener('click', async () => {
+      const courseSlug = ($('lessonCourseField') || {}).value?.trim();
+      const module     = ($('lessonModuleField') || {}).value?.trim();
+      const title      = ($('lessonTitleField') || {}).value?.trim();
+      const content    = ($('lessonContentField') || {}).value?.trim() || '---';
+      if (!courseSlug || !module || !title) {
+        showToast('Completa los campos obligatorios', 'error'); return;
+      }
+      // Resolve display label for course from courses list
+      let courseLabel = courseSlug;
+      try {
+        const cList = await fetch('/api/courses').then(r => r.json());
+        const c = cList.find(x => x.id === courseSlug);
+        if (c) courseLabel = c.label;
+      } catch {}
+      const res = await fetch('/api/courses/entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ course: courseLabel, module, title, raw_text: content }),
+      });
+      if (res.ok) {
+        _close();
+        showToast(`Lección "${title}" creada`);
+        await loadTree();
+        renderCoursesTree(_coursesTreeData, courseSlug);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Error al crear la lección', 'error');
+      }
+    });
+  }
+}
+
 // ── New course modal ──────────────────────────────────────────────────────
 function initCoursesSpace() {
   const newBtn    = $('newCourseBtn');
@@ -3958,10 +4079,16 @@ function initCoursesSpace() {
   const createBtn = $('newCourseCreateBtn');
   const backBtn   = $('courseBackBtn');
 
-  if (newBtn)    newBtn.addEventListener('click', () => overlay && overlay.classList.remove('hidden'));
+  if (newBtn)    newBtn.addEventListener('click', () => {
+    if (_activeCourseSlug) {
+      openNewLessonModal(_activeCourseSlug);
+    } else {
+      overlay && overlay.classList.remove('hidden');
+    }
+  });
   if (closeBtn)  closeBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
   if (cancelBtn) cancelBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
-  if (backBtn)   backBtn.addEventListener('click', closeCourseDetail);
+  if (backBtn)   backBtn.addEventListener('click', () => setActiveCourse(null));
 
   if (createBtn) {
     createBtn.addEventListener('click', async () => {

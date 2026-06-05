@@ -1480,6 +1480,9 @@ def create_course_entry():
     if not all([course, module, title, raw]):
         return jsonify({"error": "Faltan campos"}), 400
     course_slug = slugify(course)
+    courses_data = load_courses()
+    if course_slug not in courses_data["courses"]:
+        return jsonify({"error": f"El curso '{course}' no existe. Crea la entidad curso primero."}), 400
     module_slug = slugify(module)
     entry_id    = slugify(title)
     index = load_index()
