@@ -6031,19 +6031,22 @@ body[data-accent="red"] {
 }
 .cv-status-btn:hover { background: var(--bg-hover); }
 .cv-lesson-actions {
-  margin-left: auto; display: flex; align-items: center; gap: 2px;
+  margin-left: auto; display: flex; align-items: center; gap: 4px;
   opacity: 0; transition: opacity .15s;
 }
 .cv-roadmap-entry:hover .cv-lesson-actions { opacity: 1; }
 .cv-lesson-up, .cv-lesson-down, .cv-lesson-menu-btn {
-  background: none; border: 1px solid transparent; border-radius: 3px;
-  color: var(--text-muted); cursor: pointer; font-size: 0.72rem;
-  padding: 1px 4px; line-height: 1.4;
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-muted); cursor: pointer; font-size: 0.82rem;
+  padding: 3px 8px; line-height: 1.5; min-width: 28px; text-align: center;
 }
-.cv-lesson-up:hover, .cv-lesson-down:hover, .cv-lesson-menu-btn:hover {
+.cv-lesson-up:hover, .cv-lesson-down:hover {
+  border-color: var(--accent); color: var(--accent); background: var(--bg-hover);
+}
+.cv-lesson-menu-btn:hover {
   border-color: var(--border); background: var(--bg-hover); color: var(--text);
 }
-.cv-lesson-up:disabled, .cv-lesson-down:disabled { opacity: .25; cursor: default; }
+.cv-lesson-up:disabled, .cv-lesson-down:disabled { opacity: .2; cursor: default; }
 .cv-lesson-dropdown {
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: var(--radius); min-width: 160px; padding: 4px 0;
