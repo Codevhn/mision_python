@@ -3759,47 +3759,89 @@ async function renderGraph() {
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
 
 // ── Sidebar: course cards list ────────────────────────────────────────────
-let _showArchivedCourses = false;
 async function renderCourseList() {
   const list = $('courseList');
   if (!list) return;
-  const url = _showArchivedCourses ? '/api/courses?archived=1' : '/api/courses';
-  let courses;
-  try { courses = await fetch(url).then(r => r.json()); }
+  let allCourses;
+  try { allCourses = await fetch('/api/courses?archived=1').then(r => r.json()); }
   catch { return; }
 
-  list.innerHTML = '';
+  const active   = allCourses.filter(c => !c.archived);
+  const archived = allCourses.filter(c => c.archived);
 
-  if (!courses.length) {
+  // Render active courses
+  list.innerHTML = '';
+  if (!active.length) {
     const empty = document.createElement('div');
     empty.className = 'tree-empty';
-    empty.textContent = _showArchivedCourses ? 'No hay cursos archivados.' : 'No hay cursos aún. Pulsa + para crear uno.';
+    empty.textContent = 'No hay cursos aún. Pulsa + para crear uno.';
     list.appendChild(empty);
   } else {
-    courses.forEach(c => {
+    active.forEach(c => {
       const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
+      const isActive = c.id === _activeCourseSlug;
       const item = document.createElement('div');
-      item.className = 'course-list-item' +
-        (c.id === _activeCourseSlug ? ' active' : '') +
-        (c.archived ? ' archived' : '');
+      item.className = 'course-list-item' + (isActive ? ' active' : '');
       item.dataset.courseId = c.id;
       item.innerHTML = `
-        <span class="course-list-name">${escapeHtml(c.label)}${c.archived ? ' <span class="course-archived-badge">arch.</span>' : ''}</span>
+        <div class="course-list-row">
+          <span class="course-list-name">${escapeHtml(c.label)}</span>
+          ${isActive ? `<button class="course-list-gear" title="Acciones">⚙</button>` : ''}
+        </div>
         <div class="course-list-bar"><div class="course-list-bar-fill" style="width:${pct}%"></div></div>`;
-      item.addEventListener('click', () => setActiveCourse(c.id));
+      item.addEventListener('click', e => {
+        if (e.target.closest('.course-list-gear')) return;
+        setActiveCourse(c.id);
+      });
+      if (isActive) {
+        item.querySelector('.course-list-gear').addEventListener('click', async e => {
+          e.stopPropagation();
+          let courses2;
+          try { courses2 = await fetch('/api/courses').then(r => r.json()); } catch { courses2 = []; }
+          const entity = courses2.find(x => x.id === c.id) || c;
+          _openCourseGearMenu(e.currentTarget, c.id, entity);
+        });
+      }
       list.appendChild(item);
     });
   }
 
-  // Archive toggle at the bottom
-  const toggleRow = document.createElement('div');
-  toggleRow.className = 'course-archive-toggle';
-  toggleRow.innerHTML = `<button>${_showArchivedCourses ? '— Ocultar archivados' : '+ Mostrar archivados'}</button>`;
-  toggleRow.querySelector('button').addEventListener('click', () => {
-    _showArchivedCourses = !_showArchivedCourses;
-    renderCourseList();
-  });
-  list.appendChild(toggleRow);
+  // Render archived section (outside main scroll)
+  const archivedSection = $('courseArchivedSection');
+  const archivedList    = $('courseArchivedList');
+  const archivedToggle  = $('courseArchivedToggle');
+  if (!archivedSection) return;
+
+  if (!archived.length) {
+    archivedSection.style.display = 'none';
+    return;
+  }
+  archivedSection.style.display = '';
+  archivedToggle.textContent = `▸ Archivados (${archived.length})`;
+
+  // Rebuild archived list when visible
+  const rebuildArchived = () => {
+    archivedList.innerHTML = '';
+    archived.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'course-list-item archived' + (c.id === _activeCourseSlug ? ' active' : '');
+      item.dataset.courseId = c.id;
+      item.innerHTML = `<span class="course-list-name">${escapeHtml(c.label)}</span>`;
+      item.addEventListener('click', () => setActiveCourse(c.id));
+      archivedList.appendChild(item);
+    });
+  };
+
+  // Wire toggle only once
+  if (!archivedToggle.dataset.wired) {
+    archivedToggle.dataset.wired = '1';
+    archivedToggle.addEventListener('click', () => {
+      const open = archivedList.style.display !== 'none';
+      archivedList.style.display = open ? 'none' : '';
+      archivedToggle.textContent = `${open ? '▸' : '▾'} Archivados (${archived.length})`;
+      if (!open) rebuildArchived();
+    });
+  }
 }
 
 // ── Open course detail in sidebar + load course view in main ─────────────
@@ -3807,49 +3849,46 @@ async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
 
   const detailPanel = $('courseDetail');
-  const header      = $('courseDetailHeader');
   if (detailPanel) detailPanel.style.display = '';
-
-  // Mark active item in course list
-  document.querySelectorAll('.course-list-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.courseId === courseSlug);
-  });
 
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
   catch { courses = []; }
   const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
 
-  if (header) {
-    header.innerHTML = `
-      <span class="course-detail-name">${escapeHtml(course.label)}</span>
-      <div class="course-actions-wrap">
-        <button class="course-gear-btn" id="courseGearBtn" title="Acciones del curso">⚙</button>
-        <div class="course-actions-menu hidden" id="courseActionsMenu">
-          <button data-action="edit">Editar curso</button>
-          <button data-action="archive">${course.archived ? 'Desarchivar' : 'Archivar'}</button>
-          <button data-action="duplicate">Duplicar</button>
-          <button data-action="delete" class="danger">Eliminar curso</button>
-        </div>
-      </div>`;
-    // Wire gear menu
-    const gearBtn = header.querySelector('#courseGearBtn');
-    const menu    = header.querySelector('#courseActionsMenu');
-    gearBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      menu.classList.toggle('hidden');
-    });
-    document.addEventListener('click', () => menu.classList.add('hidden'), { once: true });
-    menu.querySelectorAll('button[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        menu.classList.add('hidden');
-        handleCourseAction(btn.dataset.action, courseSlug, course);
-      });
-    });
-  }
+  // Re-render course list so the active item gets the ⚙ gear
+  await renderCourseList();
 
   renderCoursesTree(_coursesTreeData, courseSlug);
   loadCourseView(courseSlug, course);
+}
+
+// ── Gear menu for active course (shown inside courseList item) ────────────
+let _courseGearMenuEl = null;
+function _openCourseGearMenu(anchor, courseSlug, course) {
+  _courseGearMenuEl?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'course-actions-menu';
+  menu.innerHTML = `
+    <button data-action="edit">Editar curso</button>
+    <button data-action="archive">${course.archived ? 'Desarchivar' : 'Archivar'}</button>
+    <button data-action="duplicate">Duplicar</button>
+    <button data-action="delete" class="danger">Eliminar curso</button>`;
+  const rect = anchor.getBoundingClientRect();
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 120}px;z-index:9999`;
+  document.body.appendChild(menu);
+  _courseGearMenuEl = menu;
+  menu.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.remove(); _courseGearMenuEl = null;
+      handleCourseAction(btn.dataset.action, courseSlug, course);
+    });
+  });
+  const onOutside = e => {
+    if (!menu.contains(e.target)) { menu.remove(); _courseGearMenuEl = null; document.removeEventListener('mousedown', onOutside); }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
 }
 
 // ── Deactivate course detail ──────────────────────────────────────────────
@@ -4068,21 +4107,21 @@ function renderCourseTab(tab, courseSlug, stats) {
       card.querySelector('.cv-mod-add-btn').addEventListener('click', () => {
         openNewLessonModal(courseSlug, mod.label);
       });
-      // Rename module
-      card.querySelector('.cv-mod-rename-btn').addEventListener('click', async () => {
-        const newName = prompt(`Renombrar módulo "${mod.label}":`, mod.label);
-        if (!newName || newName.trim() === mod.label) return;
-        const r = await fetch(`/api/courses/${courseSlug}/module/${modSlug}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label: newName.trim() }),
+      // Rename module — custom modal
+      card.querySelector('.cv-mod-rename-btn').addEventListener('click', () => {
+        openRenameModuleModal(mod.label, async newName => {
+          const r = await fetch(`/api/courses/${courseSlug}/module/${modSlug}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: newName }),
+          });
+          if (r.ok) {
+            showToast(`Módulo renombrado a "${newName}"`);
+            await _reloadCourseView(courseSlug, 'modules');
+          } else {
+            showToast('Error al renombrar', 'error');
+          }
         });
-        if (r.ok) {
-          showToast(`Módulo renombrado a "${newName.trim()}"`);
-          await _reloadCourseView(courseSlug, 'modules');
-        } else {
-          showToast('Error al renombrar', 'error');
-        }
       });
       // Delete module
       card.querySelector('.cv-mod-delete-btn').addEventListener('click', async () => {
@@ -4272,6 +4311,26 @@ async function handleCourseAction(action, courseSlug, courseEntity) {
       showToast('Error al eliminar', 'error');
     }
   }
+}
+
+function openRenameModuleModal(currentLabel, onConfirm) {
+  const overlay = $('renameModuleOverlay');
+  const input   = $('renameModuleInput');
+  if (!overlay || !input) return;
+  input.value = currentLabel;
+  overlay.classList.remove('hidden');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+  const close = () => overlay.classList.add('hidden');
+  const confirm = async () => {
+    const val = input.value.trim();
+    if (!val || val === currentLabel) { close(); return; }
+    close();
+    await onConfirm(val);
+  };
+  $('renameModuleClose').onclick   = close;
+  $('renameModuleCancel').onclick  = close;
+  $('renameModuleConfirm').onclick = confirm;
+  input.onkeydown = e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') close(); };
 }
 
 let _editingCourseSlug = null;

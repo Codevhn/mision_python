@@ -129,12 +129,14 @@
         <div id="courseList">
           <div class="tree-empty">No hay cursos aún.</div>
         </div>
+        <!-- Archived courses section — outside scroll, always at bottom -->
+        <div id="courseArchivedSection" style="display:none">
+          <button class="course-archived-toggle" id="courseArchivedToggle">▸ Archivados</button>
+          <div id="courseArchivedList" style="display:none"></div>
+        </div>
         <!-- Divider + active course detail — only when a course is open -->
         <div id="courseDetail" style="display:none">
           <div class="course-list-divider"></div>
-          <div class="course-detail-header" id="courseDetailHeader">
-            <!-- populated by openCourseDetail() — includes ⚙ menu -->
-          </div>
           <nav class="tree" id="coursesTree"></nav>
         </div>
       </div>
@@ -626,6 +628,26 @@
       <div class="modal-footer">
         <button class="btn-ghost" id="editCourseCancelBtn">Cancelar</button>
         <button class="btn-primary" id="editCourseSaveBtn">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Renombrar módulo -->
+  <div class="modal-overlay hidden" id="renameModuleOverlay">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-header">
+        <h2>Renombrar módulo</h2>
+        <button class="modal-close" id="renameModuleClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nombre del módulo</label>
+          <input type="text" id="renameModuleInput" placeholder="Ej: Módulo 1" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="renameModuleCancel">Cancelar</button>
+        <button class="btn-primary" id="renameModuleConfirm">Guardar</button>
       </div>
     </div>
   </div>

@@ -5827,11 +5827,7 @@ body[data-accent="red"] {
   transition: color 0.12s;
 }
 .course-back-btn:hover { color: var(--accent); }
-.course-detail-header { padding: 10px 14px 4px; }
-.course-detail-name {
-  font-size: 0.8rem; font-weight: 700; color: var(--accent);
-  font-family: var(--font-ui);
-}
+.course-detail-header { padding: 0; }
 
 /* ── Main: Course View ─────────────────────────────────────────────────── */
 .course-view {
@@ -6002,21 +5998,18 @@ body[data-accent="red"] {
 .course-actions-menu button.danger { color: #f87171; }
 .course-actions-menu button.danger:hover { background: rgba(248,113,113,.1); }
 
-/* ── Archive toggle & badge ─────────────────────────────────────── */
-.course-archive-toggle {
-  padding: 4px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px;
+/* ── Archived courses section (outside main scroll) ─────────────── */
+#courseArchivedSection {
+  border-top: 1px solid var(--border); margin-top: 4px; flex-shrink: 0;
 }
-.course-archive-toggle button {
-  background: none; border: none; font-size: 0.7rem; color: var(--text-faint);
-  cursor: pointer; padding: 0;
+.course-archived-toggle {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; padding: 5px 12px;
+  font-size: 0.7rem; color: var(--text-faint); cursor: pointer;
+  font-family: var(--font-ui);
 }
-.course-archive-toggle button:hover { color: var(--accent); }
-.course-card--archived { opacity: .55; }
-.course-archived-badge {
-  font-size: 0.6rem; background: var(--bg-elevated); color: var(--text-faint);
-  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
-  vertical-align: middle; margin-left: 4px;
-}
+.course-archived-toggle:hover { color: var(--text-muted); }
+#courseArchivedList .course-list-item .course-list-name { opacity: .55; }
 
 /* ── Roadmap — status button & lesson actions ───────────────────── */
 .cv-status-btn {
@@ -6103,12 +6096,22 @@ body[data-accent="red"] {
   border-left: 2px solid var(--accent);
   padding-left: 10px;
 }
+.course-list-row {
+  display: flex; align-items: center; gap: 4px; min-width: 0;
+}
 .course-list-name {
   font-size: 0.78rem; color: var(--text); font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0;
 }
 .course-list-item.active .course-list-name { color: var(--accent); }
-.course-list-item.archived .course-list-name { opacity: .5; }
+.course-list-gear {
+  flex-shrink: 0; background: none; border: none; padding: 0 2px;
+  font-size: 0.75rem; color: var(--text-faint); cursor: pointer; line-height: 1;
+  opacity: 0; transition: opacity .12s;
+}
+.course-list-item.active:hover .course-list-gear { opacity: 1; }
+.course-list-item.active .course-list-gear:hover { color: var(--accent); }
 .course-list-bar {
   height: 2px; background: var(--border); border-radius: 1px; overflow: hidden;
 }
