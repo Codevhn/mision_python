@@ -4685,14 +4685,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 #abTeamspace.ab-item--active::before { background: #10b981 !important; }
 #abGraph.ab-item--active::before     { background: #06b6d4 !important; }
 
-/* ── Toggle button ── */
-.ab-sidebar-toggle { margin-bottom: 8px; }
-.ab-toggle-icon {
-  display: inline-block;
-  transition: transform 0.25s ease;
-  font-size: 1.1rem;
-}
-body.sidebar-expanded .ab-toggle-icon { transform: scaleX(-1); }
 
 /* ── Expanded state ── */
 body.sidebar-expanded .activity-bar {

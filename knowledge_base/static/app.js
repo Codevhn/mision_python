@@ -3343,14 +3343,6 @@ function _wireCtxBtn(ctxId, sourceId) {
       btn.addEventListener('click', () => switchSpace(btn.dataset.space));
     });
 
-    // Brand → navigate home
-    const abBrand = document.getElementById('abBrand');
-    if (abBrand) {
-      abBrand.addEventListener('click', () => {
-        const wsHome = document.getElementById('wsHome');
-        if (wsHome) wsHome.click();
-      });
-    }
 
     // Search icon → Command Palette
     const abSearch = document.getElementById('abSearch');
@@ -4682,25 +4674,33 @@ function initCoursesSpace() {
   }
 }
 
-// ── Sidebar expand/collapse toggle ───────────────────────────────────────
+// ── Sidebar auto-expand on hover ─────────────────────────────────────────
 (function initSidebarToggle() {
   function init() {
-    const btn = document.getElementById('abSidebarToggle');
-    if (!btn) return;
-    // Restore saved state
-    try {
-      if (localStorage.getItem('sidebarExpanded') === '1') {
-        document.body.classList.add('sidebar-expanded');
-        const icon = btn.querySelector('.ab-toggle-icon');
-        if (icon) icon.textContent = '‹';
-      }
-    } catch(e) {}
-    btn.addEventListener('click', () => {
-      const expanded = document.body.classList.toggle('sidebar-expanded');
-      const icon = btn.querySelector('.ab-toggle-icon');
-      if (icon) icon.textContent = expanded ? '‹' : '›';
-      try { localStorage.setItem('sidebarExpanded', expanded ? '1' : '0'); } catch(e) {}
+    const bar = document.getElementById('activityBar');
+    if (!bar) return;
+    let leaveTimer = null;
+    bar.addEventListener('mouseenter', () => {
+      clearTimeout(leaveTimer);
+      document.body.classList.add('sidebar-expanded');
     });
+    bar.addEventListener('mouseleave', () => {
+      leaveTimer = setTimeout(() => {
+        document.body.classList.remove('sidebar-expanded');
+      }, 120);
+    });
+
+    // ⌂ Brand: go to home (show welcome, switch to knowledge space)
+    const abBrand = document.getElementById('abBrand');
+    if (abBrand) {
+      abBrand.addEventListener('click', () => {
+        if (window.switchSpace) window.switchSpace('knowledge');
+        const welcome = document.getElementById('welcome');
+        if (welcome) welcome.style.display = '';
+        const entryView = document.getElementById('entryView');
+        if (entryView) entryView.classList.add('hidden');
+      });
+    }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
