@@ -3297,32 +3297,33 @@ function _wireCtxBtn(ctxId, sourceId) {
       if (panel) panel.style.display = s === space ? '' : 'none';
     });
 
-    // Graph view: show/hide main graph panel and hide welcome/entry
-    const graphView = document.getElementById('graphView');
-    const welcome   = document.getElementById('welcome');
-    const entryView = document.getElementById('entryView');
+    // Always hide ALL main panels first, then selectively show the right one
+    const graphView  = document.getElementById('graphView');
+    const courseView = document.getElementById('courseView');
+    const kanbanArea = document.getElementById('kanbanArea');
+    const entryView  = document.getElementById('entryView');
     const entryCover = document.getElementById('entryCover');
+    const entryAddCover = document.getElementById('entryAddCover');
+    const welcome    = document.getElementById('welcome');
+
+    if (graphView)     graphView.classList.add('hidden');
+    if (courseView)    courseView.classList.add('hidden');
+    if (kanbanArea)    kanbanArea.classList.add('hidden');
+    if (entryView)     entryView.classList.add('hidden');
+    if (entryCover)    entryCover.classList.add('hidden');
+    if (entryAddCover) entryAddCover.classList.add('hidden');
+    if (welcome)       welcome.style.display = 'none';
+
     if (space === 'graph') {
-      if (graphView)  graphView.classList.remove('hidden');
-      if (welcome)    welcome.style.display = 'none';
-      if (entryView)  entryView.classList.add('hidden');
-      if (entryCover) entryCover.classList.add('hidden');
+      if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
+    } else if (space === 'courses' && _activeCourseSlug) {
+      // Active course — course view is shown by loadCourseView, welcome stays hidden
+      if (courseView) courseView.classList.remove('hidden');
     } else {
-      if (graphView) graphView.classList.add('hidden');
-      const courseView = document.getElementById('courseView');
-      if (space !== 'courses') {
-        // Leaving courses: hide course view
-        if (courseView) courseView.classList.add('hidden');
-      }
-      if (space === 'courses' && !_activeCourseSlug) {
-        // Entered courses with no active course: show welcome, hide entry view
-        if (courseView) courseView.classList.add('hidden');
-        if (entryView) entryView.classList.add('hidden');
-        if (welcome) welcome.style.display = '';
-      } else if (!currentEntryId && welcome) {
-        welcome.style.display = '';
-      }
+      // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
+      if (!currentEntryId && welcome) welcome.style.display = '';
+      if (currentEntryId && entryView) entryView.classList.remove('hidden');
     }
 
     // Update active state on activity bar buttons

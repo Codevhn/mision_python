@@ -5091,13 +5091,14 @@ body {
 .btn-primary {
   border-radius: var(--radius-sm) !important; font-family: var(--font-ui) !important;
   font-weight: 600 !important; font-size: 0.82rem !important;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
-  border: none !important; color: #fff !important;
-  box-shadow: 0 2px 12px rgba(99,102,241,0.35) !important;
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important; color: #fff !important;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent) !important;
 }
 .btn-primary:hover {
-  box-shadow: 0 6px 24px rgba(99,102,241,0.55) !important;
-  transform: translateY(-1px) !important; filter: brightness(1.08) !important;
+  filter: brightness(1.12) !important;
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  transform: translateY(-1px) !important;
 }
 .btn-ghost {
   border-radius: var(--radius-sm) !important; font-family: var(--font-ui) !important;
