@@ -2500,17 +2500,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   position: relative;
   min-height: 28px;
 }
-.eb:hover { background: var(--bg-hover); }
 .eb--focused { background: var(--bg-elevated); }
-/* Toggles: only highlight the header row, not the entire body area */
-.eb--toggle:hover,
-.eb--toggle-h1:hover,
-.eb--toggle-h2:hover,
-.eb--toggle-h3:hover { background: none; }
+/* No hover background on blocks — clean Notion-style editing */
 .eb--toggle:hover > .eb-toggle-row,
 .eb--toggle-h1:hover > .eb-toggle-row,
 .eb--toggle-h2:hover > .eb-toggle-row,
-.eb--toggle-h3:hover > .eb-toggle-row { background: var(--bg-hover); border-radius: 3px; }
+.eb--toggle-h3:hover > .eb-toggle-row { background: none; }
 .eb--toggle.eb--focused,
 .eb--toggle-h1.eb--focused,
 .eb--toggle-h2.eb--focused,

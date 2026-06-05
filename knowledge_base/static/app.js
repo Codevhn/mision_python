@@ -4151,20 +4151,21 @@ async function _reorderLesson(courseSlug, mod, index, direction) {
   const entries = mod.entries;
   const swapIdx = index + direction;
   if (swapIdx < 0 || swapIdx >= entries.length) return;
-  const a = entries[index], b = entries[swapIdx];
-  // Swap order values
-  const orderA = a.order ?? index;
-  const orderB = b.order ?? swapIdx;
+  // Normalize all entries to sequential order values first.
+  // Entries may all be 0 (default), so swapping raw values would be a no-op.
+  const orders = entries.map((_, i) => i);
+  // Swap positions
+  [orders[index], orders[swapIdx]] = [orders[swapIdx], orders[index]];
   await Promise.all([
-    fetch(`/api/entry/${a.id}`, {
+    fetch(`/api/entry/${entries[index].id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: orderB }),
+      body: JSON.stringify({ order: orders[index] }),
     }),
-    fetch(`/api/entry/${b.id}`, {
+    fetch(`/api/entry/${entries[swapIdx].id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: orderA }),
+      body: JSON.stringify({ order: orders[swapIdx] }),
     }),
   ]);
 }
