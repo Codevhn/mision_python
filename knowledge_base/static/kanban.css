@@ -2605,3 +2605,87 @@ kbd {
 }
 .kb-cf-color-dot:hover { transform: scale(1.15); }
 .kb-cf-color-dot.selected { border-color: rgba(255,255,255,0.8); }
+
+/* ── Glassmorphism sync with main system ──────────────────────────────── */
+.kb-ws-layout {
+  background: transparent;
+}
+.kb-ws-sidebar {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border);
+}
+.kb-ws-main {
+  background: transparent;
+}
+.kb-ws-item {
+  border-radius: var(--radius-sm);
+  transition: background 0.12s, color 0.12s;
+}
+.kb-ws-item--active {
+  background: var(--accent-soft, rgba(99,102,241,0.15));
+  color: var(--accent);
+}
+.kb-ws-icon {
+  border-radius: var(--radius-xs);
+  font-weight: 700;
+}
+
+/* Modal glass */
+.kb-modal {
+  background: var(--bg-elevated) !important;
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid var(--border) !important;
+}
+
+/* Action buttons in modal sidebar: match system glass style */
+.kb-modal-action-btn,
+.kb-sidebar-action-btn {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-muted) !important;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.kb-modal-action-btn:hover,
+.kb-sidebar-action-btn:hover {
+  background: var(--accent-soft, rgba(99,102,241,0.12)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+/* Columns: glass style */
+.kb-col {
+  background: var(--bg-surface) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border) !important;
+}
+[data-theme="light"] .kb-col {
+  background: var(--bg-surface) !important;
+}
+
+/* Cards: glass */
+.kb-card {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+}
+[data-theme="light"] .kb-card {
+  background: var(--bg-elevated) !important;
+}
+
+/* Pill dropdown menu: glass */
+.kb-cf-pill-menu {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.kb-cf-pill-menu-item:hover {
+  background: var(--accent-soft, rgba(99,102,241,0.12));
+}

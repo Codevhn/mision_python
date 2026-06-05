@@ -2253,7 +2253,16 @@
               const isOpen = menu.style.display !== 'none';
               // Close all other pill menus first
               document.querySelectorAll('.kb-cf-pill-menu').forEach(m => { m.style.display = 'none'; });
-              menu.style.display = isOpen ? 'none' : '';
+              if (!isOpen) {
+                menu.style.display = '';
+                const closeOutside = (ev) => {
+                  if (!pillDropWrap.contains(ev.target)) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', closeOutside, true);
+                  }
+                };
+                setTimeout(() => document.addEventListener('click', closeOutside, true), 10);
+              }
             });
 
             pillDropWrap.appendChild(trigger);
