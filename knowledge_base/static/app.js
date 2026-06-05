@@ -3390,7 +3390,9 @@ function _wireCtxBtn(ctxId, sourceId) {
 (function initAccentPicker() {
   const ACCENTS = {
     indigo: '#6366f1', orange: '#f97316', yellow: '#eab308',
-    cyan: '#06b6d4', pink: '#ec4899', green: '#22c55e', red: '#ef4444'
+    cyan: '#06b6d4', pink: '#ec4899', green: '#22c55e', red: '#ef4444',
+    'deep-blue': '#1e3a8a', 'deep-purple': '#4c1d95', 'deep-teal': '#134e4a',
+    'deep-rose': '#881337', slate: '#334155',
   };
 
   function applyAccent(name, dot, panel) {
@@ -3796,10 +3798,11 @@ async function renderCourseList() {
       if (isActive) {
         item.querySelector('.course-list-gear').addEventListener('click', async e => {
           e.stopPropagation();
+          const anchor = e.currentTarget; // save before any await
           let courses2;
           try { courses2 = await fetch('/api/courses').then(r => r.json()); } catch { courses2 = []; }
           const entity = courses2.find(x => x.id === c.id) || c;
-          _openCourseGearMenu(e.currentTarget, c.id, entity);
+          _openCourseGearMenu(anchor, c.id, entity);
         });
       }
       list.appendChild(item);
