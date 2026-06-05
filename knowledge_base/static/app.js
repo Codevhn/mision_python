@@ -4387,12 +4387,8 @@ function initMoveLessonModal() {
 function handleNewEntryTopbar() {
   const space = sessionStorage.getItem('activeSpace') || 'knowledge';
   if (space === 'courses') {
-    if (_activeCourseSlug) {
-      openNewLessonModal(_activeCourseSlug);
-    } else {
-      const overlay = $('newCourseOverlay');
-      if (overlay) overlay.classList.remove('hidden');
-    }
+    const overlay = $('newCourseOverlay');
+    if (overlay) overlay.classList.remove('hidden');
   } else if (space === 'boards') {
     if (window.KanbanApp && KanbanApp.showCreateBoard) KanbanApp.showCreateBoard();
   } else if (space === 'teamspace') {
@@ -4436,27 +4432,24 @@ function openNewLessonModal(courseSlug, prefillModule) {
     moduleInput.classList.remove('locked');
 
     if (prefillModule) {
-      // Context B: module is fixed — lock the field, focus title
+      // Context B: module is fixed — lock the field
       moduleInput.value = prefillModule;
       moduleInput.setAttribute('readonly', '');
       moduleInput.classList.add('locked');
       if (moduleDropdown) moduleDropdown.classList.add('hidden');
-      setTimeout(() => $('lessonTitleField')?.focus(), 60);
     } else {
-      // Context A: module is free — activate dropdown only on user interaction
+      // Context A: module is free — dropdown only on explicit user interaction
       moduleInput.value = '';
       if (moduleDropdown) moduleDropdown.classList.add('hidden');
       moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
-      moduleInput.addEventListener('focus', () => {
-        _populateLessonModuleDropdown(courseSlug, moduleInput.value);
-      }, { once: true });
-      setTimeout(() => moduleInput.focus(), 60);
     }
   }
 
   if ($('lessonTitleField')) $('lessonTitleField').value = '';
   if ($('lessonContentField')) $('lessonContentField').value = '';
   overlay.classList.remove('hidden');
+  // Title always gets initial focus — regardless of context
+  setTimeout(() => $('lessonTitleField')?.focus(), 60);
 }
 
 function _populateLessonModuleDropdown(courseSlug, filter) {
@@ -4576,11 +4569,7 @@ function initCoursesSpace() {
   const cancelBtn = $('newCourseCancelBtn');
   const createBtn = $('newCourseCreateBtn');
   if (newBtn)    newBtn.addEventListener('click', () => {
-    if (_activeCourseSlug) {
-      openNewLessonModal(_activeCourseSlug);
-    } else {
-      overlay && overlay.classList.remove('hidden');
-    }
+    overlay && overlay.classList.remove('hidden');
   });
   if (closeBtn)  closeBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
   if (cancelBtn) cancelBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
