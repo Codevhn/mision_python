@@ -6078,3 +6078,97 @@ body[data-accent="red"] {
 .cv-module-card-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .cv-module-card-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
 .cv-module-card-pct { font-size: 0.68rem; color: var(--text-faint); white-space: nowrap; }
+
+/* ── Course sidebar — always-visible list ────────────────────────── */
+#courseList {
+  max-height: 220px;       /* fits ~7-8 items; grows to show more via scroll */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding: 2px 0;
+  flex-shrink: 0;          /* never collapse when detail panel expands */
+}
+#courseList::-webkit-scrollbar { width: 4px; }
+#courseList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.course-list-item {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 5px 10px 5px 12px;
+  cursor: pointer; border-radius: 4px; margin: 1px 4px;
+  transition: background .12s;
+}
+.course-list-item:hover { background: var(--bg-hover); }
+.course-list-item.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+}
+.course-list-name {
+  font-size: 0.78rem; color: var(--text); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.course-list-item.active .course-list-name { color: var(--accent); }
+.course-list-item.archived .course-list-name { opacity: .5; }
+.course-list-bar {
+  height: 2px; background: var(--border); border-radius: 1px; overflow: hidden;
+}
+.course-list-bar-fill { height: 100%; background: var(--accent); border-radius: 1px; }
+
+/* Divider between list and active course detail */
+.course-list-divider {
+  height: 1px; background: var(--border); margin: 6px 8px 8px;
+}
+
+/* Active course detail area — scrollable independently */
+#courseDetail {
+  display: flex; flex-direction: column;
+  min-height: 0; flex: 1;
+  overflow: hidden;
+}
+#courseDetail .course-detail-header {
+  flex-shrink: 0;
+}
+#courseDetail #coursesTree {
+  overflow-y: auto; overflow-x: hidden;
+  flex: 1; min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#courseDetail #coursesTree::-webkit-scrollbar { width: 4px; }
+#courseDetail #coursesTree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Sidebar Courses space — flex column so both zones stack */
+#spaceCourses {
+  display: flex; flex-direction: column;
+  height: 100%; overflow: hidden;
+}
+
+/* ── Lesson modal — course context bar ───────────────────────────── */
+.lesson-ctx-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; margin-bottom: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: var(--radius);
+}
+.lesson-ctx-label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-faint); flex-shrink: 0;
+}
+.lesson-ctx-value {
+  font-size: 0.82rem; font-weight: 600; color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Locked module field (context B — from a specific module) */
+#lessonModuleField.locked {
+  opacity: .65; cursor: default;
+  background: var(--bg-elevated); color: var(--text-muted);
+}
+
+/* "Crear módulo X" option in dropdown */
+.smart-select-option--create {
+  color: var(--accent); font-style: italic; border-top: 1px solid var(--border);
+  margin-top: 2px; padding-top: 6px;
+}

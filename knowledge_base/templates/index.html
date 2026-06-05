@@ -125,13 +125,13 @@
           <span>Cursos</span>
           <button class="ts-new-btn" id="newCourseBtn" title="Nuevo curso">+</button>
         </div>
-        <!-- Course cards list -->
-        <div id="courseCardsList">
+        <!-- Course list — always visible, scrollable -->
+        <div id="courseList">
           <div class="tree-empty">No hay cursos aún.</div>
         </div>
-        <!-- Course detail: modules tree (shown when a course is open) -->
+        <!-- Divider + active course detail — only when a course is open -->
         <div id="courseDetail" style="display:none">
-          <button class="course-back-btn" id="courseBackBtn">← Cursos</button>
+          <div class="course-list-divider"></div>
           <div class="course-detail-header" id="courseDetailHeader">
             <!-- populated by openCourseDetail() — includes ⚙ menu -->
           </div>
@@ -568,17 +568,15 @@
         <button class="modal-close" id="newLessonClose">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-row two-col">
-          <div class="form-group">
-            <label>Curso</label>
-            <input type="text" id="lessonCourseField" readonly style="opacity:.6;cursor:default" />
-          </div>
-          <div class="form-group">
-            <label>Módulo</label>
-            <div class="smart-select" id="lessonModuleSmartSelect">
-              <input type="text" id="lessonModuleField" placeholder="Escribe o elige un módulo…" autocomplete="off" />
-              <div class="smart-select-dropdown hidden" id="lessonModuleDropdown"></div>
-            </div>
+        <div class="lesson-ctx-bar">
+          <span class="lesson-ctx-label">Curso:</span>
+          <span class="lesson-ctx-value" id="lessonCourseCtx">—</span>
+        </div>
+        <div class="form-group">
+          <label>Módulo</label>
+          <div class="smart-select" id="lessonModuleSmartSelect">
+            <input type="text" id="lessonModuleField" placeholder="Escribe o elige un módulo…" autocomplete="off" />
+            <div class="smart-select-dropdown hidden" id="lessonModuleDropdown"></div>
           </div>
         </div>
         <div class="form-group">

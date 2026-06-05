@@ -381,7 +381,7 @@ async function loadTree() {
   _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
   renderTeamspaceTree(teamspaceTree);
-  renderCourseCards(); // sidebar course cards (async)
+  renderCourseList(); // sidebar course list (async)
   // Restore starred section from starredMap
   renderStarredSection(
     Object.fromEntries(
@@ -526,8 +526,7 @@ function getFirstEntry(topics) {
   return {};
 }
 
-// renderCoursesTree now only renders when a course is open in detail view
-// The sidebar card list is handled by renderCourseCards()
+// renderCoursesTree — when filterSlug is given, renders modules directly (no course-name header)
 function renderCoursesTree(tree, filterSlug) {
   const nav = $("coursesTree");
   if (!nav) return;
@@ -535,31 +534,20 @@ function renderCoursesTree(tree, filterSlug) {
     nav.innerHTML = '<div class="tree-empty">No hay lecciones aún.</div>';
     return;
   }
-  // Only render the selected course's modules
-  const filtered = filterSlug && tree[filterSlug] ? { [filterSlug]: tree[filterSlug] } : tree;
+
+  const courseData = tree[filterSlug];
+  if (!courseData) {
+    nav.innerHTML = '<div class="tree-empty">No hay lecciones aún.</div>';
+    return;
+  }
+
+  if (!coursesTreeState[filterSlug]) coursesTreeState[filterSlug] = { open: true, modules: {} };
+  const state = coursesTreeState[filterSlug];
+  const courseSlug = filterSlug;
+
+  // Render modules directly into nav — no course-name wrapper
   nav.innerHTML = "";
-  for (const [courseSlug, courseData] of Object.entries(filtered)) {
-    if (!coursesTreeState[courseSlug]) coursesTreeState[courseSlug] = { open: true, modules: {} };
-    const state = coursesTreeState[courseSlug];
-
-    const catDiv = document.createElement("div");
-    catDiv.className = "tree-category";
-
-    const catHeader = document.createElement("div");
-    catHeader.className = "tree-cat-header tree-category-header";
-    catHeader.innerHTML = `<span class="arrow">${state.open ? "▶" : "▶"}</span> <span>${escapeHtml(courseData.label)}</span>`;
-    catDiv.appendChild(catHeader);
-
-    const modulesDiv = document.createElement("div");
-    modulesDiv.className = "tree-topics";
-    if (!state.open) modulesDiv.style.display = "none";
-
-    catHeader.addEventListener("click", () => {
-      state.open = !state.open;
-      modulesDiv.style.display = state.open ? "" : "none";
-      catDiv.classList.toggle("open", state.open);
-    });
-    if (state.open) catDiv.classList.add("open");
+  const modulesDiv = nav; // modules go straight into nav
 
     for (const [moduleSlug, moduleData] of Object.entries(courseData.modules)) {
       if (!state.modules[moduleSlug]) state.modules[moduleSlug] = { open: true };
@@ -639,10 +627,6 @@ function renderCoursesTree(tree, filterSlug) {
       topicDiv.appendChild(entriesDiv);
       modulesDiv.appendChild(topicDiv);
     }
-
-    catDiv.appendChild(modulesDiv);
-    nav.appendChild(catDiv);
-  }
 }
 
 // ---- TEAMSPACE TREE ----
@@ -3768,8 +3752,8 @@ const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', adv
 
 // ── Sidebar: course cards list ────────────────────────────────────────────
 let _showArchivedCourses = false;
-async function renderCourseCards() {
-  const list = $('courseCardsList');
+async function renderCourseList() {
+  const list = $('courseList');
   if (!list) return;
   const url = _showArchivedCourses ? '/api/courses?archived=1' : '/api/courses';
   let courses;
@@ -3778,51 +3762,50 @@ async function renderCourseCards() {
 
   list.innerHTML = '';
 
-  // "Mostrar archivados" toggle
-  const toggleRow = document.createElement('div');
-  toggleRow.className = 'course-archive-toggle';
-  toggleRow.innerHTML = `<button id="toggleArchivedBtn">${_showArchivedCourses ? 'Ocultar archivados' : 'Mostrar archivados'}</button>`;
-  toggleRow.querySelector('#toggleArchivedBtn').addEventListener('click', () => {
-    _showArchivedCourses = !_showArchivedCourses;
-    renderCourseCards();
-  });
-  list.appendChild(toggleRow);
-
   if (!courses.length) {
     const empty = document.createElement('div');
     empty.className = 'tree-empty';
     empty.textContent = _showArchivedCourses ? 'No hay cursos archivados.' : 'No hay cursos aún. Pulsa + para crear uno.';
     list.appendChild(empty);
-    return;
+  } else {
+    courses.forEach(c => {
+      const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
+      const item = document.createElement('div');
+      item.className = 'course-list-item' +
+        (c.id === _activeCourseSlug ? ' active' : '') +
+        (c.archived ? ' archived' : '');
+      item.dataset.courseId = c.id;
+      item.innerHTML = `
+        <span class="course-list-name">${escapeHtml(c.label)}${c.archived ? ' <span class="course-archived-badge">arch.</span>' : ''}</span>
+        <div class="course-list-bar"><div class="course-list-bar-fill" style="width:${pct}%"></div></div>`;
+      item.addEventListener('click', () => setActiveCourse(c.id));
+      list.appendChild(item);
+    });
   }
 
-  courses.forEach(c => {
-    const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
-    const card = document.createElement('div');
-    card.className = 'course-card' + (c.archived ? ' course-card--archived' : '');
-    card.innerHTML = `
-      <div class="course-card-inner">
-        <div class="course-card-label">${escapeHtml(c.label)}${c.archived ? ' <span class="course-archived-badge">archivado</span>' : ''}</div>
-        <div class="course-card-meta">${c.module_count} módulos · ${c.entry_count} lecciones</div>
-        <div class="course-card-progress">
-          <div class="course-card-bar"><div class="course-card-bar-fill" style="width:${pct}%"></div></div>
-          <span class="course-card-pct">${pct}%</span>
-        </div>
-      </div>`;
-    card.addEventListener('click', () => openCourseDetail(c.id));
-    list.appendChild(card);
+  // Archive toggle at the bottom
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'course-archive-toggle';
+  toggleRow.innerHTML = `<button>${_showArchivedCourses ? '— Ocultar archivados' : '+ Mostrar archivados'}</button>`;
+  toggleRow.querySelector('button').addEventListener('click', () => {
+    _showArchivedCourses = !_showArchivedCourses;
+    renderCourseList();
   });
+  list.appendChild(toggleRow);
 }
 
 // ── Open course detail in sidebar + load course view in main ─────────────
 async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
 
-  const cardsList   = $('courseCardsList');
   const detailPanel = $('courseDetail');
   const header      = $('courseDetailHeader');
-  if (cardsList)   cardsList.style.display = 'none';
   if (detailPanel) detailPanel.style.display = '';
+
+  // Mark active item in course list
+  document.querySelectorAll('.course-list-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.courseId === courseSlug);
+  });
 
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
@@ -3861,15 +3844,15 @@ async function openCourseDetail(courseSlug) {
   loadCourseView(courseSlug, course);
 }
 
-// ── Back to course list ───────────────────────────────────────────────────
+// ── Deactivate course detail ──────────────────────────────────────────────
 function closeCourseDetail() {
   _activeCourseSlug = null;
-  const cardsList   = $('courseCardsList');
   const detailPanel = $('courseDetail');
-  if (cardsList)   cardsList.style.display = '';
   if (detailPanel) detailPanel.style.display = 'none';
 
-  // Hide course view, show home
+  // Remove active marker from course list
+  document.querySelectorAll('.course-list-item').forEach(el => el.classList.remove('active'));
+
   const cv = $('courseView');
   const welcome = $('welcome');
   if (cv) cv.classList.add('hidden');
@@ -4248,13 +4231,13 @@ async function handleCourseAction(action, courseSlug, courseEntity) {
     });
     showToast(archived ? `"${courseEntity.label}" archivado` : `"${courseEntity.label}" desarchivado`);
     if (archived) { setActiveCourse(null); }
-    await renderCourseCards();
+    await renderCourseList();
   } else if (action === 'duplicate') {
     const res = await fetch(`/api/courses/${courseSlug}/duplicate`, { method: 'POST' });
     if (res.ok) {
       const newC = await res.json();
       showToast(`Curso duplicado: "${newC.label}"`);
-      await renderCourseCards();
+      await renderCourseList();
     } else {
       showToast('Error al duplicar', 'error');
     }
@@ -4269,7 +4252,7 @@ async function handleCourseAction(action, courseSlug, courseEntity) {
       showToast(`Curso "${courseEntity.label}" eliminado`);
       setActiveCourse(null);
       await loadTree();
-      await renderCourseCards();
+      await renderCourseList();
     } else {
       showToast('Error al eliminar', 'error');
     }
@@ -4316,7 +4299,7 @@ function initEditCourseModal() {
         _close();
         showToast('Curso actualizado');
         await loadTree();
-        await renderCourseCards();
+        await renderCourseList();
         // Refresh course view if open
         if (_activeCourseSlug === _editingCourseSlug || _activeCourseSlug) {
           const slug = _activeCourseSlug;
@@ -4433,43 +4416,104 @@ function setActiveCourse(slug) {
 function openNewLessonModal(courseSlug, prefillModule) {
   const overlay = $('newLessonOverlay');
   if (!overlay) return;
-  const courseField = $('lessonCourseField');
-  if (courseField) courseField.value = courseSlug;
-  // Pre-populate module dropdown from tree
-  const moduleInput = $('lessonModuleField');
-  if (moduleInput) {
-    moduleInput.value = prefillModule || '';
-    _populateLessonModuleDropdown(courseSlug, prefillModule || '');
-    moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
+
+  // Context bar — show course label (not an input)
+  const ctx = $('lessonCourseCtx');
+  if (ctx) {
+    // Try to get label from cached tree, fallback to slug
+    const courseData = _coursesTreeData[courseSlug];
+    ctx.textContent = courseData?.label || courseSlug;
+    ctx.dataset.courseSlug = courseSlug;
   }
+
+  const moduleInput = $('lessonModuleField');
+  const moduleDropdown = $('lessonModuleDropdown');
+
+  if (moduleInput) {
+    // Clear previous oninput handler
+    moduleInput.oninput = null;
+    moduleInput.removeAttribute('readonly');
+    moduleInput.classList.remove('locked');
+
+    if (prefillModule) {
+      // Context B: module is fixed — lock the field, focus title
+      moduleInput.value = prefillModule;
+      moduleInput.setAttribute('readonly', '');
+      moduleInput.classList.add('locked');
+      if (moduleDropdown) moduleDropdown.classList.add('hidden');
+      setTimeout(() => $('lessonTitleField')?.focus(), 60);
+    } else {
+      // Context A: module is free — activate dropdown only on user interaction
+      moduleInput.value = '';
+      if (moduleDropdown) moduleDropdown.classList.add('hidden');
+      moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
+      moduleInput.addEventListener('focus', () => {
+        _populateLessonModuleDropdown(courseSlug, moduleInput.value);
+      }, { once: true });
+      setTimeout(() => moduleInput.focus(), 60);
+    }
+  }
+
   if ($('lessonTitleField')) $('lessonTitleField').value = '';
   if ($('lessonContentField')) $('lessonContentField').value = '';
   overlay.classList.remove('hidden');
-  setTimeout(() => $('lessonModuleField')?.focus(), 60);
 }
 
 function _populateLessonModuleDropdown(courseSlug, filter) {
   const dropdown = $('lessonModuleDropdown');
-  if (!dropdown) return;
+  const moduleInput = $('lessonModuleField');
+  if (!dropdown || moduleInput?.hasAttribute('readonly')) return;
+
   const courseTree = _coursesTreeData[courseSlug];
-  // courseTree structure: { label, modules: { slug: { label, entries } } }
   const modMap = courseTree?.modules || {};
   const f = filter.trim().toLowerCase();
-  // Build list of { slug, label } pairs filtered by input
   const matches = Object.entries(modMap)
-    .map(([slug, mod]) => ({ slug, label: mod.label || slug }))
-    .filter(({ label }) => !f || label.toLowerCase().includes(f));
-  if (!matches.length) { dropdown.classList.add('hidden'); return; }
-  dropdown.innerHTML = matches.map(({ label }) =>
-    `<div class="smart-select-option" data-value="${escapeHtml(label)}">${escapeHtml(label)}</div>`
-  ).join('');
-  dropdown.classList.remove('hidden');
-  dropdown.querySelectorAll('.smart-select-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      if ($('lessonModuleField')) $('lessonModuleField').value = opt.dataset.value;
+    .map(([, mod]) => mod.label || '')
+    .filter(label => label && (!f || label.toLowerCase().includes(f)));
+
+  dropdown.innerHTML = '';
+
+  if (matches.length) {
+    matches.forEach(label => {
+      const opt = document.createElement('div');
+      opt.className = 'smart-select-option';
+      opt.textContent = label;
+      opt.addEventListener('click', () => {
+        if (moduleInput) moduleInput.value = label;
+        dropdown.classList.add('hidden');
+      });
+      dropdown.appendChild(opt);
+    });
+  }
+
+  // "Crear módulo X" option when typed text doesn't match exactly
+  const trimmed = filter.trim();
+  const exactMatch = matches.some(l => l.toLowerCase() === trimmed.toLowerCase());
+  if (trimmed && !exactMatch) {
+    const newOpt = document.createElement('div');
+    newOpt.className = 'smart-select-option smart-select-option--create';
+    newOpt.textContent = `+ Crear módulo "${trimmed}"`;
+    newOpt.addEventListener('click', () => {
+      if (moduleInput) moduleInput.value = trimmed;
       dropdown.classList.add('hidden');
     });
-  });
+    dropdown.appendChild(newOpt);
+  }
+
+  if (dropdown.children.length) {
+    dropdown.classList.remove('hidden');
+  } else {
+    dropdown.classList.add('hidden');
+  }
+
+  // Close dropdown on outside click
+  const closeOnOutside = e => {
+    if (!dropdown.contains(e.target) && e.target !== moduleInput) {
+      dropdown.classList.add('hidden');
+      document.removeEventListener('click', closeOnOutside);
+    }
+  };
+  document.addEventListener('click', closeOnOutside);
 }
 
 function initLessonModal() {
@@ -4486,20 +4530,14 @@ function initLessonModal() {
 
   if (createBtn) {
     createBtn.addEventListener('click', async () => {
-      const courseSlug = ($('lessonCourseField') || {}).value?.trim();
-      const module     = ($('lessonModuleField') || {}).value?.trim();
-      const title      = ($('lessonTitleField') || {}).value?.trim();
-      const content    = ($('lessonContentField') || {}).value?.trim() || '---';
+      const courseSlug  = $('lessonCourseCtx')?.dataset.courseSlug?.trim();
+      const courseLabel = $('lessonCourseCtx')?.textContent?.trim() || courseSlug;
+      const module      = ($('lessonModuleField') || {}).value?.trim();
+      const title       = ($('lessonTitleField') || {}).value?.trim();
+      const content     = ($('lessonContentField') || {}).value?.trim() || '---';
       if (!courseSlug || !module || !title) {
         showToast('Completa los campos obligatorios', 'error'); return;
       }
-      // Resolve display label for course from courses list
-      let courseLabel = courseSlug;
-      try {
-        const cList = await fetch('/api/courses').then(r => r.json());
-        const c = cList.find(x => x.id === courseSlug);
-        if (c) courseLabel = c.label;
-      } catch {}
       const res = await fetch('/api/courses/entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4537,8 +4575,6 @@ function initCoursesSpace() {
   const closeBtn  = $('newCourseClose');
   const cancelBtn = $('newCourseCancelBtn');
   const createBtn = $('newCourseCreateBtn');
-  const backBtn   = $('courseBackBtn');
-
   if (newBtn)    newBtn.addEventListener('click', () => {
     if (_activeCourseSlug) {
       openNewLessonModal(_activeCourseSlug);
@@ -4548,7 +4584,6 @@ function initCoursesSpace() {
   });
   if (closeBtn)  closeBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
   if (cancelBtn) cancelBtn.addEventListener('click', () => overlay && overlay.classList.add('hidden'));
-  if (backBtn)   backBtn.addEventListener('click', () => setActiveCourse(null));
 
   if (createBtn) {
     createBtn.addEventListener('click', async () => {
@@ -4568,7 +4603,7 @@ function initCoursesSpace() {
         overlay.classList.add('hidden');
         if ($('newCourseLabel')) $('newCourseLabel').value = '';
         if ($('newCourseDesc'))  $('newCourseDesc').value  = '';
-        await renderCourseCards();
+        await renderCourseList();
         showToast(`Curso "${label}" creado`);
       } else if (res.status === 409) {
         showToast('Ya existe un curso con ese nombre', 'error');
