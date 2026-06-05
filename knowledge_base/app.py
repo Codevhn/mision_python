@@ -628,6 +628,8 @@ def update_entry(entry_id):
             index[entry_id]["module_label"] = module_raw
         if icon is not None:
             index[entry_id]["icon"] = icon.strip()
+        if "order" in data:
+            index[entry_id]["order"] = int(data["order"])
         save_index(index)
         return jsonify({"message": "Updated"})
 

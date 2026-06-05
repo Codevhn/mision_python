@@ -3984,7 +3984,7 @@ function renderCourseTab(tab, courseSlug, stats) {
             <button class="cv-lesson-menu-btn" title="Más acciones">…</button>
           </div>`;
         // Open entry on title click
-        row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => loadEntry(e.id));
+        row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => { switchSpace('knowledge'); loadEntry(e.id); });
         // Cycle status without opening entry
         row.querySelector('.cv-status-btn').addEventListener('click', async ev => {
           ev.stopPropagation();
@@ -4201,6 +4201,7 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
       close();
       const action = btn.dataset.a;
       if (action === 'edit') {
+        switchSpace('knowledge');
         loadEntry(entry.id);
       } else if (action.startsWith('status-')) {
         const map = { 'status-p': 'pendiente', 'status-i': 'en_progreso', 'status-c': 'completado' };
