@@ -3310,11 +3310,19 @@ function _wireCtxBtn(ctxId, sourceId) {
       if (typeof renderGraph === 'function') renderGraph();
     } else {
       if (graphView) graphView.classList.add('hidden');
-      // Hide course view when switching away from courses
       const courseView = document.getElementById('courseView');
-      if (courseView && space !== 'courses') courseView.classList.add('hidden');
-      // Restore welcome only if no entry is open
-      if (!currentEntryId && welcome) welcome.style.display = '';
+      if (space !== 'courses') {
+        // Leaving courses: hide course view
+        if (courseView) courseView.classList.add('hidden');
+      }
+      if (space === 'courses' && !_activeCourseSlug) {
+        // Entered courses with no active course: show welcome, hide entry view
+        if (courseView) courseView.classList.add('hidden');
+        if (entryView) entryView.classList.add('hidden');
+        if (welcome) welcome.style.display = '';
+      } else if (!currentEntryId && welcome) {
+        welcome.style.display = '';
+      }
     }
 
     // Update active state on activity bar buttons
@@ -3362,9 +3370,11 @@ function _wireCtxBtn(ctxId, sourceId) {
     initEditCourseModal();
     initMoveLessonModal();
 
-    // Restore last active space or default to 'knowledge'
+    // Restore last active space — but never restore 'courses' on fresh load
+    // because the main panel starts at Home/welcome and would mismatch the sidebar.
     let saved;
     try { saved = sessionStorage.getItem('activeSpace'); } catch(e) {}
+    if (saved === 'courses') saved = 'knowledge';
     switchSpace(saved || 'knowledge');
   }
 
