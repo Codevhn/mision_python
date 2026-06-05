@@ -400,6 +400,24 @@ def get_teamspace_tree():
     return jsonify(tree)
 
 
+@app.route("/api/entries")
+def get_all_entries():
+    """Flat list of all entries with id, uid, title, category, topic."""
+    index = load_index()
+    entries = []
+    for entry_id, meta in index.items():
+        entries.append({
+            "id":       entry_id,
+            "uid":      meta.get("uid", entry_id),
+            "title":    meta.get("title", ""),
+            "category": meta.get("category_label", meta.get("category", "")),
+            "topic":    meta.get("topic_label", meta.get("topic", "")),
+            "icon":     meta.get("icon", ""),
+            "cover":    meta.get("cover", ""),
+        })
+    return jsonify(entries)
+
+
 @app.route("/api/tree")
 def get_tree():
     index = load_index()

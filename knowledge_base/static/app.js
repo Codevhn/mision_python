@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initStatus();
   initReview();
   initPageFind();
+  initRelationsPanel();
   // KanbanApp.init() is called from kanban.js DOMContentLoaded
 
   // Modal type toggle
@@ -366,11 +367,14 @@ function closeSidebarMobile() {
 }
 
 // ---- TREE ----
+let _index = [];
+
 async function loadTree() {
-  const [r1, r2, r3] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree")]);
+  const [r1, r2, r3, r4] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries")]);
   const knowledgeTree  = await r1.json();
   const coursesTree    = await r2.json();
   const teamspaceTree  = await r3.json();
+  _index = await r4.json();
   renderTree(knowledgeTree);
   renderCoursesTree(coursesTree);
   renderTeamspaceTree(teamspaceTree);
@@ -811,39 +815,68 @@ function _getRecent() {
 function renderHome() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
-  const recent = _getRecent();
+  const recent  = _getRecent();
+  const pinned  = Object.entries(pinnedMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
+  const starred = Object.entries(starredMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
+
+  // Stats from _index
+  const totalEntries = _index.length;
+  const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
+  const pinnedCount  = pinned.length;
+  const starredCount = starred.length;
+
+  function cardHtml(r) {
+    const coverStyle = r.cover
+      ? (r.cover.startsWith('url(')
+          ? `background-image:${r.cover};background-size:cover;background-position:center`
+          : `background:${r.cover}`)
+      : '';
+    return `<div class="home-card" data-id="${r.id}">
+      <div class="home-card-cover" style="${coverStyle}"></div>
+      <div class="home-card-body">
+        <div class="home-card-icon">${renderIconMarkup(r.icon || ENTRY_ICON_DEFAULTS.knowledge, "home-card-icon-glyph")}</div>
+        <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
+        <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
+      </div>
+    </div>`;
+  }
 
   const welcome = $("welcome");
   welcome.innerHTML = `
     <div class="home-wrap">
       <h1 class="home-greeting">${greeting}</h1>
 
+      <div class="home-stats-row">
+        <div class="home-stat"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div>
+        <div class="home-stat"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div>
+        <div class="home-stat"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div>
+        <div class="home-stat"><span class="home-stat-num">${pinnedCount}</span><span class="home-stat-label">fijadas</span></div>
+      </div>
+
+      ${pinned.length ? `
+      <section class="home-section">
+        <div class="home-section-label">⊞ Fijadas</div>
+        <div class="home-recent-grid">${pinned.slice(0,6).map(cardHtml).join("")}</div>
+      </section>` : ''}
+
+      ${starred.length ? `
+      <section class="home-section">
+        <div class="home-section-label">☆ Destacadas</div>
+        <div class="home-recent-grid">${starred.slice(0,6).map(cardHtml).join("")}</div>
+      </section>` : ''}
+
       ${recent.length ? `
       <section class="home-section">
         <div class="home-section-label">⟳ Visitados recientemente</div>
-        <div class="home-recent-grid">
-          ${recent.map(r => `
-            <div class="home-card" data-id="${r.id}">
-              <div class="home-card-cover" style="${r.cover ? (r.cover.startsWith('url(') ? `background-image:${r.cover};background-size:cover;background-position:center` : `background:${r.cover}`) : ""}"></div>
-              <div class="home-card-body">
-                <div class="home-card-icon">${renderIconMarkup(r.icon || ENTRY_ICON_DEFAULTS.knowledge, "home-card-icon-glyph")}</div>
-                <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
-                <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      </section>
-      ` : `
+        <div class="home-recent-grid">${recent.map(cardHtml).join("")}</div>
+      </section>` : `
       <div class="home-empty">
-        <p>selecciona una entrada del panel izquierdo o crea una nueva.</p>
+        <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
         <button class="btn-primary large" id="welcomeNewBtn2">+ nueva entrada</button>
-      </div>
-      `}
+      </div>`}
     </div>
   `;
 
-  // Bind card clicks
   welcome.querySelectorAll(".home-card").forEach(card => {
     card.addEventListener("click", () => loadEntry(card.dataset.id));
   });
@@ -996,6 +1029,9 @@ async function loadEntry(id, opts = {}) {
 
   // Cover banner
   applyCover(m.cover || "");
+
+  // Relations panel
+  loadRelations(m.uid || id);
 }
 
 // ---- PAGE ICON (Notion-style, before inline title) ----
@@ -3257,14 +3293,30 @@ function _wireCtxBtn(ctxId, sourceId) {
    PHASE B — Activity Bar + Space Switcher
    ============================================= */
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph'];
 
   function switchSpace(space) {
-    // Show/hide panels
+    // Show/hide sidebar panels
     SPACES.forEach(s => {
       const panel = document.getElementById('space' + s.charAt(0).toUpperCase() + s.slice(1));
       if (panel) panel.style.display = s === space ? '' : 'none';
     });
+
+    // Graph view: show/hide main graph panel and hide welcome/entry
+    const graphView = document.getElementById('graphView');
+    const welcome   = document.getElementById('welcome');
+    const entryView = document.getElementById('entryView');
+    const entryCover = document.getElementById('entryCover');
+    if (space === 'graph') {
+      if (graphView)  graphView.classList.remove('hidden');
+      if (welcome)    welcome.style.display = 'none';
+      if (entryView)  entryView.classList.add('hidden');
+      if (entryCover) entryCover.classList.add('hidden');
+      if (typeof renderGraph === 'function') renderGraph();
+    } else {
+      if (graphView) graphView.classList.add('hidden');
+      if (welcome)   welcome.style.display = '';
+    }
 
     // Update active state on activity bar buttons
     document.querySelectorAll('.ab-item[data-space]').forEach(btn => {
@@ -3369,3 +3421,320 @@ function _wireCtxBtn(ctxId, sourceId) {
     init();
   }
 })();
+
+// ── FASE E: Relations Panel ──────────────────────────────────────────────
+const REL_LABELS = {
+  related: 'relacionado con', references: 'referencia a',
+  implements: 'implementa', belongs_to: 'pertenece a',
+  blocks: 'bloquea', derived_from: 'derivado de'
+};
+
+async function loadRelations(entryUid) {
+  const panel = document.getElementById('relationsPanel');
+  const list  = document.getElementById('relList');
+  if (!panel || !list) return;
+  if (!entryUid) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  let data;
+  try { data = await fetch(`/api/relations?uid=${encodeURIComponent(entryUid)}`).then(r => r.json()); }
+  catch { list.innerHTML = ''; return; }
+
+  // Merge outgoing + incoming, deduplicate by id
+  const seen = new Set();
+  const all = [];
+  for (const r of [...(data.outgoing||[]), ...(data.incoming||[])]) {
+    if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
+  }
+
+  if (!all.length) { list.innerHTML = '<span class="rel-empty">Sin relaciones aún.</span>'; return; }
+
+  // Group by rel_type
+  const groups = {};
+  for (const r of all) {
+    (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
+  }
+
+  list.innerHTML = '';
+  for (const [type, rels] of Object.entries(groups)) {
+    const grp = document.createElement('div');
+    grp.className = 'rel-group';
+    const label = document.createElement('span');
+    label.className = 'rel-group-label';
+    label.textContent = REL_LABELS[type] || type;
+    grp.appendChild(label);
+    const chips = document.createElement('div');
+    chips.className = 'rel-chips';
+    for (const r of rels) {
+      const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
+      const chip = document.createElement('div');
+      chip.className = 'rel-chip';
+      chip.innerHTML = `<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
+      chip.querySelector('.rel-chip-title').addEventListener('click', () => {
+        if (other.id) loadEntry(other.id);
+      });
+      chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await fetch(`/api/relations/${r.id}`, { method: 'DELETE' });
+        loadRelations(entryUid);
+      });
+      chips.appendChild(chip);
+    }
+    grp.appendChild(chips);
+    list.appendChild(grp);
+  }
+}
+
+function initRelationsPanel() {
+  const addBtn     = document.getElementById('relAddBtn');
+  const form       = document.getElementById('relAddForm');
+  const cancelBtn  = document.getElementById('relCancelBtn');
+  const confirmBtn = document.getElementById('relConfirmBtn');
+  const input      = document.getElementById('relSearchInput');
+  const sugg       = document.getElementById('relSuggestions');
+  const typeSel    = document.getElementById('relTypeSel');
+  if (!addBtn) return;
+
+  let selectedToUid = null;
+
+  addBtn.addEventListener('click', () => form.classList.toggle('hidden'));
+  cancelBtn.addEventListener('click', () => {
+    form.classList.add('hidden');
+    input.value = ''; selectedToUid = null; sugg.classList.add('hidden');
+  });
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    selectedToUid = null;
+    if (!q) { sugg.classList.add('hidden'); return; }
+    const matches = (_index || []).filter(e => (e.title||'').toLowerCase().includes(q) && e.id !== currentEntryId).slice(0, 8);
+    if (!matches.length) { sugg.classList.add('hidden'); return; }
+    sugg.innerHTML = matches.map(e => `<div class="rel-sugg-item" data-id="${e.id}">${escapeHtml(e.title||e.id)}<span class="rel-sugg-meta">${escapeHtml((e.category||'')+(e.topic?' / '+e.topic:''))}</span></div>`).join('');
+    sugg.classList.remove('hidden');
+    sugg.querySelectorAll('.rel-sugg-item').forEach(item => {
+      item.addEventListener('click', () => {
+        input.value = matches.find(e => e.id === item.dataset.id)?.title || '';
+        selectedToUid = item.dataset.id;
+        sugg.classList.add('hidden');
+      });
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (!sugg.contains(e.target) && e.target !== input) sugg.classList.add('hidden');
+  });
+
+  confirmBtn.addEventListener('click', async () => {
+    if (!selectedToUid || !currentEntryId) return;
+    const rel_type = typeSel.value;
+    const res = await fetch('/api/relations', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ from_uid: currentEntryId, to_uid: selectedToUid, rel_type })
+    });
+    if (res.ok || res.status === 409) {
+      form.classList.add('hidden');
+      input.value = ''; selectedToUid = null;
+      loadRelations(currentEntryId);
+    } else {
+      showToast('Error al añadir relación', 'error');
+    }
+  });
+}
+
+// ── FASE G: Graph View ────────────────────────────────────────────────────
+const GRAPH_REL_COLORS = {
+  related: '#6366f1', references: '#06b6d4', implements: '#22c55e',
+  belongs_to: '#f97316', blocks: '#ef4444', derived_from: '#a855f7'
+};
+
+let _graphRendered = false;
+
+async function renderGraph() {
+  const svg       = document.getElementById('graphSvg');
+  const linksG    = document.getElementById('graphLinks');
+  const nodesG    = document.getElementById('graphNodes');
+  const tooltip   = document.getElementById('graphTooltip');
+  if (!svg || !linksG || !nodesG) return;
+
+  // Fetch all relations
+  let relData;
+  try { relData = await fetch('/api/relations').then(r => r.json()); }
+  catch { return; }
+  const relations = relData.relations || [];
+
+  // Build node + edge sets from _index and relations
+  const nodeMap = {};
+  for (const e of (_index || [])) {
+    nodeMap[e.uid || e.id] = { id: e.uid || e.id, entryId: e.id, title: e.title || e.id, category: e.category || '' };
+  }
+  // Also add nodes from relations that might not be in _index
+  for (const r of relations) {
+    if (!nodeMap[r.from_uid] && r.from_entity) nodeMap[r.from_uid] = { id: r.from_uid, entryId: r.from_entity.id, title: r.from_entity.title || r.from_uid, category: '' };
+    if (!nodeMap[r.to_uid]   && r.to_entity)   nodeMap[r.to_uid]   = { id: r.to_uid,   entryId: r.to_entity.id,   title: r.to_entity.title   || r.to_uid,   category: '' };
+  }
+
+  const nodes = Object.values(nodeMap);
+  const edges = relations.map(r => ({ source: r.from_uid, target: r.to_uid, type: r.rel_type, id: r.id }));
+
+  if (!nodes.length) {
+    linksG.innerHTML = '';
+    nodesG.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="var(--text-faint)" font-size="14">Sin entradas aún</text>';
+    return;
+  }
+
+  // Simple force layout (no external lib)
+  const W = svg.clientWidth || 900;
+  const H = svg.clientHeight || 600;
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.38;
+
+  // Initialize positions in a circle, cluster by category
+  const cats = [...new Set(nodes.map(n => n.category))];
+  nodes.forEach((n, i) => {
+    const catIdx = cats.indexOf(n.category);
+    const angleOffset = (catIdx / cats.length) * Math.PI * 2;
+    const angleStep   = (Math.PI * 2) / nodes.length;
+    n.x = cx + R * Math.cos(angleOffset + angleStep * i) + (Math.random() - 0.5) * 40;
+    n.y = cy + R * Math.sin(angleOffset + angleStep * i) + (Math.random() - 0.5) * 40;
+    n.vx = 0; n.vy = 0;
+  });
+
+  const idToNode = {};
+  nodes.forEach(n => { idToNode[n.id] = n; });
+
+  // Run force simulation
+  const ITERS = 120, K = Math.sqrt((W * H) / (nodes.length || 1));
+  for (let iter = 0; iter < ITERS; iter++) {
+    const cooling = 1 - iter / ITERS;
+    // Repulsion between all pairs
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].fx = 0; nodes[i].fy = 0;
+      for (let j = 0; j < nodes.length; j++) {
+        if (i === j) continue;
+        const dx = nodes[i].x - nodes[j].x || 0.01;
+        const dy = nodes[i].y - nodes[j].y || 0.01;
+        const d2 = dx*dx + dy*dy;
+        const d  = Math.sqrt(d2) || 0.1;
+        const f  = (K * K) / d;
+        nodes[i].fx += (dx / d) * f;
+        nodes[i].fy += (dy / d) * f;
+      }
+    }
+    // Attraction along edges
+    for (const e of edges) {
+      const s = idToNode[e.source], t = idToNode[e.target];
+      if (!s || !t) continue;
+      const dx = t.x - s.x, dy = t.y - s.y;
+      const d  = Math.sqrt(dx*dx + dy*dy) || 0.1;
+      const f  = (d * d) / K;
+      const fx = (dx / d) * f, fy = (dy / d) * f;
+      s.fx += fx;  s.fy += fy;
+      t.fx -= fx;  t.fy -= fy;
+    }
+    // Gravity toward center
+    for (const n of nodes) {
+      n.fx += (cx - n.x) * 0.01;
+      n.fy += (cy - n.y) * 0.01;
+    }
+    // Apply with cooling
+    const speed = Math.min(10, K * 0.15) * cooling;
+    for (const n of nodes) {
+      const mag = Math.sqrt(n.fx*n.fx + n.fy*n.fy) || 1;
+      n.x = Math.max(32, Math.min(W - 32, n.x + (n.fx / mag) * speed));
+      n.y = Math.max(32, Math.min(H - 32, n.y + (n.fy / mag) * speed));
+    }
+  }
+
+  // Render edges
+  linksG.innerHTML = '';
+  for (const e of edges) {
+    const s = idToNode[e.source], t = idToNode[e.target];
+    if (!s || !t) continue;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', s.x); line.setAttribute('y1', s.y);
+    line.setAttribute('x2', t.x); line.setAttribute('y2', t.y);
+    line.setAttribute('stroke', GRAPH_REL_COLORS[e.type] || '#6366f1');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-opacity', '0.6');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    linksG.appendChild(line);
+  }
+
+  // Render nodes
+  nodesG.innerHTML = '';
+  const connectedIds = new Set(edges.flatMap(e => [e.source, e.target]));
+  for (const n of nodes) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'graph-node');
+    g.setAttribute('transform', `translate(${n.x},${n.y})`);
+    g.style.cursor = 'pointer';
+
+    const isConnected = connectedIds.has(n.id);
+    const r = isConnected ? 8 : 5;
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', isConnected ? 'var(--accent)' : 'var(--text-faint)');
+    circle.setAttribute('stroke', 'var(--bg-elevated)');
+    circle.setAttribute('stroke-width', '2');
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', r + 4);
+    label.setAttribute('y', 4);
+    label.setAttribute('font-size', '10');
+    label.setAttribute('fill', 'var(--text)');
+    label.setAttribute('font-family', 'var(--font-ui)');
+    label.textContent = n.title.length > 22 ? n.title.slice(0, 20) + '…' : n.title;
+
+    g.appendChild(circle);
+    g.appendChild(label);
+
+    // Tooltip + click
+    g.addEventListener('mouseenter', (e) => {
+      tooltip.textContent = n.title + (n.category ? ` · ${n.category}` : '');
+      tooltip.classList.remove('hidden');
+      tooltip.style.left = (e.offsetX + 12) + 'px';
+      tooltip.style.top  = (e.offsetY - 8) + 'px';
+    });
+    g.addEventListener('mousemove', (e) => {
+      tooltip.style.left = (e.offsetX + 12) + 'px';
+      tooltip.style.top  = (e.offsetY - 8) + 'px';
+    });
+    g.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    g.addEventListener('click', () => {
+      if (n.entryId) {
+        const saved = sessionStorage.getItem('activeSpace');
+        switchSpace('knowledge');
+        loadEntry(n.entryId);
+      }
+    });
+
+    // Drag
+    let dragging = false, ox = 0, oy = 0;
+    g.addEventListener('mousedown', (ev) => {
+      dragging = true; ox = ev.clientX - n.x; oy = ev.clientY - n.y;
+      ev.preventDefault();
+    });
+    svg.addEventListener('mousemove', (ev) => {
+      if (!dragging) return;
+      n.x = ev.clientX - ox; n.y = ev.clientY - oy;
+      g.setAttribute('transform', `translate(${n.x},${n.y})`);
+      // Update connected edges
+      linksG.querySelectorAll('line').forEach((line, i) => {
+        const e = edges[i];
+        if (!e) return;
+        const s2 = idToNode[e.source], t2 = idToNode[e.target];
+        if (s2 && t2) {
+          line.setAttribute('x1', s2.x); line.setAttribute('y1', s2.y);
+          line.setAttribute('x2', t2.x); line.setAttribute('y2', t2.y);
+        }
+      });
+    });
+    svg.addEventListener('mouseup', () => { dragging = false; });
+
+    nodesG.appendChild(g);
+  }
+
+  _graphRendered = true;
+}

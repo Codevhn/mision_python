@@ -78,6 +78,10 @@
           <span class="ab-icon">⋯</span>
           <span class="ab-label">Team</span>
         </button>
+        <button class="ab-item" id="abGraph" data-space="graph" title="Graph View">
+          <span class="ab-icon">⬡</span>
+          <span class="ab-label">Graph</span>
+        </button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -151,6 +155,23 @@
         </nav>
       </div>
 
+      <!-- SPACE: GRAPH -->
+      <div class="sidebar-space" id="spaceGraph" style="display:none">
+        <div class="sidebar-space-header"><span>Graph View</span></div>
+        <div class="graph-sidebar-info">
+          <p class="graph-legend-title">Tipos de relación</p>
+          <div class="graph-legend">
+            <span class="graph-legend-dot" style="background:#6366f1"></span><span>relacionado</span>
+            <span class="graph-legend-dot" style="background:#06b6d4"></span><span>referencia</span>
+            <span class="graph-legend-dot" style="background:#22c55e"></span><span>implementa</span>
+            <span class="graph-legend-dot" style="background:#f97316"></span><span>pertenece</span>
+            <span class="graph-legend-dot" style="background:#ef4444"></span><span>bloquea</span>
+            <span class="graph-legend-dot" style="background:#a855f7"></span><span>derivado</span>
+          </div>
+          <p class="graph-hint">Arrastra nodos · Scroll para zoom · Clic para abrir entrada</p>
+        </div>
+      </div>
+
       <!-- LEGACY nav items kept for JS compatibility (hidden) -->
       <nav class="workspace-nav" style="display:none">
         <a class="workspace-nav-item" id="wsHome" href="#"></a>
@@ -182,6 +203,20 @@
 
       <div class="welcome" id="welcome">
         <!-- populated by renderHome() -->
+      </div>
+
+      <!-- GRAPH VIEW -->
+      <div class="graph-view hidden" id="graphView">
+        <svg id="graphSvg" width="100%" height="100%">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--border)"/>
+            </marker>
+          </defs>
+          <g id="graphLinks"></g>
+          <g id="graphNodes"></g>
+        </svg>
+        <div class="graph-tooltip hidden" id="graphTooltip"></div>
       </div>
 
       <!-- Entry cover banner (outside entry-view for full-width) -->
@@ -259,6 +294,28 @@
           </div>
         </div>
         <div class="entry-body" id="entryBody"></div>
+        <!-- RELATIONS PANEL -->
+        <div class="relations-panel" id="relationsPanel">
+          <div class="rel-header">
+            <span class="rel-header-label">Relaciones</span>
+            <button class="rel-add-btn" id="relAddBtn">+ enlazar</button>
+          </div>
+          <div class="rel-add-form hidden" id="relAddForm">
+            <select class="rel-type-sel" id="relTypeSel">
+              <option value="related">relacionado con</option>
+              <option value="references">referencia a</option>
+              <option value="implements">implementa</option>
+              <option value="belongs_to">pertenece a</option>
+              <option value="blocks">bloquea</option>
+              <option value="derived_from">derivado de</option>
+            </select>
+            <input type="text" class="rel-search-input" id="relSearchInput" placeholder="buscar entrada…" autocomplete="off" />
+            <div class="rel-suggestions hidden" id="relSuggestions"></div>
+            <button class="btn-primary rel-confirm-btn" id="relConfirmBtn">Añadir</button>
+            <button class="btn-ghost rel-cancel-btn" id="relCancelBtn">×</button>
+          </div>
+          <div class="rel-list" id="relList"></div>
+        </div>
       </article>
     </main>
   </div>
