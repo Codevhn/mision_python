@@ -3899,6 +3899,12 @@ async function loadCourseView(courseSlug, courseEntity) {
     });
   });
 
+  // Wire "+ Lección" button in course view header
+  const cvNewLessonBtn = $('cvNewLessonBtn');
+  if (cvNewLessonBtn) {
+    cvNewLessonBtn.onclick = () => openNewLessonModal(courseSlug);
+  }
+
   // Default tab
   renderCourseTab('roadmap', courseSlug, stats);
 }
@@ -3907,9 +3913,17 @@ function renderCourseTab(tab, courseSlug, stats) {
   const body = $('cvBody');
   if (tab === 'roadmap') {
     const tree = _coursesTreeData[courseSlug];
-    if (!tree) { body.innerHTML = '<p class="cv-empty">Sin módulos aún.</p>'; return; }
+    const modules = tree ? Object.values(tree.modules || {}) : [];
+    if (!modules.length) {
+      body.innerHTML = `
+        <div class="cv-empty-state">
+          <p class="cv-empty">No hay lecciones todavía.</p>
+          <button class="btn-primary" id="cvEmptyNewLesson">+ Crear primera lección</button>
+        </div>`;
+      $('cvEmptyNewLesson')?.addEventListener('click', () => openNewLessonModal(courseSlug));
+      return;
+    }
     body.innerHTML = '';
-    const modules = Object.values(tree.modules || {});
     modules.forEach((mod, mi) => {
       const section = document.createElement('div');
       section.className = 'cv-roadmap-section';
@@ -3917,6 +3931,7 @@ function renderCourseTab(tab, courseSlug, stats) {
         <span class="cv-roadmap-mod-num">M${mi + 1}</span>
         <span class="cv-roadmap-mod-label">${escapeHtml(mod.label)}</span>
         <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
+        <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección en este módulo">+</button>
       </div>`;
       const entries = document.createElement('div');
       entries.className = 'cv-roadmap-entries';
@@ -3931,6 +3946,13 @@ function renderCourseTab(tab, courseSlug, stats) {
       });
       section.appendChild(entries);
       body.appendChild(section);
+    });
+    // Wire per-module add buttons
+    body.querySelectorAll('.cv-roadmap-add-lesson').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openNewLessonModal(courseSlug, btn.dataset.module);
+      });
     });
   } else if (tab === 'modules') {
     // Same as roadmap but more compact tree style
@@ -3986,7 +4008,7 @@ function setActiveCourse(slug) {
 }
 
 // ── Lesson modal ──────────────────────────────────────────────────────────
-function openNewLessonModal(courseSlug) {
+function openNewLessonModal(courseSlug, prefillModule) {
   const overlay = $('newLessonOverlay');
   if (!overlay) return;
   const courseField = $('lessonCourseField');
@@ -3994,8 +4016,8 @@ function openNewLessonModal(courseSlug) {
   // Pre-populate module dropdown from tree
   const moduleInput = $('lessonModuleField');
   if (moduleInput) {
-    moduleInput.value = '';
-    _populateLessonModuleDropdown(courseSlug, '');
+    moduleInput.value = prefillModule || '';
+    _populateLessonModuleDropdown(courseSlug, prefillModule || '');
     moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
   }
   if ($('lessonTitleField')) $('lessonTitleField').value = '';
@@ -4008,12 +4030,16 @@ function _populateLessonModuleDropdown(courseSlug, filter) {
   const dropdown = $('lessonModuleDropdown');
   if (!dropdown) return;
   const courseTree = _coursesTreeData[courseSlug];
-  const modules = courseTree ? Object.keys(courseTree) : [];
+  // courseTree structure: { label, modules: { slug: { label, entries } } }
+  const modMap = courseTree?.modules || {};
   const f = filter.trim().toLowerCase();
-  const matches = modules.filter(m => !f || m.toLowerCase().includes(f));
+  // Build list of { slug, label } pairs filtered by input
+  const matches = Object.entries(modMap)
+    .map(([slug, mod]) => ({ slug, label: mod.label || slug }))
+    .filter(({ label }) => !f || label.toLowerCase().includes(f));
   if (!matches.length) { dropdown.classList.add('hidden'); return; }
-  dropdown.innerHTML = matches.map(m =>
-    `<div class="smart-select-option" data-value="${escapeHtml(m)}">${escapeHtml(m)}</div>`
+  dropdown.innerHTML = matches.map(({ label }) =>
+    `<div class="smart-select-option" data-value="${escapeHtml(label)}">${escapeHtml(label)}</div>`
   ).join('');
   dropdown.classList.remove('hidden');
   dropdown.querySelectorAll('.smart-select-option').forEach(opt => {
@@ -4062,6 +4088,18 @@ function initLessonModal() {
         showToast(`Lección "${title}" creada`);
         await loadTree();
         renderCoursesTree(_coursesTreeData, courseSlug);
+        // Refresh course view if currently open
+        if (_activeCourseSlug === courseSlug) {
+          const cv = $('courseView');
+          if (cv && !cv.classList.contains('hidden')) {
+            const activeTab = cv.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+            let stats = { pct: 0, done: 0, total: 0, modules: [] };
+            try { stats = await fetch(`/api/courses/${courseSlug}/stats`).then(r => r.json()); } catch {}
+            $('cvProgressBar').style.width = stats.pct + '%';
+            $('cvProgressLabel').textContent = `${stats.done} / ${stats.total} completadas · ${stats.pct}%`;
+            renderCourseTab(activeTab, courseSlug, stats);
+          }
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         showToast(err.error || 'Error al crear la lección', 'error');

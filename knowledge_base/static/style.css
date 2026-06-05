@@ -5955,3 +5955,27 @@ body[data-accent="red"] {
 
 /* Hide type-tabs in new-entry mode */
 #modal.modal--new-mode .entry-type-toggle { display: none !important; }
+
+/* Course View — tabs row with "+ Lección" button */
+.cv-tabs-row {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); margin-bottom: 0;
+}
+.cv-tabs-row .cv-tabs { border-bottom: none; }
+.cv-new-lesson-btn {
+  font-size: 0.75rem; padding: 4px 12px; height: 28px;
+  margin-right: 4px; white-space: nowrap;
+}
+
+/* Roadmap — per-module add lesson button */
+.cv-roadmap-add-lesson {
+  margin-left: auto; background: none; border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text-muted); cursor: pointer;
+  font-size: 1rem; line-height: 1; padding: 0 6px; height: 20px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.cv-roadmap-module:hover .cv-roadmap-add-lesson { opacity: 1; }
+
+/* Roadmap — empty state CTA */
+.cv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 0; }
+.cv-empty-state .cv-empty { color: var(--text-faint); margin: 0; }

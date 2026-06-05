@@ -237,11 +237,14 @@
           <div class="cv-progress-bar" id="cvProgressBar"></div>
           <span class="cv-progress-label" id="cvProgressLabel"></span>
         </div>
-        <nav class="cv-tabs" id="cvTabs">
-          <button class="cv-tab cv-tab--active" data-tab="roadmap">Roadmap</button>
-          <button class="cv-tab" data-tab="modules">Módulos</button>
-          <button class="cv-tab" data-tab="stats">Estadísticas</button>
-        </nav>
+        <div class="cv-tabs-row">
+          <nav class="cv-tabs" id="cvTabs">
+            <button class="cv-tab cv-tab--active" data-tab="roadmap">Roadmap</button>
+            <button class="cv-tab" data-tab="modules">Módulos</button>
+            <button class="cv-tab" data-tab="stats">Estadísticas</button>
+          </nav>
+          <button class="btn-primary cv-new-lesson-btn" id="cvNewLessonBtn">+ Lección</button>
+        </div>
         <div class="cv-body" id="cvBody">
           <!-- populated by loadCourseView() -->
         </div>
