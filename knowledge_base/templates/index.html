@@ -17,8 +17,9 @@
   <!-- TOP BAR -->
   <header class="topbar" id="topbar">
     <div class="topbar-left">
-      <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">&#9776;</button>
-      <span class="brand"><span>~</span>/knowledge_base</span>
+      <!-- Hidden toggle kept for mobile JS compat -->
+      <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" style="display:none">&#9776;</button>
+      <span class="brand" id="topbarBrand">~/knowledge_base</span>
     </div>
     <div class="topbar-center">
       <button class="cmd-trigger" id="cmdTriggerBtn" title="Búsqueda global (Ctrl+K)">
@@ -26,18 +27,17 @@
         <span class="cmd-trigger-label">Buscar entradas, tarjetas, acciones…</span>
         <kbd class="cmd-trigger-kbd">Ctrl K</kbd>
       </button>
-      <!-- Legacy search (hidden, kept for backward compat) -->
       <div class="search-wrap" style="display:none">
-        <input type="text" id="searchInput" placeholder="Buscar en todas las entradas…" autocomplete="off" />
+        <input type="text" id="searchInput" placeholder="Buscar…" autocomplete="off" />
         <div class="search-results hidden" id="searchResults"></div>
       </div>
     </div>
     <div class="topbar-right">
-      <button id="reindexBtn" class="btn-ghost" title="Reindexar archivos">⟳ reindex</button>
-      <button id="statsBtn" class="btn-ghost" title="Stats">∑ stats</button>
+      <button id="statsBtn" class="btn-ghost topbar-btn" title="Stats">∑ stats</button>
       <button id="newEntryBtn" class="btn-primary">+ Nueva entrada</button>
-      <button id="themeToggle" class="btn-icon" title="Cambiar tema">[light]</button>
-      <a href="/logout" class="btn-ghost" title="Cerrar sesión" style="text-decoration:none;font-size:0.72rem;">⏻</a>
+      <button id="reindexBtn" class="btn-ghost topbar-btn topbar-btn--muted" title="Reindexar archivos" style="font-size:0.7rem;opacity:0.6">⟳</button>
+      <button id="themeToggle" class="topbar-icon-btn" title="Cambiar tema">◐</button>
+      <a href="/logout" class="topbar-icon-btn" title="Cerrar sesión" style="text-decoration:none">⏻</a>
     </div>
   </header>
 

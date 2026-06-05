@@ -60,12 +60,12 @@
   --text-muted: #6a6a8a;
   --text-faint: #32324a;
 
-  /* ── Accent system ── */
-  --accent:         #1793d1;
-  --accent-hover:   #2ba8e8;
-  --accent-light:   rgba(23, 147, 209, 0.09);
-  --accent-dim:     rgba(23, 147, 209, 0.20);
-  --accent-purple:  #7c3aed;
+  /* ── Accent system — Taskade Indigo ── */
+  --accent:         #6366f1;
+  --accent-hover:   #818cf8;
+  --accent-light:   rgba(99, 102, 241, 0.10);
+  --accent-dim:     rgba(99, 102, 241, 0.22);
+  --accent-purple:  #8b5cf6;
   --accent-green:   #10b981;
   --accent-amber:   #f59e0b;
   --accent-red:     #ef4444;
@@ -126,11 +126,11 @@
   --text-muted: #3a3a60;
   --text-faint: #7878a0;
 
-  --accent:         #0f72a8;
-  --accent-hover:   #0e61910;
-  --accent-light:   rgba(15, 114, 168, 0.08);
-  --accent-dim:     rgba(15, 114, 168, 0.16);
-  --accent-purple:  #6d28d9;
+  --accent:         #6366f1;
+  --accent-hover:   #818cf8;
+  --accent-light:   rgba(99, 102, 241, 0.10);
+  --accent-dim:     rgba(99, 102, 241, 0.20);
+  --accent-purple:  #8b5cf6;
   --accent-green:   #059669;
   --accent-amber:   #d97706;
   --accent-red:     #dc2626;
@@ -5324,3 +5324,65 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 [data-theme="light"] .topbar,
 [data-theme="light"] .topbar * { color: var(--text); }
 [data-theme="light"] .brand { color: var(--accent) !important; }
+
+/* =============================================
+   TOPBAR REDESIGN — clean Taskade style
+   ============================================= */
+
+/* Brand — minimal path text */
+.brand {
+  font-family: var(--font-ui) !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  color: rgba(255,255,255,0.35) !important;
+  letter-spacing: 0 !important;
+}
+[data-theme="light"] .brand { color: rgba(0,0,0,0.35) !important; }
+
+/* Topbar icon buttons — theme toggle, logout */
+.topbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+  font-family: var(--font-ui);
+}
+.topbar-icon-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.80);
+}
+[data-theme="light"] .topbar-icon-btn { color: rgba(0,0,0,0.40); }
+[data-theme="light"] .topbar-icon-btn:hover { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.80); }
+
+/* topbar-btn -- stats, reindex */
+.topbar-btn {
+  font-family: var(--font-ui) !important;
+  font-size: 0.75rem !important;
+  color: rgba(255,255,255,0.40) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+.topbar-btn:hover {
+  color: rgba(255,255,255,0.80) !important;
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+[data-theme="light"] .topbar-btn { color: rgba(0,0,0,0.45) !important; border-color: rgba(0,0,0,0.10) !important; }
+[data-theme="light"] .topbar-btn:hover { color: rgba(0,0,0,0.80) !important; background: rgba(0,0,0,0.05) !important; }
+
+/* sidebar-toggle hidden on desktop since activity bar handles nav */
+@media (min-width: 769px) {
+  .sidebar-toggle { display: none !important; }
+}
+/* Show on mobile */
+@media (max-width: 768px) {
+  .sidebar-toggle { display: inline-flex !important; }
+}
