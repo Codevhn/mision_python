@@ -4571,6 +4571,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* ── Layout tokens ── */
 :root {
   --activity-bar-w: 48px;
+  --activity-bar-expanded-w: 200px;
 }
 
 /* ── Activity Bar — fixed left strip ── */
@@ -4590,6 +4591,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .activity-bar-top,
@@ -4609,6 +4611,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .ab-item {
@@ -4657,6 +4660,90 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 .ab-item--brand:hover { background: var(--accent-light); }
+
+/* ── Space-specific icon colors ── */
+#abBrand .ab-icon     { color: #f59e0b; }
+#abKnowledge .ab-icon { color: #3b82f6; }
+#abCourses .ab-icon   { color: #f97316; }
+#abBoards .ab-icon    { color: #8b5cf6; }
+#abTeamspace .ab-icon { color: #10b981; }
+#abGraph .ab-icon     { color: #06b6d4; }
+
+/* ── Space-specific active/hover states ── */
+#abBrand.ab-item--active, #abBrand:hover         { color: #f59e0b !important; background: rgba(245,158,11,0.12) !important; }
+#abKnowledge.ab-item--active, #abKnowledge:hover { color: #3b82f6 !important; background: rgba(59,130,246,0.12) !important; }
+#abCourses.ab-item--active, #abCourses:hover     { color: #f97316 !important; background: rgba(249,115,22,0.12) !important; }
+#abBoards.ab-item--active, #abBoards:hover       { color: #8b5cf6 !important; background: rgba(139,92,246,0.12) !important; }
+#abTeamspace.ab-item--active, #abTeamspace:hover { color: #10b981 !important; background: rgba(16,185,129,0.12) !important; }
+#abGraph.ab-item--active, #abGraph:hover         { color: #06b6d4 !important; background: rgba(6,182,212,0.12) !important; }
+
+/* ── Space-specific ::before indicator bar ── */
+#abBrand.ab-item--active::before     { background: #f59e0b !important; }
+#abKnowledge.ab-item--active::before { background: #3b82f6 !important; }
+#abCourses.ab-item--active::before   { background: #f97316 !important; }
+#abBoards.ab-item--active::before    { background: #8b5cf6 !important; }
+#abTeamspace.ab-item--active::before { background: #10b981 !important; }
+#abGraph.ab-item--active::before     { background: #06b6d4 !important; }
+
+/* ── Toggle button ── */
+.ab-sidebar-toggle { margin-bottom: 8px; }
+.ab-toggle-icon {
+  display: inline-block;
+  transition: transform 0.25s ease;
+  font-size: 1.1rem;
+}
+body.sidebar-expanded .ab-toggle-icon { transform: scaleX(-1); }
+
+/* ── Expanded state ── */
+body.sidebar-expanded .activity-bar {
+  width: var(--activity-bar-expanded-w);
+}
+body.sidebar-expanded .layout {
+  padding-left: var(--activity-bar-expanded-w);
+}
+body.sidebar-expanded .topbar {
+  left: var(--activity-bar-expanded-w);
+}
+body.sidebar-expanded .ab-label {
+  display: block;
+  opacity: 0;
+  transform: translateX(-8px);
+  animation: ab-label-in 0.2s ease forwards;
+  font-size: 0.72rem;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+}
+@keyframes ab-label-in {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+body.sidebar-expanded .activity-bar-top,
+body.sidebar-expanded .activity-bar-bottom {
+  align-items: flex-start;
+}
+
+body.sidebar-expanded .ab-item {
+  width: calc(var(--activity-bar-expanded-w) - 16px);
+  justify-content: flex-start;
+  padding: 0 14px;
+  gap: 10px;
+}
+
+body.sidebar-expanded .ab-item--active::before {
+  display: none;
+}
+
+/* ── Layout/topbar transitions ── */
+.layout {
+  transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.topbar {
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Hide #newEntryBtn from topbar ── */
+#newEntryBtn { display: none !important; }
 
 /* ── Push layout + sidebar right of activity bar ── */
 /* The sidebar is a child of .layout which is display:flex */

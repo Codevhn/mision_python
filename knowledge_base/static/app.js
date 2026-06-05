@@ -4679,3 +4679,30 @@ function initCoursesSpace() {
     });
   }
 }
+
+// ── Sidebar expand/collapse toggle ───────────────────────────────────────
+(function initSidebarToggle() {
+  function init() {
+    const btn = document.getElementById('abSidebarToggle');
+    if (!btn) return;
+    // Restore saved state
+    try {
+      if (localStorage.getItem('sidebarExpanded') === '1') {
+        document.body.classList.add('sidebar-expanded');
+        const icon = btn.querySelector('.ab-toggle-icon');
+        if (icon) icon.textContent = '‹';
+      }
+    } catch(e) {}
+    btn.addEventListener('click', () => {
+      const expanded = document.body.classList.toggle('sidebar-expanded');
+      const icon = btn.querySelector('.ab-toggle-icon');
+      if (icon) icon.textContent = expanded ? '‹' : '›';
+      try { localStorage.setItem('sidebarExpanded', expanded ? '1' : '0'); } catch(e) {}
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
