@@ -19,7 +19,6 @@
     <div class="topbar-left">
       <!-- Hidden toggle kept for mobile JS compat -->
       <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" style="display:none">&#9776;</button>
-      <span class="brand" id="topbarBrand">~/knowledge_base</span>
     </div>
     <div class="topbar-center">
       <button class="cmd-trigger" id="cmdTriggerBtn" title="Búsqueda global (Ctrl+K)">
@@ -37,6 +36,20 @@
       <button id="newEntryBtn" class="btn-primary">+ Nueva entrada</button>
       <button id="reindexBtn" class="btn-ghost topbar-btn topbar-btn--muted" title="Reindexar archivos" style="font-size:0.7rem;opacity:0.6">⟳</button>
       <button id="themeToggle" class="topbar-icon-btn" title="Cambiar tema">◐</button>
+      <div class="accent-picker-wrap" id="accentPickerWrap">
+        <button class="topbar-icon-btn accent-dot-btn" id="accentPickerBtn" title="Color de acento">
+          <span class="accent-dot" id="accentDot"></span>
+        </button>
+        <div class="accent-picker-panel hidden" id="accentPanel">
+          <button class="ap-swatch" data-accent="indigo" title="Índigo" style="background:#6366f1"></button>
+          <button class="ap-swatch" data-accent="orange" title="Naranja neon" style="background:#f97316"></button>
+          <button class="ap-swatch" data-accent="yellow" title="Amarillo neon" style="background:#eab308"></button>
+          <button class="ap-swatch" data-accent="cyan" title="Cyan neon" style="background:#06b6d4"></button>
+          <button class="ap-swatch" data-accent="pink" title="Rosa neon" style="background:#ec4899"></button>
+          <button class="ap-swatch" data-accent="green" title="Verde neon" style="background:#22c55e"></button>
+          <button class="ap-swatch" data-accent="red" title="Rojo neon" style="background:#ef4444"></button>
+        </div>
+      </div>
       <a href="/logout" class="topbar-icon-btn" title="Cerrar sesión" style="text-decoration:none">⏻</a>
     </div>
   </header>
