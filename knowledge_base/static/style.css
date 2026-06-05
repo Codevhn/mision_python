@@ -5979,3 +5979,102 @@ body[data-accent="red"] {
 /* Roadmap — empty state CTA */
 .cv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 0; }
 .cv-empty-state .cv-empty { color: var(--text-faint); margin: 0; }
+
+/* ── Course sidebar ⚙ gear menu ─────────────────────────────────── */
+.course-detail-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 6px 8px 2px;
+}
+.course-actions-wrap { position: relative; flex-shrink: 0; }
+.course-gear-btn {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 0.85rem; padding: 2px 5px; border-radius: 4px; line-height: 1;
+}
+.course-gear-btn:hover { color: var(--accent); background: var(--bg-hover); }
+.course-actions-menu {
+  position: absolute; right: 0; top: 100%; z-index: 200;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); min-width: 160px; padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.course-actions-menu button {
+  display: block; width: 100%; text-align: left; padding: 7px 14px;
+  background: none; border: none; color: var(--text); font-size: 0.78rem;
+  cursor: pointer;
+}
+.course-actions-menu button:hover { background: var(--bg-hover); color: var(--accent); }
+.course-actions-menu button.danger { color: #f87171; }
+.course-actions-menu button.danger:hover { background: rgba(248,113,113,.1); }
+
+/* ── Archive toggle & badge ─────────────────────────────────────── */
+.course-archive-toggle {
+  padding: 4px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px;
+}
+.course-archive-toggle button {
+  background: none; border: none; font-size: 0.7rem; color: var(--text-faint);
+  cursor: pointer; padding: 0;
+}
+.course-archive-toggle button:hover { color: var(--accent); }
+.course-card--archived { opacity: .55; }
+.course-archived-badge {
+  font-size: 0.6rem; background: var(--bg-elevated); color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  vertical-align: middle; margin-left: 4px;
+}
+
+/* ── Roadmap — status button & lesson actions ───────────────────── */
+.cv-status-btn {
+  background: none; border: none; cursor: pointer; font-size: 0.85rem;
+  color: inherit; padding: 0 4px; flex-shrink: 0; line-height: 1;
+  border-radius: 4px; transition: background .12s;
+}
+.cv-status-btn:hover { background: var(--bg-hover); }
+.cv-lesson-actions {
+  margin-left: auto; display: flex; align-items: center; gap: 2px;
+  opacity: 0; transition: opacity .15s;
+}
+.cv-roadmap-entry:hover .cv-lesson-actions { opacity: 1; }
+.cv-lesson-up, .cv-lesson-down, .cv-lesson-menu-btn {
+  background: none; border: 1px solid transparent; border-radius: 3px;
+  color: var(--text-muted); cursor: pointer; font-size: 0.72rem;
+  padding: 1px 4px; line-height: 1.4;
+}
+.cv-lesson-up:hover, .cv-lesson-down:hover, .cv-lesson-menu-btn:hover {
+  border-color: var(--border); background: var(--bg-hover); color: var(--text);
+}
+.cv-lesson-up:disabled, .cv-lesson-down:disabled { opacity: .25; cursor: default; }
+.cv-lesson-dropdown {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); min-width: 160px; padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 300;
+}
+.cv-lesson-dropdown button {
+  display: block; width: 100%; text-align: left; padding: 7px 14px;
+  background: none; border: none; color: var(--text); font-size: 0.78rem; cursor: pointer;
+}
+.cv-lesson-dropdown button:hover { background: var(--bg-hover); color: var(--accent); }
+.cv-lesson-dropdown button.danger { color: #f87171; }
+.cv-roadmap-entry-title { flex: 1; cursor: pointer; }
+.cv-roadmap-entry-title:hover { color: var(--accent); }
+
+/* ── Módulos tab — module cards ─────────────────────────────────── */
+.cv-module-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+}
+.cv-module-card-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.cv-module-card-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.cv-module-card-actions { display: flex; gap: 6px; }
+.cv-mod-add-btn, .cv-mod-rename-btn, .cv-mod-delete-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-muted); cursor: pointer; font-size: 0.7rem;
+  padding: 2px 8px; line-height: 1.6;
+}
+.cv-mod-add-btn:hover, .cv-mod-rename-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cv-mod-delete-btn:hover { border-color: #f87171; color: #f87171; }
+.cv-module-card-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.cv-module-card-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.cv-module-card-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.cv-module-card-pct { font-size: 0.68rem; color: var(--text-faint); white-space: nowrap; }

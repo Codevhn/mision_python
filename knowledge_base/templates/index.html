@@ -132,7 +132,9 @@
         <!-- Course detail: modules tree (shown when a course is open) -->
         <div id="courseDetail" style="display:none">
           <button class="course-back-btn" id="courseBackBtn">← Cursos</button>
-          <div class="course-detail-header" id="courseDetailHeader"></div>
+          <div class="course-detail-header" id="courseDetailHeader">
+            <!-- populated by openCourseDetail() — includes ⚙ menu -->
+          </div>
           <nav class="tree" id="coursesTree"></nav>
         </div>
       </div>
@@ -591,6 +593,69 @@
       <div class="modal-footer">
         <button class="btn-ghost" id="newLessonCancelBtn">Cancelar</button>
         <button class="btn-primary" id="newLessonCreateBtn">Crear lección</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar curso -->
+  <div class="modal-overlay hidden" id="editCourseOverlay">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h2>Editar curso</h2>
+        <button class="modal-close" id="editCourseClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nombre del curso</label>
+          <input type="text" id="editCourseLabel" placeholder="Ej: Python Profesional" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>Descripción <span style="color:var(--text-faint);font-size:0.75rem">— opcional</span></label>
+          <textarea id="editCourseDesc" rows="2" placeholder="¿De qué trata este curso?"></textarea>
+        </div>
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label>Nivel</label>
+            <select id="editCourseLevel">
+              <option value="">— Seleccionar —</option>
+              <option value="beginner">Principiante</option>
+              <option value="intermediate">Intermedio</option>
+              <option value="advanced">Avanzado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="editCourseCancelBtn">Cancelar</button>
+        <button class="btn-primary" id="editCourseSaveBtn">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Mover lección -->
+  <div class="modal-overlay hidden" id="moveLessonOverlay">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h2>Mover lección</h2>
+        <button class="modal-close" id="moveLessonClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Lección</label>
+          <input type="text" id="moveLessonTitle" readonly style="opacity:.6;cursor:default" />
+        </div>
+        <div class="form-group">
+          <label>Curso destino</label>
+          <select id="moveLessonCourse"></select>
+        </div>
+        <div class="form-group">
+          <label>Módulo destino</label>
+          <input type="text" id="moveLessonModule" placeholder="Escribe el nombre del módulo" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="moveLessonCancelBtn">Cancelar</button>
+        <button class="btn-primary" id="moveLessonConfirmBtn">Mover</button>
       </div>
     </div>
   </div>

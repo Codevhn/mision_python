@@ -1185,7 +1185,7 @@ def update_status(entry_id):
         return jsonify({"error": "Not found"}), 404
     data = request.json
     status = data.get("status", "pendiente")
-    if status not in ("pendiente", "progreso", "dominado"):
+    if status not in ("pendiente", "progreso", "dominado", "en_progreso", "completado"):
         return jsonify({"error": "Invalid status"}), 400
     index[entry_id]["status"] = status
     save_index(index)
@@ -1358,8 +1358,11 @@ def _sync_courses_from_index():
 def list_courses():
     courses = _sync_courses_from_index()
     index   = load_index()
+    include_archived = request.args.get("archived") == "1"
     result  = []
     for slug, c in courses["courses"].items():
+        if c.get("archived") and not include_archived:
+            continue
         entries = [m for m in index.values() if m.get("type") == "course" and m.get("course") == slug]
         total   = len(entries)
         done    = sum(1 for e in entries if e.get("status") == "completado")
@@ -1398,7 +1401,7 @@ def update_course(course_id):
     if course_id not in courses["courses"]:
         return jsonify({"error": "Not found"}), 404
     body = request.json or {}
-    for field in ("label", "description", "cover", "level"):
+    for field in ("label", "description", "cover", "level", "archived"):
         if field in body:
             courses["courses"][course_id][field] = body[field]
     save_courses(courses)
@@ -1410,8 +1413,134 @@ def delete_course(course_id):
     courses = load_courses()
     if course_id not in courses["courses"]:
         return jsonify({"error": "Not found"}), 404
+    # Cascade: remove all lesson entries from index + files
+    index = load_index()
+    to_delete = [eid for eid, m in index.items()
+                 if m.get("type") == "course" and m.get("course") == course_id]
+    for eid in to_delete:
+        meta = index[eid]
+        path = _entry_path(eid, meta)
+        if path.exists():
+            path.unlink()
+        del index[eid]
+    save_index(index)
+    # Remove course folder if empty
+    course_folder = KNOWLEDGE_DIR / "courses" / course_id
+    if course_folder.exists():
+        import shutil
+        shutil.rmtree(str(course_folder), ignore_errors=True)
     del courses["courses"][course_id]
     save_courses(courses)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/courses/<course_id>/duplicate", methods=["POST"])
+def duplicate_course(course_id):
+    courses = load_courses()
+    if course_id not in courses["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    original = courses["courses"][course_id]
+    new_label = f"Copia de {original['label']}"
+    new_slug  = slugify(new_label)
+    # Ensure unique slug
+    base = new_slug; n = 1
+    while new_slug in courses["courses"]:
+        new_slug = f"{base}-{n}"; n += 1
+    now = datetime.utcnow().isoformat()
+    courses["courses"][new_slug] = {
+        "id": new_slug, "label": new_label,
+        "description": original.get("description", ""),
+        "cover": original.get("cover", ""),
+        "level": original.get("level", ""),
+        "created_at": now,
+    }
+    save_courses(courses)
+    # Duplicate all lesson entries
+    index = load_index()
+    originals = [(eid, m) for eid, m in index.items()
+                 if m.get("type") == "course" and m.get("course") == course_id]
+    for eid, meta in originals:
+        new_eid  = slugify(meta["title"])
+        base_eid = new_eid; n2 = 1
+        while new_eid in index:
+            new_eid = f"{base_eid}-{n2}"; n2 += 1
+        src  = _entry_path(eid, meta)
+        new_meta = {**meta, "uid": uuid.uuid4().hex[:8],
+                    "course": new_slug, "course_label": new_label,
+                    "created_at": now, "status": "pendiente"}
+        dest = _entry_path(new_eid, new_meta)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if src.exists():
+            dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        index[new_eid] = new_meta
+    save_index(index)
+    return jsonify(courses["courses"][new_slug]), 201
+
+
+@app.route("/api/courses/<course_id>/module/<module_slug>", methods=["PATCH"])
+def rename_module(course_id, module_slug):
+    body = request.json or {}
+    new_label = body.get("label", "").strip()
+    if not new_label:
+        return jsonify({"error": "label required"}), 400
+    new_slug = slugify(new_label)
+    index = load_index()
+    updated = 0
+    for eid, meta in index.items():
+        if meta.get("type") == "course" and meta.get("course") == course_id and meta.get("module") == module_slug:
+            old_path = _entry_path(eid, meta)
+            meta["module"]       = new_slug
+            meta["module_label"] = new_label
+            new_path = _entry_path(eid, meta)
+            if old_path.exists() and old_path != new_path:
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+                old_path.rename(new_path)
+            updated += 1
+    save_index(index)
+    return jsonify({"ok": True, "updated": updated, "new_slug": new_slug})
+
+
+@app.route("/api/courses/<course_id>/module/<module_slug>", methods=["DELETE"])
+def delete_module(course_id, module_slug):
+    index = load_index()
+    to_delete = [eid for eid, m in index.items()
+                 if m.get("type") == "course" and m.get("course") == course_id and m.get("module") == module_slug]
+    for eid in to_delete:
+        meta = index[eid]
+        path = _entry_path(eid, meta)
+        if path.exists():
+            path.unlink()
+        del index[eid]
+    save_index(index)
+    return jsonify({"ok": True, "deleted": len(to_delete)})
+
+
+@app.route("/api/entry/<entry_id>/move", methods=["POST"])
+def move_entry(entry_id):
+    """Move a course lesson to a different course/module."""
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    body        = request.json or {}
+    new_course  = body.get("course", "").strip()
+    new_module  = body.get("module", "").strip()
+    if not new_course or not new_module:
+        return jsonify({"error": "course and module required"}), 400
+    courses_data = load_courses()
+    course_slug  = slugify(new_course)
+    if course_slug not in courses_data["courses"]:
+        return jsonify({"error": f"Curso '{new_course}' no existe"}), 400
+    meta     = index[entry_id]
+    old_path = _entry_path(entry_id, meta)
+    meta["course"]       = course_slug
+    meta["course_label"] = courses_data["courses"][course_slug]["label"]
+    meta["module"]       = slugify(new_module)
+    meta["module_label"] = new_module
+    new_path = _entry_path(entry_id, meta)
+    if old_path.exists() and old_path != new_path:
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        old_path.rename(new_path)
+    save_index(index)
     return jsonify({"ok": True})
 
 

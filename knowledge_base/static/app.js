@@ -3375,6 +3375,8 @@ function _wireCtxBtn(ctxId, sourceId) {
     // Courses space
     initCoursesSpace();
     initLessonModal();
+    initEditCourseModal();
+    initMoveLessonModal();
 
     // Restore last active space or default to 'knowledge'
     let saved;
@@ -3765,26 +3767,42 @@ async function renderGraph() {
 const LEVEL_LABELS = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
 
 // ── Sidebar: course cards list ────────────────────────────────────────────
+let _showArchivedCourses = false;
 async function renderCourseCards() {
   const list = $('courseCardsList');
   if (!list) return;
+  const url = _showArchivedCourses ? '/api/courses?archived=1' : '/api/courses';
   let courses;
-  try { courses = await fetch('/api/courses').then(r => r.json()); }
+  try { courses = await fetch(url).then(r => r.json()); }
   catch { return; }
 
+  list.innerHTML = '';
+
+  // "Mostrar archivados" toggle
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'course-archive-toggle';
+  toggleRow.innerHTML = `<button id="toggleArchivedBtn">${_showArchivedCourses ? 'Ocultar archivados' : 'Mostrar archivados'}</button>`;
+  toggleRow.querySelector('#toggleArchivedBtn').addEventListener('click', () => {
+    _showArchivedCourses = !_showArchivedCourses;
+    renderCourseCards();
+  });
+  list.appendChild(toggleRow);
+
   if (!courses.length) {
-    list.innerHTML = '<div class="tree-empty">No hay cursos aún.<br>Pulsa + para crear uno.</div>';
+    const empty = document.createElement('div');
+    empty.className = 'tree-empty';
+    empty.textContent = _showArchivedCourses ? 'No hay cursos archivados.' : 'No hay cursos aún. Pulsa + para crear uno.';
+    list.appendChild(empty);
     return;
   }
 
-  list.innerHTML = '';
   courses.forEach(c => {
     const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
     const card = document.createElement('div');
-    card.className = 'course-card';
+    card.className = 'course-card' + (c.archived ? ' course-card--archived' : '');
     card.innerHTML = `
       <div class="course-card-inner">
-        <div class="course-card-label">${escapeHtml(c.label)}</div>
+        <div class="course-card-label">${escapeHtml(c.label)}${c.archived ? ' <span class="course-archived-badge">archivado</span>' : ''}</div>
         <div class="course-card-meta">${c.module_count} módulos · ${c.entry_count} lecciones</div>
         <div class="course-card-progress">
           <div class="course-card-bar"><div class="course-card-bar-fill" style="width:${pct}%"></div></div>
@@ -3800,28 +3818,46 @@ async function renderCourseCards() {
 async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
 
-  // Sidebar: show detail panel, hide cards
   const cardsList   = $('courseCardsList');
   const detailPanel = $('courseDetail');
-  const backBtn     = $('courseBackBtn');
   const header      = $('courseDetailHeader');
   if (cardsList)   cardsList.style.display = 'none';
   if (detailPanel) detailPanel.style.display = '';
 
-  // Load course entity
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
   catch { courses = []; }
   const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
 
   if (header) {
-    header.innerHTML = `<span class="course-detail-name">${escapeHtml(course.label)}</span>`;
+    header.innerHTML = `
+      <span class="course-detail-name">${escapeHtml(course.label)}</span>
+      <div class="course-actions-wrap">
+        <button class="course-gear-btn" id="courseGearBtn" title="Acciones del curso">⚙</button>
+        <div class="course-actions-menu hidden" id="courseActionsMenu">
+          <button data-action="edit">Editar curso</button>
+          <button data-action="archive">${course.archived ? 'Desarchivar' : 'Archivar'}</button>
+          <button data-action="duplicate">Duplicar</button>
+          <button data-action="delete" class="danger">Eliminar curso</button>
+        </div>
+      </div>`;
+    // Wire gear menu
+    const gearBtn = header.querySelector('#courseGearBtn');
+    const menu    = header.querySelector('#courseActionsMenu');
+    gearBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => menu.classList.add('hidden'), { once: true });
+    menu.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        menu.classList.add('hidden');
+        handleCourseAction(btn.dataset.action, courseSlug, course);
+      });
+    });
   }
 
-  // Render modules tree for this course in sidebar
   renderCoursesTree(_coursesTreeData, courseSlug);
-
-  // Show course view in main content
   loadCourseView(courseSlug, course);
 }
 
@@ -3909,12 +3945,20 @@ async function loadCourseView(courseSlug, courseEntity) {
   renderCourseTab('roadmap', courseSlug, stats);
 }
 
+function _statusIcon(s) {
+  return s === 'completado' ? '✓' : s === 'en_progreso' ? '→' : '○';
+}
+function _nextStatus(s) {
+  return s === 'completado' ? 'pendiente' : s === 'en_progreso' ? 'completado' : 'en_progreso';
+}
+
 function renderCourseTab(tab, courseSlug, stats) {
   const body = $('cvBody');
+
   if (tab === 'roadmap') {
-    const tree = _coursesTreeData[courseSlug];
-    const modules = tree ? Object.values(tree.modules || {}) : [];
-    if (!modules.length) {
+    const tree    = _coursesTreeData[courseSlug];
+    const modEntries = Object.entries(tree?.modules || {});
+    if (!modEntries.length) {
       body.innerHTML = `
         <div class="cv-empty-state">
           <p class="cv-empty">No hay lecciones todavía.</p>
@@ -3924,39 +3968,149 @@ function renderCourseTab(tab, courseSlug, stats) {
       return;
     }
     body.innerHTML = '';
-    modules.forEach((mod, mi) => {
+    modEntries.forEach(([modSlug, mod], mi) => {
       const section = document.createElement('div');
       section.className = 'cv-roadmap-section';
+      section.dataset.modSlug = modSlug;
       section.innerHTML = `<div class="cv-roadmap-module">
         <span class="cv-roadmap-mod-num">M${mi + 1}</span>
         <span class="cv-roadmap-mod-label">${escapeHtml(mod.label)}</span>
         <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
-        <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección en este módulo">+</button>
+        <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+</button>
       </div>`;
       const entries = document.createElement('div');
       entries.className = 'cv-roadmap-entries';
-      (mod.entries || []).forEach(e => {
+      (mod.entries || []).forEach((e, ei) => {
         const row = document.createElement('div');
         row.className = `cv-roadmap-entry cv-roadmap-entry--${e.status || 'pendiente'}`;
+        row.dataset.entryId = e.id;
         row.innerHTML = `
-          <span class="cv-roadmap-status">${e.status === 'completado' ? '✓' : e.status === 'en_progreso' ? '→' : '○'}</span>
-          <span class="cv-roadmap-entry-title">${escapeHtml(e.title)}</span>`;
-        row.addEventListener('click', () => loadEntry(e.id));
+          <button class="cv-status-btn" title="Cambiar estado">${_statusIcon(e.status)}</button>
+          <span class="cv-roadmap-entry-title">${escapeHtml(e.title)}</span>
+          <div class="cv-lesson-actions">
+            <button class="cv-lesson-up" title="Subir" ${ei === 0 ? 'disabled' : ''}>↑</button>
+            <button class="cv-lesson-down" title="Bajar" ${ei === (mod.entries.length - 1) ? 'disabled' : ''}>↓</button>
+            <button class="cv-lesson-menu-btn" title="Más acciones">…</button>
+          </div>`;
+        // Open entry on title click
+        row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => loadEntry(e.id));
+        // Cycle status without opening entry
+        row.querySelector('.cv-status-btn').addEventListener('click', async ev => {
+          ev.stopPropagation();
+          const next = _nextStatus(e.status || 'pendiente');
+          const r = await fetch(`/api/entry/${e.id}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: next }),
+          });
+          if (r.ok) {
+            e.status = next;
+            row.className = `cv-roadmap-entry cv-roadmap-entry--${next}`;
+            row.querySelector('.cv-status-btn').textContent = _statusIcon(next);
+            _refreshProgressBar(courseSlug);
+          }
+        });
+        // Reorder up
+        row.querySelector('.cv-lesson-up').addEventListener('click', async ev => {
+          ev.stopPropagation();
+          await _reorderLesson(courseSlug, mod, ei, -1);
+          const activeTab = $('courseView')?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+          await _reloadCourseView(courseSlug, activeTab);
+        });
+        // Reorder down
+        row.querySelector('.cv-lesson-down').addEventListener('click', async ev => {
+          ev.stopPropagation();
+          await _reorderLesson(courseSlug, mod, ei, +1);
+          const activeTab = $('courseView')?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+          await _reloadCourseView(courseSlug, activeTab);
+        });
+        // … menu
+        row.querySelector('.cv-lesson-menu-btn').addEventListener('click', ev => {
+          ev.stopPropagation();
+          _showLessonMenu(ev.currentTarget, e, courseSlug, mod.label);
+        });
         entries.appendChild(row);
       });
       section.appendChild(entries);
       body.appendChild(section);
     });
-    // Wire per-module add buttons
     body.querySelectorAll('.cv-roadmap-add-lesson').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
         openNewLessonModal(courseSlug, btn.dataset.module);
       });
     });
+
   } else if (tab === 'modules') {
-    // Same as roadmap but more compact tree style
-    body.innerHTML = '<div class="cv-modules-note">Selecciona una lección del panel izquierdo.</div>';
+    const tree = _coursesTreeData[courseSlug];
+    const modEntries = Object.entries(tree?.modules || {});
+    if (!modEntries.length) {
+      body.innerHTML = `
+        <div class="cv-empty-state">
+          <p class="cv-empty">Sin módulos todavía.</p>
+          <button class="btn-primary" id="cvModsNewLesson">+ Crear primera lección</button>
+        </div>`;
+      $('cvModsNewLesson')?.addEventListener('click', () => openNewLessonModal(courseSlug));
+      return;
+    }
+    body.innerHTML = '';
+    modEntries.forEach(([modSlug, mod]) => {
+      const total = mod.entries.length;
+      const done  = mod.entries.filter(e => e.status === 'completado').length;
+      const pct   = total ? Math.round(done / total * 100) : 0;
+      const card  = document.createElement('div');
+      card.className = 'cv-module-card';
+      card.innerHTML = `
+        <div class="cv-module-card-header">
+          <span class="cv-module-card-name">${escapeHtml(mod.label)}</span>
+          <div class="cv-module-card-actions">
+            <button class="cv-mod-add-btn" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+ lección</button>
+            <button class="cv-mod-rename-btn" data-slug="${escapeHtml(modSlug)}" data-label="${escapeHtml(mod.label)}" title="Renombrar módulo">✎</button>
+            <button class="cv-mod-delete-btn danger" data-slug="${escapeHtml(modSlug)}" data-label="${escapeHtml(mod.label)}" title="Eliminar módulo">🗑</button>
+          </div>
+        </div>
+        <div class="cv-module-card-bar-wrap">
+          <div class="cv-module-card-bar"><div class="cv-module-card-bar-fill" style="width:${pct}%"></div></div>
+          <span class="cv-module-card-pct">${done}/${total} · ${pct}%</span>
+        </div>`;
+      // New lesson
+      card.querySelector('.cv-mod-add-btn').addEventListener('click', () => {
+        openNewLessonModal(courseSlug, mod.label);
+      });
+      // Rename module
+      card.querySelector('.cv-mod-rename-btn').addEventListener('click', async () => {
+        const newName = prompt(`Renombrar módulo "${mod.label}":`, mod.label);
+        if (!newName || newName.trim() === mod.label) return;
+        const r = await fetch(`/api/courses/${courseSlug}/module/${modSlug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: newName.trim() }),
+        });
+        if (r.ok) {
+          showToast(`Módulo renombrado a "${newName.trim()}"`);
+          await _reloadCourseView(courseSlug, 'modules');
+        } else {
+          showToast('Error al renombrar', 'error');
+        }
+      });
+      // Delete module
+      card.querySelector('.cv-mod-delete-btn').addEventListener('click', async () => {
+        const ok = await showConfirm(
+          `Eliminar módulo "${mod.label}"`,
+          `¿Eliminar este módulo y todas sus ${total} lecciones? No se puede deshacer.`
+        );
+        if (!ok) return;
+        const r = await fetch(`/api/courses/${courseSlug}/module/${modSlug}`, { method: 'DELETE' });
+        if (r.ok) {
+          showToast(`Módulo "${mod.label}" eliminado`);
+          await _reloadCourseView(courseSlug, 'modules');
+        } else {
+          showToast('Error al eliminar', 'error');
+        }
+      });
+      body.appendChild(card);
+    });
+
   } else if (tab === 'stats') {
     body.innerHTML = `
       <div class="cv-stats-grid">
@@ -3975,6 +4129,274 @@ function renderCourseTab(tab, courseSlug, stats) {
             <span class="cv-stats-mod-pct">${m.done}/${m.total}</span>
           </div>`).join('')}
       </div>`;
+  }
+}
+
+// ── Course view helpers ───────────────────────────────────────────────────
+async function _refreshProgressBar(courseSlug) {
+  try {
+    const stats = await fetch(`/api/courses/${courseSlug}/stats`).then(r => r.json());
+    const bar   = $('cvProgressBar');
+    const lbl   = $('cvProgressLabel');
+    if (bar) bar.style.width = stats.pct + '%';
+    if (lbl) lbl.textContent = `${stats.done} / ${stats.total} completadas · ${stats.pct}%`;
+    return stats;
+  } catch { return null; }
+}
+
+async function _reloadCourseView(courseSlug, tab) {
+  await loadTree();
+  renderCoursesTree(_coursesTreeData, courseSlug);
+  const stats = await _refreshProgressBar(courseSlug) || { pct: 0, done: 0, total: 0, modules: [] };
+  // Update active tab indicator
+  const cv = $('courseView');
+  if (cv) {
+    cv.querySelectorAll('.cv-tab').forEach(t => t.classList.toggle('cv-tab--active', t.dataset.tab === tab));
+  }
+  renderCourseTab(tab, courseSlug, stats);
+}
+
+async function _reorderLesson(courseSlug, mod, index, direction) {
+  const entries = mod.entries;
+  const swapIdx = index + direction;
+  if (swapIdx < 0 || swapIdx >= entries.length) return;
+  const a = entries[index], b = entries[swapIdx];
+  // Swap order values
+  const orderA = a.order ?? index;
+  const orderB = b.order ?? swapIdx;
+  await Promise.all([
+    fetch(`/api/entry/${a.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: orderB }),
+    }),
+    fetch(`/api/entry/${b.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: orderA }),
+    }),
+  ]);
+}
+
+let _lessonMenuCleanup = null;
+function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
+  // Remove any existing menu
+  document.querySelector('.cv-lesson-dropdown')?.remove();
+  if (_lessonMenuCleanup) { _lessonMenuCleanup(); _lessonMenuCleanup = null; }
+
+  const menu = document.createElement('div');
+  menu.className = 'cv-lesson-dropdown';
+  menu.innerHTML = `
+    <button data-a="edit">Editar</button>
+    <button data-a="status-p">Marcar pendiente</button>
+    <button data-a="status-i">Marcar en progreso</button>
+    <button data-a="status-c">Marcar completado</button>
+    <button data-a="move">Mover a…</button>
+    <button data-a="delete" class="danger">Eliminar</button>`;
+
+  // Position relative to anchor
+  const rect = anchor.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top  = rect.bottom + 4 + 'px';
+  menu.style.left = rect.left - 100 + 'px';
+  document.body.appendChild(menu);
+
+  const close = () => { menu.remove(); _lessonMenuCleanup = null; };
+  _lessonMenuCleanup = close;
+
+  menu.querySelectorAll('button[data-a]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      close();
+      const action = btn.dataset.a;
+      if (action === 'edit') {
+        loadEntry(entry.id);
+      } else if (action.startsWith('status-')) {
+        const map = { 'status-p': 'pendiente', 'status-i': 'en_progreso', 'status-c': 'completado' };
+        const newStatus = map[action];
+        await fetch(`/api/entry/${entry.id}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        entry.status = newStatus;
+        await _reloadCourseView(courseSlug, 'roadmap');
+      } else if (action === 'move') {
+        openMoveLessonModal(entry.id, entry.title);
+      } else if (action === 'delete') {
+        const ok = await showConfirm(`Eliminar "${entry.title}"`, '¿Eliminar esta lección? No se puede deshacer.');
+        if (!ok) return;
+        await fetch(`/api/entry/${entry.id}`, { method: 'DELETE' });
+        showToast(`"${entry.title}" eliminada`);
+        await _reloadCourseView(courseSlug, 'roadmap');
+      }
+    });
+  });
+
+  setTimeout(() => document.addEventListener('click', close, { once: true }), 0);
+}
+
+// ── Course actions (⚙ menu) ───────────────────────────────────────────────
+async function handleCourseAction(action, courseSlug, courseEntity) {
+  if (action === 'edit') {
+    openEditCourseModal(courseSlug, courseEntity);
+  } else if (action === 'archive') {
+    const archived = !courseEntity.archived;
+    await fetch(`/api/courses/${courseSlug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived }),
+    });
+    showToast(archived ? `"${courseEntity.label}" archivado` : `"${courseEntity.label}" desarchivado`);
+    if (archived) { setActiveCourse(null); }
+    await renderCourseCards();
+  } else if (action === 'duplicate') {
+    const res = await fetch(`/api/courses/${courseSlug}/duplicate`, { method: 'POST' });
+    if (res.ok) {
+      const newC = await res.json();
+      showToast(`Curso duplicado: "${newC.label}"`);
+      await renderCourseCards();
+    } else {
+      showToast('Error al duplicar', 'error');
+    }
+  } else if (action === 'delete') {
+    const ok = await showConfirm(
+      `Eliminar "${courseEntity.label}"`,
+      `¿Eliminar este curso y TODAS sus lecciones? Esta acción no se puede deshacer.`
+    );
+    if (!ok) return;
+    const res = await fetch(`/api/courses/${courseSlug}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast(`Curso "${courseEntity.label}" eliminado`);
+      setActiveCourse(null);
+      await loadTree();
+      await renderCourseCards();
+    } else {
+      showToast('Error al eliminar', 'error');
+    }
+  }
+}
+
+let _editingCourseSlug = null;
+function openEditCourseModal(courseSlug, courseEntity) {
+  _editingCourseSlug = courseSlug;
+  const overlay = $('editCourseOverlay');
+  if (!overlay) return;
+  $('editCourseLabel').value = courseEntity.label || '';
+  $('editCourseDesc').value  = courseEntity.description || '';
+  $('editCourseLevel').value = courseEntity.level || '';
+  overlay.classList.remove('hidden');
+  setTimeout(() => $('editCourseLabel').focus(), 60);
+}
+
+function initEditCourseModal() {
+  const overlay   = $('editCourseOverlay');
+  const closeBtn  = $('editCourseClose');
+  const cancelBtn = $('editCourseCancelBtn');
+  const saveBtn   = $('editCourseSaveBtn');
+  if (!overlay) return;
+  const _close = () => { overlay.classList.add('hidden'); _editingCourseSlug = null; };
+  if (closeBtn)  closeBtn.addEventListener('click', _close);
+  if (cancelBtn) cancelBtn.addEventListener('click', _close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      if (!_editingCourseSlug) return;
+      const label = $('editCourseLabel').value.trim();
+      if (!label) { showToast('El nombre es obligatorio', 'error'); return; }
+      const res = await fetch(`/api/courses/${_editingCourseSlug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label,
+          description: $('editCourseDesc').value.trim(),
+          level: $('editCourseLevel').value,
+        }),
+      });
+      if (res.ok) {
+        _close();
+        showToast('Curso actualizado');
+        await loadTree();
+        await renderCourseCards();
+        // Refresh course view if open
+        if (_activeCourseSlug === _editingCourseSlug || _activeCourseSlug) {
+          const slug = _activeCourseSlug;
+          const updated = await res.json().catch(() => ({ label }));
+          $('cvTitle').textContent = updated.label || label;
+          $('cvDesc').textContent  = updated.description || '';
+          // Re-render sidebar header
+          await openCourseDetail(slug);
+        }
+      } else {
+        showToast('Error al guardar', 'error');
+      }
+    });
+  }
+}
+
+// ── Move lesson modal ─────────────────────────────────────────────────────
+let _movingEntryId = null;
+async function openMoveLessonModal(entryId, entryTitle) {
+  _movingEntryId = entryId;
+  const overlay = $('moveLessonOverlay');
+  if (!overlay) return;
+  $('moveLessonTitle').value  = entryTitle;
+  $('moveLessonModule').value = '';
+  // Populate course selector
+  const sel = $('moveLessonCourse');
+  sel.innerHTML = '';
+  try {
+    const courses = await fetch('/api/courses').then(r => r.json());
+    courses.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.label; opt.textContent = c.label;
+      sel.appendChild(opt);
+    });
+  } catch {}
+  overlay.classList.remove('hidden');
+}
+
+function initMoveLessonModal() {
+  const overlay   = $('moveLessonOverlay');
+  const closeBtn  = $('moveLessonClose');
+  const cancelBtn = $('moveLessonCancelBtn');
+  const confirmBtn = $('moveLessonConfirmBtn');
+  if (!overlay) return;
+  const _close = () => { overlay.classList.add('hidden'); _movingEntryId = null; };
+  if (closeBtn)   closeBtn.addEventListener('click', _close);
+  if (cancelBtn)  cancelBtn.addEventListener('click', _close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+      if (!_movingEntryId) return;
+      const course = $('moveLessonCourse').value.trim();
+      const module = $('moveLessonModule').value.trim();
+      if (!course || !module) { showToast('Completa todos los campos', 'error'); return; }
+      const res = await fetch(`/api/entry/${_movingEntryId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ course, module }),
+      });
+      if (res.ok) {
+        _close();
+        showToast('Lección movida');
+        await loadTree();
+        if (_activeCourseSlug) renderCoursesTree(_coursesTreeData, _activeCourseSlug);
+        if (_activeCourseSlug) {
+          const cv = $('courseView');
+          if (cv && !cv.classList.contains('hidden')) {
+            const activeTab = cv.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+            let stats = { pct: 0, done: 0, total: 0, modules: [] };
+            try { stats = await fetch(`/api/courses/${_activeCourseSlug}/stats`).then(r => r.json()); } catch {}
+            $('cvProgressBar').style.width = stats.pct + '%';
+            $('cvProgressLabel').textContent = `${stats.done} / ${stats.total} completadas · ${stats.pct}%`;
+            renderCourseTab(activeTab, _activeCourseSlug, stats);
+          }
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Error al mover', 'error');
+      }
+    });
   }
 }
 
