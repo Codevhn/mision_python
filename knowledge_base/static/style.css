@@ -4928,6 +4928,7 @@ body {
   color: #fff !important; letter-spacing: -0.05em !important;
   line-height: 1.1 !important;
 }
+[data-theme="light"] .home-greeting { color: #1a1a2e !important; }
 .home-greeting::before { content: none !important; }
 .home-section-label {
   font-size: 0.67rem !important; font-weight: 600 !important;
