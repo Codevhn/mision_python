@@ -286,7 +286,13 @@
         renderWorkspaceSidebar();
         renderWorkspaceMain();
       })
-      .catch(() => showToast('Error cargando tableros'));
+      .catch((err) => {
+        showToast('Error cargando tableros');
+        const main = document.getElementById('kbWsMain');
+        if (main) main.innerHTML = '<div style="color:var(--text-faint);font-size:0.85rem;padding:24px">No se pudo cargar. Recarga la página.</div>';
+        const sb = document.getElementById('kbWsSidebar');
+        if (sb) sb.innerHTML = '';
+      });
   }
 
   function renderWorkspaceSidebar() {

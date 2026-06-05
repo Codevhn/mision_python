@@ -1708,6 +1708,7 @@ def get_relations():
 
 
 
+@app.route("/api/kanban/boards", methods=["GET"])
 def kanban_list_boards():
     data = load_kanban()
     workspace_id_filter = request.args.get("workspace_id", "").strip()

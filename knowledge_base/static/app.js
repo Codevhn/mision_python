@@ -2214,7 +2214,8 @@ function makeDraggable(el, handle) {
 // FEATURE 6 — STATS PAGE
 // ============================================================
 function initStats() {
-  $("reindexBtn").addEventListener("click", async () => {
+  const reindexBtn = $("reindexBtn");
+  if (reindexBtn) reindexBtn.addEventListener("click", async () => {
     showToast("Reindexando archivos…");
     const res = await fetch("/api/reindex", { method: "POST" });
     if (res.ok) {
@@ -2225,7 +2226,8 @@ function initStats() {
       showToast("Error al reindexar", "error");
     }
   });
-  $("statsBtn").addEventListener("click", openStats);
+  const statsBtn = $("statsBtn");
+  if (statsBtn) statsBtn.addEventListener("click", openStats);
   $("statsClose").addEventListener("click", () => $("statsOverlay").classList.add("hidden"));
 }
 
