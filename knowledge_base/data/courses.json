@@ -1,0 +1,22 @@
+{
+  "courses": {
+    "python-avanzado": {
+      "id": "python-avanzado",
+      "uid": "5d357ede",
+      "label": "Python Avanzado",
+      "description": "Curso de Python de nivel avanzado",
+      "cover": "",
+      "level": "",
+      "created_at": "2026-06-05T23:38:23.527313"
+    },
+    "linux-fundamentals": {
+      "id": "linux-fundamentals",
+      "uid": "949a3bee",
+      "label": "Linux Fundamentals",
+      "description": "Bases de Linux",
+      "cover": "",
+      "level": "",
+      "created_at": "2026-06-05T23:38:27.167869"
+    }
+  }
+}

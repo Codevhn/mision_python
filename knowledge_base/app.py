@@ -1324,9 +1324,20 @@ def resolve_wikilink():
 COURSES_FILE = DATA_DIR / "courses.json"
 
 def load_courses():
-    if COURSES_FILE.exists():
-        return json.loads(COURSES_FILE.read_text())
-    return {"courses": {}}
+    if not COURSES_FILE.exists():
+        return {"courses": {}}
+    data = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
+    # Lazy migration: assign uid to any course that lacks one
+    migrated = 0
+    for course in data.get("courses", {}).values():
+        if not course.get("uid"):
+            course["uid"] = uuid.uuid4().hex[:8]
+            migrated += 1
+    if migrated:
+        # Write backup before first mutation
+        shutil.copy2(COURSES_FILE, COURSES_FILE.with_suffix(".json.bak"))
+        COURSES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return data
 
 def save_courses(data):
     COURSES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
@@ -1344,6 +1355,7 @@ def _sync_courses_from_index():
         if slug and slug not in courses["courses"]:
             courses["courses"][slug] = {
                 "id":          slug,
+                "uid":         uuid.uuid4().hex[:8],
                 "label":       label,
                 "description": "",
                 "cover":       "",
@@ -1387,6 +1399,7 @@ def create_course():
     now = datetime.utcnow().isoformat()
     courses["courses"][slug] = {
         "id":          slug,
+        "uid":         uuid.uuid4().hex[:8],
         "label":       label,
         "description": body.get("description", "").strip(),
         "cover":       body.get("cover", "").strip(),
@@ -1857,6 +1870,19 @@ def _build_uid_index():
     # Cards via dedicated index (single scan)
     for card_id, desc in _build_card_index(kanban).items():
         registry[card_id] = desc
+
+    # Course entities (courses.json)
+    try:
+        for slug, course in load_courses().get("courses", {}).items():
+            uid = course.get("uid")
+            if uid:
+                registry[uid] = {
+                    "type":  "course",
+                    "id":    slug,
+                    "title": course.get("label", slug),
+                }
+    except Exception:
+        pass
 
     return registry
 
