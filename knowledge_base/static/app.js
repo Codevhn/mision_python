@@ -375,11 +375,24 @@ function closeSidebarMobile() {
 let _index = [];
 
 async function loadTree() {
-  const [r1, r2, r3, r4] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries")]);
+  const [r1, r2, r3, r4, r5] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses")]);
   const knowledgeTree  = await r1.json();
   const coursesTree    = await r2.json();
   const teamspaceTree  = await r3.json();
-  _index = await r4.json();
+  const entries        = await r4.json();
+  const coursesFlat    = await r5.json();
+  // Merge course root entities into _index so they appear in relation searcher
+  const courseIndexEntries = (Array.isArray(coursesFlat) ? coursesFlat : []).map(c => ({
+    id:       c.id,
+    uid:      c.uid,
+    title:    c.label || c.id,
+    type:     "course_root",
+    category: "Curso",
+    topic:    "",
+    icon:     c.icon || "",
+    cover:    c.cover || "",
+  }));
+  _index = [...entries, ...courseIndexEntries];
   _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
   renderTeamspaceTree(teamspaceTree);
@@ -3560,11 +3573,12 @@ function _relTypeIcon(type) {
 
 function _entityTypeMeta(type) {
   const map = {
-    page:         { label: 'nota',      css: 'etype-page'     },
-    course:       { label: 'lección',   css: 'etype-course'   },
-    teamspace:    { label: 'teamspace', css: 'etype-teamspace' },
-    kanban_board: { label: 'board',     css: 'etype-board'    },
-    kanban_card:  { label: 'tarjeta',   css: 'etype-card'     },
+    page:         { label: 'nota',     css: 'etype-page'        },
+    course:       { label: 'lección',  css: 'etype-course'      },
+    course_root:  { label: 'curso',    css: 'etype-course-root' },
+    teamspace:    { label: 'teamspace',css: 'etype-teamspace'   },
+    kanban_board: { label: 'board',    css: 'etype-board'       },
+    kanban_card:  { label: 'tarjeta',  css: 'etype-card'        },
   };
   return map[type] || { label: type || '?', css: 'etype-unknown' };
 }

@@ -1872,13 +1872,13 @@ def _build_uid_index():
     for card_id, desc in _build_card_index(kanban).items():
         registry[card_id] = desc
 
-    # Course entities (courses.json)
+    # Course root entities (courses.json) — distinct from lesson entries
     try:
         for slug, course in load_courses().get("courses", {}).items():
             uid = course.get("uid")
             if uid:
                 registry[uid] = {
-                    "type":  "course",
+                    "type":  "course_root",
                     "id":    slug,
                     "title": course.get("label", slug),
                 }
