@@ -547,6 +547,32 @@ input, textarea, select { font-family: inherit; }
   position: relative;
 }
 
+/* ── Navigation back bar ─────────────────────────────────────────────── */
+.nav-back-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: 5px 24px;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-ui);
+}
+.nav-back-bar.hidden { display: none; }
+.nav-back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.12s;
+}
+.nav-back-btn:hover { color: var(--accent); }
+
 /* Welcome */
 .welcome {
   height: 100%;

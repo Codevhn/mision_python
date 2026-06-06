@@ -121,6 +121,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initReview();
   initPageFind();
   initRelationsPanel();
+  // Back navigation button
+  const _navBackBtn = $('navBackBtn');
+  if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
   // KanbanApp.init() is called from kanban.js DOMContentLoaded
 
   // Modal type toggle
@@ -373,6 +376,10 @@ function closeSidebarMobile() {
 
 // ---- TREE ----
 let _index = [];
+
+// ---- Navigation stack ----
+let _navStack = [];  // [{ type, id, label, space }]
+let _navPos   = -1;  // current position in stack
 
 async function loadTree() {
   const [r1, r2, r3, r4, r5] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses")]);
@@ -3559,12 +3566,54 @@ function _renderBacklinks(incoming, entryUid) {
   }
 }
 
-function _navigateToEntity(entity) {
+// ── Navigation stack helpers ──────────────────────────────────────────────
+
+function _navCurrentNode() {
+  return _navPos >= 0 ? _navStack[_navPos] : null;
+}
+
+function _navPush(node) {
+  // No-op if same entity as current top
+  const cur = _navCurrentNode();
+  if (cur && cur.type === node.type && cur.id === node.id) return;
+  // Truncate forward history when branching
+  _navStack = _navStack.slice(0, _navPos + 1);
+  _navStack.push(node);
+  if (_navStack.length > 50) _navStack.shift();
+  _navPos = _navStack.length - 1;
+  _updateBackBtn();
+}
+
+function _updateBackBtn() {
+  const bar   = $('navBackBar');
+  const label = $('navBackLabel');
+  if (!bar || !label) return;
+  if (_navPos > 0) {
+    const prev = _navStack[_navPos - 1];
+    label.textContent = prev.label || 'Volver';
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function _navBack() {
+  if (_navPos <= 0) return;
+  _navPos--;
+  const node = _navStack[_navPos];
+  _updateBackBtn();
+  _navigateToEntity({ type: node.type, id: node.id }, { push: false });
+}
+
+function _navigateToEntity(entity, opts = {}) {
   if (!entity || !entity.id) return;
+  const push = opts.push !== false;  // default: push to stack
   if (entity.type === 'course_root') {
+    if (push) _navPush({ type: 'course_root', id: entity.id, label: entity.title || entity.id });
     if (window.switchSpace) window.switchSpace('courses');
     setActiveCourse(entity.id);
   } else {
+    if (push) _navPush({ type: 'entry', id: entity.id, label: entity.title || entity.id });
     loadEntry(entity.id);
   }
 }
