@@ -6419,28 +6419,27 @@ body[data-accent="slate"] {
   height: 1px; background: var(--border); margin: 6px 8px 8px;
 }
 
-/* Active course detail area — scrollable independently */
+/* Active course detail area */
 #courseDetail {
   display: flex; flex-direction: column;
-  min-height: 0; flex: 1;
+  flex-shrink: 0;
   overflow: hidden;
 }
 #courseDetail .course-detail-header {
   flex-shrink: 0;
 }
 #courseDetail #coursesTree {
-  overflow-y: auto; overflow-x: hidden;
-  flex: 1; min-height: 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  overflow: visible;
 }
 #courseDetail #coursesTree::-webkit-scrollbar { width: 4px; }
 #courseDetail #coursesTree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* Sidebar Courses space — flex column so both zones stack */
+/* Sidebar Courses space — flex column so all zones stack */
 #spaceCourses {
   display: flex; flex-direction: column;
-  height: 100%; overflow: hidden;
+  height: 100%; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 /* ── Lesson modal — course context bar ───────────────────────────── */
