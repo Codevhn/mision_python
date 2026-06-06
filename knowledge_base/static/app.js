@@ -3570,14 +3570,22 @@ function initRelationsPanel() {
     const q = input.value.trim().toLowerCase();
     selectedToUid = null;
     if (!q) { sugg.classList.add('hidden'); return; }
-    const matches = (_index || []).filter(e => (e.title||'').toLowerCase().includes(q) && e.id !== currentEntryId).slice(0, 8);
+    const currentUid = currentEntryMeta?.uid;
+    const matches = (_index || []).filter(e =>
+      (e.title||'').toLowerCase().includes(q) &&
+      e.id !== currentEntryId &&
+      e.uid !== currentUid
+    ).slice(0, 8);
     if (!matches.length) { sugg.classList.add('hidden'); return; }
-    sugg.innerHTML = matches.map(e => `<div class="rel-sugg-item" data-id="${e.id}">${escapeHtml(e.title||e.id)}<span class="rel-sugg-meta">${escapeHtml((e.category||'')+(e.topic?' / '+e.topic:''))}</span></div>`).join('');
+    sugg.innerHTML = matches.map(e =>
+      `<div class="rel-sugg-item" data-uid="${escapeHtml(e.uid||'')}" data-id="${escapeHtml(e.id)}">${escapeHtml(e.title||e.id)}<span class="rel-sugg-meta">${escapeHtml((e.category||'')+(e.topic?' / '+e.topic:''))}</span></div>`
+    ).join('');
     sugg.classList.remove('hidden');
     sugg.querySelectorAll('.rel-sugg-item').forEach(item => {
       item.addEventListener('click', () => {
-        input.value = matches.find(e => e.id === item.dataset.id)?.title || '';
-        selectedToUid = item.dataset.id;
+        const match = matches.find(e => e.id === item.dataset.id);
+        input.value = match?.title || '';
+        selectedToUid = item.dataset.uid || null;
         sugg.classList.add('hidden');
       });
     });
@@ -3588,17 +3596,22 @@ function initRelationsPanel() {
   });
 
   confirmBtn.addEventListener('click', async () => {
-    if (!selectedToUid || !currentEntryId) return;
+    if (!selectedToUid) { showToast('Selecciona una entrada destino válida', 'error'); return; }
+    const fromUid = currentEntryMeta?.uid;
+    if (!fromUid) {
+      showToast('Esta entrada no tiene UID; no se puede crear relación.', 'error');
+      return;
+    }
     const rel_type = typeSel.value;
     const res = await fetch('/api/relations', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ from_uid: currentEntryId, to_uid: selectedToUid, rel_type })
+      body: JSON.stringify({ from_uid: fromUid, to_uid: selectedToUid, rel_type })
     });
     if (res.ok || res.status === 409) {
       form.classList.add('hidden');
       input.value = ''; selectedToUid = null;
-      loadRelations(currentEntryId);
+      loadRelations(fromUid);
     } else {
       showToast('Error al añadir relación', 'error');
     }
