@@ -3328,6 +3328,8 @@ function _wireCtxBtn(ctxId, sourceId) {
     const entryAddCover = document.getElementById('entryAddCover');
     const welcome    = document.getElementById('welcome');
 
+    const ctxBarEl = document.getElementById('ctxBar');
+
     if (graphView)     graphView.classList.add('hidden');
     if (courseView)    courseView.classList.add('hidden');
     if (kanbanArea)    kanbanArea.classList.add('hidden');
@@ -3335,17 +3337,19 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (entryCover)    entryCover.classList.add('hidden');
     if (entryAddCover) entryAddCover.classList.add('hidden');
     if (welcome)       welcome.style.display = 'none';
+    if (ctxBarEl)      ctxBarEl.classList.add('hidden');
 
     if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
     } else if (space === 'courses' && _activeCourseSlug) {
-      // Active course — course view is shown by loadCourseView, welcome stays hidden
+      // Active course — course view handles its own header; ctxBar stays hidden
       if (courseView) courseView.classList.remove('hidden');
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
       if (currentEntryId && entryView) entryView.classList.remove('hidden');
+      if (currentEntryId && ctxBarEl) ctxBarEl.classList.remove('hidden');
     }
 
     // Update active state on activity bar buttons

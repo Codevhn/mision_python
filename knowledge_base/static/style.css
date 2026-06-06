@@ -6419,11 +6419,13 @@ body[data-accent="slate"] {
   height: 1px; background: var(--border); margin: 6px 8px 8px;
 }
 
-/* Active course detail area */
+/* Active course detail area — fills remaining sidebar space and scrolls internally
+   so #courseArchivedSection is always visible at the bottom without deep scrolling */
 #courseDetail {
   display: flex; flex-direction: column;
-  flex-shrink: 0;
-  overflow: hidden;
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 60px;
 }
 #courseDetail .course-detail-header {
   flex-shrink: 0;
