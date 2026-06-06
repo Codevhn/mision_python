@@ -4069,6 +4069,8 @@ function closeCourseDetail() {
   const welcome = $('welcome');
   if (cv) cv.classList.add('hidden');
   if (welcome) welcome.style.display = '';
+  const coursesTreeEl = $('coursesTree');
+  if (coursesTreeEl) coursesTreeEl.innerHTML = '';
 }
 
 // ── Main: Course View ─────────────────────────────────────────────────────
@@ -4083,6 +4085,7 @@ async function loadCourseView(courseSlug, courseEntity) {
   if (welcome) welcome.style.display = 'none';
   if (entryView) entryView.classList.add('hidden');
   if (entryCover) entryCover.classList.add('hidden');
+  if ($('ctxBar')) $('ctxBar').classList.add('hidden');
   cv.classList.remove('hidden');
 
   // Populate header
