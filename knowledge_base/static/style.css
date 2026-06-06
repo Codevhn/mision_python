@@ -452,7 +452,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 12px 5px 22px;
+  padding: 3px 12px 3px 22px;
   font-family: var(--font-ui);
   font-size: 0.74rem;
   color: var(--text);
@@ -486,8 +486,8 @@ input, textarea, select { font-family: inherit; }
 .tree-entry {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px 4px 32px;
+  gap: 4px;
+  padding: 2px 8px 2px 28px;
   font-family: var(--font-ui);
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -6388,6 +6388,11 @@ body[data-accent="slate"] {
   padding: 0;
   border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
   margin-left: 2px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 .course-list-item {

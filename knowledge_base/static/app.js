@@ -610,6 +610,7 @@ function renderCoursesTree(tree, filterSlug) {
         entryEl.className = "tree-entry";
         entryEl.dataset.id = entry.id;
         entryEl.draggable = true;
+        entryEl.title = entry.title;
         const dot = document.createElement("span");
         dot.className = `status-dot status-${entry.status || "pendiente"}`;
         const nameSpan = document.createElement("span");
