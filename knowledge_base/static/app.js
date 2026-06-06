@@ -4025,6 +4025,10 @@ async function openCourseDetail(courseSlug) {
   catch { courses = []; }
   const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
 
+  // Set context label so the tree is visually anchored to the active course
+  const detailLabel = $('courseDetailLabel');
+  if (detailLabel) detailLabel.textContent = course.label || courseSlug;
+
   // Re-render course list so the active item gets the ⚙ gear
   await renderCourseList();
 
