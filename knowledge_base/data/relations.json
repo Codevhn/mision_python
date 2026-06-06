@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "relations": {
+    "rel_0c20cf96": {
+      "id": "rel_0c20cf96",
+      "from_uid": "5d357ede",
+      "to_uid": "75ad1f59",
+      "rel_type": "references",
+      "created_at": "2026-06-06T00:34:33"
+    }
+  }
+}

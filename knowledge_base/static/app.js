@@ -3447,7 +3447,7 @@ async function loadRelations(entryUid) {
 
   let data;
   try { data = await fetch(`/api/relations?uid=${encodeURIComponent(entryUid)}`).then(r => r.json()); }
-  catch { list.innerHTML = ''; return; }
+  catch { list.innerHTML = ''; _renderBacklinks([], entryUid); return; }
 
   // Merge outgoing + incoming, deduplicate by id
   const seen = new Set();
@@ -3456,42 +3456,96 @@ async function loadRelations(entryUid) {
     if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
   }
 
-  if (!all.length) { list.innerHTML = '<span class="rel-empty">Sin relaciones aún.</span>'; return; }
-
-  // Group by rel_type
-  const groups = {};
-  for (const r of all) {
-    (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
-  }
-
-  list.innerHTML = '';
-  for (const [type, rels] of Object.entries(groups)) {
-    const grp = document.createElement('div');
-    grp.className = 'rel-group';
-    const label = document.createElement('span');
-    label.className = 'rel-group-label';
-    label.textContent = REL_LABELS[type] || type;
-    grp.appendChild(label);
-    const chips = document.createElement('div');
-    chips.className = 'rel-chips';
-    for (const r of rels) {
-      const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
-      const chip = document.createElement('div');
-      chip.className = 'rel-chip';
-      chip.innerHTML = `<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
-      chip.querySelector('.rel-chip-title').addEventListener('click', () => {
-        if (other.id) loadEntry(other.id);
-      });
-      chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await fetch(`/api/relations/${r.id}`, { method: 'DELETE' });
-        loadRelations(entryUid);
-      });
-      chips.appendChild(chip);
+  if (!all.length) { list.innerHTML = '<span class="rel-empty">Sin relaciones aún.</span>'; }
+  else {
+    // Group by rel_type
+    const groups = {};
+    for (const r of all) {
+      (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
     }
-    grp.appendChild(chips);
-    list.appendChild(grp);
+
+    list.innerHTML = '';
+    for (const [type, rels] of Object.entries(groups)) {
+      const grp = document.createElement('div');
+      grp.className = 'rel-group';
+      const label = document.createElement('span');
+      label.className = 'rel-group-label';
+      label.textContent = REL_LABELS[type] || type;
+      grp.appendChild(label);
+      const chips = document.createElement('div');
+      chips.className = 'rel-chips';
+      for (const r of rels) {
+        const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
+        const chip = document.createElement('div');
+        chip.className = 'rel-chip';
+        chip.innerHTML = `<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
+        chip.querySelector('.rel-chip-title').addEventListener('click', () => {
+          if (other.id) loadEntry(other.id);
+        });
+        chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await fetch(`/api/relations/${r.id}`, { method: 'DELETE' });
+          loadRelations(entryUid);
+        });
+        chips.appendChild(chip);
+      }
+      grp.appendChild(chips);
+      list.appendChild(grp);
+    }
   }
+
+  // Populate backlinks panel from incoming relations
+  _renderBacklinks(data.incoming || [], entryUid);
+}
+
+function _renderBacklinks(incoming, entryUid) {
+  const panel = document.getElementById('backlinkPanel');
+  const listEl = document.getElementById('backlinkList');
+  const countEl = document.getElementById('backlinkCount');
+  if (!panel || !listEl) return;
+
+  if (!incoming.length) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  countEl.textContent = incoming.length;
+  listEl.innerHTML = '';
+
+  for (const r of incoming) {
+    const src = r.from_entity || {};
+    const row = document.createElement('div');
+    row.className = 'backlink-row';
+    row.title = REL_LABELS[r.rel_type] || r.rel_type;
+
+    const icon = document.createElement('span');
+    icon.className = 'backlink-rel-type';
+    icon.textContent = _relTypeIcon(r.rel_type);
+
+    const title = document.createElement('span');
+    title.className = 'backlink-title';
+    title.textContent = src.title || src.id || '?';
+
+    row.appendChild(icon);
+    row.appendChild(title);
+    row.addEventListener('click', () => {
+      if (src.id) loadEntry(src.id);
+    });
+    listEl.appendChild(row);
+  }
+}
+
+function _relTypeIcon(type) {
+  const icons = {
+    references:   '🔗',
+    implements:   '⚙',
+    belongs_to:   '◎',
+    blocks:       '⛔',
+    related:      '≈',
+    derived_from: '⤵',
+  };
+  return icons[type] || '·';
 }
 
 function initRelationsPanel() {
