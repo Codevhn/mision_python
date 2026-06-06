@@ -6368,18 +6368,25 @@ body[data-accent="slate"] {
 .cv-module-card-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
 .cv-module-card-pct { font-size: 0.68rem; color: var(--text-faint); white-space: nowrap; }
 
-/* ── Course sidebar — always-visible list ────────────────────────── */
+/* ── Course sidebar — scrollable list that grows to fill available space ── */
 #courseList {
-  max-height: 220px;       /* fits ~7-8 items; grows to show more via scroll */
+  flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   padding: 2px 0;
-  flex-shrink: 0;          /* never collapse when detail panel expands */
 }
 #courseList::-webkit-scrollbar { width: 4px; }
 #courseList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Inline module tree — sits directly inside the active course list item */
+.course-inline-tree {
+  margin: 4px 0 2px 0;
+  padding: 0;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  margin-left: 2px;
+}
 
 .course-list-item {
   display: flex; flex-direction: column; gap: 3px;
@@ -6419,35 +6426,7 @@ body[data-accent="slate"] {
   height: 1px; background: var(--border); margin: 6px 8px 8px;
 }
 
-/* Active course detail area — fills remaining sidebar space and scrolls internally
-   so #courseArchivedSection is always visible at the bottom without deep scrolling */
-#courseDetail {
-  display: flex; flex-direction: column;
-  flex: 1 1 0;
-  overflow-y: auto;
-  min-height: 60px;
-}
-#courseDetail .course-detail-header {
-  flex-shrink: 0;
-}
-/* Label that shows which course owns the module tree */
-.course-detail-label {
-  padding: 4px 12px 2px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
-}
-#courseDetail #coursesTree {
-  overflow: visible;
-}
-#courseDetail #coursesTree::-webkit-scrollbar { width: 4px; }
-#courseDetail #coursesTree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* #courseDetail removed — module tree is now inline inside the active course item */
 
 /* Sidebar Courses space — flex column so all zones stack */
 #spaceCourses {

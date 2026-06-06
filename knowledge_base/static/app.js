@@ -3970,6 +3970,11 @@ async function renderCourseList() {
           const entity = courses2.find(x => x.id === c.id) || c;
           _openCourseGearMenu(anchor, c.id, entity);
         });
+        // Inline module tree — #coursesTree lives here so renderCoursesTree() can find it
+        const inlineTree = document.createElement('nav');
+        inlineTree.className = 'tree course-inline-tree';
+        inlineTree.id = 'coursesTree';
+        item.appendChild(inlineTree);
       }
       list.appendChild(item);
     });
@@ -4017,19 +4022,12 @@ async function renderCourseList() {
 async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
 
-  const detailPanel = $('courseDetail');
-  if (detailPanel) detailPanel.style.display = '';
-
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
   catch { courses = []; }
   const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
 
-  // Set context label so the tree is visually anchored to the active course
-  const detailLabel = $('courseDetailLabel');
-  if (detailLabel) detailLabel.textContent = course.label || courseSlug;
-
-  // Re-render course list so the active item gets the ⚙ gear
+  // Re-render list — active item now gets gear + inline #coursesTree
   await renderCourseList();
 
   renderCoursesTree(_coursesTreeData, courseSlug);
@@ -4067,18 +4065,18 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
 // ── Deactivate course detail ──────────────────────────────────────────────
 function closeCourseDetail() {
   _activeCourseSlug = null;
-  const detailPanel = $('courseDetail');
-  if (detailPanel) detailPanel.style.display = 'none';
 
-  // Remove active marker from course list
-  document.querySelectorAll('.course-list-item').forEach(el => el.classList.remove('active'));
+  // Remove active marker + inline tree from course list items
+  document.querySelectorAll('.course-list-item.active').forEach(el => {
+    el.classList.remove('active');
+    el.querySelector('.course-inline-tree')?.remove();
+    el.querySelector('.course-list-gear')?.remove();
+  });
 
   const cv = $('courseView');
   const welcome = $('welcome');
   if (cv) cv.classList.add('hidden');
   if (welcome) welcome.style.display = '';
-  const coursesTreeEl = $('coursesTree');
-  if (coursesTreeEl) coursesTreeEl.innerHTML = '';
 }
 
 // ── Main: Course View ─────────────────────────────────────────────────────
