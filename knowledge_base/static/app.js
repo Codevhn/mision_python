@@ -3478,7 +3478,8 @@ async function loadRelations(entryUid) {
         const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
         const chip = document.createElement('div');
         chip.className = 'rel-chip';
-        chip.innerHTML = `<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
+        const chipBadge = other.orphaned ? '<span class="entity-type-badge etype-orphan">eliminada</span>' : _entityTypeBadgeHtml(other.type);
+        chip.innerHTML = `${chipBadge}<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
         chip.querySelector('.rel-chip-title').addEventListener('click', () => {
           if (other.id) loadEntry(other.id);
         });
@@ -3513,26 +3514,35 @@ function _renderBacklinks(incoming, entryUid) {
   countEl.textContent = incoming.length;
   listEl.innerHTML = '';
 
+  // Group by rel_type
+  const groups = {};
   for (const r of incoming) {
-    const src = r.from_entity || {};
-    const row = document.createElement('div');
-    row.className = 'backlink-row';
-    row.title = REL_LABELS[r.rel_type] || r.rel_type;
+    (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
+  }
 
-    const icon = document.createElement('span');
-    icon.className = 'backlink-rel-type';
-    icon.textContent = _relTypeIcon(r.rel_type);
+  for (const [relType, rels] of Object.entries(groups)) {
+    const grpLabel = document.createElement('span');
+    grpLabel.className = 'backlinks-group-label';
+    grpLabel.textContent = REL_LABELS[relType] || relType;
+    listEl.appendChild(grpLabel);
 
-    const title = document.createElement('span');
-    title.className = 'backlink-title';
-    title.textContent = src.title || src.id || '?';
+    for (const r of rels) {
+      const src = r.from_entity || {};
+      const orphaned = !!src.orphaned;
+      const row = document.createElement('div');
+      row.className = 'backlink-row' + (orphaned ? ' backlink-orphaned' : '');
+      row.title = (REL_LABELS[relType] || relType) + (orphaned ? ' — entrada eliminada' : '');
 
-    row.appendChild(icon);
-    row.appendChild(title);
-    row.addEventListener('click', () => {
-      if (src.id) loadEntry(src.id);
-    });
-    listEl.appendChild(row);
+      const badge = orphaned
+        ? '<span class="entity-type-badge etype-orphan">eliminada</span>'
+        : _entityTypeBadgeHtml(src.type);
+
+      row.innerHTML = `${badge}<span class="backlink-title">${escapeHtml(src.title || src.id || '?')}</span>`;
+      if (!orphaned && src.id) {
+        row.addEventListener('click', () => loadEntry(src.id));
+      }
+      listEl.appendChild(row);
+    }
   }
 }
 
@@ -3546,6 +3556,22 @@ function _relTypeIcon(type) {
     derived_from: '⤵',
   };
   return icons[type] || '·';
+}
+
+function _entityTypeMeta(type) {
+  const map = {
+    page:         { label: 'nota',      css: 'etype-page'     },
+    course:       { label: 'lección',   css: 'etype-course'   },
+    teamspace:    { label: 'teamspace', css: 'etype-teamspace' },
+    kanban_board: { label: 'board',     css: 'etype-board'    },
+    kanban_card:  { label: 'tarjeta',   css: 'etype-card'     },
+  };
+  return map[type] || { label: type || '?', css: 'etype-unknown' };
+}
+
+function _entityTypeBadgeHtml(type) {
+  const { label, css } = _entityTypeMeta(type);
+  return `<span class="entity-type-badge ${css}">${escapeHtml(label)}</span>`;
 }
 
 function initRelationsPanel() {
@@ -3571,15 +3597,17 @@ function initRelationsPanel() {
     selectedToUid = null;
     if (!q) { sugg.classList.add('hidden'); return; }
     const currentUid = currentEntryMeta?.uid;
-    const matches = (_index || []).filter(e =>
-      (e.title||'').toLowerCase().includes(q) &&
-      e.id !== currentEntryId &&
-      e.uid !== currentUid
-    ).slice(0, 8);
+    const matches = (_index || []).filter(e => {
+      if (e.id === currentEntryId || e.uid === currentUid) return false;
+      const haystack = [(e.title||''), (e.category||''), (e.topic||'')].join(' ').toLowerCase();
+      return haystack.includes(q);
+    }).slice(0, 12);
     if (!matches.length) { sugg.classList.add('hidden'); return; }
-    sugg.innerHTML = matches.map(e =>
-      `<div class="rel-sugg-item" data-uid="${escapeHtml(e.uid||'')}" data-id="${escapeHtml(e.id)}">${escapeHtml(e.title||e.id)}<span class="rel-sugg-meta">${escapeHtml((e.category||'')+(e.topic?' / '+e.topic:''))}</span></div>`
-    ).join('');
+    sugg.innerHTML = matches.map(e => {
+      const badge = _entityTypeBadgeHtml(e.type);
+      const meta  = [e.category, e.topic].filter(Boolean).join(' › ');
+      return `<div class="rel-sugg-item" data-uid="${escapeHtml(e.uid||'')}" data-id="${escapeHtml(e.id)}">${badge}<span class="rel-sugg-title">${escapeHtml(e.title||e.id)}</span>${meta ? `<span class="rel-sugg-meta">${escapeHtml(meta)}</span>` : ''}</div>`;
+    }).join('');
     sugg.classList.remove('hidden');
     sugg.querySelectorAll('.rel-sugg-item').forEach(item => {
       item.addEventListener('click', () => {

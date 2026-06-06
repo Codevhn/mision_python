@@ -410,6 +410,7 @@ def get_all_entries():
             "id":       entry_id,
             "uid":      meta.get("uid", entry_id),
             "title":    meta.get("title", ""),
+            "type":     meta.get("type") or "page",
             "category": meta.get("category_label", meta.get("category", "")),
             "topic":    meta.get("topic_label", meta.get("topic", "")),
             "icon":     meta.get("icon", ""),
