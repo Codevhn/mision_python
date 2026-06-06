@@ -4178,7 +4178,6 @@ function renderCourseTab(tab, courseSlug, stats) {
       section.className = 'cv-roadmap-section';
       section.dataset.modSlug = modSlug;
       section.innerHTML = `<div class="cv-roadmap-module">
-        <span class="cv-roadmap-mod-num">M${mi + 1}</span>
         <span class="cv-roadmap-mod-label">${escapeHtml(mod.label)}</span>
         <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
         <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+</button>

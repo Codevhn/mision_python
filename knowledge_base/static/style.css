@@ -452,7 +452,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 12px 3px 22px;
+  padding: 3px 12px 3px 14px;
   font-family: var(--font-ui);
   font-size: 0.74rem;
   color: var(--text);
@@ -487,13 +487,13 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px 2px 28px;
+  padding: 2px 8px 2px 20px;
   font-family: var(--font-ui);
   font-size: 0.72rem;
   color: var(--text-muted);
   cursor: pointer;
   border-left: 1px solid var(--border-light);
-  margin-left: 14px;
+  margin-left: 8px;
   transition: color 0.1s, background 0.1s, border-color 0.1s;
   min-width: 0;
 }
@@ -3942,7 +3942,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 8px;
+  padding: 7px 12px 6px;
   border-bottom: 1px solid var(--border-light);
   margin-bottom: 2px;
 }
@@ -6202,11 +6202,6 @@ body[data-accent="slate"] {
   margin-bottom: 10px; padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
-.cv-roadmap-mod-num {
-  font-size: 0.65rem; font-weight: 700; padding: 2px 7px;
-  border-radius: 4px; background: var(--accent);
-  color: #fff; flex-shrink: 0;
-}
 .cv-roadmap-mod-label {
   font-size: 0.84rem; font-weight: 700; color: var(--text); flex: 1;
 }
@@ -6387,7 +6382,7 @@ body[data-accent="slate"] {
   margin: 4px 0 2px 0;
   padding: 0;
   border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  margin-left: 2px;
+  margin-left: 0;
   max-height: calc(100vh - 260px);
   overflow-y: auto;
   overflow-x: hidden;
