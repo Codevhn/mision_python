@@ -7,5 +7,14 @@
     "topic_label": "Automatización",
     "created_at": "2026-05-29T00:00:00",
     "uid": "75ad1f59"
+  },
+  "github-actions-ci": {
+    "title": "GitHub Actions — CI/CD",
+    "category": "devops",
+    "category_label": "DevOps",
+    "topic": "automatizacion",
+    "topic_label": "Automatización",
+    "created_at": "2026-06-06T00:00:00",
+    "uid": "3cce6167"
   }
 }

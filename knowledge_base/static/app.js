@@ -121,6 +121,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initReview();
   initPageFind();
   initRelationsPanel();
+  // Back navigation button
+  const _navBackBtn = $('navBackBtn');
+  if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
   // KanbanApp.init() is called from kanban.js DOMContentLoaded
 
   // Modal type toggle
@@ -317,16 +320,18 @@ function autoExtractTitle() {
 function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
-  $("themeToggle").textContent = saved === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = saved === "dark" ? "[L]" : "[D]";
+  const t = $("themeToggle"); if (t) t.textContent = "◐";
+  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
+  if (abIcon) abIcon.textContent = "◐";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
-  $("themeToggle").textContent = next === "dark" ? "[light]" : "[dark]";
-  $("themeToggleSidebar").textContent = next === "dark" ? "[L]" : "[D]";
+  const t = $("themeToggle"); if (t) t.textContent = "◐";
+  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
+  if (abIcon) abIcon.textContent = "◐";
 }
 
 // ---- SIDEBAR ----
@@ -372,12 +377,29 @@ function closeSidebarMobile() {
 // ---- TREE ----
 let _index = [];
 
+// ---- Navigation stack ----
+let _navStack = [];  // [{ type, id, label, space }]
+let _navPos   = -1;  // current position in stack
+
 async function loadTree() {
-  const [r1, r2, r3, r4] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries")]);
+  const [r1, r2, r3, r4, r5] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses")]);
   const knowledgeTree  = await r1.json();
   const coursesTree    = await r2.json();
   const teamspaceTree  = await r3.json();
-  _index = await r4.json();
+  const entries        = await r4.json();
+  const coursesFlat    = await r5.json();
+  // Merge course root entities into _index so they appear in relation searcher
+  const courseIndexEntries = (Array.isArray(coursesFlat) ? coursesFlat : []).map(c => ({
+    id:       c.id,
+    uid:      c.uid,
+    title:    c.label || c.id,
+    type:     "course_root",
+    category: "Curso",
+    topic:    "",
+    icon:     c.icon || "",
+    cover:    c.cover || "",
+  }));
+  _index = [...entries, ...courseIndexEntries];
   _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
   renderTeamspaceTree(teamspaceTree);
@@ -3306,6 +3328,8 @@ function _wireCtxBtn(ctxId, sourceId) {
     const entryAddCover = document.getElementById('entryAddCover');
     const welcome    = document.getElementById('welcome');
 
+    const ctxBarEl = document.getElementById('ctxBar');
+
     if (graphView)     graphView.classList.add('hidden');
     if (courseView)    courseView.classList.add('hidden');
     if (kanbanArea)    kanbanArea.classList.add('hidden');
@@ -3313,17 +3337,19 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (entryCover)    entryCover.classList.add('hidden');
     if (entryAddCover) entryAddCover.classList.add('hidden');
     if (welcome)       welcome.style.display = 'none';
+    if (ctxBarEl)      ctxBarEl.classList.add('hidden');
 
     if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
     } else if (space === 'courses' && _activeCourseSlug) {
-      // Active course — course view is shown by loadCourseView, welcome stays hidden
+      // Active course — course view handles its own header; ctxBar stays hidden
       if (courseView) courseView.classList.remove('hidden');
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
       if (currentEntryId && entryView) entryView.classList.remove('hidden');
+      if (currentEntryId && ctxBarEl) ctxBarEl.classList.remove('hidden');
     }
 
     // Update active state on activity bar buttons
@@ -3341,14 +3367,6 @@ function _wireCtxBtn(ctxId, sourceId) {
       btn.addEventListener('click', () => switchSpace(btn.dataset.space));
     });
 
-    // Brand → navigate home
-    const abBrand = document.getElementById('abBrand');
-    if (abBrand) {
-      abBrand.addEventListener('click', () => {
-        const wsHome = document.getElementById('wsHome');
-        if (wsHome) wsHome.click();
-      });
-    }
 
     // Search icon → Command Palette
     const abSearch = document.getElementById('abSearch');
@@ -3390,7 +3408,9 @@ function _wireCtxBtn(ctxId, sourceId) {
 (function initAccentPicker() {
   const ACCENTS = {
     indigo: '#6366f1', orange: '#f97316', yellow: '#eab308',
-    cyan: '#06b6d4', pink: '#ec4899', green: '#22c55e', red: '#ef4444'
+    cyan: '#06b6d4', pink: '#ec4899', green: '#22c55e', red: '#ef4444',
+    'deep-blue': '#1e3a8a', 'deep-purple': '#4c1d95', 'deep-teal': '#134e4a',
+    'deep-rose': '#881337', slate: '#334155',
   };
 
   function applyAccent(name, dot, panel) {
@@ -3451,7 +3471,7 @@ async function loadRelations(entryUid) {
 
   let data;
   try { data = await fetch(`/api/relations?uid=${encodeURIComponent(entryUid)}`).then(r => r.json()); }
-  catch { list.innerHTML = ''; return; }
+  catch { list.innerHTML = ''; _renderBacklinks([], entryUid); return; }
 
   // Merge outgoing + incoming, deduplicate by id
   const seen = new Set();
@@ -3460,42 +3480,175 @@ async function loadRelations(entryUid) {
     if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
   }
 
-  if (!all.length) { list.innerHTML = '<span class="rel-empty">Sin relaciones aún.</span>'; return; }
+  if (!all.length) { list.innerHTML = '<span class="rel-empty">Sin relaciones aún.</span>'; }
+  else {
+    // Group by rel_type
+    const groups = {};
+    for (const r of all) {
+      (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
+    }
+
+    list.innerHTML = '';
+    for (const [type, rels] of Object.entries(groups)) {
+      const grp = document.createElement('div');
+      grp.className = 'rel-group';
+      const label = document.createElement('span');
+      label.className = 'rel-group-label';
+      label.textContent = REL_LABELS[type] || type;
+      grp.appendChild(label);
+      const chips = document.createElement('div');
+      chips.className = 'rel-chips';
+      for (const r of rels) {
+        const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
+        const chip = document.createElement('div');
+        chip.className = 'rel-chip';
+        const chipBadge = other.orphaned ? '<span class="entity-type-badge etype-orphan">eliminada</span>' : _entityTypeBadgeHtml(other.type);
+        chip.innerHTML = `${chipBadge}<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
+        chip.querySelector('.rel-chip-title').addEventListener('click', () => {
+          _navigateToEntity(other);
+        });
+        chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await fetch(`/api/relations/${r.id}`, { method: 'DELETE' });
+          loadRelations(entryUid);
+        });
+        chips.appendChild(chip);
+      }
+      grp.appendChild(chips);
+      list.appendChild(grp);
+    }
+  }
+
+  // Populate backlinks panel from incoming relations
+  _renderBacklinks(data.incoming || [], entryUid);
+}
+
+function _renderBacklinks(incoming, entryUid) {
+  const panel = document.getElementById('backlinkPanel');
+  const listEl = document.getElementById('backlinkList');
+  const countEl = document.getElementById('backlinkCount');
+  if (!panel || !listEl) return;
+
+  if (!incoming.length) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  countEl.textContent = incoming.length;
+  listEl.innerHTML = '';
 
   // Group by rel_type
   const groups = {};
-  for (const r of all) {
+  for (const r of incoming) {
     (groups[r.rel_type] = groups[r.rel_type] || []).push(r);
   }
 
-  list.innerHTML = '';
-  for (const [type, rels] of Object.entries(groups)) {
-    const grp = document.createElement('div');
-    grp.className = 'rel-group';
-    const label = document.createElement('span');
-    label.className = 'rel-group-label';
-    label.textContent = REL_LABELS[type] || type;
-    grp.appendChild(label);
-    const chips = document.createElement('div');
-    chips.className = 'rel-chips';
+  for (const [relType, rels] of Object.entries(groups)) {
+    const grpLabel = document.createElement('span');
+    grpLabel.className = 'backlinks-group-label';
+    grpLabel.textContent = REL_LABELS[relType] || relType;
+    listEl.appendChild(grpLabel);
+
     for (const r of rels) {
-      const other = r.from_uid === entryUid ? r.to_entity : r.from_entity;
-      const chip = document.createElement('div');
-      chip.className = 'rel-chip';
-      chip.innerHTML = `<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
-      chip.querySelector('.rel-chip-title').addEventListener('click', () => {
-        if (other.id) loadEntry(other.id);
-      });
-      chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await fetch(`/api/relations/${r.id}`, { method: 'DELETE' });
-        loadRelations(entryUid);
-      });
-      chips.appendChild(chip);
+      const src = r.from_entity || {};
+      const orphaned = !!src.orphaned;
+      const row = document.createElement('div');
+      row.className = 'backlink-row' + (orphaned ? ' backlink-orphaned' : '');
+      row.title = (REL_LABELS[relType] || relType) + (orphaned ? ' — entrada eliminada' : '');
+
+      const badge = orphaned
+        ? '<span class="entity-type-badge etype-orphan">eliminada</span>'
+        : _entityTypeBadgeHtml(src.type);
+
+      row.innerHTML = `${badge}<span class="backlink-title">${escapeHtml(src.title || src.id || '?')}</span>`;
+      if (!orphaned && src.id) {
+        row.addEventListener('click', () => _navigateToEntity(src));
+      }
+      listEl.appendChild(row);
     }
-    grp.appendChild(chips);
-    list.appendChild(grp);
   }
+}
+
+// ── Navigation stack helpers ──────────────────────────────────────────────
+
+function _navCurrentNode() {
+  return _navPos >= 0 ? _navStack[_navPos] : null;
+}
+
+function _navPush(node) {
+  // No-op if same entity as current top
+  const cur = _navCurrentNode();
+  if (cur && cur.type === node.type && cur.id === node.id) return;
+  // Truncate forward history when branching
+  _navStack = _navStack.slice(0, _navPos + 1);
+  _navStack.push(node);
+  if (_navStack.length > 50) _navStack.shift();
+  _navPos = _navStack.length - 1;
+  _updateBackBtn();
+}
+
+function _updateBackBtn() {
+  const bar   = $('navBackBar');
+  const label = $('navBackLabel');
+  if (!bar || !label) return;
+  if (_navPos > 0) {
+    const prev = _navStack[_navPos - 1];
+    label.textContent = prev.label || 'Volver';
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function _navBack() {
+  if (_navPos <= 0) return;
+  _navPos--;
+  const node = _navStack[_navPos];
+  _updateBackBtn();
+  _navigateToEntity({ type: node.type, id: node.id }, { push: false });
+}
+
+function _navigateToEntity(entity, opts = {}) {
+  if (!entity || !entity.id) return;
+  const push = opts.push !== false;  // default: push to stack
+  if (entity.type === 'course_root') {
+    if (push) _navPush({ type: 'course_root', id: entity.id, label: entity.title || entity.id });
+    if (window.switchSpace) window.switchSpace('courses');
+    setActiveCourse(entity.id);
+  } else {
+    if (push) _navPush({ type: 'entry', id: entity.id, label: entity.title || entity.id });
+    loadEntry(entity.id);
+  }
+}
+
+function _relTypeIcon(type) {
+  const icons = {
+    references:   '🔗',
+    implements:   '⚙',
+    belongs_to:   '◎',
+    blocks:       '⛔',
+    related:      '≈',
+    derived_from: '⤵',
+  };
+  return icons[type] || '·';
+}
+
+function _entityTypeMeta(type) {
+  const map = {
+    page:         { label: 'nota',     css: 'etype-page'        },
+    course:       { label: 'lección',  css: 'etype-course'      },
+    course_root:  { label: 'curso',    css: 'etype-course-root' },
+    teamspace:    { label: 'teamspace',css: 'etype-teamspace'   },
+    kanban_board: { label: 'board',    css: 'etype-board'       },
+    kanban_card:  { label: 'tarjeta',  css: 'etype-card'        },
+  };
+  return map[type] || { label: type || '?', css: 'etype-unknown' };
+}
+
+function _entityTypeBadgeHtml(type) {
+  const { label, css } = _entityTypeMeta(type);
+  return `<span class="entity-type-badge ${css}">${escapeHtml(label)}</span>`;
 }
 
 function initRelationsPanel() {
@@ -3520,14 +3673,24 @@ function initRelationsPanel() {
     const q = input.value.trim().toLowerCase();
     selectedToUid = null;
     if (!q) { sugg.classList.add('hidden'); return; }
-    const matches = (_index || []).filter(e => (e.title||'').toLowerCase().includes(q) && e.id !== currentEntryId).slice(0, 8);
+    const currentUid = currentEntryMeta?.uid;
+    const matches = (_index || []).filter(e => {
+      if (e.id === currentEntryId || e.uid === currentUid) return false;
+      const haystack = [(e.title||''), (e.category||''), (e.topic||'')].join(' ').toLowerCase();
+      return haystack.includes(q);
+    }).slice(0, 12);
     if (!matches.length) { sugg.classList.add('hidden'); return; }
-    sugg.innerHTML = matches.map(e => `<div class="rel-sugg-item" data-id="${e.id}">${escapeHtml(e.title||e.id)}<span class="rel-sugg-meta">${escapeHtml((e.category||'')+(e.topic?' / '+e.topic:''))}</span></div>`).join('');
+    sugg.innerHTML = matches.map(e => {
+      const badge = _entityTypeBadgeHtml(e.type);
+      const meta  = [e.category, e.topic].filter(Boolean).join(' › ');
+      return `<div class="rel-sugg-item" data-uid="${escapeHtml(e.uid||'')}" data-id="${escapeHtml(e.id)}">${badge}<span class="rel-sugg-title">${escapeHtml(e.title||e.id)}</span>${meta ? `<span class="rel-sugg-meta">${escapeHtml(meta)}</span>` : ''}</div>`;
+    }).join('');
     sugg.classList.remove('hidden');
     sugg.querySelectorAll('.rel-sugg-item').forEach(item => {
       item.addEventListener('click', () => {
-        input.value = matches.find(e => e.id === item.dataset.id)?.title || '';
-        selectedToUid = item.dataset.id;
+        const match = matches.find(e => e.id === item.dataset.id);
+        input.value = match?.title || '';
+        selectedToUid = item.dataset.uid || null;
         sugg.classList.add('hidden');
       });
     });
@@ -3538,17 +3701,22 @@ function initRelationsPanel() {
   });
 
   confirmBtn.addEventListener('click', async () => {
-    if (!selectedToUid || !currentEntryId) return;
+    if (!selectedToUid) { showToast('Selecciona una entrada destino válida', 'error'); return; }
+    const fromUid = currentEntryMeta?.uid;
+    if (!fromUid) {
+      showToast('Esta entrada no tiene UID; no se puede crear relación.', 'error');
+      return;
+    }
     const rel_type = typeSel.value;
     const res = await fetch('/api/relations', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ from_uid: currentEntryId, to_uid: selectedToUid, rel_type })
+      body: JSON.stringify({ from_uid: fromUid, to_uid: selectedToUid, rel_type })
     });
     if (res.ok || res.status === 409) {
       form.classList.add('hidden');
       input.value = ''; selectedToUid = null;
-      loadRelations(currentEntryId);
+      loadRelations(fromUid);
     } else {
       showToast('Error al añadir relación', 'error');
     }
@@ -3796,10 +3964,11 @@ async function renderCourseList() {
       if (isActive) {
         item.querySelector('.course-list-gear').addEventListener('click', async e => {
           e.stopPropagation();
+          const anchor = e.currentTarget; // save before any await
           let courses2;
           try { courses2 = await fetch('/api/courses').then(r => r.json()); } catch { courses2 = []; }
           const entity = courses2.find(x => x.id === c.id) || c;
-          _openCourseGearMenu(e.currentTarget, c.id, entity);
+          _openCourseGearMenu(anchor, c.id, entity);
         });
       }
       list.appendChild(item);
@@ -3875,7 +4044,7 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
     <button data-action="duplicate">Duplicar</button>
     <button data-action="delete" class="danger">Eliminar curso</button>`;
   const rect = anchor.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 120}px;z-index:9999`;
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 130}px;width:168px;z-index:9999`;
   document.body.appendChild(menu);
   _courseGearMenuEl = menu;
   menu.querySelectorAll('button[data-action]').forEach(btn => {
@@ -3904,6 +4073,8 @@ function closeCourseDetail() {
   const welcome = $('welcome');
   if (cv) cv.classList.add('hidden');
   if (welcome) welcome.style.display = '';
+  const coursesTreeEl = $('coursesTree');
+  if (coursesTreeEl) coursesTreeEl.innerHTML = '';
 }
 
 // ── Main: Course View ─────────────────────────────────────────────────────
@@ -3918,6 +4089,7 @@ async function loadCourseView(courseSlug, courseEntity) {
   if (welcome) welcome.style.display = 'none';
   if (entryView) entryView.classList.add('hidden');
   if (entryCover) entryCover.classList.add('hidden');
+  if ($('ctxBar')) $('ctxBar').classList.add('hidden');
   cv.classList.remove('hidden');
 
   // Populate header
@@ -4676,3 +4848,38 @@ function initCoursesSpace() {
     });
   }
 }
+
+// ── Sidebar auto-expand on hover ─────────────────────────────────────────
+(function initSidebarToggle() {
+  function init() {
+    const bar = document.getElementById('activityBar');
+    if (!bar) return;
+    let leaveTimer = null;
+    bar.addEventListener('mouseenter', () => {
+      clearTimeout(leaveTimer);
+      document.body.classList.add('sidebar-expanded');
+    });
+    bar.addEventListener('mouseleave', () => {
+      leaveTimer = setTimeout(() => {
+        document.body.classList.remove('sidebar-expanded');
+      }, 120);
+    });
+
+    // ⌂ Brand: go to home (show welcome, switch to knowledge space)
+    const abBrand = document.getElementById('abBrand');
+    if (abBrand) {
+      abBrand.addEventListener('click', () => {
+        if (window.switchSpace) window.switchSpace('knowledge');
+        const welcome = document.getElementById('welcome');
+        if (welcome) welcome.style.display = '';
+        const entryView = document.getElementById('entryView');
+        if (entryView) entryView.classList.add('hidden');
+      });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

@@ -39,13 +39,20 @@
           <span class="accent-dot" id="accentDot"></span>
         </button>
         <div class="accent-picker-panel hidden" id="accentPanel">
+          <div class="ap-group-label">Neon</div>
           <button class="ap-swatch" data-accent="indigo" title="Índigo" style="background:#6366f1"></button>
-          <button class="ap-swatch" data-accent="orange" title="Naranja neon" style="background:#f97316"></button>
-          <button class="ap-swatch" data-accent="yellow" title="Amarillo neon" style="background:#eab308"></button>
-          <button class="ap-swatch" data-accent="cyan" title="Cyan neon" style="background:#06b6d4"></button>
-          <button class="ap-swatch" data-accent="pink" title="Rosa neon" style="background:#ec4899"></button>
-          <button class="ap-swatch" data-accent="green" title="Verde neon" style="background:#22c55e"></button>
-          <button class="ap-swatch" data-accent="red" title="Rojo neon" style="background:#ef4444"></button>
+          <button class="ap-swatch" data-accent="orange" title="Naranja" style="background:#f97316"></button>
+          <button class="ap-swatch" data-accent="yellow" title="Amarillo" style="background:#eab308"></button>
+          <button class="ap-swatch" data-accent="cyan" title="Cyan" style="background:#06b6d4"></button>
+          <button class="ap-swatch" data-accent="pink" title="Rosa" style="background:#ec4899"></button>
+          <button class="ap-swatch" data-accent="green" title="Verde" style="background:#22c55e"></button>
+          <button class="ap-swatch" data-accent="red" title="Rojo" style="background:#ef4444"></button>
+          <div class="ap-group-label">Oscuros</div>
+          <button class="ap-swatch" data-accent="deep-blue" title="Azul profundo" style="background:#1e3a8a"></button>
+          <button class="ap-swatch" data-accent="deep-purple" title="Violeta oscuro" style="background:#4c1d95"></button>
+          <button class="ap-swatch" data-accent="deep-teal" title="Verde petróleo" style="background:#134e4a"></button>
+          <button class="ap-swatch" data-accent="deep-rose" title="Carmín oscuro" style="background:#881337"></button>
+          <button class="ap-swatch" data-accent="slate" title="Pizarra" style="background:#334155"></button>
         </div>
       </div>
     </div>
@@ -60,27 +67,28 @@
     <nav class="activity-bar" id="activityBar">
       <div class="activity-bar-top">
         <button class="ab-item ab-item--brand" id="abBrand" title="Inicio">
-          <span class="ab-icon">~</span>
+          <span class="ab-icon">⌂</span>
+          <span class="ab-label">Inicio</span>
         </button>
         <button class="ab-item" id="abKnowledge" data-space="knowledge" title="Conocimiento">
-          <span class="ab-icon">◈</span>
-          <span class="ab-label">KB</span>
+          <span class="ab-icon">📖</span>
+          <span class="ab-label">Conocimiento</span>
         </button>
         <button class="ab-item" id="abCourses" data-space="courses" title="Cursos">
-          <span class="ab-icon">▶</span>
+          <span class="ab-icon">🎓</span>
           <span class="ab-label">Cursos</span>
         </button>
-        <button class="ab-item" id="abBoards" data-space="boards" title="Tableros Kanban">
+        <button class="ab-item" id="abBoards" data-space="boards" title="Tableros">
           <span class="ab-icon">⊞</span>
-          <span class="ab-label">Boards</span>
+          <span class="ab-label">Tableros</span>
         </button>
         <button class="ab-item" id="abTeamspace" data-space="teamspace" title="Teamspace">
-          <span class="ab-icon">⋯</span>
+          <span class="ab-icon">👥</span>
           <span class="ab-label">Team</span>
         </button>
-        <button class="ab-item" id="abGraph" data-space="graph" title="Graph View">
-          <span class="ab-icon">⬡</span>
-          <span class="ab-label">Graph</span>
+        <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
+          <span class="ab-icon">◎</span>
+          <span class="ab-label">Grafo</span>
         </button>
       </div>
       <div class="activity-bar-bottom">
@@ -129,15 +137,15 @@
         <div id="courseList">
           <div class="tree-empty">No hay cursos aún.</div>
         </div>
-        <!-- Archived courses section — outside scroll, always at bottom -->
-        <div id="courseArchivedSection" style="display:none">
-          <button class="course-archived-toggle" id="courseArchivedToggle">▸ Archivados</button>
-          <div id="courseArchivedList" style="display:none"></div>
-        </div>
         <!-- Divider + active course detail — only when a course is open -->
         <div id="courseDetail" style="display:none">
           <div class="course-list-divider"></div>
           <nav class="tree" id="coursesTree"></nav>
+        </div>
+        <!-- Archived courses section — always at bottom, after active course tree -->
+        <div id="courseArchivedSection" style="display:none">
+          <button class="course-archived-toggle" id="courseArchivedToggle">▸ Archivados</button>
+          <div id="courseArchivedList" style="display:none"></div>
         </div>
       </div>
 
@@ -270,6 +278,11 @@
       <!-- KANBAN VIEW -->
       <div class="kanban-area hidden" id="kanbanArea"></div>
 
+      <!-- NAV BACK BAR (shared, visible when there's history) -->
+      <div class="nav-back-bar hidden" id="navBackBar">
+        <button class="nav-back-btn" id="navBackBtn">← <span id="navBackLabel">Volver</span></button>
+      </div>
+
       <article class="entry-view hidden" id="entryView">
         <!-- Inline editable title -->
         <div class="inline-title-wrap" id="inlineTitleWrap">
@@ -350,6 +363,15 @@
             <button class="btn-ghost rel-cancel-btn" id="relCancelBtn">×</button>
           </div>
           <div class="rel-list" id="relList"></div>
+        </div>
+        <!-- BACKLINKS PANEL -->
+        <div class="backlinks-panel hidden" id="backlinkPanel">
+          <div class="backlinks-header">
+            <span class="backlinks-icon">←</span>
+            <span class="backlinks-label">Referenciado por</span>
+            <span class="backlinks-count" id="backlinkCount"></span>
+          </div>
+          <div class="backlinks-list" id="backlinkList"></div>
         </div>
       </article>
     </main>
