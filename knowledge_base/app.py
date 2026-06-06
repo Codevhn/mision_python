@@ -696,11 +696,22 @@ def delete_entry(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
+    uid  = meta.get("uid")
     path = _entry_path(entry_id, meta)
     if path.exists():
         path.unlink()
     del index[entry_id]
     save_index(index)
+    # Clean up any relations that reference this entry's UID
+    if uid:
+        relations = load_relations()
+        before = len(relations["relations"])
+        relations["relations"] = {
+            rid: rel for rid, rel in relations["relations"].items()
+            if rel.get("from_uid") != uid and rel.get("to_uid") != uid
+        }
+        if len(relations["relations"]) != before:
+            save_relations(relations)
     return jsonify({"message": "Deleted"})
 
 
@@ -1929,6 +1940,12 @@ def create_relation():
         return jsonify({"error": "Self-relations are not allowed"}), 400
     if rel_type not in VALID_REL_TYPES:
         return jsonify({"error": f"Invalid rel_type. Valid: {sorted(VALID_REL_TYPES)}"}), 400
+
+    uid_index = _build_uid_index()
+    if from_uid not in uid_index:
+        return jsonify({"error": f"from_uid '{from_uid}' does not exist"}), 400
+    if to_uid not in uid_index:
+        return jsonify({"error": f"to_uid '{to_uid}' does not exist"}), 400
 
     data = load_relations()
     dup = _find_duplicate(data["relations"], from_uid, to_uid, rel_type)

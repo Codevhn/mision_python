@@ -4648,6 +4648,15 @@ function handleNewEntryTopbar() {
 
 // ── Single source of truth for active course ─────────────────────────────
 function setActiveCourse(slug) {
+  if (slug && slug === _activeCourseSlug) {
+    // Same course clicked: toggle the inline tree without re-fetching
+    const tree = $('coursesTree');
+    if (tree) {
+      const isCollapsed = tree.style.display === 'none';
+      tree.style.display = isCollapsed ? '' : 'none';
+    }
+    return;
+  }
   _activeCourseSlug = slug;
   if (slug) {
     openCourseDetail(slug);
