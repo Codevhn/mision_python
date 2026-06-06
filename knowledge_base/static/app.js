@@ -3494,7 +3494,7 @@ async function loadRelations(entryUid) {
         const chipBadge = other.orphaned ? '<span class="entity-type-badge etype-orphan">eliminada</span>' : _entityTypeBadgeHtml(other.type);
         chip.innerHTML = `${chipBadge}<span class="rel-chip-title">${escapeHtml(other.title || other.id || '?')}</span><button class="rel-chip-del" data-rel-id="${r.id}" title="Quitar">×</button>`;
         chip.querySelector('.rel-chip-title').addEventListener('click', () => {
-          if (other.id) loadEntry(other.id);
+          _navigateToEntity(other);
         });
         chip.querySelector('.rel-chip-del').addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -3552,10 +3552,20 @@ function _renderBacklinks(incoming, entryUid) {
 
       row.innerHTML = `${badge}<span class="backlink-title">${escapeHtml(src.title || src.id || '?')}</span>`;
       if (!orphaned && src.id) {
-        row.addEventListener('click', () => loadEntry(src.id));
+        row.addEventListener('click', () => _navigateToEntity(src));
       }
       listEl.appendChild(row);
     }
+  }
+}
+
+function _navigateToEntity(entity) {
+  if (!entity || !entity.id) return;
+  if (entity.type === 'course_root') {
+    if (window.switchSpace) window.switchSpace('courses');
+    setActiveCourse(entity.id);
+  } else {
+    loadEntry(entity.id);
   }
 }
 
