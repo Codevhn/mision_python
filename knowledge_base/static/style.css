@@ -1858,6 +1858,8 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
 .toc-item:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--accent); }
 .toc-item.toc-h3 { padding-left: 20px; color: var(--text-faint); font-size: 0.68rem; }
 .toc-item.toc-h3:hover { color: var(--text-muted); }
+.toc-item.toc-h4 { padding-left: 32px; color: var(--text-faint); font-size: 0.65rem; }
+.toc-item.toc-h4:hover { color: var(--text-muted); }
 
 #tocBtn.active { color: var(--accent); border-color: var(--accent); }
 
@@ -2394,14 +2396,19 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   vertical-align: middle;
 }
-.status-dot.status-pendiente { background: #3a3a3a; }
-.status-dot.status-progreso  { background: var(--accent-amber); }
-.status-dot.status-dominado  { background: #4a9e6a; }
+.status-dot.status-pendiente  { background: #3a3a3a; }
+.status-dot.status-progreso   { background: var(--accent-amber); }
+.status-dot.status-dominado   { background: #4a9e6a; }
+/* Course lesson statuses */
+.status-dot.status-en_progreso { background: var(--accent-amber); }
+.status-dot.status-completado  { background: #4a9e6a; }
 
 #statusBtn { font-family: var(--font-ui); }
-#statusBtn.status-pendiente { color: var(--text-faint); }
-#statusBtn.status-progreso  { color: var(--accent-amber); border-color: var(--accent-amber); }
-#statusBtn.status-dominado  { color: #4a9e6a; border-color: #4a9e6a; }
+#statusBtn.status-pendiente  { color: var(--text-faint); }
+#statusBtn.status-progreso   { color: var(--accent-amber); border-color: var(--accent-amber); }
+#statusBtn.status-dominado   { color: #4a9e6a; border-color: #4a9e6a; }
+#statusBtn.status-en_progreso { color: var(--accent-amber); border-color: var(--accent-amber); }
+#statusBtn.status-completado  { color: #4a9e6a; border-color: #4a9e6a; }
 #reviewStatusBtn.status-pendiente { color: var(--text-faint); }
 #reviewStatusBtn.status-progreso  { color: var(--accent-amber); border-color: var(--accent-amber); }
 #reviewStatusBtn.status-dominado  { color: #4a9e6a; border-color: #4a9e6a; }
@@ -3323,21 +3330,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 /* ── Add property button ──────────── */
-.prop-add-btn {
-  background: none;
-  border: none;
-  color: var(--fg-muted);
-  font-family: var(--font-ui);
-  font-size: 0.74rem;
-  padding: 6px 8px;
-  cursor: pointer;
-  opacity: 0.4;
-  text-align: left;
-  border-radius: var(--radius-xs);
-  transition: opacity 0.1s, background 0.1s;
-  margin-top: 2px;
-}
-.prop-add-btn:hover { opacity: 0.9; background: var(--bg-hover); }
+.prop-add-btn { display: none !important; }
 
 /* ── Popovers ─────────────────────── */
 .prop-popover {

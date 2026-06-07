@@ -2569,7 +2569,7 @@ function closeTOC() {
 
 function buildTOC() {
   const body = $("entryBody");
-  const headings = Array.from(body.querySelectorAll("h2, h3"));
+  const headings = Array.from(body.querySelectorAll("h2, h3, h4"));
   const tocItems = $("tocItems");
   const tocPanel = $("tocPanel");
 
@@ -2584,8 +2584,9 @@ function buildTOC() {
     return;
   }
 
+  const clsMap = { H2: "toc-item", H3: "toc-item toc-h3", H4: "toc-item toc-h4" };
   tocItems.innerHTML = headings.map(h => {
-    const cls = h.tagName === "H3" ? "toc-item toc-h3" : "toc-item";
+    const cls = clsMap[h.tagName] || "toc-item";
     return `<div class="${cls}" data-target="${h.id}">${escapeHtml(h.textContent.replace(/^[→#]\s*/, ""))}</div>`;
   }).join("");
 
@@ -3296,21 +3297,49 @@ function initStatus() {
   $("statusBtn").addEventListener("click", () => cycleStatus(currentEntryId, $("statusBtn"), true));
 }
 
-const STATUS_CYCLE = ["pendiente", "progreso", "dominado"];
+const STATUS_CYCLE  = ["pendiente", "progreso", "dominado"];
 const STATUS_LABELS = { pendiente: "● pend", progreso: "◐ prog", dominado: "✓ done" };
 
+// Course lessons use a separate status vocabulary
+const COURSE_STATUS_CYCLE  = ["pendiente", "en_progreso", "completado"];
+const COURSE_STATUS_LABELS = { pendiente: "○ pend", en_progreso: "→ prog", completado: "✓ hecho" };
+
+function _isCourseEntry() {
+  return sessionStorage.getItem('activeSpace') === 'courses' && !!(currentEntryMeta?.course || currentEntryMeta?.type === 'course');
+}
+
 function updateStatusBtn(btn, status) {
-  btn.textContent = STATUS_LABELS[status] || "● pend";
+  const label = STATUS_LABELS[status] || COURSE_STATUS_LABELS[status] || "● pend";
+  btn.textContent = label;
   btn.className = `btn-ghost status-${status}`;
   const ctx = $("ctxStatus");
-  if (ctx) { ctx.textContent = STATUS_LABELS[status] || "● pend"; ctx.className = `ctx-btn ctx-btn--status status-${status}`; }
+  if (ctx) { ctx.textContent = label; ctx.className = `ctx-btn ctx-btn--status status-${status}`; }
+}
+
+function _syncCourseEntryStatus(id, status) {
+  if (!_coursesTreeData || !_activeCourseSlug) return;
+  const tree = _coursesTreeData[_activeCourseSlug];
+  if (!tree) return;
+  for (const mod of Object.values(tree.modules || {})) {
+    const entry = (mod.entries || []).find(e => e.id === id);
+    if (entry) { entry.status = status; break; }
+  }
+  // Sync roadmap row if visible
+  const row = document.querySelector(`.cv-roadmap-entry[data-entry-id="${id}"]`);
+  if (row) {
+    row.className = `cv-roadmap-entry cv-roadmap-entry--${status}`;
+    const btn = row.querySelector('.cv-status-btn');
+    if (btn) btn.textContent = _statusIcon(status);
+  }
 }
 
 async function cycleStatus(id, btn, refreshSidebar) {
   if (!id) return;
+  const isCourse = _isCourseEntry();
+  const cycle = isCourse ? COURSE_STATUS_CYCLE : STATUS_CYCLE;
   const current = statusMap[id] || "pendiente";
-  const nextIdx = (STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length;
-  const next = STATUS_CYCLE[nextIdx];
+  const nextIdx = (cycle.indexOf(current) + 1) % cycle.length;
+  const next = cycle[nextIdx];
   const res = await fetch(`/api/entry/${id}/status`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -3320,11 +3349,13 @@ async function cycleStatus(id, btn, refreshSidebar) {
   statusMap[id] = next;
   updateStatusBtn(btn, next);
   if (refreshSidebar) {
-    // Update the dot in the sidebar without full re-render
     const dot = document.querySelector(`.tree-entry[data-id="${id}"] .status-dot`);
-    if (dot) {
-      dot.className = `status-dot status-${next}`;
-    }
+    if (dot) dot.className = `status-dot status-${next}`;
+  }
+  // Refresh course progress and roadmap sync
+  if (isCourse && _activeCourseSlug) {
+    _syncCourseEntryStatus(id, next);
+    _refreshProgressBar(_activeCourseSlug);
   }
 }
 
@@ -4722,6 +4753,12 @@ function renderCourseTab(tab, courseSlug, stats) {
             e.status = next;
             row.className = `cv-roadmap-entry cv-roadmap-entry--${next}`;
             row.querySelector('.cv-status-btn').textContent = _statusIcon(next);
+            statusMap[e.id] = next;
+            // Sync sidebar dot
+            const dot = document.querySelector(`.tree-entry[data-id="${e.id}"] .status-dot`);
+            if (dot) dot.className = `status-dot status-${next}`;
+            // Sync topbar statusBtn if this lesson is currently open
+            if (currentEntryId === e.id) updateStatusBtn($('statusBtn'), next);
             _refreshProgressBar(courseSlug);
           }
         });
