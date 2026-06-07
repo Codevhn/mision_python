@@ -549,8 +549,9 @@ function getFirstEntry(topics) {
 }
 
 // renderCoursesTree — when filterSlug is given, renders modules directly (no course-name header)
-function renderCoursesTree(tree, filterSlug) {
-  const nav = $("coursesTree");
+function renderCoursesTree(tree, filterSlug, _container = null) {
+  const nav = _container
+    || document.querySelector(`.course-inline-tree[data-for-course="${filterSlug}"]`);
   if (!nav) return;
   if (!filterSlug || Object.keys(tree).length === 0) {
     nav.innerHTML = '<div class="tree-empty">No hay lecciones aún.</div>';
@@ -1837,6 +1838,7 @@ function _refreshTopicDropdown(catLabel) {
 let _coursesTree = {};
 let _coursesTreeData = {}; // full courses tree from /api/courses/tree
 let _activeCourseSlug = null;
+let expandedCourses = {}; // tracks which courses have their inline tree visible
 
 async function loadCourseSuggestions() {
   const res = await fetch("/api/courses/tree");
@@ -3947,7 +3949,8 @@ async function renderCourseList() {
   } else {
     active.forEach(c => {
       const pct = c.entry_count ? Math.round((c.done_count / c.entry_count) * 100) : 0;
-      const isActive = c.id === _activeCourseSlug;
+      const isActive   = c.id === _activeCourseSlug;
+      const isExpanded = !!expandedCourses[c.id];
       const item = document.createElement('div');
       item.className = 'course-list-item' + (isActive ? ' active' : '');
       item.dataset.courseId = c.id;
@@ -3959,24 +3962,30 @@ async function renderCourseList() {
         <div class="course-list-bar"><div class="course-list-bar-fill" style="width:${pct}%"></div></div>`;
       item.addEventListener('click', e => {
         if (e.target.closest('.course-list-gear')) return;
+        if (e.target.closest('.course-inline-tree')) return;
         setActiveCourse(c.id);
       });
       if (isActive) {
         item.querySelector('.course-list-gear').addEventListener('click', async e => {
           e.stopPropagation();
-          const anchor = e.currentTarget; // save before any await
+          const anchor = e.currentTarget;
           let courses2;
           try { courses2 = await fetch('/api/courses').then(r => r.json()); } catch { courses2 = []; }
           const entity = courses2.find(x => x.id === c.id) || c;
           _openCourseGearMenu(anchor, c.id, entity);
         });
-        // Inline module tree — #coursesTree lives here so renderCoursesTree() can find it
-        const inlineTree = document.createElement('nav');
-        inlineTree.className = 'tree course-inline-tree';
-        inlineTree.id = 'coursesTree';
-        item.appendChild(inlineTree);
       }
+      // Every course gets its own tree container; visible only when expanded
+      const inlineTree = document.createElement('nav');
+      inlineTree.className = 'tree course-inline-tree';
+      inlineTree.dataset.forCourse = c.id;
+      if (!isExpanded) inlineTree.style.display = 'none';
+      item.appendChild(inlineTree);
       list.appendChild(item);
+    });
+    // Populate trees for all currently expanded courses
+    active.filter(c => expandedCourses[c.id]).forEach(c => {
+      renderCoursesTree(_coursesTreeData, c.id);
     });
   }
 
@@ -4021,16 +4030,16 @@ async function renderCourseList() {
 // ── Open course detail in sidebar + load course view in main ─────────────
 async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
+  expandedCourses[courseSlug] = true;
 
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
   catch { courses = []; }
   const course = courses.find(c => c.id === courseSlug) || { label: courseSlug };
 
-  // Re-render list — active item now gets gear + inline #coursesTree
+  // Re-render list — renderCourseList populates trees for all expanded courses
   await renderCourseList();
 
-  renderCoursesTree(_coursesTreeData, courseSlug);
   loadCourseView(courseSlug, course);
 }
 
@@ -4655,16 +4664,23 @@ function openCourseLesson(entryId) {
 // ── Single source of truth for active course ─────────────────────────────
 function setActiveCourse(slug) {
   if (slug && slug === _activeCourseSlug) {
-    // Same course clicked: toggle the inline tree without re-fetching
-    const tree = $('coursesTree');
-    if (tree) {
-      const isCollapsed = tree.style.display === 'none';
-      tree.style.display = isCollapsed ? '' : 'none';
+    const cv = $('courseView');
+    const courseViewHidden = !cv || cv.classList.contains('hidden');
+    if (courseViewHidden) {
+      // Course view was closed: reopen it, ensure tree is expanded
+      expandedCourses[slug] = true;
+      openCourseDetail(slug);
+    } else {
+      // Course view is open: toggle tree expansion only
+      expandedCourses[slug] = !expandedCourses[slug];
+      const tree = document.querySelector(`.course-inline-tree[data-for-course="${slug}"]`);
+      if (tree) tree.style.display = expandedCourses[slug] ? '' : 'none';
     }
     return;
   }
   _activeCourseSlug = slug;
   if (slug) {
+    expandedCourses[slug] = true;
     openCourseDetail(slug);
   } else {
     closeCourseDetail();
