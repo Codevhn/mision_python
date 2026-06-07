@@ -2659,6 +2659,11 @@ function toggleHistoryPanel() {
   }
 }
 
+function closeHistoryPanel() {
+  $("historyPanel")?.classList.add("hidden");
+  $("historyBtn")?.classList.remove("active");
+}
+
 async function loadHistoryPanel(id) {
   const items = $("historyItems");
   items.innerHTML = '<div style="padding:10px;color:var(--text-faint);font-size:0.72rem;">loading…</div>';
@@ -3450,6 +3455,9 @@ function setSidebarVisible(visible) {
   const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];
 
   function switchSpace(space) {
+    // Close floating panels that live outside #entryView
+    closeHistoryPanel();
+
     // Restore sidebar for all spaces except home (home hides it below)
     setSidebarVisible(true);
 
@@ -4182,6 +4190,7 @@ async function renderCourseList() {
 async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
   expandedCourses[courseSlug] = true;
+  closeHistoryPanel();
 
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }
