@@ -616,17 +616,24 @@ input, textarea, select { font-family: inherit; }
 
 /* ── HOME DASHBOARD ── */
 .home-wrap {
+  display: flex; flex-direction: column;
+  max-width: 100%;
+  padding: 0 0 80px;
+}
+/* All sections below the hero get horizontal padding + max-width */
+.home-stats-row,
+.home-section,
+.home-empty,
+.home-radar-teaser {
   max-width: 860px;
-  margin: 0 auto;
-  padding: 60px 44px 80px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 44px;
+  padding-right: 44px;
+  box-sizing: border-box;
 }
-.home-greeting {
-  font-family: var(--font-ui);
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--fg);
-  margin: 0 0 40px;
-}
+.home-stats-row { margin-top: 28px; }
 .home-section { margin-bottom: 40px; }
 .home-section-label {
   font-family: var(--font-ui);
@@ -720,8 +727,15 @@ input, textarea, select { font-family: inherit; }
 .home-empty p { margin-bottom: 20px; }
 
 @media (max-width: 600px) {
-  .home-wrap { padding: 32px 20px 60px; }
+  .home-wrap { padding: 0 0 60px; }
+  .home-hero { min-height: 160px; }
+  .home-hero-content { padding: 18px 20px 16px; }
   .home-greeting { font-size: 1.4rem; }
+  .home-weather-chip { margin: 0 14px 14px 0; }
+  .home-stats-row,
+  .home-section,
+  .home-empty,
+  .home-radar-teaser { padding-left: 20px; padding-right: 20px; }
   .home-recent-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
 
@@ -6655,23 +6669,68 @@ body[data-accent="slate"] {
   margin-top: 2px; padding-top: 6px;
 }
 
-/* ── Home enhancements ────────────────────────────────────────────── */
-.home-top-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 0;
+/* ── Home hero ────────────────────────────────────────────────────── */
+.home-wrap {
+  display: flex; flex-direction: column;
 }
-.home-weather-widget {
+.home-hero {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  display: flex; align-items: flex-end;
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: background 1.2s ease;
+}
+/* subtle noise texture overlay */
+.home-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1;
+}
+.home-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.10) 60%, transparent 100%);
+  z-index: 2;
+}
+.home-hero-content {
+  position: relative; z-index: 3;
+  padding: 28px 36px 24px;
+  flex: 1;
+}
+.home-hero-content .home-greeting {
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  margin: 0 0 4px;
+}
+.home-date {
+  font-size: 0.82rem; color: rgba(255,255,255,0.65);
+  margin: 0; text-transform: capitalize;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+}
+
+/* Weather chip — sits bottom-right of hero */
+.home-weather-chip {
+  position: relative; z-index: 3;
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 0.85rem; color: var(--text-muted);
-  min-height: 34px;
+  align-self: flex-end;
+  margin: 0 24px 20px 0;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.38);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 99px;
+  color: #fff;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  transition: opacity 0.4s;
 }
-.hw-icon { font-size: 1.1rem; line-height: 1; }
-.hw-temp { font-weight: 600; color: var(--text); }
-.hw-label { font-size: 0.76rem; }
+.home-weather-chip.hw-hidden { opacity: 0; pointer-events: none; }
+.hw-icon { font-size: 1rem; line-height: 1; }
+.hw-temp { font-weight: 700; }
+.hw-label { font-size: 0.74rem; opacity: 0.80; }
 
 .home-radar-teaser {
   display: flex; align-items: center; gap: 10px;

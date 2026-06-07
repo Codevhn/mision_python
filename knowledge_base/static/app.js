@@ -828,16 +828,71 @@ function _getRecent() {
   try { return JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch { return []; }
 }
 
-// Weather code → { icon, label }
+// Weather code → condition key
+function _weatherCondition(code, isDay) {
+  if (code === 0)  return isDay ? 'clear-day'      : 'clear-night';
+  if (code <= 2)   return 'partly-cloudy';
+  if (code === 3)  return 'overcast';
+  if (code <= 49)  return 'foggy';
+  if (code <= 67)  return 'rain';
+  if (code <= 77)  return 'snow';
+  if (code <= 82)  return 'rain';
+  return 'thunderstorm';
+}
+
 function _weatherInfo(code, isDay) {
-  if (code === 0) return isDay ? { icon: "☀️", label: "Despejado" } : { icon: "🌙", label: "Noche despejada" };
-  if (code <= 2)  return { icon: "⛅", label: "Parcialmente nublado" };
-  if (code === 3) return { icon: "☁️", label: "Nublado" };
-  if (code <= 49) return { icon: "🌫️", label: "Niebla" };
-  if (code <= 67) return { icon: "🌧️", label: "Lluvia" };
-  if (code <= 77) return { icon: "❄️", label: "Nieve" };
-  if (code <= 82) return { icon: "🌦️", label: "Chubascos" };
-  return { icon: "⛈️", label: "Tormenta" };
+  const cond = _weatherCondition(code, isDay);
+  const map = {
+    'clear-day':    { icon: '☀️',  label: 'Despejado' },
+    'clear-night':  { icon: '🌙',  label: 'Noche despejada' },
+    'partly-cloudy':{ icon: '⛅',  label: 'Parcialmente nublado' },
+    'overcast':     { icon: '☁️',  label: 'Nublado' },
+    'foggy':        { icon: '🌫️', label: 'Niebla' },
+    'rain':         { icon: '🌧️', label: 'Lluvia' },
+    'snow':         { icon: '❄️',  label: 'Nieve' },
+    'thunderstorm': { icon: '⛈️', label: 'Tormenta' },
+  };
+  return map[cond] || { icon: '🌡️', label: '' };
+}
+
+// Gradient hero per condition + hour
+function _heroBg(hour, weatherData) {
+  const cond = weatherData ? _weatherCondition(weatherData.weather_code, weatherData.is_day) : null;
+
+  // Night (21-6)
+  if (hour >= 21 || hour < 6) {
+    if (cond === 'clear-night')
+      return 'linear-gradient(160deg, #020510 0%, #0a0f2e 45%, #1a1060 100%)';
+    if (cond === 'rain' || cond === 'thunderstorm')
+      return 'linear-gradient(160deg, #050a10 0%, #0a1520 50%, #0d2035 100%)';
+    return 'linear-gradient(160deg, #020510 0%, #070d22 45%, #10153a 100%)';
+  }
+  // Morning (6-12)
+  if (hour < 12) {
+    if (cond === 'clear-day')
+      return 'linear-gradient(160deg, #0d1b3e 0%, #1a4a7a 45%, #c0671a 100%)';
+    if (cond === 'rain' || cond === 'thunderstorm')
+      return 'linear-gradient(160deg, #0d1520 0%, #1a2535 50%, #253040 100%)';
+    if (cond === 'overcast' || cond === 'foggy')
+      return 'linear-gradient(160deg, #151a22 0%, #252e38 50%, #303a45 100%)';
+    return 'linear-gradient(160deg, #0d1b3e 0%, #1a3a6a 45%, #8a4a10 100%)';
+  }
+  // Afternoon (12-19)
+  if (hour < 19) {
+    if (cond === 'clear-day')
+      return 'linear-gradient(160deg, #0a1628 0%, #0d2d5a 45%, #1a4a8a 100%)';
+    if (cond === 'rain' || cond === 'thunderstorm')
+      return 'linear-gradient(160deg, #0a1020 0%, #101828 50%, #162030 100%)';
+    if (cond === 'overcast' || cond === 'foggy')
+      return 'linear-gradient(160deg, #111820 0%, #1a2530 50%, #20303d 100%)';
+    return 'linear-gradient(160deg, #0a1628 0%, #0f2a55 45%, #163f80 100%)';
+  }
+  // Evening (19-21)
+  if (cond === 'clear-day' || cond === 'partly-cloudy')
+    return 'linear-gradient(160deg, #0d0a20 0%, #3d1450 45%, #c0440a 100%)';
+  if (cond === 'rain' || cond === 'thunderstorm')
+    return 'linear-gradient(160deg, #080810 0%, #111220 50%, #1a1828 100%)';
+  return 'linear-gradient(160deg, #0d0a20 0%, #2a1040 45%, #8a3010 100%)';
 }
 
 let _weatherData = null;
@@ -854,11 +909,17 @@ function _fetchWeather() {
         if (!data || data.error) return;
         _weatherData = data;
         _weatherFetched = true;
-        // Patch widget in-place if home is currently shown
-        const w = document.getElementById('homeWeatherWidget');
-        if (w) {
+        // Patch hero in-place
+        const hero = document.getElementById('homeHero');
+        const chip = document.getElementById('homeWeatherChip');
+        if (hero) {
+          const hour = new Date().getHours();
+          hero.style.background = _heroBg(hour, data);
+        }
+        if (chip) {
           const info = _weatherInfo(data.weather_code, data.is_day);
-          w.innerHTML = `<span class="hw-icon">${info.icon}</span><span class="hw-temp">${Math.round(data.temp)}°C</span><span class="hw-label">${info.label}</span>`;
+          chip.innerHTML = `<span class="hw-icon">${info.icon}</span><span class="hw-temp">${Math.round(data.temp)}°C</span><span class="hw-label">${info.label}</span>`;
+          chip.classList.remove('hw-hidden');
         }
       })
       .catch(() => {});
@@ -872,23 +933,23 @@ function renderHome() {
   const pinned  = Object.entries(pinnedMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
   const starred = Object.entries(starredMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
 
-  // Stats from _index
   const totalEntries = _index.length;
   const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
   const pinnedCount  = pinned.length;
   const starredCount = starred.length;
 
-  // Weather widget HTML
-  let weatherHtml = '';
+  const heroBg = _heroBg(hour, _weatherData);
+
+  let chipHtml = '';
   if (_weatherData) {
     const info = _weatherInfo(_weatherData.weather_code, _weatherData.is_day);
-    weatherHtml = `<div class="home-weather-widget" id="homeWeatherWidget">
+    chipHtml = `<div class="home-weather-chip" id="homeWeatherChip">
       <span class="hw-icon">${info.icon}</span>
       <span class="hw-temp">${Math.round(_weatherData.temp)}°C</span>
       <span class="hw-label">${info.label}</span>
     </div>`;
   } else {
-    weatherHtml = `<div class="home-weather-widget" id="homeWeatherWidget"></div>`;
+    chipHtml = `<div class="home-weather-chip hw-hidden" id="homeWeatherChip"></div>`;
   }
 
   function cardHtml(r) {
@@ -910,9 +971,14 @@ function renderHome() {
   const welcome = $("welcome");
   welcome.innerHTML = `
     <div class="home-wrap">
-      <div class="home-top-row">
-        <h1 class="home-greeting">${greeting}</h1>
-        ${weatherHtml}
+
+      <div class="home-hero" id="homeHero" style="background:${heroBg}">
+        <div class="home-hero-overlay"></div>
+        <div class="home-hero-content">
+          <h1 class="home-greeting">${greeting}</h1>
+          <p class="home-date">${new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })}</p>
+        </div>
+        ${chipHtml}
       </div>
 
       <div class="home-stats-row">
