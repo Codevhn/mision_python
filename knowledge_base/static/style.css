@@ -207,7 +207,7 @@ input, textarea, select { font-family: inherit; }
 /* ---- TOPBAR ---- */
 .topbar {
   position: fixed;
-  top: 0; left: var(--activity-bar-w, 0); right: 0;
+  top: 0; left: 0; right: 0;
   height: var(--topbar-h);
   background: var(--bg-sidebar);
   backdrop-filter: var(--glass-blur);
@@ -6406,16 +6406,23 @@ body[data-accent="slate"] {
 
 /* ── Course inline tree: clean modern design ─────────────────── */
 /* Replaces the old filesystem-style tree inside active course items */
+@keyframes course-tree-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .course-inline-tree {
   margin: 6px 0 4px 0;
   padding: 0;
-  border-left: none;            /* course-list-item.active already has the accent border */
+  border-left: none;
   max-height: calc(100vh - 260px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
+  animation: course-tree-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   scrollbar-color: var(--border) transparent;
 }
+.course-inline-tree.tree-collapsed { display: none; }
 
 /* Module label: compact, muted uppercase */
 .course-inline-tree .tree-topic-header {

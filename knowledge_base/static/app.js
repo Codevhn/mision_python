@@ -4061,9 +4061,8 @@ async function renderCourseList() {
       }
       // Every course gets its own tree container; visible only when expanded
       const inlineTree = document.createElement('nav');
-      inlineTree.className = 'tree course-inline-tree';
+      inlineTree.className = 'tree course-inline-tree' + (isExpanded ? '' : ' tree-collapsed');
       inlineTree.dataset.forCourse = c.id;
-      if (!isExpanded) inlineTree.style.display = 'none';
       item.appendChild(inlineTree);
       list.appendChild(item);
     });
@@ -4758,7 +4757,7 @@ function setActiveCourse(slug) {
       // Course view is open: toggle tree expansion only
       expandedCourses[slug] = !expandedCourses[slug];
       const tree = document.querySelector(`.course-inline-tree[data-for-course="${slug}"]`);
-      if (tree) tree.style.display = expandedCourses[slug] ? '' : 'none';
+      if (tree) tree.classList.toggle('tree-collapsed', !expandedCourses[slug]);
     }
     return;
   }
