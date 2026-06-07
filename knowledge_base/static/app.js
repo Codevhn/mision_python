@@ -5391,9 +5391,29 @@ function initCoursesSpace() {
     } catch { return ''; }
   }
 
-  function _catBadge(cat) {
-    const map = { ai: '🤖 IA', dev: '💻 Dev', tech: '🔬 Tech', research: '📄 Research' };
-    return map[cat] || cat;
+  const _CAT_COLORS = {
+    ai:       '#8b5cf6',
+    dev:      '#3b82f6',
+    tech:     '#06b6d4',
+    research: '#f59e0b',
+  };
+
+  const _SRC_DOMAIN = {
+    'OpenAI':       'openai.com',
+    'GitHub':       'github.com',
+    'Ars Technica': 'arstechnica.com',
+    'MIT Tech':     'technologyreview.com',
+    'arXiv AI':     'arxiv.org',
+    'Hacker News':  'news.ycombinator.com',
+  };
+
+  function _catLabel(cat) {
+    return { ai: 'IA', dev: 'Dev', tech: 'Tech', research: 'Research' }[cat] || cat;
+  }
+
+  function _favicon(source) {
+    const domain = _SRC_DOMAIN[source] || 'google.com';
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
   }
 
   function _renderFeed() {
@@ -5411,16 +5431,41 @@ function initCoursesSpace() {
       return;
     }
 
-    feed.innerHTML = items.map(it => `
-      <a class="radar-item" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">
-        <div class="radar-item-top">
-          <span class="radar-cat-badge">${_catBadge(it.category)}</span>
-          <span class="radar-source">${escapeHtml(it.source)}</span>
-          ${it.score ? `<span class="radar-score">▲ ${it.score}</span>` : ''}
-          <span class="radar-time">${_relTime(it.pub)}</span>
+    const [hero, ...rest] = items;
+    const heroColor = _CAT_COLORS[hero.category] || 'var(--accent)';
+
+    let html = `
+      <a class="radar-hero" href="${escapeHtml(hero.url)}" target="_blank" rel="noopener noreferrer"
+         style="--cat-color:${heroColor}" translate="yes">
+        <div class="radar-hero-cat">${escapeHtml(_catLabel(hero.category))}</div>
+        <div class="radar-hero-title">${escapeHtml(hero.title)}</div>
+        <div class="radar-hero-meta">
+          <img class="radar-favicon" src="${_favicon(hero.source)}" alt="" loading="lazy">
+          <span>${escapeHtml(hero.source)}</span>
+          ${hero.score ? `<span class="radar-score">▲ ${hero.score}</span>` : ''}
+          <span class="radar-time">${_relTime(hero.pub)}</span>
         </div>
-        <div class="radar-item-title">${escapeHtml(it.title)}</div>
-      </a>`).join('');
+      </a>
+      <div class="radar-grid">`;
+
+    html += rest.map((it, i) => {
+      const color = _CAT_COLORS[it.category] || 'var(--accent)';
+      return `
+        <a class="radar-card" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer"
+           style="--cat-color:${color}; animation-delay:${(i + 1) * 45}ms" translate="yes">
+          <div class="radar-card-label" style="color:${color}">${escapeHtml(_catLabel(it.category))}</div>
+          <div class="radar-card-title">${escapeHtml(it.title)}</div>
+          <div class="radar-card-meta">
+            <img class="radar-favicon" src="${_favicon(it.source)}" alt="" loading="lazy">
+            <span>${escapeHtml(it.source)}</span>
+            ${it.score ? `<span class="radar-score">▲ ${it.score}</span>` : ''}
+            <span class="radar-time">${_relTime(it.pub)}</span>
+          </div>
+        </a>`;
+    }).join('');
+
+    html += '</div>';
+    feed.innerHTML = html;
   }
 
   window.loadRadarFeed = function(force) {
