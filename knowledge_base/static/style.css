@@ -6683,6 +6683,10 @@ body[data-accent="slate"] {
   font-size: 0.82rem; font-weight: 600; color: var(--accent);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.lesson-scaffold-hint {
+  margin: 5px 0 0; font-size: 0.71rem; color: var(--text-faint);
+  font-family: var(--font-ui); line-height: 1.4;
+}
 
 /* Locked module field (context B — from a specific module) */
 #lessonModuleField.locked {

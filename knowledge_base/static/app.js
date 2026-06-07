@@ -5228,6 +5228,17 @@ function setActiveCourse(slug) {
 }
 
 // ── Lesson modal ──────────────────────────────────────────────────────────
+function _buildLessonScaffold(title, subtopicsRaw) {
+  const h1 = `# ${title}`;
+  if (!subtopicsRaw) return h1;
+  const items = subtopicsRaw
+    .split(/\n+/)
+    .map(s => s.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean);
+  if (!items.length) return h1;
+  return h1 + '\n\n' + items.map(s => `### ${s}`).join('\n\n') + '\n';
+}
+
 function openNewLessonModal(courseSlug, prefillModule) {
   const overlay = $('newLessonOverlay');
   if (!overlay) return;
@@ -5346,7 +5357,8 @@ function initLessonModal() {
       const courseLabel = $('lessonCourseCtx')?.textContent?.trim() || courseSlug;
       const module      = ($('lessonModuleField') || {}).value?.trim();
       const title       = ($('lessonTitleField') || {}).value?.trim();
-      const content     = ($('lessonContentField') || {}).value?.trim() || '---';
+      const subtopics   = ($('lessonContentField') || {}).value?.trim() || '';
+      const content     = _buildLessonScaffold(title || '', subtopics);
       if (!courseSlug || !module || !title) {
         showToast('Completa los campos obligatorios', 'error'); return;
       }
