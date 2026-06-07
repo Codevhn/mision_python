@@ -795,7 +795,33 @@ def export_pdf(entry_id):
     return send_file(pdf_path, as_attachment=True, download_name=f"{entry_id}.pdf")
 
 
-@app.route("/api/categories")
+@app.route("/api/export/<entry_id>/html")
+def export_html(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    md_content = _entry_path(entry_id, meta).read_text()
+    date = meta.get("created_at", "")[:10]
+    full_html = _build_pdf_html(meta["title"], date, render_markdown(md_content))
+    from flask import Response
+    return Response(full_html, mimetype="text/html",
+                    headers={"Content-Disposition": f'attachment; filename="{entry_id}.html"'})
+
+
+@app.route("/api/export/<entry_id>/json")
+def export_json(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    md_content = _entry_path(entry_id, meta).read_text()
+    from flask import Response
+    import json as _json
+    payload = _json.dumps({"id": entry_id, "meta": meta, "content": md_content},
+                          indent=2, ensure_ascii=False)
+    return Response(payload, mimetype="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{entry_id}.json"'})
 def get_categories():
     index = load_index()
     cats = {}

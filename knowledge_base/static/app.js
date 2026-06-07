@@ -214,8 +214,7 @@ function bindEvents() {
   });
   document.addEventListener("click", () => $("moreActionsDropdown").classList.remove("open"));
   // Wire duplicate buttons in dropdown to same handlers
-  $("moreExportMd").addEventListener("click",  () => exportEntry("md"));
-  $("moreExportPdf").addEventListener("click", () => exportEntry("pdf"));
+  $("moreExport").addEventListener("click", openExportModal);
   $("moreToc").addEventListener("click",       () => $("tocBtn").click());
   $("moreHistory").addEventListener("click",   () => $("historyBtn").click());
   $("moreStar").addEventListener("click",      () => $("starBtn").click());
@@ -228,8 +227,7 @@ function bindEvents() {
   $("saveBtn").addEventListener("click", saveEntry);
   $("editBtn").addEventListener("click", openEditModal);
   $("deleteBtn").addEventListener("click", deleteEntry);
-  $("exportMdBtn").addEventListener("click", () => exportEntry("md"));
-  $("exportPdfBtn").addEventListener("click", () => exportEntry("pdf"));
+  $("exportBtn").addEventListener("click", openExportModal);
   $("modalOverlay").addEventListener("click", e => { if (e.target === $("modalOverlay")) closeModal(); });
 
   // Search
@@ -1705,6 +1703,25 @@ function exportEntry(format) {
   window.open(`/api/export/${currentEntryId}/${format}`, "_blank");
 }
 
+function openExportModal() {
+  if (!currentEntryId) return;
+  const overlay = $('exportModalOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+
+  const close = () => overlay.classList.add('hidden');
+
+  $('exportModalClose').onclick   = close;
+  $('exportModalCancel').onclick  = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  $('exportModalConfirm').onclick = () => {
+    const fmt = $('exportFormat').value;
+    exportEntry(fmt);
+    close();
+  };
+}
+
 // ---- SEARCH ----
 async function runSearch(q) {
   const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -3089,7 +3106,7 @@ function buildBreadcrumb(meta) {
   _wireCtxBtn("ctxToc",      "tocBtn");
   _wireCtxBtn("ctxHistory",  "historyBtn");
   _wireCtxBtn("ctxFocus",    "focusBtn");
-  _wireCtxBtn("ctxExportMd", "exportMdBtn");
+  _wireCtxBtn("ctxExport",   "exportBtn");
   _wireCtxBtn("ctxDelete",   "deleteBtn");
 
   // ctxStatus proxies statusBtn (keep label in sync)

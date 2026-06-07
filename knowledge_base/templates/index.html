@@ -235,7 +235,7 @@
           <button class="ctx-btn" id="ctxHistory" title="Historial">⟲</button>
           <button class="ctx-btn" id="ctxFocus"   title="Modo enfoque">⊙</button>
           <div class="ctx-divider"></div>
-          <button class="ctx-btn" id="ctxExportMd"  title="Exportar Markdown">↓ md</button>
+          <button class="ctx-btn" id="ctxExport" title="Exportar…">↓</button>
           <button class="ctx-btn ctx-btn--danger" id="ctxDelete" title="Eliminar">rm</button>
         </div>
       </div>
@@ -331,8 +331,7 @@
             <button class="btn-ghost" id="editBtn">~ editar</button>
             <button class="btn-ghost" id="statusBtn">● pend</button>
             <button class="btn-ghost danger" id="deleteBtn">rm -f</button>
-            <button class="btn-ghost secondary-action" id="exportMdBtn">↓ .md</button>
-            <button class="btn-ghost secondary-action" id="exportPdfBtn">↓ .pdf</button>
+            <button class="btn-ghost secondary-action" id="exportBtn">↓ Exportar…</button>
             <button class="btn-ghost secondary-action" id="tocBtn">¶ toc</button>
             <button class="btn-ghost secondary-action" id="historyBtn">⟲ history</button>
             <button class="btn-ghost secondary-action" id="starBtn">☆ star</button>
@@ -344,8 +343,7 @@
             <!-- Mobile: más acciones -->
             <button class="btn-ghost" id="moreActionsBtn" style="display:none">⋯</button>
             <div class="more-actions-dropdown" id="moreActionsDropdown">
-              <button class="btn-ghost" id="moreExportMd">↓ .md</button>
-              <button class="btn-ghost" id="moreExportPdf">↓ .pdf</button>
+              <button class="btn-ghost" id="moreExport">↓ Exportar…</button>
               <button class="btn-ghost" id="moreToc">¶ toc</button>
               <button class="btn-ghost" id="moreHistory">⟲ history</button>
               <button class="btn-ghost" id="moreStar">☆ star</button>
@@ -848,5 +846,30 @@
   <script src="/static/properties.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
+
+  <!-- Export modal -->
+  <div class="modal-overlay hidden" id="exportModalOverlay">
+    <div class="modal" id="exportModal" style="max-width:380px">
+      <div class="modal-header">
+        <h2>Exportar entrada</h2>
+        <button class="modal-close" id="exportModalClose">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Formato</label>
+          <select id="exportFormat" class="form-control" style="width:100%">
+            <option value="md">Markdown (.md)</option>
+            <option value="pdf">PDF</option>
+            <option value="html">HTML (.html)</option>
+            <option value="json">JSON (.json)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
+        <button class="btn-ghost" id="exportModalCancel">Cancelar</button>
+        <button class="btn-primary" id="exportModalConfirm">↓ Exportar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
