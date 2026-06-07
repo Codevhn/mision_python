@@ -864,12 +864,12 @@
       <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
         <div class="form-group">
           <label class="form-label">Formato</label>
-          <select id="exportFormat" class="form-control" style="width:100%">
-            <option value="md">Markdown (.md)</option>
-            <option value="pdf">PDF</option>
-            <option value="html">HTML (.html)</option>
-            <option value="json">JSON (.json)</option>
-          </select>
+          <div class="export-fmt-group" id="exportFormatGroup" data-selected="md">
+            <button class="export-fmt-btn active" data-fmt="md">Markdown<span class="export-fmt-ext">.md</span></button>
+            <button class="export-fmt-btn" data-fmt="pdf">PDF<span class="export-fmt-ext">.pdf</span></button>
+            <button class="export-fmt-btn" data-fmt="html">HTML<span class="export-fmt-ext">.html</span></button>
+            <button class="export-fmt-btn" data-fmt="json">JSON<span class="export-fmt-ext">.json</span></button>
+          </div>
         </div>
       </div>
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">

@@ -1715,8 +1715,20 @@ function openExportModal() {
   $('exportModalCancel').onclick  = close;
   overlay.onclick = e => { if (e.target === overlay) close(); };
 
+  // Wire format buttons (idempotent — replace onclick each open)
+  const group = $('exportFormatGroup');
+  if (group) {
+    group.querySelectorAll('.export-fmt-btn').forEach(btn => {
+      btn.onclick = () => {
+        group.querySelectorAll('.export-fmt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        group.dataset.selected = btn.dataset.fmt;
+      };
+    });
+  }
+
   $('exportModalConfirm').onclick = () => {
-    const fmt = $('exportFormat').value;
+    const fmt = group?.dataset.selected || 'md';
     exportEntry(fmt);
     close();
   };

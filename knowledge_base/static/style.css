@@ -5202,6 +5202,68 @@ body {
   font-size: 1rem !important; font-weight: 600 !important;
   color: rgba(255,255,255,0.92) !important; letter-spacing: -0.02em !important;
 }
+/* ── Export format segmented group ── */
+.export-fmt-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.export-fmt-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-sm);
+  color: rgba(255,255,255,0.50);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  line-height: 1;
+  gap: 4px;
+}
+
+.export-fmt-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.85);
+}
+
+.export-fmt-btn.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.export-fmt-ext {
+  font-size: 0.62rem;
+  font-weight: 400;
+  opacity: 0.6;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="light"] .export-fmt-btn {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.45);
+}
+[data-theme="light"] .export-fmt-btn:hover {
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.22);
+  color: rgba(0,0,0,0.75);
+}
+[data-theme="light"] .export-fmt-btn.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .modal-body { background: transparent !important; padding: 22px 24px !important; }
 .modal-footer {
   background: rgba(255,255,255,0.02) !important;
