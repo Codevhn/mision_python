@@ -619,7 +619,7 @@ function renderCoursesTree(tree, filterSlug) {
         entryEl.appendChild(dot);
         entryEl.appendChild(nameSpan);
         if (entry.id === currentEntryId) entryEl.classList.add("active");
-        entryEl.addEventListener("click", () => loadEntry(entry.id));
+        entryEl.addEventListener("click", () => openCourseLesson(entry.id));
         entryEl.addEventListener("dragstart", e => {
           e.dataTransfer.setData("text/plain", entry.id);
           entryEl.classList.add("dragging");
@@ -4196,7 +4196,7 @@ function renderCourseTab(tab, courseSlug, stats) {
             <button class="cv-lesson-menu-btn" title="Más acciones">…</button>
           </div>`;
         // Open entry on title click
-        row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => { switchSpace('knowledge'); loadEntry(e.id); });
+        row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => openCourseLesson(e.id));
         // Cycle status without opening entry
         row.querySelector('.cv-status-btn').addEventListener('click', async ev => {
           ev.stopPropagation();
@@ -4643,6 +4643,13 @@ function handleNewEntryTopbar() {
   } else {
     openNewModal();
   }
+}
+
+// ── Open a course lesson: hide roadmap, show entry, keep Courses context ─
+function openCourseLesson(entryId) {
+  const cv = $('courseView');
+  if (cv) cv.classList.add('hidden');
+  loadEntry(entryId);
 }
 
 // ── Single source of truth for active course ─────────────────────────────

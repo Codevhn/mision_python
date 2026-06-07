@@ -6391,6 +6391,13 @@ body[data-accent="slate"] {
   scrollbar-color: var(--border) transparent;
 }
 
+/* Compact entries inside the inline course tree — scoped, no effect on Knowledge tree */
+.course-inline-tree .tree-entry {
+  margin-left: 4px;
+  padding-left: 12px;
+}
+.course-inline-tree .tree-entry-icon { display: none; }
+
 .course-list-item {
   display: flex; flex-direction: column; gap: 3px;
   padding: 5px 10px 5px 12px;
