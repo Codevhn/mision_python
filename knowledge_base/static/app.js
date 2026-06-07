@@ -100,7 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
   initIconPickers();
   renderHome();
 
-  loadTree();
+  loadTree().then(() => {
+    // Re-render Home now that _index is populated with real stats
+    const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch(e) { return null; } })();
+    if (!activeSpace || activeSpace === 'home') renderHome();
+  });
   Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
   loadCourseSuggestions();
   bindEvents();
@@ -988,10 +992,11 @@ async function loadEntry(id, opts = {}) {
   $("entryView").classList.remove("hidden");
   if ($("ctxBar")) $("ctxBar").classList.remove("hidden");
 
-  // Close move panel and history panel on new entry load
+  // Close floating panels on new entry load
   $("movePanel").classList.add("hidden");
-  $("historyPanel").classList.add("hidden");
-  $("historyBtn").classList.remove("active");
+  closeHistoryPanel();
+  closeTOC();
+  window._closeCtxMenu?.();
 
   const m = data.meta;
   currentEntryMeta = m;
@@ -1703,6 +1708,10 @@ function exportEntry(format) {
   window.open(`/api/export/${currentEntryId}/${format}`, "_blank");
 }
 
+function closeExportModal() {
+  $('exportModalOverlay')?.classList.add('hidden');
+}
+
 function openExportModal() {
   if (!currentEntryId) return;
   const overlay = $('exportModalOverlay');
@@ -2236,6 +2245,11 @@ function toggleTOC() {
   const isHidden = panel.classList.contains("hidden");
   panel.classList.toggle("hidden", !isHidden);
   $("tocBtn").classList.toggle("active", isHidden);
+}
+
+function closeTOC() {
+  $("tocPanel")?.classList.add("hidden");
+  $("tocBtn")?.classList.remove("active");
 }
 
 function buildTOC() {
@@ -2974,7 +2988,7 @@ function updateStatusBtn(btn, status) {
   btn.textContent = STATUS_LABELS[status] || "● pend";
   btn.className = `btn-ghost status-${status}`;
   const ctx = $("ctxStatus");
-  if (ctx) { ctx.textContent = STATUS_LABELS[status] || "● pend"; ctx.className = `ctx-btn status-${status}`; }
+  if (ctx) { ctx.textContent = STATUS_LABELS[status] || "● pend"; ctx.className = `ctx-btn ctx-btn--status status-${status}`; }
 }
 
 async function cycleStatus(id, btn, refreshSidebar) {
@@ -3085,7 +3099,7 @@ function buildBreadcrumb(meta) {
   const isTeamspace = meta.type === "teamspace" || !!meta.teamspace;
 
   // Space root label
-  let spaceLabel = "KB";
+  let spaceLabel = "Conocimiento";
   let spaceSpace = "knowledge";
   if (isCourse)    { spaceLabel = "Cursos";   spaceSpace = "courses"; }
   if (isTeamspace) { spaceLabel = "Team";     spaceSpace = "teamspace"; }
@@ -3134,6 +3148,7 @@ function buildBreadcrumb(meta) {
     ctxMoreMenu?.classList.add("hidden");
     ctxMore?.classList.remove("active");
   }
+  window._closeCtxMenu = _closeCtxMenu;
 
   if (ctxMore && ctxMoreMenu) {
     ctxMore.addEventListener("click", e => {
@@ -3457,6 +3472,9 @@ function setSidebarVisible(visible) {
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
     closeHistoryPanel();
+    closeTOC();
+    closeExportModal();
+    window._closeCtxMenu?.();
 
     // Restore sidebar for all spaces except home (home hides it below)
     setSidebarVisible(true);
@@ -3493,7 +3511,11 @@ function setSidebarVisible(visible) {
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
       setSidebarVisible(false);
-      if (welcome) { welcome.style.display = ''; if (typeof renderHome === 'function') renderHome(); }
+      if (welcome) {
+        welcome.classList.remove('hidden'); // clear hidden class set by loadEntry/showKanbanArea
+        welcome.style.display = '';
+        if (typeof renderHome === 'function') renderHome();
+      }
       document.querySelectorAll('.ab-item[data-space]').forEach(btn => btn.classList.remove('ab-item--active'));
       try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}
       return;
@@ -3552,9 +3574,8 @@ function setSidebarVisible(visible) {
     initEditCourseModal();
     initMoveLessonModal();
 
-    // Always start at knowledge on load — restoring graph/courses/etc. causes
-    // sidebar+main mismatch because the main panel always starts at Home.
-    switchSpace('knowledge');
+    // Start at Home — all spaces load on demand
+    switchSpace('home');
   }
 
   if (document.readyState === 'loading') {
@@ -4824,6 +4845,7 @@ function handleNewEntryTopbar() {
 function openCourseLesson(entryId) {
   const cv = $('courseView');
   if (cv) cv.classList.add('hidden');
+  setSidebarVisible(false); // lesson view keeps full width — no sidebar
   loadEntry(entryId);
 }
 
