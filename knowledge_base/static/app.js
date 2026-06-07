@@ -4221,9 +4221,6 @@ async function openCourseDetail(courseSlug) {
   // Re-render list — renderCourseList populates trees for all expanded courses
   await renderCourseList();
 
-  // Hide sidebar so course view has full width (sidebar is a fixed overlay)
-  setSidebarVisible(false);
-
   loadCourseView(courseSlug, course);
 }
 
@@ -4266,7 +4263,6 @@ function closeCourseDetail() {
     el.querySelector('.course-list-gear')?.remove();
   });
 
-  // Restore sidebar (was hidden when course view opened)
   setSidebarVisible(true);
 
   const cv = $('courseView');
