@@ -386,22 +386,26 @@ input, textarea, select { font-family: inherit; }
   height: calc(100vh - var(--topbar-h));
 }
 
-/* ---- SIDEBAR ---- */
+/* ---- SIDEBAR — fixed overlay, does not push content ---- */
 .sidebar {
+  position: fixed;
+  left: var(--activity-bar-w);
+  top: var(--topbar-h);
+  height: calc(100vh - var(--topbar-h));
   width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
+  z-index: 88;
   background: var(--bg-sidebar);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--glass-border);
   overflow-y: auto;
-  transition: width 0.18s, min-width 0.18s;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
-  /* Subtle gradient overlay for depth */
   background-image: var(--grad-sidebar);
+  box-shadow: 6px 0 28px rgba(0,0,0,0.22);
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; }
+.sidebar.collapsed { display: none; }
 
 .tree { padding: 8px 0; }
 #teamspaceTree { padding-bottom: 4px; }
@@ -3946,20 +3950,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border-bottom: 1px solid var(--border-light);
   margin-bottom: 2px;
 }
-.workspace-avatar {
-  width: 28px;
-  height: 28px;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--font-ui);
-  font-size: 0.65rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
+.workspace-avatar { display: none; }
 .workspace-info {
   flex: 1;
   min-width: 0;
@@ -3970,12 +3961,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .workspace-name {
   font-family: var(--font-ui);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 .workspace-plan {
   font-family: var(--font-ui);
@@ -4682,13 +4674,33 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ab-item--brand {
   color: var(--accent);
   font-weight: 700;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
+.ab-item--brand:hover { background: transparent; }
 
-.ab-item--brand:hover { background: var(--accent-light); }
-
+/* PA logo badge */
+#abBrand .ab-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 7px;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#abBrand:hover .ab-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.32);
+}
 /* ── Space-specific icon colors ── */
-#abBrand .ab-icon     { color: #f59e0b; }
 #abKnowledge .ab-icon { color: #3b82f6; }
 #abCourses .ab-icon   { color: #f97316; }
 #abBoards .ab-icon    { color: #8b5cf6; }
@@ -4718,6 +4730,9 @@ body.sidebar-expanded .activity-bar {
 }
 body.sidebar-expanded .layout {
   padding-left: var(--activity-bar-expanded-w);
+}
+body.sidebar-expanded .sidebar {
+  left: var(--activity-bar-expanded-w);
 }
 body.sidebar-expanded .topbar {
   left: var(--activity-bar-expanded-w);
