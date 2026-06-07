@@ -5108,7 +5108,6 @@ function handleNewEntryTopbar() {
 function openCourseLesson(entryId) {
   const cv = $('courseView');
   if (cv) cv.classList.add('hidden');
-  setSidebarVisible(false); // lesson view keeps full width — no sidebar
   loadEntry(entryId);
 }
 
