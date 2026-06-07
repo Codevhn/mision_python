@@ -6633,6 +6633,39 @@ body[data-accent="slate"] {
 
 /* #courseDetail removed — module tree is now inline inside the active course item */
 
+/* ── Course lesson prev/next navigation ────────────────────────────── */
+.course-nav-bar {
+  display: flex; justify-content: space-between; align-items: stretch;
+  gap: 10px;
+  margin: 40px 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.course-nav-spacer { flex: 1; }
+.course-nav-btn {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.83rem; font-family: var(--font-ui);
+  cursor: pointer; text-align: left;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  overflow: hidden;
+  max-width: calc(50% - 5px);
+}
+.course-nav-btn:hover {
+  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--text);
+}
+.course-nav-next { justify-content: flex-end; text-align: right; }
+.cnb-arrow { flex-shrink: 0; font-size: 1rem; color: var(--accent); }
+.cnb-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* Sidebar Courses space — flex column so all zones stack */
 #spaceCourses {
   display: flex; flex-direction: column;

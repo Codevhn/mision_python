@@ -1376,6 +1376,59 @@ async function loadEntry(id, opts = {}) {
 
   // Relations panel
   loadRelations(m.uid || id);
+
+  // Prev/next navigation for course lessons
+  _updateCourseNav(id, m);
+}
+
+// ── Course lesson prev/next navigation ───────────────────────────────────
+function _updateCourseNav(id, meta) {
+  const old = document.getElementById('courseNavBar');
+  if (old) old.remove();
+
+  const inCourses = sessionStorage.getItem('activeSpace') === 'courses';
+  const isCourse  = meta?.type === 'course' || !!meta?.course;
+  if (!inCourses || !isCourse || !_activeCourseSlug) return;
+
+  const tree = _coursesTreeData?.[_activeCourseSlug];
+  if (!tree) return;
+
+  // Flatten all lessons in module order
+  const allEntries = [];
+  for (const moduleData of Object.values(tree.modules || {})) {
+    for (const entry of (moduleData.entries || [])) allEntries.push(entry);
+  }
+
+  const idx = allEntries.findIndex(e => e.id === id);
+  if (idx === -1) return;
+
+  const prev = idx > 0 ? allEntries[idx - 1] : null;
+  const next = idx < allEntries.length - 1 ? allEntries[idx + 1] : null;
+
+  const nav = document.createElement('div');
+  nav.id = 'courseNavBar';
+  nav.className = 'course-nav-bar';
+  nav.innerHTML = `
+    ${prev
+      ? `<button class="course-nav-btn course-nav-prev" data-id="${escapeHtml(prev.id)}">
+           <span class="cnb-arrow">←</span>
+           <span class="cnb-label">${escapeHtml(prev.title)}</span>
+         </button>`
+      : '<span class="course-nav-spacer"></span>'}
+    ${next
+      ? `<button class="course-nav-btn course-nav-next" data-id="${escapeHtml(next.id)}">
+           <span class="cnb-label">${escapeHtml(next.title)}</span>
+           <span class="cnb-arrow">→</span>
+         </button>`
+      : '<span class="course-nav-spacer"></span>'}
+  `;
+
+  nav.querySelectorAll('.course-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => openCourseLesson(btn.dataset.id));
+  });
+
+  const ev = $('entryView');
+  if (ev) ev.appendChild(nav);
 }
 
 // ---- PAGE ICON (Notion-style, before inline title) ----
