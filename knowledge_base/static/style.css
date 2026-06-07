@@ -223,6 +223,37 @@ input, textarea, select { font-family: inherit; }
 .topbar-center { flex: 1; max-width: 520px; margin: 0 auto; position: relative; }
 .topbar-right  { display: flex; align-items: center; gap: 6px; }
 
+/* ── Topbar brand (top-left identity) ── */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+.topbar-brand-badge {
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.topbar-brand-name {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
 .brand {
   font-family: var(--font-ui);
   font-size: 0.82rem;
@@ -3950,7 +3981,20 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   border-bottom: 1px solid var(--border-light);
   margin-bottom: 2px;
 }
-.workspace-avatar { display: none; }
+.workspace-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
 .workspace-info {
   flex: 1;
   min-width: 0;
@@ -3961,13 +4005,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .workspace-name {
   font-family: var(--font-ui);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.01em;
 }
 .workspace-plan {
   font-family: var(--font-ui);
@@ -4674,33 +4717,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ab-item--brand {
   color: var(--accent);
   font-weight: 700;
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
-.ab-item--brand:hover { background: transparent; }
+.ab-item--brand:hover { background: var(--accent-light); }
 
-/* PA logo badge */
-#abBrand .ab-icon {
-  width: 28px;
-  height: 28px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 7px;
-  font-family: var(--font-ui);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-#abBrand:hover .ab-icon {
-  transform: scale(1.08);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.32);
-}
 /* ── Space-specific icon colors ── */
+#abBrand .ab-icon     { color: #f59e0b; }
 #abKnowledge .ab-icon { color: #3b82f6; }
 #abCourses .ab-icon   { color: #f97316; }
 #abBoards .ab-icon    { color: #8b5cf6; }
@@ -4728,13 +4750,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 body.sidebar-expanded .activity-bar {
   width: var(--activity-bar-expanded-w);
 }
-body.sidebar-expanded .layout {
-  padding-left: var(--activity-bar-expanded-w);
-}
+/* Expanded activity bar is an overlay — content does not shift */
 body.sidebar-expanded .sidebar {
-  left: var(--activity-bar-expanded-w);
-}
-body.sidebar-expanded .topbar {
   left: var(--activity-bar-expanded-w);
 }
 body.sidebar-expanded .ab-label {
