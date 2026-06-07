@@ -3394,13 +3394,20 @@ function _wireCtxBtn(ctxId, sourceId) {
 /* =============================================
    PHASE B — Activity Bar + Space Switcher
    ============================================= */
+
+function setSidebarVisible(visible) {
+  const s = document.getElementById('sidebar');
+  if (!s) return;
+  s.style.display = visible ? '' : 'none';
+  document.body.classList.toggle('sidebar-open', visible);
+}
+
 (function() {
   const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];
 
   function switchSpace(space) {
     // Restore sidebar for all spaces except home (home hides it below)
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.style.display = '';
+    setSidebarVisible(true);
 
     // Show/hide sidebar panels
     SPACES.forEach(s => {
@@ -3433,7 +3440,7 @@ function _wireCtxBtn(ctxId, sourceId) {
 
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
-      if (sidebar) sidebar.style.display = 'none';
+      setSidebarVisible(false);
       if (welcome) { welcome.style.display = ''; if (typeof renderHome === 'function') renderHome(); }
       document.querySelectorAll('.ab-item[data-space]').forEach(btn => btn.classList.remove('ab-item--active'));
       try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}
@@ -4141,8 +4148,7 @@ async function openCourseDetail(courseSlug) {
   await renderCourseList();
 
   // Hide sidebar so course view has full width (sidebar is a fixed overlay)
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) sidebar.style.display = 'none';
+  setSidebarVisible(false);
 
   loadCourseView(courseSlug, course);
 }
@@ -4187,8 +4193,7 @@ function closeCourseDetail() {
   });
 
   // Restore sidebar (was hidden when course view opened)
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) sidebar.style.display = '';
+  setSidebarVisible(true);
 
   const cv = $('courseView');
   const welcome = $('welcome');

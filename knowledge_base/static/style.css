@@ -4782,10 +4782,7 @@ body.sidebar-expanded .ab-item--active::before {
   display: none;
 }
 
-/* ── Layout/topbar transitions ── */
-.layout {
-  transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ── Topbar transition ── */
 .topbar {
   transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -4793,11 +4790,13 @@ body.sidebar-expanded .ab-item--active::before {
 /* ── Hide #newEntryBtn from topbar ── */
 #newEntryBtn { display: none !important; }
 
-/* ── Push layout + sidebar right of activity bar ── */
-/* The sidebar is a child of .layout which is display:flex */
-/* We offset the whole layout by --activity-bar-w         */
+/* ── Push layout right of activity bar; expand further when sidebar is open ── */
 .layout {
   padding-left: var(--activity-bar-w);
+  transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.sidebar-open .layout {
+  padding-left: calc(var(--activity-bar-w) + var(--sidebar-w));
 }
 
 /* ── Sidebar Space panels ── */
@@ -4822,7 +4821,7 @@ body.sidebar-expanded .ab-item--active::before {
 @media (max-width: 768px) {
   :root { --activity-bar-w: 0px; }
   .activity-bar { display: none; }
-  .layout { padding-left: 0; }
+  .layout { padding-left: 0 !important; }
 }
 
 /* =============================================
