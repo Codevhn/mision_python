@@ -3454,8 +3454,7 @@ function setSidebarVisible(visible) {
       if (radarView) radarView.classList.remove('hidden');
       if (typeof loadRadarFeed === 'function') loadRadarFeed();
     } else if (space === 'courses' && _activeCourseSlug) {
-      // Active course — sidebar stays hidden, course view fills the space
-      setSidebarVisible(false);
+      // Active course — course view handles its own header; ctxBar stays hidden
       if (courseView) courseView.classList.remove('hidden');
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
