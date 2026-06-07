@@ -633,7 +633,6 @@ input, textarea, select { font-family: inherit; }
   padding-right: 44px;
   box-sizing: border-box;
 }
-.home-stats-row { margin-top: 28px; }
 .home-section { margin-bottom: 40px; }
 .home-section-label {
   font-family: var(--font-ui);
@@ -6139,8 +6138,10 @@ body[data-accent="slate"] {
 .home-stats-row {
   display: flex;
   gap: 12px;
-  margin: 20px auto 28px;
+  margin: -20px auto 28px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 5;
 }
 .home-stat {
   display: flex;
@@ -6679,19 +6680,19 @@ body[data-accent="slate"] {
   min-height: 240px;
   display: flex; align-items: flex-end;
   padding: 0;
-  overflow: visible;  /* allow ::after fade to bleed out */
+  overflow: hidden;
   flex-shrink: 0;
   background: #080d18;
 }
-/* Fade from canvas bottom into page background */
+/* Inner fade at very bottom of canvas — stays inside hero bounds */
 .home-hero::after {
   content: '';
   position: absolute;
-  bottom: -60px; left: 0; right: 0;
-  height: 90px;
+  bottom: 0; left: 0; right: 0;
+  height: 70px;
   background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
   pointer-events: none;
-  z-index: 4;
+  z-index: 3;
 }
 .home-hero-canvas {
   position: absolute; inset: 0;
