@@ -227,16 +227,23 @@
       <div class="ctx-bar hidden" id="ctxBar">
         <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
         <div class="ctx-toolbar" id="ctxToolbar">
-          <button class="ctx-btn" id="ctxStar"    title="Destacar">☆</button>
-          <button class="ctx-btn" id="ctxPin"     title="Fijar">⊞</button>
-          <button class="ctx-btn" id="ctxStatus"  title="Estado">● pend</button>
-          <div class="ctx-divider"></div>
-          <button class="ctx-btn" id="ctxToc"     title="Tabla de contenidos">¶</button>
-          <button class="ctx-btn" id="ctxHistory" title="Historial">⟲</button>
-          <button class="ctx-btn" id="ctxFocus"   title="Modo enfoque">⊙</button>
-          <div class="ctx-divider"></div>
-          <button class="ctx-btn" id="ctxExport" title="Exportar…">↓</button>
-          <button class="ctx-btn ctx-btn--danger" id="ctxDelete" title="Eliminar">rm</button>
+          <button class="ctx-btn ctx-btn--status" id="ctxStatus" title="Estado">● pend</button>
+          <div class="ctx-more-wrap">
+            <button class="ctx-btn ctx-btn--more" id="ctxMore" title="Más acciones">⋯</button>
+            <div class="ctx-more-menu hidden" id="ctxMoreMenu">
+              <button class="ctx-more-item" id="cmEdit">Editar información</button>
+              <button class="ctx-more-item" id="cmHistory">Historial</button>
+              <button class="ctx-more-item" id="cmDuplicate">Duplicar</button>
+              <button class="ctx-more-item" id="cmMove">Mover</button>
+              <div class="ctx-menu-sep"></div>
+              <button class="ctx-more-item" id="cmExport">Exportar…</button>
+              <div class="ctx-menu-sep"></div>
+              <button class="ctx-more-item" id="cmStar">Destacar</button>
+              <button class="ctx-more-item" id="cmPin">Fijar en inicio</button>
+              <div class="ctx-menu-sep"></div>
+              <button class="ctx-more-item ctx-more-item--danger" id="cmDelete">Eliminar</button>
+            </div>
+          </div>
         </div>
       </div>
 

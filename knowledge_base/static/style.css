@@ -4946,6 +4946,74 @@ body.sidebar-open .layout {
   flex-shrink: 0;
 }
 
+/* ── ⋯ Overflow menu ── */
+.ctx-more-wrap {
+  position: relative;
+}
+
+.ctx-btn--more {
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  padding: 0 8px;
+}
+
+.ctx-btn--more.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.ctx-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 210px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.32);
+  padding: 4px 0;
+  z-index: 200;
+  animation: ctx-menu-in 0.14s cubic-bezier(0.4,0,0.2,1);
+}
+
+.ctx-more-menu.hidden { display: none; }
+
+@keyframes ctx-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ctx-more-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.ctx-more-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.ctx-more-item--danger { color: var(--danger); }
+.ctx-more-item--danger:hover {
+  background: rgba(239,68,68,0.1);
+  color: var(--danger);
+}
+
+.ctx-menu-sep {
+  height: 1px;
+  background: var(--border-light);
+  margin: 4px 0;
+}
+
 /* ctx toolbar replaces entry-actions — hide the old strip */
 .entry-header { display: none; }
 

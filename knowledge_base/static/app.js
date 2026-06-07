@@ -2182,8 +2182,8 @@ function updateStarBtn(starred) {
     btn.textContent = "☆ star";
     btn.classList.remove("starred");
   }
-  const ctx = $("ctxStar");
-  if (ctx) { ctx.textContent = starred ? "★" : "☆"; ctx.classList.toggle("active", !!starred); }
+  const cm = $("cmStar");
+  if (cm) cm.textContent = starred ? "Quitar de destacados" : "Destacar";
 }
 
 function renderStarredSection(index) {
@@ -2907,8 +2907,8 @@ function updatePinBtn(pinned) {
     btn.textContent = "⊞ pin";
     btn.classList.remove("pinned");
   }
-  const ctx = $("ctxPin");
-  if (ctx) { ctx.textContent = pinned ? "⊟" : "⊞"; ctx.classList.toggle("active", !!pinned); }
+  const cm = $("cmPin");
+  if (cm) cm.textContent = pinned ? "Desfijar de inicio" : "Fijar en inicio";
 }
 
 function renderPinnedSection() {
@@ -3100,23 +3100,55 @@ function buildBreadcrumb(meta) {
     });
   });
 
-  // Wire ctx-toolbar buttons to their existing action buttons
-  _wireCtxBtn("ctxStar",     "starBtn");
-  _wireCtxBtn("ctxPin",      "pinBtn");
-  _wireCtxBtn("ctxToc",      "tocBtn");
-  _wireCtxBtn("ctxHistory",  "historyBtn");
-  _wireCtxBtn("ctxFocus",    "focusBtn");
-  _wireCtxBtn("ctxExport",   "exportBtn");
-  _wireCtxBtn("ctxDelete",   "deleteBtn");
-
   // ctxStatus proxies statusBtn (keep label in sync)
   const ctxStatus = $("ctxStatus");
   const statusBtn = $("statusBtn");
   if (ctxStatus && statusBtn) {
     ctxStatus.textContent = statusBtn.textContent;
-    ctxStatus.className = statusBtn.className.replace("btn-ghost", "ctx-btn");
+    ctxStatus.className = statusBtn.className.replace("btn-ghost", "ctx-btn ctx-btn--status");
     ctxStatus.onclick = () => statusBtn.click();
   }
+
+  // ── ⋯ overflow menu ──────────────────────────────────────
+  const ctxMore     = $("ctxMore");
+  const ctxMoreMenu = $("ctxMoreMenu");
+
+  function _closeCtxMenu() {
+    ctxMoreMenu?.classList.add("hidden");
+    ctxMore?.classList.remove("active");
+  }
+
+  if (ctxMore && ctxMoreMenu) {
+    ctxMore.addEventListener("click", e => {
+      e.stopPropagation();
+      const opening = ctxMoreMenu.classList.contains("hidden");
+      ctxMoreMenu.classList.toggle("hidden", !opening);
+      ctxMore.classList.toggle("active", opening);
+      if (opening && currentEntryId) {
+        // Sync dynamic labels with current entry state
+        const cmStar = $("cmStar");
+        const cmPin  = $("cmPin");
+        if (cmStar) cmStar.textContent = starredMap[currentEntryId] ? "Quitar de destacados" : "Destacar";
+        if (cmPin)  cmPin.textContent  = pinnedMap[currentEntryId]  ? "Desfijar de inicio"   : "Fijar en inicio";
+      }
+    });
+    document.addEventListener("click", e => {
+      if (!ctxMoreMenu.contains(e.target) && e.target !== ctxMore) _closeCtxMenu();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") _closeCtxMenu();
+    });
+  }
+
+  // Wire overflow menu items → existing hidden action buttons
+  $("cmEdit")?.addEventListener("click",      () => { $("editBtn")?.click();    _closeCtxMenu(); });
+  $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click(); _closeCtxMenu(); });
+  $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();     _closeCtxMenu(); });
+  $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();    _closeCtxMenu(); });
+  $("cmExport")?.addEventListener("click",    () => { openExportModal();        _closeCtxMenu(); });
+  $("cmStar")?.addEventListener("click",      () => { $("starBtn")?.click();    _closeCtxMenu(); });
+  $("cmPin")?.addEventListener("click",       () => { $("pinBtn")?.click();     _closeCtxMenu(); });
+  $("cmDelete")?.addEventListener("click",    () => { $("deleteBtn")?.click();  _closeCtxMenu(); });
 }
 
 function _wireCtxBtn(ctxId, sourceId) {
