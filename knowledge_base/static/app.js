@@ -3410,6 +3410,14 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (welcome)       welcome.style.display = 'none';
     if (ctxBarEl)      ctxBarEl.classList.add('hidden');
 
+    if (space === 'home') {
+      // All main panels already hidden above; show welcome, no sidebar
+      if (welcome) { welcome.style.display = ''; if (typeof renderHome === 'function') renderHome(); }
+      document.querySelectorAll('.ab-item[data-space]').forEach(btn => btn.classList.remove('ab-item--active'));
+      try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}
+      return;
+    }
+
     if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
@@ -4973,11 +4981,7 @@ function initCoursesSpace() {
     const abBrand = document.getElementById('abBrand');
     if (abBrand) {
       abBrand.addEventListener('click', () => {
-        if (window.switchSpace) window.switchSpace('knowledge');
-        const welcome = document.getElementById('welcome');
-        if (welcome) welcome.style.display = '';
-        const entryView = document.getElementById('entryView');
-        if (entryView) entryView.classList.add('hidden');
+        if (window.switchSpace) window.switchSpace('home');
       });
     }
   }
