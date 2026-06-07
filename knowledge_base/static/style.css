@@ -6378,12 +6378,12 @@ body[data-accent="slate"] {
 #courseList::-webkit-scrollbar { width: 4px; }
 #courseList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* Inline module tree — sits directly inside the active course list item */
+/* ── Course inline tree: clean modern design ─────────────────── */
+/* Replaces the old filesystem-style tree inside active course items */
 .course-inline-tree {
-  margin: 4px 0 2px 0;
+  margin: 6px 0 4px 0;
   padding: 0;
-  border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  margin-left: 0;
+  border-left: none;            /* course-list-item.active already has the accent border */
   max-height: calc(100vh - 260px);
   overflow-y: auto;
   overflow-x: hidden;
@@ -6391,17 +6391,30 @@ body[data-accent="slate"] {
   scrollbar-color: var(--border) transparent;
 }
 
-/* Compact entries inside the inline course tree — scoped, no effect on Knowledge tree */
+/* Module label: compact, muted uppercase */
 .course-inline-tree .tree-topic-header {
-  padding-left: 6px;
-  padding-right: 8px;
+  padding: 5px 8px 2px 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
+.course-inline-tree .tree-topic-header::before { display: none; }
+
+/* Lesson entries: indented under module, no tree lines */
 .course-inline-tree .tree-entry {
   margin-left: 0;
-  padding-left: 8px;
+  border-left: none;
+  padding: 3px 8px 3px 18px;
 }
 .course-inline-tree .tree-entry::before { content: ''; display: none; }
 .course-inline-tree .tree-entry-icon { display: none; }
+
+/* Active lesson: background tint only — suppress the extra border from global rules */
+.course-inline-tree .tree-entry.active {
+  border-left: none !important;
+}
 
 .course-list-item {
   display: flex; flex-direction: column; gap: 3px;
