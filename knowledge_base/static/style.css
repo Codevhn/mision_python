@@ -5149,7 +5149,7 @@ body {
   color: #fff !important; letter-spacing: -0.05em !important;
   line-height: 1.1 !important;
 }
-[data-theme="light"] .home-greeting { color: #1a1a2e !important; }
+/* Do NOT override color for hero context — canvas is always dark */
 .home-greeting::before { content: none !important; }
 .home-section-label {
   font-size: 0.67rem !important; font-weight: 600 !important;
@@ -6139,7 +6139,7 @@ body[data-accent="slate"] {
 .home-stats-row {
   display: flex;
   gap: 12px;
-  margin: 20px 0 28px;
+  margin: 20px auto 28px;
   flex-wrap: wrap;
 }
 .home-stat {
@@ -6679,9 +6679,19 @@ body[data-accent="slate"] {
   min-height: 240px;
   display: flex; align-items: flex-end;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;  /* allow ::after fade to bleed out */
   flex-shrink: 0;
   background: #080d18;
+}
+/* Fade from canvas bottom into page background */
+.home-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; left: 0; right: 0;
+  height: 90px;
+  background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
+  pointer-events: none;
+  z-index: 4;
 }
 .home-hero-canvas {
   position: absolute; inset: 0;
@@ -6694,10 +6704,18 @@ body[data-accent="slate"] {
   padding: 28px 36px 22px;
   flex: 1;
 }
+/* Hero text is always white — canvas is always dark regardless of theme */
 .home-hero-content .home-greeting {
-  text-shadow: 0 2px 16px rgba(0,0,0,0.7);
+  color: #fff !important;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.6) !important;
   margin: 0 0 4px;
 }
+.home-username {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(255,255,255,0.35);
+  transition: border-color 0.15s, opacity 0.15s;
+}
+.home-username:hover { border-color: rgba(255,255,255,0.75); opacity: 0.9; }
 .home-date {
   font-size: 0.82rem; color: rgba(255,255,255,0.65);
   margin: 0; text-transform: capitalize;
@@ -6844,3 +6862,19 @@ body[data-accent="slate"] {
 }
 .radar-src-check:hover { background: var(--bg-hover); color: var(--text); }
 .radar-src-check input { accent-color: var(--accent); cursor: pointer; }
+
+/* ── Studying cards ───────────────────────────────────────────────── */
+.home-card--study {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elevated));
+}
+.home-card--study:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-hover));
+}
+.home-card-study-label {
+  font-size: 0.66rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent); margin-bottom: 6px;
+  font-family: var(--font-ui);
+}

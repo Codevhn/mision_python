@@ -814,6 +814,32 @@ $("tsPageCreate").addEventListener("click", async () => {
 const KB_RECENT_KEY = "kb_recent_v2";
 const KB_RECENT_MAX = 12;
 
+// ---- USER NAME ----
+const KB_USER_NAME_KEY = 'kb_user_name';
+function _getUserName() {
+  try {
+    const n = localStorage.getItem(KB_USER_NAME_KEY);
+    if (!n) { localStorage.setItem(KB_USER_NAME_KEY, 'Frandev'); return 'Frandev'; }
+    return n;
+  } catch { return 'Frandev'; }
+}
+
+// ---- STUDYING TRACKER ----
+const KB_STUDYING_KEY = 'kb_studying_v1';
+const KB_STUDYING_MAX = 5;
+function _trackStudying(id, title, courseSlug) {
+  try {
+    let items = JSON.parse(localStorage.getItem(KB_STUDYING_KEY) || '[]');
+    items = items.filter(i => i.id !== id);
+    items.unshift({ id, title, courseSlug: courseSlug || '', ts: Date.now() });
+    if (items.length > KB_STUDYING_MAX) items = items.slice(0, KB_STUDYING_MAX);
+    localStorage.setItem(KB_STUDYING_KEY, JSON.stringify(items));
+  } catch {}
+}
+function _getStudying() {
+  try { return JSON.parse(localStorage.getItem(KB_STUDYING_KEY) || '[]'); } catch { return []; }
+}
+
 function _trackRecent(id, title, category, topic, cover, icon) {
   let recent = [];
   try { recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch {}
@@ -926,7 +952,7 @@ function _startHeroCanvas(cond) {
     } else if (cond === 'rain' || cond === 'thunderstorm') {
       for (let i = 0; i < 180; i++)
         particles.push({ x: Math.random()*W, y: Math.random()*H,
-          len: Math.random()*14+8, sp: Math.random()*5+7, a: Math.random()*0.35+0.15 });
+          len: Math.random()*12+7, sp: Math.random()*1.2+1.0, a: Math.random()*0.30+0.12 });
     } else if (cond === 'snow') {
       for (let i = 0; i < 90; i++)
         particles.push({ x: Math.random()*W, y: Math.random()*H,
@@ -1000,7 +1026,7 @@ function _startHeroCanvas(cond) {
 
     } else if (cond === 'thunderstorm') {
       particles.forEach(p => {
-        p.y+=p.sp*1.5; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
+        p.y+=p.sp*1.8; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
         ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.8,p.y+p.len*1.3);
         ctx.strokeStyle=`rgba(140,185,225,${p.a*0.85})`; ctx.lineWidth=0.85; ctx.stroke();
       });
@@ -1065,11 +1091,13 @@ function _fetchWeather() {
 }
 
 function renderHome() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
-  const recent  = _getRecent();
-  const pinned  = Object.entries(pinnedMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
-  const starred = Object.entries(starredMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
+  const hour     = new Date().getHours();
+  const name     = _getUserName();
+  const greetWord = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+  const recent   = _getRecent();
+  const studying = _getStudying();
+  const pinned   = Object.entries(pinnedMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
+  const starred  = Object.entries(starredMap).filter(([,v]) => v).map(([id]) => _index.find(e => e.id === id)).filter(Boolean);
 
   const totalEntries = _index.length;
   const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
@@ -1097,6 +1125,16 @@ function renderHome() {
     </div>`;
   }
 
+  function studyCardHtml(r) {
+    return `<div class="home-card home-card--study" data-id="${r.id}">
+      <div class="home-card-body">
+        <div class="home-card-study-label">📖 Continuar</div>
+        <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
+        ${r.courseSlug ? `<div class="home-card-meta">${escapeHtml(r.courseSlug)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
   const welcome = $("welcome");
   welcome.innerHTML = `
     <div class="home-wrap">
@@ -1104,7 +1142,7 @@ function renderHome() {
       <div class="home-hero" id="homeHero">
         <canvas class="home-hero-canvas" id="homeHeroCanvas"></canvas>
         <div class="home-hero-content">
-          <h1 class="home-greeting">${greeting}</h1>
+          <h1 class="home-greeting">${escapeHtml(greetWord)}, <span class="home-username" id="homeUsername" title="Clic para cambiar nombre">${escapeHtml(name)}</span></h1>
           <p class="home-date">${new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })}</p>
         </div>
         ${chipHtml}
@@ -1116,6 +1154,12 @@ function renderHome() {
         <div class="home-stat"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div>
         <div class="home-stat"><span class="home-stat-num">${pinnedCount}</span><span class="home-stat-label">fijadas</span></div>
       </div>
+
+      ${studying.length ? `
+      <section class="home-section">
+        <div class="home-section-label">▶ Continuar estudiando</div>
+        <div class="home-recent-grid">${studying.slice(0,3).map(studyCardHtml).join("")}</div>
+      </section>` : ''}
 
       ${pinned.length ? `
       <section class="home-section">
@@ -1155,6 +1199,19 @@ function renderHome() {
 
   const radarBtn = $("homeRadarBtn");
   if (radarBtn) radarBtn.addEventListener("click", () => { if (window.switchSpace) window.switchSpace('radar'); });
+
+  // Editable user name
+  const unameEl = $("homeUsername");
+  if (unameEl) {
+    unameEl.addEventListener("click", () => {
+      const cur = _getUserName();
+      const n = prompt("Tu nombre:", cur);
+      if (n && n.trim()) {
+        try { localStorage.setItem(KB_USER_NAME_KEY, n.trim()); } catch {}
+        renderHome();
+      }
+    });
+  }
 
   // Start canvas with current best-known condition, then fetch real weather
   const initCond = _weatherData
@@ -1203,6 +1260,12 @@ async function loadEntry(id, opts = {}) {
 
   // Track in recently visited
   _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic, m.cover || "", m.icon || "");
+  // Track studying if opened from courses space
+  try {
+    if (sessionStorage.getItem('activeSpace') === 'courses') {
+      _trackStudying(id, m.title, typeof _activeCourseSlug !== 'undefined' ? _activeCourseSlug : '');
+    }
+  } catch {}
 
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
