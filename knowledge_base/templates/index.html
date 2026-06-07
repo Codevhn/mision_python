@@ -90,6 +90,10 @@
           <span class="ab-icon">◎</span>
           <span class="ab-label">Grafo</span>
         </button>
+        <button class="ab-item" id="abRadar" data-space="radar" title="Radar Tech">
+          <span class="ab-icon">⦿</span>
+          <span class="ab-label">Radar</span>
+        </button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -166,6 +170,26 @@
         </nav>
       </div>
 
+      <!-- SPACE: RADAR TECH -->
+      <div class="sidebar-space" id="spaceRadar" style="display:none">
+        <div class="sidebar-space-header"><span>Radar Tech</span></div>
+        <div class="radar-sidebar-filters" id="radarFilters">
+          <button class="radar-filter-btn active" data-cat="all">Todo</button>
+          <button class="radar-filter-btn" data-cat="ai">IA</button>
+          <button class="radar-filter-btn" data-cat="dev">Dev</button>
+          <button class="radar-filter-btn" data-cat="tech">Tech</button>
+          <button class="radar-filter-btn" data-cat="research">Research</button>
+        </div>
+        <div class="radar-sidebar-sources" id="radarSources">
+          <label class="radar-src-check"><input type="checkbox" data-src="OpenAI" checked> OpenAI</label>
+          <label class="radar-src-check"><input type="checkbox" data-src="GitHub" checked> GitHub</label>
+          <label class="radar-src-check"><input type="checkbox" data-src="Ars Technica" checked> Ars Technica</label>
+          <label class="radar-src-check"><input type="checkbox" data-src="MIT Tech" checked> MIT Tech</label>
+          <label class="radar-src-check"><input type="checkbox" data-src="arXiv AI" checked> arXiv</label>
+          <label class="radar-src-check"><input type="checkbox" data-src="Hacker News" checked> Hacker News</label>
+        </div>
+      </div>
+
       <!-- SPACE: GRAPH -->
       <div class="sidebar-space" id="spaceGraph" style="display:none">
         <div class="sidebar-space-header"><span>Graph View</span></div>
@@ -214,6 +238,17 @@
 
       <div class="welcome" id="welcome">
         <!-- populated by renderHome() -->
+      </div>
+
+      <!-- RADAR TECH VIEW -->
+      <div class="radar-view hidden" id="radarView">
+        <div class="radar-header">
+          <h2 class="radar-title">⦿ Radar Tech</h2>
+          <button class="radar-refresh-btn" id="radarRefreshBtn" title="Actualizar feeds">↺ Actualizar</button>
+        </div>
+        <div class="radar-feed" id="radarFeed">
+          <div class="radar-loading">Cargando feeds…</div>
+        </div>
       </div>
 
       <!-- GRAPH VIEW -->

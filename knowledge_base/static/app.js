@@ -826,6 +826,43 @@ function _getRecent() {
   try { return JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch { return []; }
 }
 
+// Weather code → { icon, label }
+function _weatherInfo(code, isDay) {
+  if (code === 0) return isDay ? { icon: "☀️", label: "Despejado" } : { icon: "🌙", label: "Noche despejada" };
+  if (code <= 2)  return { icon: "⛅", label: "Parcialmente nublado" };
+  if (code === 3) return { icon: "☁️", label: "Nublado" };
+  if (code <= 49) return { icon: "🌫️", label: "Niebla" };
+  if (code <= 67) return { icon: "🌧️", label: "Lluvia" };
+  if (code <= 77) return { icon: "❄️", label: "Nieve" };
+  if (code <= 82) return { icon: "🌦️", label: "Chubascos" };
+  return { icon: "⛈️", label: "Tormenta" };
+}
+
+let _weatherData = null;
+let _weatherFetched = false;
+
+function _fetchWeather() {
+  if (_weatherFetched) return;
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || data.error) return;
+        _weatherData = data;
+        _weatherFetched = true;
+        // Patch widget in-place if home is currently shown
+        const w = document.getElementById('homeWeatherWidget');
+        if (w) {
+          const info = _weatherInfo(data.weather_code, data.is_day);
+          w.innerHTML = `<span class="hw-icon">${info.icon}</span><span class="hw-temp">${Math.round(data.temp)}°C</span><span class="hw-label">${info.label}</span>`;
+        }
+      })
+      .catch(() => {});
+  }, () => { _weatherFetched = true; });
+}
+
 function renderHome() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
@@ -838,6 +875,19 @@ function renderHome() {
   const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
   const pinnedCount  = pinned.length;
   const starredCount = starred.length;
+
+  // Weather widget HTML
+  let weatherHtml = '';
+  if (_weatherData) {
+    const info = _weatherInfo(_weatherData.weather_code, _weatherData.is_day);
+    weatherHtml = `<div class="home-weather-widget" id="homeWeatherWidget">
+      <span class="hw-icon">${info.icon}</span>
+      <span class="hw-temp">${Math.round(_weatherData.temp)}°C</span>
+      <span class="hw-label">${info.label}</span>
+    </div>`;
+  } else {
+    weatherHtml = `<div class="home-weather-widget" id="homeWeatherWidget"></div>`;
+  }
 
   function cardHtml(r) {
     const coverStyle = r.cover
@@ -858,7 +908,10 @@ function renderHome() {
   const welcome = $("welcome");
   welcome.innerHTML = `
     <div class="home-wrap">
-      <h1 class="home-greeting">${greeting}</h1>
+      <div class="home-top-row">
+        <h1 class="home-greeting">${greeting}</h1>
+        ${weatherHtml}
+      </div>
 
       <div class="home-stats-row">
         <div class="home-stat"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div>
@@ -888,6 +941,12 @@ function renderHome() {
         <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
         <button class="btn-primary large" id="welcomeNewBtn2">+ nueva entrada</button>
       </div>`}
+
+      <div class="home-radar-teaser">
+        <span class="hrt-icon">⦿</span>
+        <span class="hrt-text">Consulta el <strong>Radar Tech</strong> para mantenerte al día con noticias de IA, Dev y Tech.</span>
+        <button class="hrt-btn" id="homeRadarBtn">Abrir Radar →</button>
+      </div>
     </div>
   `;
 
@@ -896,6 +955,12 @@ function renderHome() {
   });
   const newBtn2 = $("welcomeNewBtn2");
   if (newBtn2) newBtn2.addEventListener("click", openNewModal);
+
+  const radarBtn = $("homeRadarBtn");
+  if (radarBtn) radarBtn.addEventListener("click", () => { if (window.switchSpace) window.switchSpace('radar'); });
+
+  // Fetch weather in background (patches widget in-place when ready)
+  _fetchWeather();
 }
 
 // ---- ENTRY VIEW ----
@@ -3313,7 +3378,7 @@ function _wireCtxBtn(ctxId, sourceId) {
    PHASE B — Activity Bar + Space Switcher
    ============================================= */
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];
 
   function switchSpace(space) {
     // Show/hide sidebar panels
@@ -3333,7 +3398,10 @@ function _wireCtxBtn(ctxId, sourceId) {
 
     const ctxBarEl = document.getElementById('ctxBar');
 
+    const radarView   = document.getElementById('radarView');
+
     if (graphView)     graphView.classList.add('hidden');
+    if (radarView)     radarView.classList.add('hidden');
     if (courseView)    courseView.classList.add('hidden');
     if (kanbanArea)    kanbanArea.classList.add('hidden');
     if (entryView)     entryView.classList.add('hidden');
@@ -3345,6 +3413,9 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
+    } else if (space === 'radar') {
+      if (radarView) radarView.classList.remove('hidden');
+      if (typeof loadRadarFeed === 'function') loadRadarFeed();
     } else if (space === 'courses' && _activeCourseSlug) {
       // Active course — course view handles its own header; ctxBar stays hidden
       if (courseView) courseView.classList.remove('hidden');
@@ -4910,6 +4981,127 @@ function initCoursesSpace() {
       });
     }
   }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+// ── Radar Tech ────────────────────────────────────────────────────────────────
+(function initRadar() {
+  let _allItems = [];
+  let _activeCat = 'all';
+  let _loading = false;
+  let _lastFetch = 0;
+
+  function _getEnabledSources() {
+    const boxes = document.querySelectorAll('#radarSources input[type=checkbox]');
+    const enabled = new Set();
+    boxes.forEach(cb => { if (cb.checked) enabled.add(cb.dataset.src); });
+    return enabled;
+  }
+
+  function _relTime(pub) {
+    if (!pub) return '';
+    try {
+      const d = new Date(pub);
+      if (isNaN(d)) return '';
+      const diff = Date.now() - d.getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 60) return `hace ${mins}m`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `hace ${hrs}h`;
+      return `hace ${Math.floor(hrs / 24)}d`;
+    } catch { return ''; }
+  }
+
+  function _catBadge(cat) {
+    const map = { ai: '🤖 IA', dev: '💻 Dev', tech: '🔬 Tech', research: '📄 Research' };
+    return map[cat] || cat;
+  }
+
+  function _renderFeed() {
+    const feed = document.getElementById('radarFeed');
+    if (!feed) return;
+    const enabled = _getEnabledSources();
+    const items = _allItems.filter(it => {
+      const catOk = _activeCat === 'all' || it.category === _activeCat;
+      const srcOk = enabled.has(it.source);
+      return catOk && srcOk;
+    });
+
+    if (!items.length) {
+      feed.innerHTML = '<div class="radar-empty">No hay artículos con los filtros seleccionados.</div>';
+      return;
+    }
+
+    feed.innerHTML = items.map(it => `
+      <a class="radar-item" href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">
+        <div class="radar-item-top">
+          <span class="radar-cat-badge">${_catBadge(it.category)}</span>
+          <span class="radar-source">${escapeHtml(it.source)}</span>
+          ${it.score ? `<span class="radar-score">▲ ${it.score}</span>` : ''}
+          <span class="radar-time">${_relTime(it.pub)}</span>
+        </div>
+        <div class="radar-item-title">${escapeHtml(it.title)}</div>
+      </a>`).join('');
+  }
+
+  window.loadRadarFeed = function(force) {
+    const now = Date.now();
+    if (!force && _allItems.length && now - _lastFetch < 30 * 60 * 1000) {
+      _renderFeed();
+      return;
+    }
+    if (_loading) return;
+    _loading = true;
+    const feed = document.getElementById('radarFeed');
+    if (feed) feed.innerHTML = '<div class="radar-loading">Cargando feeds…</div>';
+
+    const url = force ? `/api/radar/feed?_=${now}` : '/api/radar/feed';
+    fetch(url)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        _allItems = data.items || [];
+        _lastFetch = now;
+        _renderFeed();
+      })
+      .catch(() => {
+        if (feed) feed.innerHTML = '<div class="radar-empty">Error al cargar feeds. Comprueba la conexión.</div>';
+      })
+      .finally(() => { _loading = false; });
+  };
+
+  function init() {
+    // Filter buttons
+    document.querySelectorAll('#radarFilters .radar-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#radarFilters .radar-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _activeCat = btn.dataset.cat;
+        _renderFeed();
+      });
+    });
+
+    // Source checkboxes
+    document.querySelectorAll('#radarSources input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => _renderFeed());
+    });
+
+    // Refresh button
+    const refreshBtn = document.getElementById('radarRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        refreshBtn.textContent = '↺ Actualizando…';
+        refreshBtn.disabled = true;
+        const done = () => { refreshBtn.textContent = '↺ Actualizar'; refreshBtn.disabled = false; };
+        window.loadRadarFeed(true);
+        setTimeout(done, 2000);
+      });
+    }
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

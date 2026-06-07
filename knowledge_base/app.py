@@ -5,6 +5,9 @@ import subprocess
 import shutil
 import uuid
 import base64
+import time
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
@@ -2213,6 +2216,135 @@ def kanban_delete_workspace(ws_id):
             board["workspace_id"] = new_ws_id
     save_kanban(data)
     return jsonify({"ok": True})
+
+
+# ── Radar Tech ────────────────────────────────────────────────────────────────
+
+_radar_cache = {"ts": 0, "items": []}
+_RADAR_TTL = 1800  # 30 minutes
+
+_RSS_FEEDS = [
+    ("OpenAI",       "https://openai.com/news/rss.xml",           "ai"),
+    ("GitHub",       "https://github.blog/feed/",                  "dev"),
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/technology", "tech"),
+    ("MIT Tech",     "https://www.technologyreview.com/feed/",     "tech"),
+    ("arXiv AI",     "https://rss.arxiv.org/rss/cs.AI",           "research"),
+]
+
+_HN_URL = "https://hacker-news.firebaseio.com/v0/topstories.json"
+_HN_ITEM = "https://hacker-news.firebaseio.com/v0/item/{}.json"
+
+
+def _fetch_rss(url, source, category):
+    items = []
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "ProjectAtlas/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            raw = r.read()
+        root = ET.fromstring(raw)
+        ns = {"atom": "http://www.w3.org/2005/Atom"}
+        # RSS 2.0
+        for item in root.findall(".//item")[:5]:
+            title = (item.findtext("title") or "").strip()
+            link  = (item.findtext("link") or "").strip()
+            pub   = (item.findtext("pubDate") or "").strip()
+            if title and link:
+                items.append({"title": title, "url": link, "source": source, "category": category, "pub": pub})
+        # Atom
+        if not items:
+            for entry in root.findall(".//atom:entry", ns)[:5]:
+                title = (entry.findtext("atom:title", namespaces=ns) or "").strip()
+                link_el = entry.find("atom:link", ns)
+                link  = link_el.get("href", "") if link_el is not None else ""
+                pub   = (entry.findtext("atom:published", namespaces=ns) or entry.findtext("atom:updated", namespaces=ns) or "").strip()
+                if title and link:
+                    items.append({"title": title, "url": link, "source": source, "category": category, "pub": pub})
+    except Exception:
+        pass
+    return items
+
+
+def _fetch_hn(limit=10):
+    items = []
+    try:
+        req = urllib.request.Request(_HN_URL, headers={"User-Agent": "ProjectAtlas/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            ids = json.loads(r.read())[:limit]
+        for story_id in ids:
+            url = _HN_ITEM.format(story_id)
+            req2 = urllib.request.Request(url, headers={"User-Agent": "ProjectAtlas/1.0"})
+            with urllib.request.urlopen(req2, timeout=5) as r2:
+                story = json.loads(r2.read())
+            if story and story.get("url"):
+                items.append({
+                    "title":    story.get("title", ""),
+                    "url":      story.get("url", ""),
+                    "source":   "Hacker News",
+                    "category": "dev",
+                    "pub":      "",
+                    "score":    story.get("score", 0),
+                })
+    except Exception:
+        pass
+    return items
+
+
+@app.route("/api/radar/feed")
+def radar_feed():
+    global _radar_cache
+    now = time.time()
+    if now - _radar_cache["ts"] < _RADAR_TTL and _radar_cache["items"]:
+        return jsonify({"items": _radar_cache["items"], "cached": True})
+
+    items = []
+    for source, url, cat in _RSS_FEEDS:
+        items.extend(_fetch_rss(url, source, cat))
+    items.extend(_fetch_hn(10))
+
+    _radar_cache = {"ts": now, "items": items}
+    return jsonify({"items": items, "cached": False})
+
+
+# ── Weather proxy ──────────────────────────────────────────────────────────────
+
+_weather_cache = {"ts": 0, "data": None}
+_WEATHER_TTL = 600  # 10 minutes
+
+@app.route("/api/weather")
+def weather_proxy():
+    global _weather_cache
+    lat = request.args.get("lat", "")
+    lon = request.args.get("lon", "")
+    if not lat or not lon:
+        return jsonify({"error": "lat/lon required"}), 400
+
+    now = time.time()
+    cache_key = f"{lat},{lon}"
+    if (now - _weather_cache["ts"] < _WEATHER_TTL
+            and _weather_cache["data"]
+            and _weather_cache.get("key") == cache_key):
+        return jsonify(_weather_cache["data"])
+
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&current=temperature_2m,weather_code,is_day"
+            f"&temperature_unit=celsius&timezone=auto"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "ProjectAtlas/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read())
+        current = data.get("current", {})
+        result = {
+            "temp":         current.get("temperature_2m"),
+            "weather_code": current.get("weather_code"),
+            "is_day":       current.get("is_day", 1),
+        }
+        _weather_cache = {"ts": now, "data": result, "key": cache_key}
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
 
 
 if __name__ == "__main__":
