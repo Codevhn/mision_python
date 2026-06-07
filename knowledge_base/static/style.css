@@ -3973,14 +3973,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* Nested blocks keep the same sizing as the main editor (Notion-like). */
 
 /* ── WORKSPACE SIDEBAR ───────────────────────────────────── */
-.workspace-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px 6px;
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: 2px;
-}
+/* Brand shown in topbar-left — hide duplicate in sidebar */
+.workspace-header { display: none; }
 .workspace-avatar {
   width: 28px;
   height: 28px;
@@ -6428,7 +6422,7 @@ body[data-accent="slate"] {
   padding: 5px 8px 2px 10px;
   font-size: 0.65rem;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
