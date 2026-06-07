@@ -3619,6 +3619,7 @@ function _navigateToEntity(entity, opts = {}) {
     setActiveCourse(entity.id);
   } else {
     if (push) _navPush({ type: 'entry', id: entity.id, label: entity.title || entity.id });
+    if (window.switchSpace) window.switchSpace('knowledge');
     loadEntry(entity.id);
   }
 }

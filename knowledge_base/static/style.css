@@ -6018,6 +6018,7 @@ body[data-accent="slate"] {
   display: flex;
   align-items: stretch;
   overflow: hidden;
+  background: var(--bg-elevated);
 }
 .graph-view.hidden { display: none; }
 
