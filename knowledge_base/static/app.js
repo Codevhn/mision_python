@@ -3381,6 +3381,10 @@ function _wireCtxBtn(ctxId, sourceId) {
   const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];
 
   function switchSpace(space) {
+    // Restore sidebar for all spaces except home (home hides it below)
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.style.display = '';
+
     // Show/hide sidebar panels
     SPACES.forEach(s => {
       const panel = document.getElementById('space' + s.charAt(0).toUpperCase() + s.slice(1));
@@ -3411,7 +3415,8 @@ function _wireCtxBtn(ctxId, sourceId) {
     if (ctxBarEl)      ctxBarEl.classList.add('hidden');
 
     if (space === 'home') {
-      // All main panels already hidden above; show welcome, no sidebar
+      // Hide sidebar completely — only the activity rail stays visible
+      if (sidebar) sidebar.style.display = 'none';
       if (welcome) { welcome.style.display = ''; if (typeof renderHome === 'function') renderHome(); }
       document.querySelectorAll('.ab-item[data-space]').forEach(btn => btn.classList.remove('ab-item--active'));
       try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}

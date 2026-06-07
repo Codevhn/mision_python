@@ -6392,10 +6392,15 @@ body[data-accent="slate"] {
 }
 
 /* Compact entries inside the inline course tree — scoped, no effect on Knowledge tree */
-.course-inline-tree .tree-entry {
-  margin-left: 4px;
-  padding-left: 12px;
+.course-inline-tree .tree-topic-header {
+  padding-left: 6px;
+  padding-right: 8px;
 }
+.course-inline-tree .tree-entry {
+  margin-left: 0;
+  padding-left: 8px;
+}
+.course-inline-tree .tree-entry::before { content: ''; display: none; }
 .course-inline-tree .tree-entry-icon { display: none; }
 
 .course-list-item {
