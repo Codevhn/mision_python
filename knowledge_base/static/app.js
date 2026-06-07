@@ -4123,6 +4123,10 @@ async function openCourseDetail(courseSlug) {
   // Re-render list — renderCourseList populates trees for all expanded courses
   await renderCourseList();
 
+  // Hide sidebar so course view has full width (sidebar is a fixed overlay)
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.style.display = 'none';
+
   loadCourseView(courseSlug, course);
 }
 
@@ -4164,6 +4168,10 @@ function closeCourseDetail() {
     el.querySelector('.course-inline-tree')?.remove();
     el.querySelector('.course-list-gear')?.remove();
   });
+
+  // Restore sidebar (was hidden when course view opened)
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.style.display = '';
 
   const cv = $('courseView');
   const welcome = $('welcome');
