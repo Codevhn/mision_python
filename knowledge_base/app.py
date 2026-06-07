@@ -1840,7 +1840,9 @@ def load_relations():
 
 
 def save_relations(data):
-    RELATIONS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    tmp = RELATIONS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, RELATIONS_FILE)
 
 
 def _build_uid_index():

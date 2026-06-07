@@ -3748,12 +3748,12 @@ async function renderGraph() {
   // Build node + edge sets from _index and relations
   const nodeMap = {};
   for (const e of (_index || [])) {
-    nodeMap[e.uid || e.id] = { id: e.uid || e.id, entryId: e.id, title: e.title || e.id, category: e.category || '' };
+    nodeMap[e.uid || e.id] = { id: e.uid || e.id, entryId: e.id, title: e.title || e.id, category: e.category || '', type: e.type || 'page' };
   }
   // Also add nodes from relations that might not be in _index
   for (const r of relations) {
-    if (!nodeMap[r.from_uid] && r.from_entity) nodeMap[r.from_uid] = { id: r.from_uid, entryId: r.from_entity.id, title: r.from_entity.title || r.from_uid, category: '' };
-    if (!nodeMap[r.to_uid]   && r.to_entity)   nodeMap[r.to_uid]   = { id: r.to_uid,   entryId: r.to_entity.id,   title: r.to_entity.title   || r.to_uid,   category: '' };
+    if (!nodeMap[r.from_uid] && r.from_entity) nodeMap[r.from_uid] = { id: r.from_uid, entryId: r.from_entity.id, title: r.from_entity.title || r.from_uid, category: '', type: r.from_entity.type || 'page' };
+    if (!nodeMap[r.to_uid]   && r.to_entity)   nodeMap[r.to_uid]   = { id: r.to_uid,   entryId: r.to_entity.id,   title: r.to_entity.title   || r.to_uid,   category: '', type: r.to_entity.type   || 'page' };
   }
 
   const nodes = Object.values(nodeMap);
@@ -3886,9 +3886,7 @@ async function renderGraph() {
     g.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
     g.addEventListener('click', () => {
       if (n.entryId) {
-        const saved = sessionStorage.getItem('activeSpace');
-        switchSpace('knowledge');
-        loadEntry(n.entryId);
+        _navigateToEntity({ type: n.type, id: n.entryId, title: n.title });
       }
     });
 
