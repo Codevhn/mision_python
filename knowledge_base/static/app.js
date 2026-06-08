@@ -856,42 +856,88 @@ function _getRecent() {
 
 // ── Weather helpers ────────────────────────────────────────────────────────────
 function _weatherCondition(code, isDay) {
-  if (code === 0)  return isDay ? 'clear-day' : 'clear-night';
-  if (code <= 2)   return 'partly-cloudy';
-  if (code === 3)  return 'overcast';
-  if (code <= 49)  return 'foggy';
-  if (code <= 67)  return 'rain';
-  if (code <= 77)  return 'snow';
-  if (code <= 82)  return 'rain';
-  return 'thunderstorm';
+  const d = isDay ? 'day' : 'night';
+  if (code === 0)                         return `clear-${d}`;
+  if (code === 1 || code === 2)           return `partly-cloudy-${d}`;
+  if (code === 3)                         return `overcast-${d}`;
+  if (code >= 45 && code <= 48)           return `foggy-${d}`;
+  if (code >= 71 && code <= 77)           return `snow-${d}`;
+  if (code >= 51 && code <= 82)           return `rain-${d}`;
+  if (code >= 95 && code <= 99)           return `thunderstorm-${d}`;
+  return `overcast-${d}`;
 }
 function _weatherInfo(code, isDay) {
+  const cond = _weatherCondition(code, isDay);
+  const isNight = cond.endsWith('-night');
+  const base = cond.replace(/-day$|-night$/, '');
   const map = {
-    'clear-day':    { icon: '☀️',  label: 'Despejado' },
-    'clear-night':  { icon: '🌙',  label: 'Noche despejada' },
-    'partly-cloudy':{ icon: '⛅',  label: 'Parcialmente nublado' },
-    'overcast':     { icon: '☁️',  label: 'Nublado' },
-    'foggy':        { icon: '🌫️', label: 'Niebla' },
-    'rain':         { icon: '🌧️', label: 'Lluvia' },
-    'snow':         { icon: '❄️',  label: 'Nieve' },
-    'thunderstorm': { icon: '⛈️', label: 'Tormenta' },
+    'clear':         isNight ? { icon: '🌙',  label: 'Noche despejada'       } : { icon: '☀️',  label: 'Despejado' },
+    'partly-cloudy': isNight ? { icon: '🌤️', label: 'Parcialmente nublado'  } : { icon: '⛅',  label: 'Parcialmente nublado' },
+    'overcast':      { icon: '☁️',  label: 'Nublado'  },
+    'foggy':         { icon: '🌫️', label: 'Niebla'   },
+    'rain':          { icon: '🌧️', label: 'Lluvia'   },
+    'snow':          { icon: '❄️',  label: 'Nieve'    },
+    'thunderstorm':  { icon: '⛈️', label: 'Tormenta' },
   };
-  return map[_weatherCondition(code, isDay)] || { icon: '🌡️', label: '' };
+  return map[base] || { icon: '🌡️', label: '' };
 }
 
-// ── Animated weather canvas ────────────────────────────────────────────────────
+// ── Weather asset system ────────────────────────────────────────────────────────
+const _WEATHER_ASSET_BASE = '/static/img/weather/';
+
+// Architecture note: to support per-condition variants (e.g. rain-night/01.webp),
+// update this function to pick among them. The rest of the system stays unchanged.
+function _weatherAssetUrl(condition) {
+  return `${_WEATHER_ASSET_BASE}${condition}.webp`;
+}
+
+function _applyWeatherBackground(condition) {
+  const hero = document.getElementById('homeHero');
+  if (!hero) return;
+  const primaryUrl  = _weatherAssetUrl(condition);
+  const fallbackUrl = _weatherAssetUrl('fallback');
+
+  function tryLoad(url, onFail) {
+    const img = new Image();
+    img.onload  = () => { hero.style.backgroundImage = `url("${url}")`; };
+    img.onerror = onFail;
+    img.src = url;
+  }
+  tryLoad(primaryUrl, () => {
+    if (primaryUrl !== fallbackUrl)
+      tryLoad(fallbackUrl, () => {}); // leave current bg intact if both fail
+  });
+}
+
+// ── Animated weather canvas overlay ──────────────────────────────────────────
+// Draws only animated particles over the local asset background.
+// Conditions that need no animation skip requestAnimationFrame entirely.
 let _heroCanvasStop = null;
+
+const _WEATHER_OVERLAY_CONDS = new Set([
+  'clear-night', 'partly-cloudy-night',
+  'rain-day', 'rain-night',
+  'snow-day', 'snow-night',
+  'thunderstorm-day', 'thunderstorm-night',
+  'foggy-day', 'foggy-night',
+]);
 
 function _defaultCondition() {
   const h = new Date().getHours();
   return (h >= 21 || h < 6) ? 'clear-night' : 'clear-day';
 }
 
-function _startHeroCanvas(cond) {
+function _startWeatherOverlay(cond) {
   if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop = null; }
   const canvas = document.getElementById('homeHeroCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+
+  // No animation needed — clear canvas and exit
+  if (!_WEATHER_OVERLAY_CONDS.has(cond)) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
 
   function resize() {
     canvas.width  = canvas.offsetWidth  || canvas.parentElement.offsetWidth;
@@ -899,65 +945,31 @@ function _startHeroCanvas(cond) {
     initParticles();
   }
 
-  // Sky palette per condition
-  const SKY = {
-    'clear-day':    ['#0c1e40','#1155a0','#d4600a'],
-    'clear-night':  ['#020510','#060d28','#0e1545'],
-    'partly-cloudy':['#0d1b35','#1a3a6a','#3a5a80'],
-    'overcast':     ['#111820','#1c2730','#28343e'],
-    'foggy':        ['#14191e','#1e272e','#2a3540'],
-    'rain':         ['#080d18','#0d1828','#0f2030'],
-    'snow':         ['#0c1522','#172232','#223248'],
-    'thunderstorm': ['#050810','#080f18','#0a1420'],
-  };
-
-  function drawSky() {
-    const [c1,c2,c3] = SKY[cond] || SKY['overcast'];
-    const g = ctx.createLinearGradient(canvas.width * 0.1, 0, canvas.width * 0.9, canvas.height);
-    g.addColorStop(0, c1); g.addColorStop(0.55, c2); g.addColorStop(1, c3);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  function cloud(x, y, w, alpha) {
-    const h = w * 0.38;
-    ctx.beginPath();
-    ctx.arc(x,           y,           h * 0.65, 0, Math.PI*2);
-    ctx.arc(x + w*0.22,  y - h*0.28,  h * 0.52, 0, Math.PI*2);
-    ctx.arc(x + w*0.52,  y - h*0.12,  h * 0.62, 0, Math.PI*2);
-    ctx.arc(x + w*0.78,  y,           h * 0.46, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fill();
-  }
-
   let particles = [], t = 0, ltTimer = 0, ltAlpha = 0, ltX = 0;
 
   function initParticles() {
     particles = [];
     const W = canvas.width, H = canvas.height;
-    if (cond === 'clear-night') {
-      for (let i = 0; i < 130; i++)
+    if (cond === 'clear-night' || cond === 'partly-cloudy-night') {
+      const count = cond === 'clear-night' ? 130 : 65;
+      for (let i = 0; i < count; i++)
         particles.push({ x: Math.random()*W, y: Math.random()*H*0.85,
           r: Math.random()*1.4+0.3, ph: Math.random()*Math.PI*2, sp: Math.random()*0.018+0.004 });
-    } else if (cond === 'clear-day' || cond === 'partly-cloudy') {
-      for (let i = 0; i < 5; i++)
-        particles.push({ x: Math.random()*W*1.6-W*0.3, y: Math.random()*H*0.55,
-          w: Math.random()*130+70, sp: Math.random()*0.18+0.06,
-          a: cond==='partly-cloudy' ? Math.random()*0.12+0.06 : Math.random()*0.07+0.03 });
-    } else if (cond === 'overcast' || cond === 'foggy') {
-      for (let i = 0; i < 7; i++)
-        particles.push({ x: Math.random()*W*1.8-W*0.4, y: (i/7)*H*0.8,
-          w: Math.random()*200+120, sp: (Math.random()*0.12+0.04)*(i%2?1:-1),
-          a: Math.random()*0.10+0.04 });
-    } else if (cond === 'rain' || cond === 'thunderstorm') {
+    } else if (cond === 'rain-day' || cond === 'rain-night' ||
+               cond === 'thunderstorm-day' || cond === 'thunderstorm-night') {
       for (let i = 0; i < 180; i++)
         particles.push({ x: Math.random()*W, y: Math.random()*H,
           len: Math.random()*12+7, sp: Math.random()*1.2+1.0, a: Math.random()*0.30+0.12 });
-    } else if (cond === 'snow') {
+    } else if (cond === 'snow-day' || cond === 'snow-night') {
       for (let i = 0; i < 90; i++)
         particles.push({ x: Math.random()*W, y: Math.random()*H,
           r: Math.random()*3+0.8, sp: Math.random()*0.9+0.3,
           dr: (Math.random()-0.5)*0.4, a: Math.random()*0.6+0.3 });
+    } else if (cond === 'foggy-day' || cond === 'foggy-night') {
+      for (let i = 0; i < 6; i++)
+        particles.push({ x: Math.random()*W*1.6-W*0.3, y: H*0.25+(i/6)*H*0.5,
+          w: Math.random()*W*0.6+W*0.3, sp: (Math.random()*0.08+0.02)*(i%2?1:-1),
+          a: Math.random()*0.08+0.03 });
     }
   }
 
@@ -965,58 +977,24 @@ function _startHeroCanvas(cond) {
     raf = requestAnimationFrame(frame);
     const W = canvas.width, H = canvas.height;
     t++;
-    drawSky();
+    ctx.clearRect(0, 0, W, H);
 
-    if (cond === 'clear-night') {
-      // Twinkling stars
+    if (cond === 'clear-night' || cond === 'partly-cloudy-night') {
       particles.forEach(p => {
         p.ph += p.sp;
         const a = Math.max(0, 0.35 + Math.sin(p.ph)*0.55);
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
         ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fill();
       });
-      // Moon
-      const mx = W*0.80, my = H*0.22;
-      const mg = ctx.createRadialGradient(mx,my,0,mx,my,65);
-      mg.addColorStop(0,'rgba(210,220,255,0.18)'); mg.addColorStop(1,'rgba(210,220,255,0)');
-      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx,my,65,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(mx,my,16,0,Math.PI*2);
-      ctx.fillStyle='rgba(230,235,255,0.92)'; ctx.fill();
 
-    } else if (cond === 'clear-day') {
-      // Drifting clouds
-      particles.forEach(p => { p.x += p.sp; if (p.x > W+220) p.x = -220; cloud(p.x,p.y,p.w,p.a); });
-      // Sun + halo
-      const sx=W*0.80, sy=H*0.20;
-      const sg = ctx.createRadialGradient(sx,sy,0,sx,sy,130);
-      sg.addColorStop(0,'rgba(255,210,80,0.42)'); sg.addColorStop(0.35,'rgba(255,170,50,0.14)'); sg.addColorStop(1,'rgba(255,140,0,0)');
-      ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(sx,sy,130,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(sx,sy,22,0,Math.PI*2); ctx.fillStyle='rgba(255,225,100,0.94)'; ctx.fill();
-
-    } else if (cond === 'partly-cloudy') {
-      const sx=W*0.74, sy=H*0.22;
-      const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,85);
-      sg.addColorStop(0,'rgba(255,200,70,0.28)'); sg.addColorStop(1,'rgba(255,170,40,0)');
-      ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(sx,sy,85,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(sx,sy,17,0,Math.PI*2); ctx.fillStyle='rgba(255,215,90,0.85)'; ctx.fill();
-      particles.forEach(p => { p.x += p.sp; if (p.x > W+220) p.x = -220; cloud(p.x,p.y,p.w,p.a); });
-
-    } else if (cond === 'overcast' || cond === 'foggy') {
-      particles.forEach(p => { p.x += p.sp; if (p.x > W+300) p.x=-300; if(p.x<-300) p.x=W+300; cloud(p.x,p.y,p.w,p.a); });
-      if (cond === 'foggy') {
-        const fg=ctx.createLinearGradient(0,H*0.45,0,H);
-        fg.addColorStop(0,'rgba(190,205,215,0)'); fg.addColorStop(1,'rgba(190,205,215,0.14)');
-        ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
-      }
-
-    } else if (cond === 'rain') {
+    } else if (cond === 'rain-day' || cond === 'rain-night') {
       particles.forEach(p => {
         p.y += p.sp; if (p.y > H+10) { p.y=-10; p.x=Math.random()*W; }
         ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.2,p.y+p.len);
         ctx.strokeStyle=`rgba(160,205,245,${p.a})`; ctx.lineWidth=0.8; ctx.stroke();
       });
 
-    } else if (cond === 'snow') {
+    } else if (cond === 'snow-day' || cond === 'snow-night') {
       particles.forEach(p => {
         p.y+=p.sp; p.x+=p.dr+Math.sin(t*0.015+p.r)*0.3;
         if(p.y>H+6){p.y=-6;p.x=Math.random()*W;}
@@ -1024,7 +1002,7 @@ function _startHeroCanvas(cond) {
         ctx.fillStyle=`rgba(220,235,255,${p.a})`; ctx.fill();
       });
 
-    } else if (cond === 'thunderstorm') {
+    } else if (cond === 'thunderstorm-day' || cond === 'thunderstorm-night') {
       particles.forEach(p => {
         p.y+=p.sp*1.8; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
         ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.8,p.y+p.len*1.3);
@@ -1037,16 +1015,22 @@ function _startHeroCanvas(cond) {
         ctx.beginPath();
         ctx.moveTo(ltX,0); ctx.lineTo(ltX-18,H*0.32); ctx.lineTo(ltX+12,H*0.46); ctx.lineTo(ltX-22,H*0.78);
         ctx.strokeStyle=`rgba(255,255,210,${ltAlpha})`; ctx.lineWidth=2.5; ctx.stroke();
-        // glow
         ctx.strokeStyle=`rgba(200,220,255,${ltAlpha*0.35})`; ctx.lineWidth=8; ctx.stroke();
         ltAlpha -= 0.045;
       }
-    }
 
-    // Bottom scrim for text legibility
-    const scrim = ctx.createLinearGradient(0, H*0.35, 0, H);
-    scrim.addColorStop(0,'rgba(0,0,0,0)'); scrim.addColorStop(1,'rgba(0,0,0,0.62)');
-    ctx.fillStyle=scrim; ctx.fillRect(0,0,W,H);
+    } else if (cond === 'foggy-day' || cond === 'foggy-night') {
+      particles.forEach(p => {
+        p.x += p.sp;
+        if (p.x > W+p.w/2) p.x = -p.w/2;
+        if (p.x < -p.w/2)  p.x =  W+p.w/2;
+        const fg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.w*0.5);
+        fg.addColorStop(0, `rgba(190,205,215,${p.a})`);
+        fg.addColorStop(1, `rgba(190,205,215,0)`);
+        ctx.fillStyle = fg;
+        ctx.fillRect(p.x-p.w*0.5, p.y-p.w*0.25, p.w, p.w*0.5);
+      });
+    }
   }
 
   let raf;
@@ -1055,10 +1039,7 @@ function _startHeroCanvas(cond) {
   ro.observe(canvas.parentElement);
   frame();
 
-  _heroCanvasStop = () => {
-    cancelAnimationFrame(raf);
-    ro.disconnect();
-  };
+  _heroCanvasStop = () => { cancelAnimationFrame(raf); ro.disconnect(); };
 }
 
 let _weatherData = null;
@@ -1076,8 +1057,8 @@ function _fetchWeather() {
         _weatherData = data;
         _weatherFetched = true;
         const cond = _weatherCondition(data.weather_code, data.is_day);
-        // Restart canvas with real weather condition
-        _startHeroCanvas(cond);
+        _applyWeatherBackground(cond);
+        _startWeatherOverlay(cond);
         // Update chip
         const chip = document.getElementById('homeWeatherChip');
         if (chip) {
@@ -1289,11 +1270,12 @@ function renderHome() {
     });
   }
 
-  // Start canvas with current best-known condition, then fetch real weather
+  // Apply local asset + particle overlay with best-known condition; then fetch real weather
   const initCond = _weatherData
     ? _weatherCondition(_weatherData.weather_code, _weatherData.is_day)
     : _defaultCondition();
-  _startHeroCanvas(initCond);
+  _applyWeatherBackground(initCond);
+  _startWeatherOverlay(initCond);
   _fetchWeather();
 }
 

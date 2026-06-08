@@ -6792,9 +6792,25 @@ body[data-accent="slate"] {
   padding: 0;
   overflow: hidden;
   flex-shrink: 0;
-  background: #080d18;
+  background-color: #080d18;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
-/* Inner fade at very bottom of canvas — stays inside hero bounds */
+/* Legibility overlay — darkens the image slightly so text is always readable */
+.home-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.30) 0%,
+    rgba(0,0,0,0.12) 50%,
+    rgba(0,0,0,0)    75%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+/* Bottom fade — blends hero into the page background */
 .home-hero::after {
   content: '';
   position: absolute;
@@ -6802,16 +6818,17 @@ body[data-accent="slate"] {
   height: 70px;
   background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
   pointer-events: none;
-  z-index: 3;
+  z-index: 4;
 }
+/* Canvas overlay — transparent, only draws animated particles */
 .home-hero-canvas {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   display: block;
-  z-index: 0;
+  z-index: 2;
 }
 .home-hero-content {
-  position: relative; z-index: 2;
+  position: relative; z-index: 3;
   padding: 28px 36px 22px;
   flex: 1;
 }
@@ -6835,7 +6852,7 @@ body[data-accent="slate"] {
 
 /* Weather chip — sits bottom-right of hero */
 .home-weather-chip {
-  position: relative; z-index: 3;
+  position: relative; z-index: 5;
   display: flex; align-items: center; gap: 6px;
   align-self: flex-end;
   margin: 0 24px 20px 0;
