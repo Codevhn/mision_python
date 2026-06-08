@@ -4767,6 +4767,9 @@ async function loadCourseView(courseSlug, courseEntity) {
     cvNewLessonBtn.onclick = () => openNewLessonModal(courseSlug);
   }
 
+  // Update modules tab label to reflect dominant section type (Módulos / Fases / Semanas…)
+  _updateModulesTabLabel(courseSlug);
+
   // Default tab
   renderCourseTab('roadmap', courseSlug, stats);
 }
@@ -4984,6 +4987,7 @@ async function _reloadCourseView(courseSlug, tab) {
   if (cv) {
     cv.querySelectorAll('.cv-tab').forEach(t => t.classList.toggle('cv-tab--active', t.dataset.tab === tab));
   }
+  _updateModulesTabLabel(courseSlug);
   renderCourseTab(tab, courseSlug, stats);
 }
 
@@ -5412,6 +5416,29 @@ const _SECTION_TYPE_LABELS = {
   unidad: 'Unidad', nivel: 'Nivel', bloque: 'Bloque',
   seccion: 'Sección', capitulo: 'Capítulo',
 };
+
+const _SECTION_TYPE_PLURAL = {
+  modulo: 'Módulos', fase: 'Fases', semana: 'Semanas',
+  unidad: 'Unidades', nivel: 'Niveles', bloque: 'Bloques',
+  seccion: 'Secciones', capitulo: 'Capítulos',
+};
+
+function _getDominantSectionTypeLabel(courseSlug) {
+  const mods = Object.values(_coursesTreeData[courseSlug]?.modules || {});
+  if (!mods.length) return 'Módulos';
+  const counts = {};
+  for (const m of mods) {
+    const t = m.module_type || 'modulo';
+    counts[t] = (counts[t] || 0) + 1;
+  }
+  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  return _SECTION_TYPE_PLURAL[dominant] || 'Módulos';
+}
+
+function _updateModulesTabLabel(courseSlug) {
+  const tab = $('courseView')?.querySelector('.cv-tab[data-tab="modules"]');
+  if (tab) tab.textContent = _getDominantSectionTypeLabel(courseSlug);
+}
 
 function _generateSectionLabel(type, custom, number, title) {
   if (!type) return '';
