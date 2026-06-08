@@ -4717,13 +4717,16 @@ async function loadCourseView(courseSlug, courseEntity) {
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
 
-  // Cover
+  // Cover banner — shown below meta when a cover image is set
   const cover = $('cvCover');
-  if (courseEntity.cover) {
-    cover.style.backgroundImage = `url(${courseEntity.cover})`;
-    cover.style.display = '';
-  } else {
-    cover.style.display = 'none';
+  if (cover) {
+    if (courseEntity.cover) {
+      cover.style.backgroundImage = `url(${courseEntity.cover})`;
+      cover.classList.remove('hidden');
+    } else {
+      cover.style.backgroundImage = '';
+      cover.classList.add('hidden');
+    }
   }
 
   // Badges
