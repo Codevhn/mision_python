@@ -1599,6 +1599,7 @@ def course_stats(course_id):
 @app.route("/api/courses/tree")
 def get_courses_tree():
     index = load_index()
+    courses_master = load_courses()["courses"]
     tree = {}
     for entry_id, meta in index.items():
         if meta.get("type") != "course":
@@ -1606,7 +1607,7 @@ def get_courses_tree():
         course = meta["course"]
         module = meta["module"]
         tree.setdefault(course, {
-            "label": meta.get("course_label", course),
+            "label": courses_master.get(course, {}).get("label") or meta.get("course_label", course),
             "modules": {}
         })
         tree[course]["modules"].setdefault(module, {

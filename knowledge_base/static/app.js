@@ -3056,7 +3056,7 @@ function buildBreadcrumb(meta) {
   if (isCourse)    { spaceLabel = "Cursos";   spaceSpace = "courses"; }
   if (isTeamspace) { spaceLabel = "Team";     spaceSpace = "teamspace"; }
 
-  const catLabel   = escapeHtml(isCourse ? (meta.course_label || meta.course)    : isTeamspace ? "Teamspace" : (meta.category_label || meta.category)) || "";
+  const catLabel   = escapeHtml(isCourse ? (_coursesTreeData[meta.course]?.label || meta.course_label || meta.course) : isTeamspace ? "Teamspace" : (meta.category_label || meta.category)) || "";
   const topicLabel = escapeHtml(isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : (meta.topic_label || meta.topic)) || "";
   const entryTitle = escapeHtml(meta.title || "Sin título");
 
@@ -4768,7 +4768,7 @@ function openNewLessonModal(courseSlug, prefillModule) {
   if (ctx) {
     // Try to get label from cached tree, fallback to slug
     const courseData = _coursesTreeData[courseSlug];
-    ctx.textContent = courseData?.label || courseSlug;
+    ctx.textContent = courseData?.label || _unslugify(courseSlug);
     ctx.dataset.courseSlug = courseSlug;
   }
 
