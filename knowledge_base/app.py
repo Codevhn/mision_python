@@ -81,6 +81,25 @@ def slugify(text):
     return text
 
 
+_SECTION_TYPE_LABELS = {
+    "modulo": "Módulo", "fase": "Fase", "semana": "Semana",
+    "unidad": "Unidad", "nivel": "Nivel", "bloque": "Bloque",
+    "seccion": "Sección", "capitulo": "Capítulo",
+}
+
+def _generate_module_label(module_type, module_type_custom, module_number, module_title):
+    if not module_type:
+        return None
+    tl = module_type_custom if module_type == "personalizado" else _SECTION_TYPE_LABELS.get(module_type, module_type.title())
+    if module_number and module_title:
+        return f"{tl} {module_number}: {module_title}"
+    if module_number:
+        return f"{tl} {module_number}"
+    if module_title:
+        return f"{tl}: {module_title}"
+    return tl
+
+
 def _entry_path(entry_id, meta):
     if meta.get("type") == "course":
         return KNOWLEDGE_DIR / "courses" / meta["course"] / meta["module"] / f"{entry_id}.md"
@@ -1536,7 +1555,11 @@ def duplicate_course(course_id):
 @app.route("/api/courses/<course_id>/module/<module_slug>", methods=["PATCH"])
 def rename_module(course_id, module_slug):
     body = request.json or {}
-    new_label = body.get("label", "").strip()
+    new_label          = body.get("label", "").strip()
+    module_type        = body.get("module_type")
+    module_type_custom = body.get("module_type_custom")
+    module_number      = body.get("module_number")
+    module_title       = body.get("module_title")
     if not new_label:
         return jsonify({"error": "label required"}), 400
     new_slug = slugify(new_label)
@@ -1547,6 +1570,11 @@ def rename_module(course_id, module_slug):
             old_path = _entry_path(eid, meta)
             meta["module"]       = new_slug
             meta["module_label"] = new_label
+            if module_type is not None:
+                meta["module_type"]        = module_type
+                meta["module_type_custom"] = module_type_custom or ""
+                meta["module_number"]      = module_number or ""
+                meta["module_title"]       = module_title or ""
             new_path = _entry_path(eid, meta)
             if old_path.exists() and old_path != new_path:
                 new_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1637,7 +1665,11 @@ def get_courses_tree():
             "modules": {}
         })
         tree[course]["modules"].setdefault(module, {
-            "label": meta.get("module_label", module),
+            "label":             meta.get("module_label", module),
+            "module_type":       meta.get("module_type", ""),
+            "module_type_custom":meta.get("module_type_custom", ""),
+            "module_number":     meta.get("module_number", ""),
+            "module_title":      meta.get("module_title", ""),
             "entries": []
         })
         tree[course]["modules"][module]["entries"].append({
@@ -1658,11 +1690,15 @@ def get_courses_tree():
 @app.route("/api/courses/entry", methods=["POST"])
 def create_course_entry():
     data = request.json
-    course = data.get("course", "").strip()
-    module = data.get("module", "").strip()
-    title  = data.get("title", "").strip()
-    raw    = data.get("raw_text", "").strip()
-    icon   = data.get("icon", "").strip()
+    course             = data.get("course", "").strip()
+    module             = data.get("module", "").strip()
+    title              = data.get("title", "").strip()
+    raw                = data.get("raw_text", "").strip()
+    icon               = data.get("icon", "").strip()
+    module_type        = data.get("module_type", "").strip()
+    module_type_custom = data.get("module_type_custom", "").strip()
+    module_number      = data.get("module_number", "").strip()
+    module_title_meta  = data.get("module_title", "").strip()
     if not all([course, module, title, raw]):
         return jsonify({"error": "Faltan campos"}), 400
     course_slug = slugify(course)
@@ -1698,6 +1734,10 @@ def create_course_entry():
         "course_label": course,
         "module": module_slug,
         "module_label": module,
+        "module_type":        module_type,
+        "module_type_custom": module_type_custom,
+        "module_number":      module_number,
+        "module_title":       module_title_meta,
         "created_at": now,
         "starred": False,
         "pinned": False,

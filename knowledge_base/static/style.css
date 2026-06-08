@@ -6511,6 +6511,50 @@ body[data-accent="slate"] {
 .cv-roadmap-entry-title { flex: 1; cursor: pointer; }
 .cv-roadmap-entry-title:hover { color: var(--accent); }
 
+/* ── Section Builder ────────────────────────────────────────────── */
+.section-builder {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 6px;
+}
+.sb-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+}
+.sb-field { display: flex; flex-direction: column; gap: 4px; }
+.sb-type-field   { flex: 0 0 130px; }
+.sb-custom-field { flex: 0 0 120px; }
+.sb-number-field { flex: 0 0 70px; }
+.sb-title-field  { flex: 1 1 140px; }
+.sb-label {
+  font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.sb-optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-faint); }
+.sb-field select,
+.sb-field input[type="text"] {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); color: var(--text);
+  font-size: 0.82rem; padding: 5px 8px; width: 100%;
+  transition: border-color 0.12s;
+}
+.sb-field select:focus,
+.sb-field input[type="text"]:focus {
+  outline: none; border-color: var(--accent);
+}
+.sb-preview {
+  margin-top: 10px; padding: 7px 10px;
+  background: var(--bg); border-radius: var(--radius-xs);
+  font-size: 0.82rem; font-weight: 600; color: var(--accent);
+  border: 1px dashed var(--accent); letter-spacing: 0.01em;
+  min-height: 30px;
+}
+.sb-mode-link {
+  background: none; border: none; padding: 0; margin-top: 5px;
+  font-size: 0.72rem; color: var(--text-faint); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: color 0.12s;
+}
+.sb-mode-link:hover { color: var(--accent); }
+
 /* ── Módulos tab — module cards ─────────────────────────────────── */
 .cv-module-card {
   background: var(--bg-elevated); border: 1px solid var(--border);

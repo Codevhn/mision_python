@@ -635,11 +635,52 @@
           <span class="lesson-ctx-label">Curso:</span>
           <span class="lesson-ctx-value" id="lessonCourseCtx">—</span>
         </div>
-        <div class="form-group">
-          <label>Módulo</label>
-          <div class="smart-select" id="lessonModuleSmartSelect">
-            <input type="text" id="lessonModuleField" placeholder="Escribe o elige un módulo…" autocomplete="off" />
-            <div class="smart-select-dropdown hidden" id="lessonModuleDropdown"></div>
+        <div class="form-group" id="lessonModuleGroup">
+          <label>Sección del curso</label>
+
+          <!-- Modo A: sección existente -->
+          <div id="lessonModuleExistingWrap">
+            <div class="smart-select" id="lessonModuleSmartSelect">
+              <input type="text" id="lessonModuleField" placeholder="Escribe o elige una sección…" autocomplete="off" />
+              <div class="smart-select-dropdown hidden" id="lessonModuleDropdown"></div>
+            </div>
+            <button class="sb-mode-link" id="lessonModuleNewBtn" type="button">+ Crear nueva sección</button>
+          </div>
+
+          <!-- Modo B: nueva sección estructurada -->
+          <div id="lessonModuleNewWrap" class="hidden">
+            <div class="section-builder">
+              <div class="sb-row">
+                <div class="sb-field sb-type-field">
+                  <label class="sb-label">Tipo</label>
+                  <select id="sbType">
+                    <option value="modulo">Módulo</option>
+                    <option value="fase">Fase</option>
+                    <option value="semana">Semana</option>
+                    <option value="unidad">Unidad</option>
+                    <option value="nivel">Nivel</option>
+                    <option value="bloque">Bloque</option>
+                    <option value="seccion">Sección</option>
+                    <option value="capitulo">Capítulo</option>
+                    <option value="personalizado">Personalizado…</option>
+                  </select>
+                </div>
+                <div class="sb-field sb-custom-field hidden" id="sbCustomWrap">
+                  <label class="sb-label">Texto</label>
+                  <input type="text" id="sbCustom" placeholder="Sprint" autocomplete="off" />
+                </div>
+                <div class="sb-field sb-number-field">
+                  <label class="sb-label">Nº <span class="sb-optional">opcional</span></label>
+                  <input type="text" id="sbNumber" placeholder="1" autocomplete="off" />
+                </div>
+                <div class="sb-field sb-title-field">
+                  <label class="sb-label">Título <span class="sb-optional">opcional</span></label>
+                  <input type="text" id="sbTitle" placeholder="Fundamentos" autocomplete="off" />
+                </div>
+              </div>
+              <div class="sb-preview" id="sbPreview">— Vista previa —</div>
+            </div>
+            <button class="sb-mode-link" id="lessonModuleExistingBtn" type="button">← Usar sección existente</button>
           </div>
         </div>
         <div class="form-group">
@@ -694,18 +735,60 @@
     </div>
   </div>
 
-  <!-- MODAL: Renombrar módulo -->
+  <!-- MODAL: Editar sección -->
   <div class="modal-overlay hidden" id="renameModuleOverlay">
-    <div class="modal" style="max-width:380px">
+    <div class="modal" style="max-width:500px">
       <div class="modal-header">
-        <h2>Renombrar módulo</h2>
+        <h2>Editar sección</h2>
         <button class="modal-close" id="renameModuleClose">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>Nombre del módulo</label>
-          <input type="text" id="renameModuleInput" placeholder="Ej: Módulo 1" autocomplete="off" />
+
+        <!-- Modo estructurado -->
+        <div id="rmStructuredWrap">
+          <div class="section-builder">
+            <div class="sb-row">
+              <div class="sb-field sb-type-field">
+                <label class="sb-label">Tipo</label>
+                <select id="rmSbType">
+                  <option value="modulo">Módulo</option>
+                  <option value="fase">Fase</option>
+                  <option value="semana">Semana</option>
+                  <option value="unidad">Unidad</option>
+                  <option value="nivel">Nivel</option>
+                  <option value="bloque">Bloque</option>
+                  <option value="seccion">Sección</option>
+                  <option value="capitulo">Capítulo</option>
+                  <option value="personalizado">Personalizado…</option>
+                </select>
+              </div>
+              <div class="sb-field sb-custom-field hidden" id="rmSbCustomWrap">
+                <label class="sb-label">Texto</label>
+                <input type="text" id="rmSbCustom" placeholder="Sprint" autocomplete="off" />
+              </div>
+              <div class="sb-field sb-number-field">
+                <label class="sb-label">Nº <span class="sb-optional">opcional</span></label>
+                <input type="text" id="rmSbNumber" placeholder="1" autocomplete="off" />
+              </div>
+              <div class="sb-field sb-title-field">
+                <label class="sb-label">Título <span class="sb-optional">opcional</span></label>
+                <input type="text" id="rmSbTitle" placeholder="Fundamentos" autocomplete="off" />
+              </div>
+            </div>
+            <div class="sb-preview" id="rmSbPreview">— Vista previa —</div>
+          </div>
+          <button class="sb-mode-link" id="rmLegacyBtn" type="button">Editar como texto libre</button>
         </div>
+
+        <!-- Modo texto libre (legacy) -->
+        <div id="rmLegacyWrap" class="hidden">
+          <div class="form-group">
+            <label>Nombre de la sección</label>
+            <input type="text" id="renameModuleInput" placeholder="Ej: Módulo 1" autocomplete="off" />
+          </div>
+          <button class="sb-mode-link" id="rmStructuredBtn" type="button">← Usar editor estructurado</button>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button class="btn-ghost" id="renameModuleCancel">Cancelar</button>

@@ -4907,14 +4907,14 @@ function renderCourseTab(tab, courseSlug, stats) {
       });
       // Rename module — custom modal
       card.querySelector('.cv-mod-rename-btn').addEventListener('click', () => {
-        openRenameModuleModal(mod.label, async newName => {
+        openRenameModuleModal(mod, async result => {
           const r = await fetch(`/api/courses/${courseSlug}/module/${modSlug}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ label: newName }),
+            body: JSON.stringify(result),
           });
           if (r.ok) {
-            showToast(`Módulo renombrado a "${newName}"`);
+            showToast(`Sección renombrada a "${result.label}"`);
             await _reloadCourseView(courseSlug, 'modules');
           } else {
             showToast('Error al renombrar', 'error');
@@ -5111,24 +5111,73 @@ async function handleCourseAction(action, courseSlug, courseEntity) {
   }
 }
 
-function openRenameModuleModal(currentLabel, onConfirm) {
-  const overlay = $('renameModuleOverlay');
-  const input   = $('renameModuleInput');
-  if (!overlay || !input) return;
-  input.value = currentLabel;
+// modData: { label, module_type, module_type_custom, module_number, module_title }
+// onConfirm(result): result = { label, module_type, ... }
+function openRenameModuleModal(modData, onConfirm) {
+  const overlay      = $('renameModuleOverlay');
+  const legacyInput  = $('renameModuleInput');
+  if (!overlay) return;
+
+  const currentLabel = typeof modData === 'string' ? modData : (modData?.label || '');
+  const hasStructure = modData && modData.module_type;
+
+  // Init rename section builder
+  const rmBuilder = _initSectionBuilder({
+    typeId:       'rmSbType',
+    customWrapId: 'rmSbCustomWrap',
+    customId:     'rmSbCustom',
+    numberId:     'rmSbNumber',
+    titleId:      'rmSbTitle',
+    previewId:    'rmSbPreview',
+  });
+
+  // Determine initial mode
+  let rmMode = hasStructure ? 'structured' : 'legacy';
+  const setRmMode = mode => {
+    rmMode = mode;
+    $('rmStructuredWrap')?.classList.toggle('hidden', mode !== 'structured');
+    $('rmLegacyWrap')?.classList.toggle('hidden', mode !== 'legacy');
+  };
+  setRmMode(rmMode);
+
+  // Prefill
+  if (hasStructure && rmBuilder) {
+    rmBuilder.prefill(modData);
+  } else if (legacyInput) {
+    legacyInput.value = currentLabel;
+  }
+
+  $('rmLegacyBtn')?.addEventListener('click', () => setRmMode('legacy'));
+  $('rmStructuredBtn')?.addEventListener('click', () => setRmMode('structured'));
+
   overlay.classList.remove('hidden');
-  setTimeout(() => { input.focus(); input.select(); }, 50);
+  setTimeout(() => {
+    if (rmMode === 'structured') $('rmSbTitle')?.focus();
+    else { legacyInput?.focus(); legacyInput?.select(); }
+  }, 50);
+
   const close = () => overlay.classList.add('hidden');
   const confirm = async () => {
-    const val = input.value.trim();
-    if (!val || val === currentLabel) { close(); return; }
+    let label, fields;
+    if (rmMode === 'structured' && rmBuilder) {
+      label  = rmBuilder.getLabel();
+      fields = rmBuilder.getFields();
+      if (!label) { showToast('Define el tipo de sección', 'error'); return; }
+    } else {
+      label  = legacyInput?.value.trim() || '';
+      fields = {};
+      if (!label) { close(); return; }
+    }
     close();
-    await onConfirm(val);
+    await onConfirm({ label, ...fields });
   };
+
   $('renameModuleClose').onclick   = close;
   $('renameModuleCancel').onclick  = close;
   $('renameModuleConfirm').onclick = confirm;
-  input.onkeydown = e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') close(); };
+  if (legacyInput) {
+    legacyInput.onkeydown = e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') close(); };
+  }
 }
 
 let _editingCourseSlug = null;
@@ -5304,6 +5353,84 @@ function setActiveCourse(slug) {
 }
 
 // ── Lesson modal ──────────────────────────────────────────────────────────
+// ── Section builder helpers ───────────────────────────────────────────────
+const _SECTION_TYPE_LABELS = {
+  modulo: 'Módulo', fase: 'Fase', semana: 'Semana',
+  unidad: 'Unidad', nivel: 'Nivel', bloque: 'Bloque',
+  seccion: 'Sección', capitulo: 'Capítulo',
+};
+
+function _generateSectionLabel(type, custom, number, title) {
+  if (!type) return '';
+  const tl = type === 'personalizado'
+    ? (custom || 'Personalizado')
+    : (_SECTION_TYPE_LABELS[type] || type);
+  if (number && title) return `${tl} ${number}: ${title}`;
+  if (number)          return `${tl} ${number}`;
+  if (title)           return `${tl}: ${title}`;
+  return tl;
+}
+
+// Wires up a section builder DOM cluster and returns { getLabel, getFields, destroy }
+function _initSectionBuilder(ids) {
+  const { typeId, customWrapId, customId, numberId, titleId, previewId } = ids;
+  const sbType    = $(typeId);
+  const sbCWrap   = $(customWrapId);
+  const sbCustom  = $(customId);
+  const sbNumber  = $(numberId);
+  const sbTitle   = $(titleId);
+  const sbPreview = $(previewId);
+  if (!sbType) return null;
+
+  const update = () => {
+    const type   = sbType.value;
+    const custom = sbCustom?.value.trim() || '';
+    const number = sbNumber?.value.trim() || '';
+    const title  = sbTitle?.value.trim() || '';
+    if (sbCWrap) sbCWrap.classList.toggle('hidden', type !== 'personalizado');
+    const label = _generateSectionLabel(type, custom, number, title);
+    if (sbPreview) sbPreview.textContent = label || '— Vista previa —';
+  };
+
+  [sbType, sbCustom, sbNumber, sbTitle].forEach(el => el?.addEventListener('input', update));
+  [sbType, sbCustom, sbNumber, sbTitle].forEach(el => el?.addEventListener('change', update));
+  update();
+
+  return {
+    getLabel() {
+      return _generateSectionLabel(
+        sbType?.value || '',
+        sbCustom?.value.trim() || '',
+        sbNumber?.value.trim() || '',
+        sbTitle?.value.trim() || '',
+      );
+    },
+    getFields() {
+      return {
+        module_type:        sbType?.value || '',
+        module_type_custom: sbCustom?.value.trim() || '',
+        module_number:      sbNumber?.value.trim() || '',
+        module_title:       sbTitle?.value.trim() || '',
+      };
+    },
+    prefill(modData) {
+      if (!modData) return;
+      if (sbType && modData.module_type) sbType.value = modData.module_type;
+      if (sbCustom) sbCustom.value = modData.module_type_custom || '';
+      if (sbNumber) sbNumber.value = modData.module_number || '';
+      if (sbTitle)  sbTitle.value  = modData.module_title || '';
+      update();
+    },
+    reset() {
+      if (sbType)   sbType.value   = 'modulo';
+      if (sbCustom) sbCustom.value = '';
+      if (sbNumber) sbNumber.value = '';
+      if (sbTitle)  sbTitle.value  = '';
+      update();
+    },
+  };
+}
+
 function _buildLessonScaffold(title, subtopicsRaw) {
   const h1 = `# ${title}`;
   if (!subtopicsRaw) return h1;
@@ -5315,6 +5442,15 @@ function _buildLessonScaffold(title, subtopicsRaw) {
   return h1 + '\n\n' + items.map(s => `### ${s}`).join('\n\n') + '\n';
 }
 
+// Tracks which lesson modal mode is active: 'existing' or 'new'
+let _lessonModuleMode = 'existing';
+
+function _setLessonModuleMode(mode) {
+  _lessonModuleMode = mode;
+  $('lessonModuleExistingWrap')?.classList.toggle('hidden', mode !== 'existing');
+  $('lessonModuleNewWrap')?.classList.toggle('hidden', mode !== 'new');
+}
+
 function openNewLessonModal(courseSlug, prefillModule) {
   const overlay = $('newLessonOverlay');
   if (!overlay) return;
@@ -5322,7 +5458,6 @@ function openNewLessonModal(courseSlug, prefillModule) {
   // Context bar — show course label (not an input)
   const ctx = $('lessonCourseCtx');
   if (ctx) {
-    // Try to get label from cached tree, fallback to slug
     const courseData = _coursesTreeData[courseSlug];
     ctx.textContent = courseData?.label || _unslugify(courseSlug);
     ctx.dataset.courseSlug = courseSlug;
@@ -5338,18 +5473,23 @@ function openNewLessonModal(courseSlug, prefillModule) {
     moduleInput.classList.remove('locked');
 
     if (prefillModule) {
-      // Context B: module is fixed — lock the field
+      // Context B: module is fixed — lock the field, stay in existing mode
       moduleInput.value = prefillModule;
       moduleInput.setAttribute('readonly', '');
       moduleInput.classList.add('locked');
       if (moduleDropdown) moduleDropdown.classList.add('hidden');
+      _setLessonModuleMode('existing');
     } else {
-      // Context A: module is free — dropdown only on explicit user interaction
+      // Context A: module is free — dropdown on user input
       moduleInput.value = '';
       if (moduleDropdown) moduleDropdown.classList.add('hidden');
       moduleInput.oninput = () => _populateLessonModuleDropdown(courseSlug, moduleInput.value);
+      _setLessonModuleMode('existing');
     }
   }
+
+  // Reset section builder
+  if (window._lessonSectionBuilder) window._lessonSectionBuilder.reset();
 
   if ($('lessonTitleField')) $('lessonTitleField').value = '';
   if ($('lessonContentField')) $('lessonContentField').value = '';
@@ -5422,6 +5562,25 @@ function initLessonModal() {
   const createBtn = $('newLessonCreateBtn');
   if (!overlay) return;
 
+  // Init section builder
+  window._lessonSectionBuilder = _initSectionBuilder({
+    typeId:       'sbType',
+    customWrapId: 'sbCustomWrap',
+    customId:     'sbCustom',
+    numberId:     'sbNumber',
+    titleId:      'sbTitle',
+    previewId:    'sbPreview',
+  });
+
+  // Mode toggle buttons
+  $('lessonModuleNewBtn')?.addEventListener('click', () => {
+    _setLessonModuleMode('new');
+    window._lessonSectionBuilder?.reset();
+  });
+  $('lessonModuleExistingBtn')?.addEventListener('click', () => {
+    _setLessonModuleMode('existing');
+  });
+
   const _close = () => overlay.classList.add('hidden');
   if (closeBtn)  closeBtn.addEventListener('click', _close);
   if (cancelBtn) cancelBtn.addEventListener('click', _close);
@@ -5431,24 +5590,34 @@ function initLessonModal() {
     createBtn.addEventListener('click', async () => {
       const courseSlug  = $('lessonCourseCtx')?.dataset.courseSlug?.trim();
       const courseLabel = $('lessonCourseCtx')?.textContent?.trim() || courseSlug;
-      const module      = ($('lessonModuleField') || {}).value?.trim();
       const title       = ($('lessonTitleField') || {}).value?.trim();
       const subtopics   = ($('lessonContentField') || {}).value?.trim() || '';
       const content     = _buildLessonScaffold(title || '', subtopics);
+
+      let module = '';
+      let extraFields = {};
+      if (_lessonModuleMode === 'new') {
+        const builder = window._lessonSectionBuilder;
+        module = builder ? builder.getLabel() : '';
+        extraFields = builder ? builder.getFields() : {};
+        if (!module) { showToast('Define el tipo de sección', 'error'); return; }
+      } else {
+        module = ($('lessonModuleField') || {}).value?.trim();
+      }
+
       if (!courseSlug || !module || !title) {
         showToast('Completa los campos obligatorios', 'error'); return;
       }
       const res = await fetch('/api/courses/entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ course: courseLabel, module, title, raw_text: content }),
+        body: JSON.stringify({ course: courseLabel, module, title, raw_text: content, ...extraFields }),
       });
       if (res.ok) {
         _close();
         showToast(`Lección "${title}" creada`);
         await loadTree();
         renderCoursesTree(_coursesTreeData, courseSlug);
-        // Refresh course view if currently open
         if (_activeCourseSlug === courseSlug) {
           const cv = $('courseView');
           if (cv && !cv.classList.contains('hidden')) {
