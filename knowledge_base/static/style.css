@@ -7488,9 +7488,9 @@ body.home-ambient .home-hero { overflow: visible; }
   .kb-col { width: calc(100vw - 28px) !important; flex-shrink: 0; }
   .kb-columns-wrap { padding: 10px 14px; gap: 10px; }
 
-  /* Kanban card modal: full-width on mobile */
-  .kb-modal-overlay { padding: 0; align-items: flex-end; display: flex; }
-  .kb-modal--trello { width: 100vw !important; max-width: 100vw !important; max-height: 92vh; border-radius: 16px 16px 0 0; overflow-y: auto; }
+  /* Kanban card modal: full-width, scrollable */
+  .kb-modal-overlay { padding: 12px 0 0; }
+  .kb-modal--trello { width: 100vw !important; max-width: 100vw !important; border-radius: 12px 12px 0 0; }
 
   /* Kanban workspace: compact main header */
   .kb-ws-main-header { gap: 8px; margin-bottom: 4px; }

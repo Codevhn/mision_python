@@ -2689,3 +2689,37 @@ kbd {
 .kb-cf-pill-menu-item:hover {
   background: var(--accent-soft, rgba(99,102,241,0.12));
 }
+
+/* =============================================
+   MOBILE — card modal responsive layout
+   ============================================= */
+@media (max-width: 768px) {
+  /* Stack main content ABOVE activity sidebar */
+  .kb-modal-body {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  /* Main section (description, custom fields): full width */
+  .kb-modal-main {
+    padding: 12px 16px;
+    overflow-y: visible;
+    gap: 12px;
+  }
+
+  /* Activity/sidebar: full width, no left border, top border instead */
+  .kb-modal-sidebar--trello {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    overflow-y: visible;
+  }
+
+  /* Cover image: compact on mobile */
+  .kb-modal-cover { height: 140px !important; }
+
+  /* Modal header: compact */
+  .kb-modal-header { padding: 12px 16px 8px; }
+  .kb-modal-header h2 { font-size: 0.95rem; }
+}
