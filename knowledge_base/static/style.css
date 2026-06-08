@@ -982,15 +982,21 @@ input, textarea, select { font-family: inherit; }
   pointer-events: none;
 }
 .autosave-indicator {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 300;
   font-family: var(--font-ui);
   font-size: 0.68rem;
   white-space: nowrap;
-  flex-shrink: 0;
+  pointer-events: none;
   transition: opacity 0.3s;
+  opacity: 0;
 }
-.autosave-saving { color: var(--accent); opacity: 0.7; }
-.autosave-saved  { color: var(--accent-green); opacity: 0.8; }
-.autosave-error  { color: var(--accent-red); }
+.autosave-indicator:not(:empty) { opacity: 1; }
+.autosave-saving { color: var(--accent); opacity: 0.85; }
+.autosave-saved  { color: var(--accent-green); opacity: 0.85; }
+.autosave-error  { color: var(--accent-red); opacity: 1; }
 .entry-header {
   display: flex;
   align-items: flex-start;
