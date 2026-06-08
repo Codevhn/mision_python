@@ -6876,19 +6876,20 @@ body[data-accent="slate"] {
 /* html gets a base color so fixed z-index:-1 elements paint above it           */
 html { background-color: var(--bg, #060610); }
 
-/* Canvas (weather asset + particles) + scrim sit behind ALL page content       */
+/* Canvas (weather asset + particles) + scrim sit behind ALL page content.
+   Placed as first children in <body> so DOM paint order puts content on top. */
 #homeAmbientCanvas {
   position: fixed; inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none; display: none;
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
 }
-/* Scrim comes after canvas in DOM → same z-index but on top (DOM order) */
+/* Scrim — same z-index, DOM-after canvas → paints on top of canvas */
 #homeAmbientScrim {
   position: fixed; inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none; display: none;
   background: rgba(0, 0, 0, 0.22);
 }
@@ -6901,15 +6902,18 @@ body.home-ambient { background-color: transparent; background-image: none; }
 body.home-ambient .content-area { background: transparent !important; }
 body.home-ambient .welcome      { background: transparent; }
 
-/* Hero: remove its own asset copy (ambient canvas covers full viewport)        */
-/* and fade its bottom edge away so it merges with the ambient canvas below     */
+/* Ensure content-area stacks ABOVE the z-index:0 ambient canvas */
+body.home-ambient .content-area { position: relative; z-index: 1; }
+
+/* Hero: remove its own asset copy (ambient canvas covers full viewport)   */
+/* and collapse the bottom fade so hero merges into the ambient canvas     */
 body.home-ambient .home-hero {
   background-image: none;
   background-color: transparent;
 }
 body.home-ambient .home-hero::after { opacity: 0; }
 
-/* prefers-reduced-motion — canvas hidden; fall back to static asset on hero    */
+/* prefers-reduced-motion — canvas hidden; fall back to static hero asset  */
 @media (prefers-reduced-motion: reduce) {
   body.home-ambient #homeAmbientCanvas { display: none; }
 }

@@ -14,6 +14,11 @@
 </head>
 <body>
 
+  <!-- AMBIENT WEATHER LAYERS (home only, activated by body.home-ambient)     -->
+  <!-- Must be first children of body so DOM order puts content above canvas   -->
+  <canvas id="homeAmbientCanvas"></canvas>
+  <div id="homeAmbientScrim"></div>
+
   <!-- TOP BAR -->
   <header class="topbar" id="topbar">
     <div class="topbar-left">
@@ -847,10 +852,6 @@
 
   <!-- AUTOSAVE INDICATOR (fixed, never shifts layout) -->
   <span class="autosave-indicator" id="autosaveIndicator"></span>
-
-  <!-- AMBIENT WEATHER LAYERS (home only, activated by body.home-ambient) -->
-  <canvas id="homeAmbientCanvas"></canvas>
-  <div id="homeAmbientScrim"></div>
 
   <!-- SLASH MENU (modal editor) -->
   <div id="slashMenu" class="slash-menu hidden"></div>
