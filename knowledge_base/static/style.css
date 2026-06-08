@@ -1641,8 +1641,21 @@ input, textarea, select { font-family: inherit; }
   .sidebar-overlay.active { display: block; }
 
   /* CONTENT AREA */
-  .content-area { width: 100%; overflow-x: hidden; }
+  /* overflow-x:clip cuts visually but doesn't block child scroll containers (pre overflow-x:auto) */
+  .content-area { width: 100%; overflow-x: clip; }
   .entry-view { padding: 12px 12px 80px; max-width: 100%; }
+
+  /* ENTRY COVER — reduce height on mobile */
+  .entry-cover { height: 110px; }
+
+  /* ENTRY HEADINGS — scale down for narrow screens */
+  .entry-body h1 { font-size: 1.25rem; margin: 20px 0 8px; padding-bottom: 6px; }
+  .entry-body h2 { font-size: 1.05rem; margin: 18px 0 6px; }
+  .entry-body h3 { font-size: 0.95rem; margin: 14px 0 4px; }
+
+  /* SCRATCHPAD — hide on mobile, overlaps reading content */
+  .scratchpad-trigger { display: none; }
+  .scratchpad        { display: none; }
 
   /* ENTRY HEADER — meta + acciones apilados */
   .entry-header { flex-direction: column; gap: 0; flex-wrap: nowrap; }
