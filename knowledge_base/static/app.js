@@ -5589,7 +5589,6 @@ function initLessonModal() {
   if (createBtn) {
     createBtn.addEventListener('click', async () => {
       const courseSlug  = $('lessonCourseCtx')?.dataset.courseSlug?.trim();
-      const courseLabel = $('lessonCourseCtx')?.textContent?.trim() || courseSlug;
       const title       = ($('lessonTitleField') || {}).value?.trim();
       const subtopics   = ($('lessonContentField') || {}).value?.trim() || '';
       const content     = _buildLessonScaffold(title || '', subtopics);
@@ -5611,7 +5610,7 @@ function initLessonModal() {
       const res = await fetch('/api/courses/entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ course: courseLabel, module, title, raw_text: content, ...extraFields }),
+        body: JSON.stringify({ course: courseSlug, module, title, raw_text: content, ...extraFields }),
       });
       if (res.ok) {
         _close();

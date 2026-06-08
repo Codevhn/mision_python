@@ -1701,10 +1701,12 @@ def create_course_entry():
     module_title_meta  = data.get("module_title", "").strip()
     if not all([course, module, title, raw]):
         return jsonify({"error": "Faltan campos"}), 400
-    course_slug = slugify(course)
-    courses_data = load_courses()
+    # `course` is now sent as the slug directly from the frontend
+    course_slug = course
+    courses_data = _sync_courses_from_index()
     if course_slug not in courses_data["courses"]:
-        return jsonify({"error": f"El curso '{course}' no existe. Crea la entidad curso primero."}), 400
+        return jsonify({"error": f"El curso '{course_slug}' no existe. Crea la entidad curso primero."}), 400
+    course_label_stored = courses_data["courses"][course_slug].get("label", course_slug)
     module_slug = slugify(module)
     entry_id    = slugify(title)
     index = load_index()
@@ -1731,7 +1733,7 @@ def create_course_entry():
         "type": "course",
         "title": title,
         "course": course_slug,
-        "course_label": course,
+        "course_label": course_label_stored,
         "module": module_slug,
         "module_label": module,
         "module_type":        module_type,
