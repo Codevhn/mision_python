@@ -22,8 +22,7 @@
   <!-- TOP BAR -->
   <header class="topbar" id="topbar">
     <div class="topbar-left">
-      <!-- Hidden toggle kept for mobile JS compat -->
-      <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" style="display:none">&#9776;</button>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Menú" aria-label="Abrir menú de navegación">&#9776;</button>
       <div class="topbar-brand">
         <span class="topbar-brand-badge">PA</span>
         <span class="topbar-brand-name">Project Atlas</span>
@@ -128,6 +127,17 @@
           <span class="workspace-plan">personal</span>
         </div>
       </div>
+
+      <!-- MOBILE SPACE NAVIGATION (hidden on desktop via CSS, shown in drawer on mobile) -->
+      <nav class="mobile-space-nav" id="mobileSpaceNav">
+        <button class="msn-item" data-space="home"><span class="msn-icon">⌂</span><span class="msn-label">Inicio</span></button>
+        <button class="msn-item" data-space="knowledge"><span class="msn-icon">📖</span><span class="msn-label">Conocimiento</span></button>
+        <button class="msn-item" data-space="courses"><span class="msn-icon">🎓</span><span class="msn-label">Cursos</span></button>
+        <button class="msn-item" data-space="boards"><span class="msn-icon">⊞</span><span class="msn-label">Tableros</span></button>
+        <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
+        <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
+        <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
+      </nav>
 
       <!-- SPACE: KNOWLEDGE -->
       <div class="sidebar-space" id="spaceKnowledge" style="display:none">

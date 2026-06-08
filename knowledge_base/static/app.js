@@ -4112,6 +4112,11 @@ function setSidebarVisible(visible) {
       _heroCanvasStop(); _heroCanvasStop = null;
     }
 
+    // Sync mobile drawer nav active state (runs for all spaces including home)
+    document.querySelectorAll('.msn-item[data-space]').forEach(btn => {
+      btn.classList.toggle('msn-active', btn.dataset.space === space);
+    });
+
     // Restore sidebar for all spaces except home (home hides it below)
     setSidebarVisible(true);
 
@@ -4189,6 +4194,13 @@ function setSidebarVisible(visible) {
       btn.addEventListener('click', () => switchSpace(btn.dataset.space));
     });
 
+    // Mobile drawer space nav — switch space + close drawer on tap
+    document.querySelectorAll('.msn-item[data-space]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchSpace(btn.dataset.space);
+        closeSidebarMobile();
+      });
+    });
 
     // Search icon → Command Palette
     const abSearch = document.getElementById('abSearch');
