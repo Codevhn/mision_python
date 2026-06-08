@@ -1683,6 +1683,13 @@ def create_course_entry():
     history_dir.mkdir(parents=True, exist_ok=True)
     now = datetime.utcnow().isoformat()
     (history_dir / f"{now.replace(':','-')}.md").write_text(raw, encoding="utf-8")
+    max_order = max(
+        (m.get("order", 0) for m in index.values()
+         if m.get("type") == "course"
+         and m.get("course") == course_slug
+         and m.get("module") == module_slug),
+        default=-1,
+    )
     index[entry_id] = {
         "uid": uuid.uuid4().hex[:8],
         "type": "course",
@@ -1695,7 +1702,7 @@ def create_course_entry():
         "starred": False,
         "pinned": False,
         "status": "pendiente",
-        "order": 0,
+        "order": max_order + 1,
         "icon": icon,
     }
     save_index(index)
