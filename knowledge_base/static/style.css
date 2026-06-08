@@ -7436,3 +7436,41 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Board grid: 2 cols on mobile */
   .kb-boards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
+
+/* ── Mobile: entry inline title + body + code + tables ── */
+@media (max-width: 768px) {
+  /* Inline title: 2.2rem → 1.35rem, 40px side padding → 16px */
+  .inline-title-wrap {
+    padding: 10px 16px 0 !important;
+    gap: 8px;
+  }
+  .inline-title { font-size: 1.35rem !important; }
+  .entry-page-icon-btn iconify-icon,
+  .entry-page-icon-btn span {
+    font-size: 1.4rem !important;
+    width: 1.4rem !important;
+    height: 1.4rem !important;
+  }
+  .entry-page-icon-btn {
+    min-width: 1.6rem !important;
+    min-height: 1.6rem !important;
+  }
+
+  /* Entry body: reduce line-height and font for denser reading on small screens */
+  .entry-body { line-height: 1.65 !important; font-size: 0.93rem !important; }
+
+  /* CodeMirror: 58px right padding was cutting off code — reduce to 8px */
+  .eb-code-cm-wrap .CodeMirror-lines { padding: 4px 8px !important; }
+  .eb-code-cm-wrap { overflow-x: auto !important; }
+
+  /* Tables (block editor): scrollable */
+  .eb-table-wrap { overflow-x: auto !important; }
+
+  /* Tables (markdown render): scrollable via display:block */
+  .entry-body table {
+    display: block !important;
+    overflow-x: auto !important;
+    width: fit-content !important;
+    max-width: 100% !important;
+  }
+}
