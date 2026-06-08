@@ -6557,6 +6557,17 @@ body[data-accent="slate"] {
 }
 .sb-mode-link:hover { color: var(--accent); }
 
+/* ── Duplicate warnings ──────────────────────────────────────────── */
+.field-warning {
+  display: block; margin-top: 5px;
+  font-size: 0.74rem; color: var(--danger);
+  font-family: var(--font-ui); line-height: 1.4;
+}
+.field-warning.hidden { display: none; }
+.sb-preview.sb-preview--warn {
+  border-color: var(--danger); color: var(--danger);
+}
+
 /* ── Módulos tab — module cards ─────────────────────────────────── */
 .cv-module-card {
   background: var(--bg-elevated); border: 1px solid var(--border);

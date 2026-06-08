@@ -5119,10 +5119,30 @@ async function handleCourseAction(action, courseSlug, courseEntity) {
 function openRenameModuleModal(modData, onConfirm) {
   const overlay      = $('renameModuleOverlay');
   const legacyInput  = $('renameModuleInput');
+  const confirmBtn   = $('renameModuleConfirm');
   if (!overlay) return;
 
   const currentLabel = typeof modData === 'string' ? modData : (modData?.label || '');
+  const courseSlug   = _activeCourseSlug || '';
+  // current module slug to exclude from duplicate check (renaming to same name is OK)
+  const currentSlug  = Object.entries(_coursesTreeData[courseSlug]?.modules || {})
+    .find(([, m]) => m.label === currentLabel)?.[0] || null;
+
   const hasStructure = modData && modData.module_type;
+
+  // ── Duplicate detection for rename ──────────────────────────────────────
+  const _setRenameBlocked = (label) => {
+    const isDup = label && label.toLowerCase() !== currentLabel.toLowerCase()
+      && _moduleLabelExists(courseSlug, label, currentSlug);
+    if (confirmBtn) {
+      confirmBtn.disabled = isDup;
+      confirmBtn.style.opacity = isDup ? '0.45' : '';
+      confirmBtn.title = isDup ? `Ya existe una sección con el nombre "${label}"` : '';
+    }
+    const rmPreview = $('rmSbPreview');
+    if (rmPreview) rmPreview.classList.toggle('sb-preview--warn', !!isDup);
+    return isDup;
+  };
 
   // Init rename section builder
   const rmBuilder = _initSectionBuilder({
@@ -5132,7 +5152,7 @@ function openRenameModuleModal(modData, onConfirm) {
     numberId:     'rmSbNumber',
     titleId:      'rmSbTitle',
     previewId:    'rmSbPreview',
-  });
+  }, label => _setRenameBlocked(label));
 
   // Determine initial mode
   let rmMode = hasStructure ? 'structured' : 'legacy';
@@ -5140,6 +5160,7 @@ function openRenameModuleModal(modData, onConfirm) {
     rmMode = mode;
     $('rmStructuredWrap')?.classList.toggle('hidden', mode !== 'structured');
     $('rmLegacyWrap')?.classList.toggle('hidden', mode !== 'legacy');
+    _setRenameBlocked(rmMode === 'legacy' ? legacyInput?.value.trim() : rmBuilder?.getLabel());
   };
   setRmMode(rmMode);
 
@@ -5153,13 +5174,21 @@ function openRenameModuleModal(modData, onConfirm) {
   $('rmLegacyBtn')?.addEventListener('click', () => setRmMode('legacy'));
   $('rmStructuredBtn')?.addEventListener('click', () => setRmMode('structured'));
 
+  // Legacy input duplicate check
+  if (legacyInput) {
+    legacyInput.oninput = () => _setRenameBlocked(legacyInput.value.trim());
+  }
+
   overlay.classList.remove('hidden');
   setTimeout(() => {
     if (rmMode === 'structured') $('rmSbTitle')?.focus();
     else { legacyInput?.focus(); legacyInput?.select(); }
   }, 50);
 
-  const close = () => overlay.classList.add('hidden');
+  const close = () => {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = ''; confirmBtn.title = ''; }
+    overlay.classList.add('hidden');
+  };
   const confirm = async () => {
     let label, fields;
     if (rmMode === 'structured' && rmBuilder) {
@@ -5171,13 +5200,16 @@ function openRenameModuleModal(modData, onConfirm) {
       fields = {};
       if (!label) { close(); return; }
     }
+    if (_moduleLabelExists(courseSlug, label, currentSlug)) {
+      showToast(`Ya existe una sección "${label}" en este curso`, 'error'); return;
+    }
     close();
     await onConfirm({ label, ...fields });
   };
 
   $('renameModuleClose').onclick   = close;
   $('renameModuleCancel').onclick  = close;
-  $('renameModuleConfirm').onclick = confirm;
+  if (confirmBtn) confirmBtn.onclick = confirm;
   if (legacyInput) {
     legacyInput.onkeydown = e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') close(); };
   }
@@ -5356,6 +5388,24 @@ function setActiveCourse(slug) {
 }
 
 // ── Lesson modal ──────────────────────────────────────────────────────────
+// ── Duplicate detection helpers ──────────────────────────────────────────
+function _moduleLabelExists(courseSlug, label, excludeSlug = null) {
+  const mods = _coursesTreeData[courseSlug]?.modules || {};
+  return Object.entries(mods).some(([slug, m]) =>
+    slug !== excludeSlug && m.label.toLowerCase() === label.toLowerCase()
+  );
+}
+
+function _lessonTitleExistsInModule(courseSlug, moduleLabel, title) {
+  const mods = _coursesTreeData[courseSlug]?.modules || {};
+  for (const mod of Object.values(mods)) {
+    if (mod.label.toLowerCase() === moduleLabel.toLowerCase()) {
+      return (mod.entries || []).some(e => e.title.toLowerCase() === title.toLowerCase());
+    }
+  }
+  return false;
+}
+
 // ── Section builder helpers ───────────────────────────────────────────────
 const _SECTION_TYPE_LABELS = {
   modulo: 'Módulo', fase: 'Fase', semana: 'Semana',
@@ -5374,8 +5424,9 @@ function _generateSectionLabel(type, custom, number, title) {
   return tl;
 }
 
-// Wires up a section builder DOM cluster and returns { getLabel, getFields, destroy }
-function _initSectionBuilder(ids) {
+// Wires up a section builder DOM cluster and returns { getLabel, getFields, setDupCheck }
+// onLabelChange(label) optional callback called on every label update
+function _initSectionBuilder(ids, onLabelChange) {
   const { typeId, customWrapId, customId, numberId, titleId, previewId } = ids;
   const sbType    = $(typeId);
   const sbCWrap   = $(customWrapId);
@@ -5393,6 +5444,7 @@ function _initSectionBuilder(ids) {
     if (sbCWrap) sbCWrap.classList.toggle('hidden', type !== 'personalizado');
     const label = _generateSectionLabel(type, custom, number, title);
     if (sbPreview) sbPreview.textContent = label || '— Vista previa —';
+    if (typeof onLabelChange === 'function') onLabelChange(label);
   };
 
   [sbType, sbCustom, sbNumber, sbTitle].forEach(el => el?.addEventListener('input', update));
@@ -5565,7 +5617,54 @@ function initLessonModal() {
   const createBtn = $('newLessonCreateBtn');
   if (!overlay) return;
 
-  // Init section builder
+  // ── Duplicate detection ────────────────────────────────────────────────
+  const _setCreateBlocked = blocked => {
+    if (createBtn) {
+      createBtn.disabled = blocked;
+      createBtn.style.opacity = blocked ? '0.45' : '';
+    }
+  };
+
+  const _getCurrentModuleLabel = () =>
+    _lessonModuleMode === 'new'
+      ? (window._lessonSectionBuilder?.getLabel() || '')
+      : ($('lessonModuleField')?.value.trim() || '');
+
+  const _checkDuplicates = () => {
+    const courseSlug = $('lessonCourseCtx')?.dataset.courseSlug;
+    if (!courseSlug) return;
+
+    const moduleLabel = _getCurrentModuleLabel();
+    const title       = $('lessonTitleField')?.value.trim() || '';
+    const preview     = $('sbPreview');
+    const titleWarn   = $('lessonTitleWarn');
+
+    let blocked = false;
+
+    // Module duplicate (only in "new" mode)
+    if (_lessonModuleMode === 'new' && moduleLabel) {
+      const modDup = _moduleLabelExists(courseSlug, moduleLabel);
+      if (preview) preview.classList.toggle('sb-preview--warn', modDup);
+      if (modDup && preview) preview.textContent = `⚠ "${moduleLabel}" ya existe — se añadirá al módulo existente`;
+      // Not a hard block — adding to existing module is acceptable from "new" mode; just inform
+    }
+
+    // Lesson title duplicate
+    if (title && moduleLabel) {
+      const lessonDup = _lessonTitleExistsInModule(courseSlug, moduleLabel, title);
+      if (titleWarn) {
+        titleWarn.textContent = lessonDup ? `Ya existe una lección con ese título en este módulo.` : '';
+        titleWarn.classList.toggle('hidden', !lessonDup);
+      }
+      if (lessonDup) blocked = true;
+    } else {
+      if (titleWarn) titleWarn.classList.add('hidden');
+    }
+
+    _setCreateBlocked(blocked);
+  };
+
+  // Init section builder with duplicate callback
   window._lessonSectionBuilder = _initSectionBuilder({
     typeId:       'sbType',
     customWrapId: 'sbCustomWrap',
@@ -5573,18 +5672,30 @@ function initLessonModal() {
     numberId:     'sbNumber',
     titleId:      'sbTitle',
     previewId:    'sbPreview',
-  });
+  }, () => _checkDuplicates());
 
   // Mode toggle buttons
   $('lessonModuleNewBtn')?.addEventListener('click', () => {
     _setLessonModuleMode('new');
     window._lessonSectionBuilder?.reset();
+    _checkDuplicates();
   });
   $('lessonModuleExistingBtn')?.addEventListener('click', () => {
     _setLessonModuleMode('existing');
+    _checkDuplicates();
   });
 
-  const _close = () => overlay.classList.add('hidden');
+  // Re-check when module field changes (existing mode)
+  $('lessonModuleField')?.addEventListener('input', _checkDuplicates);
+  $('lessonModuleField')?.addEventListener('change', _checkDuplicates);
+
+  // Re-check when title changes
+  $('lessonTitleField')?.addEventListener('input', _checkDuplicates);
+
+  const _close = () => {
+    _setCreateBlocked(false);
+    overlay.classList.add('hidden');
+  };
   if (closeBtn)  closeBtn.addEventListener('click', _close);
   if (cancelBtn) cancelBtn.addEventListener('click', _close);
   overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
