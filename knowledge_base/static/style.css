@@ -7310,47 +7310,72 @@ body.home-ambient .home-hero { overflow: visible; }
   }
 }
 
-/* ── Mobile: compact course view ── */
+/* ── Mobile: compact course header (~65px banner) ── */
 @media (max-width: 768px) {
-  /* cv-header wraps cv-meta — both had 40px sides (80px total). Zero cv-header, set cv-meta only. */
+  /* Flatten double padding: cv-header wraps cv-meta, both had 40px each side */
   .cv-header { padding: 0; }
-  .cv-meta   { padding: 10px 16px 8px; }
 
-  /* Title: single line, truncated — !important overrides any cascade conflict */
-  .cv-title  {
-    font-size: 1.1rem !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 4px;
+  /* Compact meta: title + badges in ~65px total */
+  .cv-meta {
+    padding: 10px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
 
-  /* Description takes 3+ lines on mobile — hide it, not critical for navigation */
-  .cv-desc   { display: none; }
+  /* Title: one line, hard truncate */
+  .cv-title {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    line-height: 1.3;
+  }
 
-  /* Badges: tighter */
-  .cv-badges { gap: 6px; margin-bottom: 0; }
-  .cv-badge  { font-size: 0.62rem; padding: 2px 8px; }
+  /* Description: hidden — not needed for course navigation */
+  .cv-desc { display: none !important; }
 
-  /* Cover image: shorter on mobile */
-  .cv-cover  { height: 100px; }
+  /* Badges: all on one row, small */
+  .cv-badges {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin: 0;
+  }
+  .cv-badge { font-size: 0.6rem !important; padding: 1px 7px !important; }
 
-  /* Progress bar + tabs + body: 16px sides instead of 40px */
+  /* Cover image: slim on mobile */
+  .cv-cover  { height: 80px; }
+
+  /* Progress bar */
   .cv-progress-bar-wrap { padding: 6px 16px; }
-  .cv-tabs   { padding: 0 8px; position: sticky; top: 0; z-index: 5; background: var(--bg-surface); }
-  .cv-tab    { padding: 8px 12px; font-size: 0.75rem; }
-  .cv-body   { padding: 12px 16px; }
+
+  /* Tabs: sticky so they don't scroll away */
+  .cv-tabs {
+    padding: 0 8px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-surface);
+  }
+  .cv-tab { padding: 7px 10px; font-size: 0.74rem; }
+
+  /* Body: full width */
+  .cv-body { padding: 12px 16px; }
 
   /* Stats grid: 2 cols on mobile */
   .cv-stats-grid { grid-template-columns: repeat(2, 1fr); }
 
-  /* Roadmap: hide reorder arrows on mobile (editing via ⋯ menu) */
+  /* Roadmap: hide reorder arrows (use ⋯ menu on mobile) */
   .cv-lesson-up,
-  .cv-lesson-down { display: none; }
+  .cv-lesson-down { display: none !important; }
 
-  /* Lesson actions: always visible on mobile (no hover state) */
+  /* Lesson actions always visible on touch (no hover) */
   .cv-lesson-actions { opacity: 1; }
 
-  /* Scratchpad FAB: move above browser chrome */
+  /* Scratchpad FAB above browser chrome */
   .scratchpad-trigger { bottom: 88px; }
 }

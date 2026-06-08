@@ -365,9 +365,8 @@ def _file_hash(path):
 _STATIC_DIR = _os.path.join(_os.path.dirname(__file__), 'static')
 
 def _build_id():
-    css = _file_hash(_os.path.join(_STATIC_DIR, 'kanban.css'))
-    js  = _file_hash(_os.path.join(_STATIC_DIR, 'kanban.js'))
-    return f"{css}-{js}"
+    h = lambda f: _file_hash(_os.path.join(_STATIC_DIR, f))
+    return f"{h('style.css')}-{h('app.js')}-{h('kanban.css')}-{h('kanban.js')}"
 
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
