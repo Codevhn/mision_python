@@ -4079,8 +4079,22 @@ function _wireCtxBtn(ctxId, sourceId) {
 function setSidebarVisible(visible) {
   const s = document.getElementById('sidebar');
   if (!s) return;
-  s.style.display = visible ? '' : 'none';
-  document.body.classList.toggle('sidebar-open', visible);
+  if (isMobile()) {
+    // Mobile: sidebar must stay in DOM always — visibility via transform only.
+    // Clear any leftover inline display:none (e.g. set before a resize from desktop).
+    s.style.display = '';
+    if (!visible) {
+      // Close the drawer if it happens to be open
+      s.classList.remove('mobile-open');
+      const ov = document.getElementById('sidebarOverlay');
+      if (ov) ov.classList.remove('active');
+    }
+    // sidebar-open body class not needed on mobile (layout padding is 0 !important)
+    document.body.classList.remove('sidebar-open');
+  } else {
+    s.style.display = visible ? '' : 'none';
+    document.body.classList.toggle('sidebar-open', visible);
+  }
 }
 
 (function() {
