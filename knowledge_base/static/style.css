@@ -7309,3 +7309,35 @@ body.home-ambient .home-hero { overflow: visible; }
     background: #e6e6f4;
   }
 }
+
+/* ── Mobile: compact course view ── */
+@media (max-width: 768px) {
+  /* cv-header wraps cv-meta — both had 40px sides (80px total). Zero cv-header, set cv-meta only. */
+  .cv-header { padding: 0; }
+  .cv-meta   { padding: 14px 16px 10px; }
+
+  .cv-title  { font-size: 1.3rem; }
+  .cv-desc   { font-size: 0.8rem; margin-bottom: 8px; }
+
+  /* Cover image: shorter on mobile */
+  .cv-cover  { height: 120px; }
+
+  /* Progress bar + tabs + body: 16px sides instead of 40px */
+  .cv-progress-bar-wrap { padding: 8px 16px; }
+  .cv-tabs   { padding: 0 8px; }
+  .cv-tab    { padding: 8px 12px; font-size: 0.75rem; }
+  .cv-body   { padding: 14px 16px; }
+
+  /* Stats grid: 2 cols on mobile */
+  .cv-stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Roadmap: hide reorder arrows on mobile (editing via ⋯ menu) */
+  .cv-lesson-up,
+  .cv-lesson-down { display: none; }
+
+  /* Lesson actions: always visible on mobile (no hover state) */
+  .cv-lesson-actions { opacity: 1; }
+
+  /* Scratchpad FAB: move above browser chrome */
+  .scratchpad-trigger { bottom: 88px; }
+}
