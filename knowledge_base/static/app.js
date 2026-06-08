@@ -4710,6 +4710,7 @@ async function loadCourseView(courseSlug, courseEntity) {
   if (welcome) welcome.style.display = 'none';
   if (entryView) entryView.classList.add('hidden');
   if (entryCover) entryCover.classList.add('hidden');
+  if ($('entryAddCover')) $('entryAddCover').classList.add('hidden');
   if ($('ctxBar')) $('ctxBar').classList.add('hidden');
   cv.classList.remove('hidden');
 
@@ -5423,12 +5424,27 @@ const _SECTION_TYPE_PLURAL = {
   seccion: 'Secciones', capitulo: 'Capítulos',
 };
 
+const _SECTION_TYPE_LABEL_PREFIXES = [
+  ['fase', 'fase'], ['semana', 'semana'], ['unidad', 'unidad'],
+  ['nivel', 'nivel'], ['bloque', 'bloque'], ['sección', 'seccion'],
+  ['seccion', 'seccion'], ['capítulo', 'capitulo'], ['capitulo', 'capitulo'],
+  ['módulo', 'modulo'], ['modulo', 'modulo'],
+];
+
+function _inferTypeFromLabel(label) {
+  const l = (label || '').toLowerCase();
+  for (const [prefix, type] of _SECTION_TYPE_LABEL_PREFIXES) {
+    if (l.startsWith(prefix)) return type;
+  }
+  return null;
+}
+
 function _getDominantSectionTypeLabel(courseSlug) {
   const mods = Object.values(_coursesTreeData[courseSlug]?.modules || {});
   if (!mods.length) return 'Módulos';
   const counts = {};
   for (const m of mods) {
-    const t = m.module_type || 'modulo';
+    const t = m.module_type || _inferTypeFromLabel(m.label) || 'modulo';
     counts[t] = (counts[t] || 0) + 1;
   }
   const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
