@@ -6911,7 +6911,9 @@ body.home-ambient .home-hero {
   background-image: none;
   background-color: transparent;
 }
-body.home-ambient .home-hero::after { opacity: 0; }
+body.home-ambient .home-hero::after  { opacity: 0; }
+body.home-ambient .home-hero::before { opacity: 0; }
+body.home-ambient .home-hero { overflow: visible; }
 
 /* prefers-reduced-motion — canvas hidden; fall back to static hero asset  */
 @media (prefers-reduced-motion: reduce) {
