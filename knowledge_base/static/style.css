@@ -7392,3 +7392,47 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Scratchpad FAB above browser chrome */
   .scratchpad-trigger { bottom: 88px; }
 }
+
+/* ── Mobile: block editor — reclaim 58px wasted left padding ── */
+@media (max-width: 768px) {
+  /* Block controls are hover-only on desktop; useless on touch. Hide them. */
+  .eb-controls { display: none !important; }
+
+  /* Remove the left padding reserved for controls */
+  .eb { padding: 2px 6px !important; }
+
+  /* Scale down heading blocks */
+  .eb--h1 .eb-content { font-size: 1.25rem !important; }
+  .eb--h2 .eb-content { font-size: 1.05rem !important; }
+  .eb--h3 .eb-content { font-size: 0.95rem !important; }
+
+  /* Code blocks inside editor: horizontal scroll */
+  .eb--code pre,
+  .eb-pre { overflow-x: auto; max-width: 100%; }
+
+  /* Block editor wrap: tighten padding */
+  #blockEditorWrap { padding: 8px 4px; }
+}
+
+/* ── Mobile: kanban workspace layout — stack vertically ── */
+@media (max-width: 768px) {
+  /* Stack sidebar above boards instead of side-by-side */
+  .kb-ws-layout { flex-direction: column; }
+
+  /* Sidebar: full width, compact horizontal list */
+  .kb-ws-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  /* Main boards area: full width, compact padding */
+  .kb-ws-main { padding: 16px; }
+
+  /* Board grid: 2 cols on mobile */
+  .kb-boards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
