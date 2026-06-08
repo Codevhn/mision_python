@@ -5591,6 +5591,8 @@ function openNewLessonModal(courseSlug, prefillModule) {
 
   if ($('lessonTitleField')) $('lessonTitleField').value = '';
   if ($('lessonContentField')) $('lessonContentField').value = '';
+  const titleWarn = $('lessonTitleWarn');
+  if (titleWarn) { titleWarn.textContent = ''; titleWarn.classList.add('hidden'); }
   overlay.classList.remove('hidden');
   // Title always gets initial focus — regardless of context
   setTimeout(() => $('lessonTitleField')?.focus(), 60);
