@@ -1090,6 +1090,31 @@ function _fetchWeather() {
   }, () => { _weatherFetched = true; });
 }
 
+// ── Home helpers ─────────────────────────────────────────────────────────
+function _relTimeAgo(ts) {
+  if (!ts) return '';
+  try {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `hace ${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `hace ${hrs}h`;
+    return `hace ${Math.floor(hrs / 24)}d`;
+  } catch { return ''; }
+}
+function _unslugify(s) {
+  return (s || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function _findEntryModule(courseSlug, entryId) {
+  const tree = _coursesTreeData?.[courseSlug];
+  if (!tree) return null;
+  for (const mod of Object.values(tree.modules || {})) {
+    if ((mod.entries || []).some(e => e.id === entryId)) return mod.label;
+  }
+  return null;
+}
+
 function renderHome() {
   const hour     = new Date().getHours();
   const name     = _getUserName();
@@ -1101,7 +1126,7 @@ function renderHome() {
 
   const totalEntries = _index.length;
   const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
-  const pinnedCount  = pinned.length;
+  const coursesCount = new Set(_index.filter(e => e.type === 'course').map(e => e.course).filter(Boolean)).size;
   const starredCount = starred.length;
 
   const chipHtml = _weatherData
@@ -1115,24 +1140,48 @@ function renderHome() {
           ? `background-image:${r.cover};background-size:cover;background-position:center`
           : `background:${r.cover}`)
       : '';
+    const entry    = _index.find(e => e.id === r.id);
+    const isCourse = entry?.type === 'course';
+    const typeLabel = isCourse ? '🎓 Curso' : '📄 Nota';
+    const timeAgo  = _relTimeAgo(r.ts);
     return `<div class="home-card" data-id="${r.id}">
       <div class="home-card-cover" style="${coverStyle}"></div>
       <div class="home-card-body">
         <div class="home-card-icon">${renderIconMarkup(r.icon || ENTRY_ICON_DEFAULTS.knowledge, "home-card-icon-glyph")}</div>
         <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
-        <div class="home-card-meta">${escapeHtml(r.category || "")}${r.topic ? " / " + escapeHtml(r.topic) : ""}</div>
+        <div class="home-card-meta">
+          <span class="hcm-type${isCourse ? ' hcm-type--course' : ''}">${typeLabel}</span>
+          ${timeAgo ? `<span class="hcm-time">${timeAgo}</span>` : ''}
+        </div>
       </div>
     </div>`;
   }
 
-  function studyCardHtml(r) {
-    return `<div class="home-card home-card--study" data-id="${r.id}">
-      <div class="home-card-body">
-        <div class="home-card-study-label">📖 Continuar</div>
-        <div class="home-card-title">${escapeHtml(r.title || "Sin título")}</div>
-        ${r.courseSlug ? `<div class="home-card-meta">${escapeHtml(r.courseSlug)}</div>` : ''}
-      </div>
-    </div>`;
+  function studyFeaturedHtml(r) {
+    const courseLabel = _coursesTreeData?.[r.courseSlug]?.label || _unslugify(r.courseSlug);
+    const moduleLabel = _findEntryModule(r.courseSlug, r.id);
+    const timeAgo     = _relTimeAgo(r.ts);
+    return `
+      <div class="home-study-featured" data-id="${r.id}">
+        <div class="hsf-header">
+          <span class="hsf-course">🎓 ${escapeHtml(courseLabel)}</span>
+          ${timeAgo ? `<span class="hsf-time">${timeAgo}</span>` : ''}
+        </div>
+        ${moduleLabel ? `<div class="hsf-module">${escapeHtml(moduleLabel)}</div>` : ''}
+        <div class="hsf-title">${escapeHtml(r.title || 'Sin título')}</div>
+        <span class="hsf-cta">Continuar →</span>
+      </div>`;
+  }
+
+  function studyCompactHtml(r) {
+    const courseLabel = _coursesTreeData?.[r.courseSlug]?.label || _unslugify(r.courseSlug);
+    const timeAgo     = _relTimeAgo(r.ts);
+    return `
+      <div class="home-study-compact" data-id="${r.id}">
+        ${courseLabel ? `<div class="hsc-course">${escapeHtml(courseLabel)}</div>` : ''}
+        <div class="hsc-title">${escapeHtml(r.title || 'Sin título')}</div>
+        ${timeAgo ? `<span class="hsc-time">${timeAgo}</span>` : ''}
+      </div>`;
   }
 
   const welcome = $("welcome");
@@ -1149,16 +1198,20 @@ function renderHome() {
       </div>
 
       <div class="home-stats-row">
-        <div class="home-stat"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div>
-        <div class="home-stat"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div>
-        <div class="home-stat"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div>
-        <div class="home-stat"><span class="home-stat-num">${pinnedCount}</span><span class="home-stat-label">fijadas</span></div>
+        <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div>
+        <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div>
+        <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div>
+        <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div>
       </div>
 
       ${studying.length ? `
-      <section class="home-section">
-        <div class="home-section-label">▶ Continuar estudiando</div>
-        <div class="home-recent-grid">${studying.slice(0,3).map(studyCardHtml).join("")}</div>
+      <section class="home-section home-section--studying">
+        <div class="home-section-header">
+          <div class="home-section-label">▶ Continuar estudiando</div>
+          <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
+        </div>
+        ${studyFeaturedHtml(studying[0])}
+        ${studying.length > 1 ? `<div class="home-study-grid">${studying.slice(1, 4).map(studyCompactHtml).join('')}</div>` : ''}
       </section>` : ''}
 
       ${pinned.length ? `
@@ -1176,7 +1229,7 @@ function renderHome() {
       ${recent.length ? `
       <section class="home-section">
         <div class="home-section-label">⟳ Visitados recientemente</div>
-        <div class="home-recent-grid">${recent.map(cardHtml).join("")}</div>
+        <div class="home-recent-grid">${recent.slice(0, 6).map(cardHtml).join("")}</div>
       </section>` : `
       <div class="home-empty">
         <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
@@ -1194,11 +1247,34 @@ function renderHome() {
   welcome.querySelectorAll(".home-card").forEach(card => {
     card.addEventListener("click", () => loadEntry(card.dataset.id));
   });
+
+  // Stats → navigate to space on click
+  welcome.querySelectorAll(".home-stat[data-space]").forEach(stat => {
+    stat.addEventListener("click", () => {
+      const space = stat.dataset.space;
+      if (space && window.switchSpace) window.switchSpace(space);
+    });
+  });
+
+  // Study cards → restore course context + open lesson
+  welcome.querySelectorAll(".home-study-featured, .home-study-compact").forEach(card => {
+    card.addEventListener("click", () => {
+      const entryId = card.dataset.id;
+      const item = _getStudying().find(s => s.id === entryId);
+      if (item?.courseSlug) _activeCourseSlug = item.courseSlug;
+      if (window.switchSpace) window.switchSpace('courses');
+      openCourseLesson(entryId);
+    });
+  });
+
   const newBtn2 = $("welcomeNewBtn2");
   if (newBtn2) newBtn2.addEventListener("click", openNewModal);
 
   const radarBtn = $("homeRadarBtn");
   if (radarBtn) radarBtn.addEventListener("click", () => { if (window.switchSpace) window.switchSpace('radar'); });
+
+  const coursesLink = $("homeCoursesLink");
+  if (coursesLink) coursesLink.addEventListener("click", () => window.switchSpace?.('courses'));
 
   // Editable user name
   const unameEl = $("homeUsername");
