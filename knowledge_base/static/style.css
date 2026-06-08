@@ -6482,12 +6482,12 @@ body[data-accent="slate"] {
 .cv-status-btn:hover { background: var(--bg-hover); }
 .cv-lesson-actions {
   margin-left: auto; display: flex; align-items: center; gap: 4px;
-  opacity: 0; transition: opacity .15s;
+  opacity: 0.45; transition: opacity .15s;
 }
 .cv-roadmap-entry:hover .cv-lesson-actions { opacity: 1; }
 .cv-lesson-up, .cv-lesson-down, .cv-lesson-menu-btn {
-  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px;
-  color: var(--text-muted); cursor: pointer; font-size: 0.82rem;
+  background: var(--bg-hover); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); cursor: pointer; font-size: 0.82rem;
   padding: 3px 8px; line-height: 1.5; min-width: 28px; text-align: center;
 }
 .cv-lesson-up:hover, .cv-lesson-down:hover {
