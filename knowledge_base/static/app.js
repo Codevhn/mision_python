@@ -1792,7 +1792,8 @@ function applyCover(coverValue) {
   }
 }
 
-function openCoverPicker() {
+function openCoverPicker(saveFn) {
+  const _save = saveFn || saveCover;
   document.querySelectorAll(".cover-picker-overlay").forEach(e => e.remove());
   const overlay = document.createElement("div");
   overlay.className = "cover-picker-overlay";
@@ -1851,7 +1852,7 @@ function openCoverPicker() {
     swatch.className = "cover-preset-swatch";
     swatch.style.background = preset;
     swatch.addEventListener("click", async () => {
-      await saveCover(preset);
+      await _save(preset);
       overlay.remove();
     });
     grid.appendChild(swatch);
@@ -1869,7 +1870,7 @@ function openCoverPicker() {
     lbl.textContent = photo.label;
     swatch.appendChild(lbl);
     swatch.addEventListener("click", async () => {
-      await saveCover(`url(${photo.url})`);
+      await _save(`url(${photo.url})`);
       overlay.remove();
     });
     photoGrid.appendChild(swatch);
@@ -1887,7 +1888,7 @@ function openCoverPicker() {
   overlay.querySelector("#coverUrlApply").addEventListener("click", async () => {
     const val = urlInput.value.trim();
     if (!val) return;
-    await saveCover(`url(${val})`);
+    await _save(`url(${val})`);
     overlay.remove();
   });
 
@@ -1926,7 +1927,7 @@ function openCoverPicker() {
     });
     if (!res.ok) { showToast("Error al subir imagen", "error"); uploadApply.disabled = false; uploadApply.textContent = "Aplicar imagen"; return; }
     const { url } = await res.json();
-    await saveCover(`url(${url})`);
+    await _save(`url(${url})`);
     overlay.remove();
   });
 
@@ -4991,13 +4992,17 @@ async function loadCourseView(courseSlug, courseEntity) {
   const addCoverBtn  = $('cvAddCoverBtn');
   const rmCoverBtn   = $('cvRemoveCoverBtn');
 
-  function _applyCvCover(url) {
-    if (url) {
-      cover.style.backgroundImage = `url(${url})`;
+  function _applyCvCover(coverValue) {
+    if (coverValue) {
+      if (coverValue.startsWith('url(')) {
+        cover.setAttribute('style', `background-image:${coverValue};background-size:cover;background-position:center`);
+      } else {
+        cover.setAttribute('style', `background:${coverValue}`);
+      }
       cover.classList.remove('hidden');
       if (addCoverBtn) addCoverBtn.style.display = 'none';
     } else {
-      cover.style.backgroundImage = '';
+      cover.removeAttribute('style');
       cover.classList.add('hidden');
       if (addCoverBtn) addCoverBtn.style.display = '';
     }
@@ -5005,18 +5010,18 @@ async function loadCourseView(courseSlug, courseEntity) {
   _applyCvCover(courseEntity.cover || '');
 
   if (addCoverBtn) {
-    addCoverBtn.onclick = async () => {
-      const url = prompt('URL de la imagen de portada (deja vacío para quitar):', courseEntity.cover || '');
-      if (url === null) return;
-      try {
-        await fetch(`/api/courses/${courseSlug}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cover: url.trim() }),
-        });
-        courseEntity.cover = url.trim();
-        _applyCvCover(url.trim());
-      } catch { /* silent */ }
+    addCoverBtn.onclick = () => {
+      openCoverPicker(async (coverValue) => {
+        try {
+          await fetch(`/api/courses/${courseSlug}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cover: coverValue }),
+          });
+          courseEntity.cover = coverValue;
+          _applyCvCover(coverValue);
+        } catch { showToast('Error guardando portada', 'error'); }
+      });
     };
   }
   if (rmCoverBtn) {
