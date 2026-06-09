@@ -6363,24 +6363,36 @@ body[data-accent="slate"] {
 }
 .course-view.hidden { display: none; }
 
-.cv-header {
-  padding: 14px 32px 10px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-}
-.cv-cover {
-  width: 100%; height: 180px;
-  background-size: cover; background-position: center;
+/* ── Course hero: cover + title fused ── */
+.cv-hero {
+  width: 100%;
+  height: 200px;
   flex-shrink: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--bg-elevated);
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
 }
-.cv-cover.hidden { display: none; }
-.cv-cover-btns {
-  position: absolute; bottom: 10px; right: 12px;
+.cv-hero-scrim {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: transparent;
+  transition: background 0.25s;
+}
+.cv-hero.has-cover .cv-hero-scrim {
+  background: linear-gradient(to bottom, transparent 25%, rgba(0,0,0,0.62) 100%);
+}
+.cv-hero-btns {
+  position: absolute; top: 10px; right: 12px;
   display: flex; gap: 8px;
   opacity: 0; transition: opacity 0.15s;
 }
-.cv-cover:hover .cv-cover-btns { opacity: 1; }
+.cv-hero:hover .cv-hero-btns { opacity: 1; }
 .cv-change-cover-btn,
 .cv-remove-cover-btn {
   background: rgba(0,0,0,0.5); color: #fff; border: none;
@@ -6391,8 +6403,22 @@ body[data-accent="slate"] {
 .cv-remove-cover-btn:hover { background: rgba(0,0,0,0.75); }
 .cv-meta {
   position: relative; z-index: 1;
-  padding: 0;
+  padding: 10px 32px 14px;
 }
+/* Title/desc/badges go white when a cover is set */
+.cv-hero.has-cover .cv-title { color: #fff; }
+.cv-hero.has-cover .cv-desc  { color: rgba(255,255,255,0.75); }
+.cv-hero.has-cover .cv-badge {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.45);
+  color: #fff;
+}
+.cv-hero.has-cover .cv-badge--muted {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.75);
+}
+.cv-hero.has-cover .cv-add-cover-btn { display: none; }
 .cv-meta-row {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-top: 6px;
@@ -7415,17 +7441,17 @@ body.home-ambient .home-hero { overflow: visible; }
   }
 }
 
-/* ── Mobile: compact course header (~65px banner) ── */
+/* ── Mobile: compact course hero ── */
 @media (max-width: 768px) {
-  /* Flatten double padding: cv-header wraps cv-meta, both had 40px each side */
-  .cv-header { padding: 0; }
+  /* Merged hero: cover + title, compact height */
+  .cv-hero { height: 130px; }
 
-  /* Compact meta: title + badges in ~65px total */
+  /* Compact meta: tight padding */
   .cv-meta {
-    padding: 10px 16px 8px;
+    padding: 8px 16px 10px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
   }
 
   /* Title: one line, hard truncate */
@@ -7439,7 +7465,7 @@ body.home-ambient .home-hero { overflow: visible; }
     line-height: 1.3;
   }
 
-  /* Description: hidden — not needed for course navigation */
+  /* Description: hidden on mobile */
   .cv-desc { display: none !important; }
 
   /* Badges: all on one row, small */
@@ -7451,9 +7477,6 @@ body.home-ambient .home-hero { overflow: visible; }
     margin: 0;
   }
   .cv-badge { font-size: 0.6rem !important; padding: 1px 7px !important; }
-
-  /* Cover image: slim on mobile */
-  .cv-cover  { height: 80px; }
 
   /* Progress bar */
   .cv-progress-bar-wrap { padding: 6px 16px; }

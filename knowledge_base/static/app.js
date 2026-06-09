@@ -4987,8 +4987,8 @@ async function loadCourseView(courseSlug, courseEntity) {
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
 
-  // Cover banner + add/change/remove cover buttons
-  const cover          = $('cvCover');
+  // Hero block (cover + title fused) — add/change/remove cover buttons
+  const hero           = $('cvHero');
   const addCoverBtn    = $('cvAddCoverBtn');
   const changeCoverBtn = $('cvChangeCoverBtn');
   const rmCoverBtn     = $('cvRemoveCoverBtn');
@@ -4996,16 +4996,18 @@ async function loadCourseView(courseSlug, courseEntity) {
   function _applyCvCover(coverValue) {
     if (coverValue) {
       if (coverValue.startsWith('url(')) {
-        cover.setAttribute('style', `background-image:${coverValue};background-size:cover;background-position:center`);
+        hero.style.backgroundImage = coverValue;
+        hero.style.background = '';
       } else {
-        cover.setAttribute('style', `background:${coverValue}`);
+        hero.style.background = coverValue;
+        hero.style.backgroundImage = '';
       }
-      cover.classList.remove('hidden');
-      if (addCoverBtn) addCoverBtn.style.display = 'none';
+      hero.style.backgroundSize     = 'cover';
+      hero.style.backgroundPosition = 'center';
+      hero.classList.add('has-cover');
     } else {
-      cover.removeAttribute('style');
-      cover.classList.add('hidden');
-      if (addCoverBtn) addCoverBtn.style.display = '';
+      hero.style.cssText = '';
+      hero.classList.remove('has-cover');
     }
   }
   _applyCvCover(courseEntity.cover || '');
