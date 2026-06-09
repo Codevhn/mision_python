@@ -6426,8 +6426,8 @@ body[data-accent="slate"] {
   margin-top: 6px;
 }
 .cv-title {
-  font-size: 1.35rem; font-weight: 700; color: var(--text);
-  letter-spacing: -0.02em; margin-bottom: 3px;
+  font-size: 1.45rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em; margin: 0 0 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.35);
 }
 .cv-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0; }
 .cv-badges { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -6475,7 +6475,7 @@ body[data-accent="slate"] {
 .cv-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
 
 .cv-body { flex: 1; overflow-y: auto; padding: 20px 32px; background: var(--bg-elevated); }
-.cv-empty { color: var(--text-faint); font-size: 0.82rem; padding: 20px 0; }
+.cv-empty { color: var(--text-muted); font-size: 0.82rem; padding: 20px 0; }
 
 /* Roadmap tab */
 .cv-roadmap-section { margin-bottom: 24px; }
@@ -6550,7 +6550,7 @@ body[data-accent="slate"] {
 
 /* Roadmap — empty state CTA */
 .cv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 0; }
-.cv-empty-state .cv-empty { color: var(--text-faint); margin: 0; }
+.cv-empty-state .cv-empty { color: var(--text-muted); margin: 0; }
 
 /* ── Course sidebar ⚙ gear menu ─────────────────────────────────── */
 .course-detail-header {
