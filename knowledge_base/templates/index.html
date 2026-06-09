@@ -297,11 +297,16 @@
           <div class="cv-meta">
             <h1 class="cv-title" id="cvTitle"></h1>
             <p class="cv-desc" id="cvDesc"></p>
-            <div class="cv-badges" id="cvBadges"></div>
+            <div class="cv-meta-row">
+              <div class="cv-badges" id="cvBadges"></div>
+              <button class="cv-add-cover-btn" id="cvAddCoverBtn" title="Agregar portada al curso">＋ portada</button>
+            </div>
           </div>
         </div>
         <!-- Course cover banner: shown below meta when cover is set -->
-        <div class="cv-cover hidden" id="cvCover"></div>
+        <div class="cv-cover hidden" id="cvCover">
+          <button class="cv-remove-cover-btn" id="cvRemoveCoverBtn" title="Quitar portada">✕</button>
+        </div>
         <div class="cv-progress-bar-wrap" id="cvProgressWrap">
           <div class="cv-progress-bar" id="cvProgressBar"></div>
           <span class="cv-progress-label" id="cvProgressLabel"></span>

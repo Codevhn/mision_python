@@ -4981,16 +4981,52 @@ async function loadCourseView(courseSlug, courseEntity) {
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
 
-  // Cover banner — shown below meta when a cover image is set
-  const cover = $('cvCover');
-  if (cover) {
-    if (courseEntity.cover) {
-      cover.style.backgroundImage = `url(${courseEntity.cover})`;
+  // Cover banner + add/remove cover button
+  const cover        = $('cvCover');
+  const addCoverBtn  = $('cvAddCoverBtn');
+  const rmCoverBtn   = $('cvRemoveCoverBtn');
+
+  function _applyCvCover(url) {
+    if (url) {
+      cover.style.backgroundImage = `url(${url})`;
       cover.classList.remove('hidden');
+      if (addCoverBtn) addCoverBtn.style.display = 'none';
     } else {
       cover.style.backgroundImage = '';
       cover.classList.add('hidden');
+      if (addCoverBtn) addCoverBtn.style.display = '';
     }
+  }
+  _applyCvCover(courseEntity.cover || '');
+
+  if (addCoverBtn) {
+    addCoverBtn.onclick = async () => {
+      const url = prompt('URL de la imagen de portada (deja vacío para quitar):', courseEntity.cover || '');
+      if (url === null) return;
+      try {
+        await fetch(`/api/courses/${courseSlug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cover: url.trim() }),
+        });
+        courseEntity.cover = url.trim();
+        _applyCvCover(url.trim());
+      } catch { /* silent */ }
+    };
+  }
+  if (rmCoverBtn) {
+    rmCoverBtn.onclick = async (e) => {
+      e.stopPropagation();
+      try {
+        await fetch(`/api/courses/${courseSlug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cover: '' }),
+        });
+        courseEntity.cover = '';
+        _applyCvCover('');
+      } catch { /* silent */ }
+    };
   }
 
   // Badges
@@ -5080,12 +5116,45 @@ function renderCourseTab(tab, courseSlug, stats) {
           <button class="cv-status-btn" title="Cambiar estado">${_statusIcon(e.status)}</button>
           <span class="cv-roadmap-entry-title">${escapeHtml(e.title)}</span>
           <div class="cv-lesson-actions">
+            <button class="cv-outline-btn" title="Ver subtemas">¶</button>
             <button class="cv-lesson-up" title="Subir" ${ei === 0 ? 'disabled' : ''}>↑</button>
             <button class="cv-lesson-down" title="Bajar" ${ei === (mod.entries.length - 1) ? 'disabled' : ''}>↓</button>
             <button class="cv-lesson-menu-btn" title="Más acciones">…</button>
           </div>`;
         // Open entry on title click
         row.querySelector('.cv-roadmap-entry-title').addEventListener('click', () => openCourseLesson(e.id));
+        // Toggle inline lesson outline (subtopics preview)
+        row.querySelector('.cv-outline-btn').addEventListener('click', async ev => {
+          ev.stopPropagation();
+          const btn = ev.currentTarget;
+          const existing = row.nextElementSibling;
+          if (existing?.classList.contains('cv-lesson-outline')) {
+            existing.remove(); btn.classList.remove('active'); return;
+          }
+          btn.classList.add('active');
+          const outline = document.createElement('div');
+          outline.className = 'cv-lesson-outline';
+          outline.innerHTML = '<span class="cv-outline-loading">Cargando…</span>';
+          row.insertAdjacentElement('afterend', outline);
+          try {
+            const data = await fetch(`/api/entry/${e.id}`).then(r => r.json());
+            const content = data.markdown || '';
+            const headings = content.split('\n')
+              .filter(l => /^#{1,4}\s/.test(l))
+              .map(l => { const m = l.match(/^(#{1,4})\s+(.+)/); return m ? { level: m[1].length, text: m[2].trim() } : null; })
+              .filter(Boolean);
+            if (!headings.length) {
+              outline.innerHTML = '<span class="cv-outline-empty">Sin subtemas registrados</span>';
+            } else {
+              outline.innerHTML = headings.map(h =>
+                `<div class="cv-outline-item cv-outline-h${h.level}">${escapeHtml(h.text)}</div>`
+              ).join('');
+              outline.querySelectorAll('.cv-outline-item').forEach((item, idx) => {
+                item.addEventListener('click', () => openCourseLesson(e.id));
+              });
+            }
+          } catch { outline.innerHTML = '<span class="cv-outline-empty">No disponible</span>'; }
+        });
         // Cycle status without opening entry
         row.querySelector('.cv-status-btn').addEventListener('click', async ev => {
           ev.stopPropagation();
