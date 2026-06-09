@@ -293,6 +293,13 @@
 
       <!-- COURSE VIEW -->
       <div class="course-view hidden" id="courseView">
+        <!-- Cover banner: at TOP, like entry cover -->
+        <div class="cv-cover hidden" id="cvCover">
+          <div class="cv-cover-btns">
+            <button class="cv-change-cover-btn" id="cvChangeCoverBtn">🖼 Cambiar portada</button>
+            <button class="cv-remove-cover-btn" id="cvRemoveCoverBtn">× Quitar</button>
+          </div>
+        </div>
         <div class="cv-header" id="cvHeader">
           <div class="cv-meta">
             <h1 class="cv-title" id="cvTitle"></h1>
@@ -302,10 +309,6 @@
               <button class="cv-add-cover-btn" id="cvAddCoverBtn" title="Agregar portada al curso">＋ portada</button>
             </div>
           </div>
-        </div>
-        <!-- Course cover banner: shown below meta when cover is set -->
-        <div class="cv-cover hidden" id="cvCover">
-          <button class="cv-remove-cover-btn" id="cvRemoveCoverBtn" title="Quitar portada">✕</button>
         </div>
         <div class="cv-progress-bar-wrap" id="cvProgressWrap">
           <div class="cv-progress-bar" id="cvProgressBar"></div>

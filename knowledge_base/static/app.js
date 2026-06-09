@@ -4987,10 +4987,11 @@ async function loadCourseView(courseSlug, courseEntity) {
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
 
-  // Cover banner + add/remove cover button
-  const cover        = $('cvCover');
-  const addCoverBtn  = $('cvAddCoverBtn');
-  const rmCoverBtn   = $('cvRemoveCoverBtn');
+  // Cover banner + add/change/remove cover buttons
+  const cover          = $('cvCover');
+  const addCoverBtn    = $('cvAddCoverBtn');
+  const changeCoverBtn = $('cvChangeCoverBtn');
+  const rmCoverBtn     = $('cvRemoveCoverBtn');
 
   function _applyCvCover(coverValue) {
     if (coverValue) {
@@ -5009,21 +5010,22 @@ async function loadCourseView(courseSlug, courseEntity) {
   }
   _applyCvCover(courseEntity.cover || '');
 
-  if (addCoverBtn) {
-    addCoverBtn.onclick = () => {
-      openCoverPicker(async (coverValue) => {
-        try {
-          await fetch(`/api/courses/${courseSlug}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cover: coverValue }),
-          });
-          courseEntity.cover = coverValue;
-          _applyCvCover(coverValue);
-        } catch { showToast('Error guardando portada', 'error'); }
-      });
-    };
+  function _openCourseCoverPicker() {
+    openCoverPicker(async (coverValue) => {
+      try {
+        await fetch(`/api/courses/${courseSlug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cover: coverValue }),
+        });
+        courseEntity.cover = coverValue;
+        _applyCvCover(coverValue);
+      } catch { showToast('Error guardando portada', 'error'); }
+    });
   }
+
+  if (addCoverBtn)    addCoverBtn.onclick    = _openCourseCoverPicker;
+  if (changeCoverBtn) changeCoverBtn.onclick = _openCourseCoverPicker;
   if (rmCoverBtn) {
     rmCoverBtn.onclick = async (e) => {
       e.stopPropagation();
