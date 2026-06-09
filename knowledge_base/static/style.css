@@ -57,8 +57,11 @@
   --border-light: rgba(255,255,255,0.05);
 
   --text:       #d8d8e8;
-  --text-muted: #6a6a8a;
-  --text-faint: #32324a;
+  --text-muted: #9292b4;
+  --text-faint: #5c5c7c;
+  --fg:         var(--text);
+  --fg-muted:   var(--text-muted);
+  --bg-overlay: #111124;
 
   /* ── Accent system — Taskade Indigo ── */
   --accent:         #6366f1;
@@ -123,8 +126,11 @@
   --border-light: rgba(0,0,0,0.08);
 
   --text:       #0d0d1c;
-  --text-muted: #3a3a60;
+  --text-muted: #4a4a72;
   --text-faint: #7878a0;
+  --fg:         var(--text);
+  --fg-muted:   var(--text-muted);
+  --bg-overlay: #eaf0f8;
 
   --accent:         #6366f1;
   --accent-hover:   #818cf8;
@@ -862,14 +868,14 @@ input, textarea, select { font-family: inherit; }
 .cover-tab {
   background: none;
   border: none;
-  color: var(--fg-muted);
+  color: var(--text-muted);
   font-size: 0.78rem;
   cursor: pointer;
   padding: 4px 10px;
   border-radius: 5px;
   transition: background 0.1s, color 0.1s;
 }
-.cover-tab:hover { background: var(--bg-hover); color: var(--fg); }
+.cover-tab:hover { background: var(--bg-hover); color: var(--text); }
 .cover-tab.active { background: var(--accent); color: #fff; }
 .cover-tab-panel.hidden { display: none; }
 .cover-url-wrap {
@@ -1537,7 +1543,7 @@ input, textarea, select { font-family: inherit; }
 .editor-tabs { display: flex; gap: 0; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
 .tab {
   background: transparent;
-  color: var(--text-faint);
+  color: var(--text-muted);
   border: none;
   border-bottom: 2px solid transparent;
   padding: 5px 14px;
@@ -1876,10 +1882,10 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   border-left: 2px solid transparent;
 }
 .toc-item:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--accent); }
-.toc-item.toc-h3 { padding-left: 20px; color: var(--text-faint); font-size: 0.68rem; }
-.toc-item.toc-h3:hover { color: var(--text-muted); }
-.toc-item.toc-h4 { padding-left: 32px; color: var(--text-faint); font-size: 0.65rem; }
-.toc-item.toc-h4:hover { color: var(--text-muted); }
+.toc-item.toc-h3 { padding-left: 20px; color: var(--text-muted); font-size: 0.68rem; }
+.toc-item.toc-h3:hover { color: var(--text); }
+.toc-item.toc-h4 { padding-left: 32px; color: var(--text-muted); font-size: 0.65rem; }
+.toc-item.toc-h4:hover { color: var(--text); }
 
 #tocBtn.active { color: var(--accent); border-color: var(--accent); }
 
@@ -2014,7 +2020,7 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   font-family: var(--font-ui);
 }
 .stats-loading {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 0.8rem;
 }
 .stats-grid {
@@ -2030,7 +2036,7 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
 }
 .stats-card-label {
   font-size: 0.64rem;
-  color: var(--text-faint);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   margin-bottom: 8px;
@@ -2078,7 +2084,7 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   overflow: hidden;
 }
 .chart-count {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 0.7rem;
   flex-shrink: 0;
   min-width: 24px;
@@ -2090,19 +2096,17 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
    ============================================================ */
 .context-menu {
   position: fixed;
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
   z-index: 500;
   min-width: 140px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--shadow-lg);
 }
 .context-menu-item {
   padding: 8px 14px;
   font-family: var(--font-ui);
   font-size: 0.74rem;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   transition: background 0.1s, color 0.1s;
   border-bottom: 1px solid var(--border-light);
@@ -2753,7 +2757,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb-block-menu {
   position: fixed;
   z-index: 9999;
-  background: var(--bg-elevated);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   min-width: 200px;
@@ -3031,11 +3035,9 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .slash-menu {
   position: fixed;
   z-index: 9999;
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
   width: 280px;
   max-height: 280px;
   overflow-y: auto;
@@ -3068,13 +3070,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .slash-text { display: flex; flex-direction: column; }
 .slash-label { font-size: 0.82rem; color: var(--text); font-family: var(--font-ui); }
 .slash-desc  { font-size: 0.68rem; color: var(--text-muted); }
-.slash-empty { padding: 12px; text-align: center; color: var(--text-faint); font-size: 0.8rem; }
+.slash-empty { padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.8rem; }
 
 /* ---- CONVERT MENU ---- */
 .eb-convert-menu {
   position: fixed;
   z-index: 9999;
-  background: var(--bg-surface);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   width: 180px;
@@ -5232,7 +5234,7 @@ body {
   background: rgba(28,28,46,0.80) !important;
 }
 .home-card-title { font-size: 0.83rem !important; font-weight: 600 !important; color: rgba(255,255,255,0.92) !important; }
-.home-card-meta  { font-size: 0.66rem !important; color: rgba(255,255,255,0.35) !important; opacity: 1 !important; margin-top: 6px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; }
+.home-card-meta  { font-size: 0.66rem !important; color: rgba(255,255,255,0.60) !important; opacity: 1 !important; margin-top: 6px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; }
 .home-card-cover { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
 .home-card-body  { padding: 14px 16px 16px !important; }
 
