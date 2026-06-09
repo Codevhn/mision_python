@@ -3769,40 +3769,40 @@ function buildBreadcrumb(meta) {
     ctxStatus.className = statusBtn.className.replace("btn-ghost", "ctx-btn ctx-btn--status");
     ctxStatus.onclick = () => statusBtn.click();
   }
+}
 
-  // ── ⋯ overflow menu ──────────────────────────────────────
+// ── ⋯ overflow menu — initialized ONCE at startup ────────────────────────────
+(function initCtxMoreMenu() {
   const ctxMore     = $("ctxMore");
   const ctxMoreMenu = $("ctxMoreMenu");
+  if (!ctxMore || !ctxMoreMenu) return;
 
   function _closeCtxMenu() {
-    ctxMoreMenu?.classList.add("hidden");
-    ctxMore?.classList.remove("active");
+    ctxMoreMenu.classList.add("hidden");
+    ctxMore.classList.remove("active");
   }
   window._closeCtxMenu = _closeCtxMenu;
 
-  if (ctxMore && ctxMoreMenu) {
-    ctxMore.addEventListener("click", e => {
-      e.stopPropagation();
-      const opening = ctxMoreMenu.classList.contains("hidden");
-      ctxMoreMenu.classList.toggle("hidden", !opening);
-      ctxMore.classList.toggle("active", opening);
-      if (opening && currentEntryId) {
-        // Sync dynamic labels with current entry state
-        const cmStar = $("cmStar");
-        const cmPin  = $("cmPin");
-        if (cmStar) cmStar.textContent = starredMap[currentEntryId] ? "Quitar de destacados" : "Destacar";
-        if (cmPin)  cmPin.textContent  = pinnedMap[currentEntryId]  ? "Desfijar de inicio"   : "Fijar en inicio";
-      }
-    });
-    document.addEventListener("click", e => {
-      if (!ctxMoreMenu.contains(e.target) && e.target !== ctxMore) _closeCtxMenu();
-    });
-    document.addEventListener("keydown", e => {
-      if (e.key === "Escape") _closeCtxMenu();
-    });
-  }
+  ctxMore.addEventListener("click", e => {
+    e.stopPropagation();
+    const opening = ctxMoreMenu.classList.contains("hidden");
+    ctxMoreMenu.classList.toggle("hidden", !opening);
+    ctxMore.classList.toggle("active", opening);
+    if (opening && currentEntryId) {
+      const cmStar = $("cmStar");
+      const cmPin  = $("cmPin");
+      if (cmStar) cmStar.textContent = starredMap[currentEntryId] ? "Quitar de destacados" : "Destacar";
+      if (cmPin)  cmPin.textContent  = pinnedMap[currentEntryId]  ? "Desfijar de inicio"   : "Fijar en inicio";
+    }
+  });
 
-  // Wire overflow menu items → existing hidden action buttons
+  document.addEventListener("click", e => {
+    if (!ctxMoreMenu.contains(e.target) && e.target !== ctxMore) _closeCtxMenu();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") _closeCtxMenu();
+  });
+
   $("cmEdit")?.addEventListener("click",      () => { $("editBtn")?.click();    _closeCtxMenu(); });
   $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click(); _closeCtxMenu(); });
   $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();     _closeCtxMenu(); });
@@ -3811,7 +3811,7 @@ function buildBreadcrumb(meta) {
   $("cmStar")?.addEventListener("click",      () => { $("starBtn")?.click();    _closeCtxMenu(); });
   $("cmPin")?.addEventListener("click",       () => { $("pinBtn")?.click();     _closeCtxMenu(); });
   $("cmDelete")?.addEventListener("click",    () => { $("deleteBtn")?.click();  _closeCtxMenu(); });
-}
+})();
 
 function _wireCtxBtn(ctxId, sourceId) {
   const ctxBtn = $(ctxId);
