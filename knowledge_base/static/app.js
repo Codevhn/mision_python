@@ -4996,17 +4996,14 @@ async function loadCourseView(courseSlug, courseEntity) {
   function _applyCvCover(coverValue) {
     if (coverValue) {
       if (coverValue.startsWith('url(')) {
-        hero.style.backgroundImage = coverValue;
-        hero.style.background = '';
+        hero.setAttribute('style',
+          `background-image:${coverValue};background-size:cover;background-position:center`);
       } else {
-        hero.style.background = coverValue;
-        hero.style.backgroundImage = '';
+        hero.setAttribute('style', `background:${coverValue}`);
       }
-      hero.style.backgroundSize     = 'cover';
-      hero.style.backgroundPosition = 'center';
       hero.classList.add('has-cover');
     } else {
-      hero.style.cssText = '';
+      hero.removeAttribute('style');
       hero.classList.remove('has-cover');
     }
   }
