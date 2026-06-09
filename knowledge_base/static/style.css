@@ -1589,10 +1589,10 @@ input, textarea, select { font-family: inherit; }
 /* ---- RESPONSIVE ---- */
 @media (max-width: 768px) {
   /* TOPBAR */
-  .topbar { padding: 0 8px; gap: 6px; }
+  .topbar { padding: 0 12px 0 8px; gap: 6px; }
   .topbar-left { min-width: unset; gap: 6px; }
   .topbar-center { display: flex; flex: 1; max-width: unset; }
-  .topbar-right { gap: 4px; }
+  .topbar-right { gap: 4px; padding-right: 4px; }
   #reindexBtn, #statsBtn { display: none; }
   #themeToggle { display: none; }
   #themeToggleSidebar { display: inline-flex; }
@@ -7524,4 +7524,29 @@ body.home-ambient .home-hero { overflow: visible; }
 @media (max-width: 768px) {
   html, body { overflow-x: hidden; max-width: 100vw; }
   .content-area { overflow-x: hidden; }
+}
+
+/* ── Mobile: ctx-bar + breadcrumb collapse ── */
+@media (max-width: 768px) {
+  /* Tighter ctx-bar padding so breadcrumb has room */
+  .ctx-bar { padding: 0 10px; gap: 8px; }
+
+  /* Current segment: no max-width cap, takes all available space */
+  .breadcrumb-seg { max-width: 110px; }
+  .breadcrumb-seg.breadcrumb-current { max-width: none; flex: 1; min-width: 0; }
+
+  /* Collapse indicator ··· */
+  .breadcrumb-collapse {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+    transition: color 0.12s, background 0.12s;
+  }
+  .breadcrumb-collapse:hover { color: var(--text); background: var(--bg-hover); }
 }
