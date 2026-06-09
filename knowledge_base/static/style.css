@@ -1741,7 +1741,7 @@ body.focus-mode #sidebar,
 body.focus-mode #entryHeader,
 body.focus-mode .toc-panel { display: none !important; }
 
-body.focus-mode .layout { margin-top: 0; height: 100vh; }
+body.focus-mode .layout { margin-top: 0; height: 100dvh; }
 body.focus-mode .content-area { display: flex; justify-content: center; padding: 60px 20px 80px; }
 body.focus-mode #entryView { max-width: 800px; width: 100%; }
 body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
@@ -7543,4 +7543,50 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Modals: use dynamic viewport height to avoid mobile browser chrome overlap */
   .modal { max-height: 90dvh !important; }
   .kb-card-modal .kb-modal-body { max-height: calc(90dvh - 100px) !important; }
+}
+
+/* ── Fase 4: dynamic viewport + safe-area for iPhone notch / home indicator ── */
+
+/* Body: use dvh so browser chrome doesn't clip the layout */
+body { height: 100dvh; }
+.layout { height: calc(100dvh - var(--topbar-h)); }
+.sidebar { height: calc(100dvh - var(--topbar-h)); }
+body.focus-mode .layout { height: 100dvh; }
+
+/* Peek panel (fixed right drawer): full dynamic height */
+.eb-db-peek { height: 100dvh; }
+
+/* Topbar: pad for notch/status bar on top (iPhone landscape left) */
+.topbar {
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-top: env(safe-area-inset-top);
+  height: calc(var(--topbar-h) + env(safe-area-inset-top));
+}
+
+/* Layout: offset so content starts below the padded topbar */
+.layout { margin-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+.sidebar { top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+.ctx-bar { top: 0; }
+
+/* Activity bar: pad bottom for home indicator */
+.activity-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* Sidebar drawer on mobile: respects left/right notch in landscape */
+@media (max-width: 768px) {
+  .sidebar {
+    top: calc(var(--topbar-h) + env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+  }
+  .topbar {
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+  /* Bottom-pinned elements: stay above home indicator */
+  .eb-float-toolbar, .eb-add-btn { bottom: max(12px, env(safe-area-inset-bottom)); }
 }
