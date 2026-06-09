@@ -3725,16 +3725,27 @@ function buildBreadcrumb(meta) {
   const topicLabel = escapeHtml(isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : (meta.topic_label || meta.topic)) || "";
   const entryTitle = escapeHtml(meta.title || "Sin título");
 
-  const segs = [
-    `<span class="breadcrumb-seg breadcrumb-space" data-space="${spaceSpace}">${spaceLabel}</span>`,
-    catLabel   ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category || meta.course || "")}">${catLabel}</span>` : "",
-    topicLabel ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg">${topicLabel}</span>` : "",
-    `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg breadcrumb-current">${entryTitle}</span>`,
-  ];
-  $("breadcrumb").innerHTML = segs.join("");
+  const hasIntermediates = !!(catLabel || topicLabel);
+  let breadcrumbHTML;
+  if (isMobile() && hasIntermediates) {
+    const fullPath = [spaceLabel, catLabel, topicLabel].filter(Boolean).join(" › ");
+    breadcrumbHTML =
+      `<span class="breadcrumb-collapse" data-space="${spaceSpace}" title="${fullPath}">···</span>` +
+      `<span class="breadcrumb-sep">›</span>` +
+      `<span class="breadcrumb-seg breadcrumb-current">${entryTitle}</span>`;
+  } else {
+    const segs = [
+      `<span class="breadcrumb-seg breadcrumb-space" data-space="${spaceSpace}">${spaceLabel}</span>`,
+      catLabel   ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category || meta.course || "")}">${catLabel}</span>` : "",
+      topicLabel ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg">${topicLabel}</span>` : "",
+      `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg breadcrumb-current">${entryTitle}</span>`,
+    ];
+    breadcrumbHTML = segs.join("");
+  }
+  $("breadcrumb").innerHTML = breadcrumbHTML;
 
-  // Space click → switch sidebar space
-  $("breadcrumb").querySelector(".breadcrumb-space")?.addEventListener("click", () => {
+  // Space / collapse click → switch sidebar space
+  $("breadcrumb").querySelector(".breadcrumb-space, .breadcrumb-collapse")?.addEventListener("click", () => {
     if (typeof switchSpace === "function") switchSpace(spaceSpace);
   });
 
