@@ -338,7 +338,8 @@ function toggleTheme() {
 }
 
 // ---- SIDEBAR ----
-function isMobile() { return window.innerWidth <= 768; }
+function isMobile()  { return window.innerWidth <= 768; }
+function isCompact() { return window.innerWidth > 768 && window.innerWidth <= 1024; }
 
 // Android Chrome: body overflow:hidden blocks touch scroll on fixed elements.
 // Handle sidebar scroll manually via touch events.
@@ -364,7 +365,7 @@ function isMobile() { return window.innerWidth <= 768; }
 })();
 
 function toggleSidebar() {
-  if (isMobile()) {
+  if (isMobile() || isCompact()) {
     const open = $("sidebar").classList.toggle("mobile-open");
     $("sidebarOverlay").classList.toggle("active", open);
   } else {
@@ -1497,7 +1498,7 @@ async function loadEntry(id, opts = {}) {
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
   currentEntryId = id;
-  if (isMobile()) closeSidebarMobile();
+  if (isMobile() || isCompact()) closeSidebarMobile();
   document.querySelectorAll(".tree-entry").forEach(el => {
     el.classList.toggle("active", el.dataset.id === id);
   });
@@ -3727,7 +3728,7 @@ function buildBreadcrumb(meta) {
 
   const hasIntermediates = !!(catLabel || topicLabel);
   let breadcrumbHTML;
-  if (isMobile() && hasIntermediates) {
+  if ((isMobile() || isCompact()) && hasIntermediates) {
     const fullPath = [spaceLabel, catLabel, topicLabel].filter(Boolean).join(" › ");
     breadcrumbHTML =
       `<span class="breadcrumb-collapse" data-space="${spaceSpace}" title="${fullPath}">···</span>` +
@@ -4090,23 +4091,41 @@ function _wireCtxBtn(ctxId, sourceId) {
 function setSidebarVisible(visible) {
   const s = document.getElementById('sidebar');
   if (!s) return;
-  if (isMobile()) {
-    // Mobile: sidebar must stay in DOM always — visibility via transform only.
-    // Clear any leftover inline display:none (e.g. set before a resize from desktop).
+  if (isMobile() || isCompact()) {
+    // Mobile + compact: sidebar stays in DOM, shown/hidden via transform (overlay drawer).
     s.style.display = '';
     if (!visible) {
-      // Close the drawer if it happens to be open
       s.classList.remove('mobile-open');
       const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
     }
-    // sidebar-open body class not needed on mobile (layout padding is 0 !important)
+    // Layout padding must not account for sidebar in these modes
     document.body.classList.remove('sidebar-open');
   } else {
     s.style.display = visible ? '' : 'none';
     document.body.classList.toggle('sidebar-open', visible);
   }
 }
+
+// Auto-close sidebar when resizing into compact/mobile range
+(function() {
+  let _lastWasWide = window.innerWidth > 1024;
+  window.addEventListener('resize', () => {
+    const nowWide = window.innerWidth > 1024;
+    if (_lastWasWide && !nowWide) {
+      // Entered compact/mobile — force sidebar into drawer mode
+      const s = document.getElementById('sidebar');
+      if (s) {
+        s.style.display = '';
+        s.classList.remove('mobile-open');
+      }
+      const ov = document.getElementById('sidebarOverlay');
+      if (ov) ov.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
+    }
+    _lastWasWide = nowWide;
+  });
+})();
 
 (function() {
   const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];

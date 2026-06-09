@@ -4848,6 +4848,40 @@ body.sidebar-open .layout {
   .layout { padding-left: 0 !important; }
 }
 
+/* ── Compact (769–1024px): sidebar is an overlay drawer, layout never pushed ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Sidebar behaves like mobile drawer but sits to the right of the activity bar */
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    left: var(--activity-bar-w);
+    height: calc(100dvh - var(--topbar-h));
+    z-index: 90;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.45);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  /* Overlay dims content when sidebar is open */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    top: var(--topbar-h);
+    background: rgba(0,0,0,0.45);
+    z-index: 89;
+  }
+  .sidebar-overlay.active { display: block; }
+
+  /* Layout is NEVER pushed — sidebar floats over content */
+  .layout { padding-left: var(--activity-bar-w) !important; }
+  body.sidebar-open .layout { padding-left: var(--activity-bar-w) !important; }
+}
+
 /* =============================================
    PHASE D — Breadcrumb + Context Toolbar
    ============================================= */
@@ -7589,4 +7623,37 @@ body.focus-mode .layout { height: 100dvh; }
   }
   /* Bottom-pinned elements: stay above home indicator */
   .eb-float-toolbar, .eb-add-btn { bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+
+/* ── Compact (769–1024px): content + breadcrumb improvements ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Entry body: fill available width without huge side margins */
+  .entry-view { max-width: 100%; padding: 0 0 80px; }
+  .entry-body { padding: 0 20px !important; }
+
+  /* Inline title: less horizontal padding */
+  .inline-title-wrap { padding: 12px 20px 0 !important; }
+
+  /* Breadcrumb: collapse intermediates like mobile */
+  .breadcrumb-seg { max-width: 130px; }
+  .breadcrumb-seg.breadcrumb-current { max-width: none; flex: 1; min-width: 0; }
+  .breadcrumb-collapse {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+    transition: color 0.12s, background 0.12s;
+  }
+  .breadcrumb-collapse:hover { color: var(--text); background: var(--bg-hover); }
+
+  /* ctx-bar: comfortable height for mouse + trackpad */
+  .ctx-bar { height: 40px !important; }
+
+  /* Kanban: allow horizontal scroll at this width */
+  .kb-columns-wrap { overflow-x: auto; }
 }
