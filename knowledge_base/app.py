@@ -840,6 +840,8 @@ def export_json(entry_id):
                           indent=2, ensure_ascii=False)
     return Response(payload, mimetype="application/json",
                     headers={"Content-Disposition": f'attachment; filename="{entry_id}.json"'})
+
+@app.route("/api/categories")
 def get_categories():
     index = load_index()
     cats = {}

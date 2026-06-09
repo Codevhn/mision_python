@@ -4092,15 +4092,19 @@ function _wireCtxBtn(ctxId, sourceId) {
 function setSidebarVisible(visible) {
   const s = document.getElementById('sidebar');
   if (!s) return;
+  const ov = document.getElementById('sidebarOverlay');
   if (isMobile() || isCompact()) {
-    // Mobile + compact: sidebar stays in DOM, shown/hidden via transform (overlay drawer).
+    // Mobile + compact: sidebar is always in DOM, shown via drawer (transform).
     s.style.display = '';
-    if (!visible) {
+    if (visible) {
+      // Auto-open drawer when switching to a space that has a sidebar tree.
+      s.classList.add('mobile-open');
+      if (ov) ov.classList.add('active');
+    } else {
       s.classList.remove('mobile-open');
-      const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
     }
-    // Layout padding must not account for sidebar in these modes
+    // Layout padding must NOT account for sidebar in overlay mode.
     document.body.classList.remove('sidebar-open');
   } else {
     s.style.display = visible ? '' : 'none';
@@ -4108,18 +4112,15 @@ function setSidebarVisible(visible) {
   }
 }
 
-// Auto-close sidebar when resizing into compact/mobile range
+// Auto-manage sidebar when crossing the 1024px compact breakpoint
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
-      // Entered compact/mobile — force sidebar into drawer mode
+      // Desktop → compact: close sidebar (becomes drawer), layout no longer pushed
       const s = document.getElementById('sidebar');
-      if (s) {
-        s.style.display = '';
-        s.classList.remove('mobile-open');
-      }
+      if (s) { s.style.display = ''; s.classList.remove('mobile-open'); }
       const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
       document.body.classList.remove('sidebar-open');
@@ -4203,6 +4204,12 @@ function setSidebarVisible(visible) {
     } else if (space === 'courses' && _activeCourseSlug) {
       // Active course — course view handles its own header; ctxBar stays hidden
       if (courseView) courseView.classList.remove('hidden');
+      // Re-render active tab if cvBody was cleared (e.g. after navigating away)
+      const cvBody = document.getElementById('cvBody');
+      if (cvBody && !cvBody.hasChildNodes()) {
+        const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+        if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
+      }
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
