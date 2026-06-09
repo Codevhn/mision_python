@@ -291,7 +291,7 @@ window.BlockEditor = (() => {
         .replace(/\r\n?/g, '\n')
         .split('\n')
         .map(line => line
-          .replace(/^\s*[•◦▪▸▹►▻]\s+/, '* ')
+          .replace(/^(\s*)[•◦▪▸▹►▻]\s+/, '$1* ')
           .replace(/^(\s*)(\d+)\)\s+/, '$1$2. ')
         )
         .join('\n');
@@ -301,7 +301,6 @@ window.BlockEditor = (() => {
     function looksLikeMarkdown(text) {
       const normalized = normalizePastedText(text);
       const lines = normalized.split('\n');
-      if (lines.length > 3) return true;
       return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
 
@@ -310,7 +309,10 @@ window.BlockEditor = (() => {
         .map(line => line.trimEnd())
         .filter(line => line.trim())
         .map(line => line.split('\t').map(cell => cell.trim()));
-      if (rows.length < 2 || rows.some(row => row.length < 2) || !rows.every(row => row.length === rows[0].length)) return null;
+      if (rows.length < 2 || rows.some(row => row.length < 2)) return null;
+      const maxCols = Math.max(...rows.map(r => r.length));
+      const pad = row => { while (row.length < maxCols) row.push(''); return row; };
+      rows.forEach(pad);
       const escCell = cell => cell.replace(/\|/g, '\\|');
       const fmt = cells => '| ' + cells.map(escCell).join(' | ') + ' |';
       return [fmt(rows[0]), fmt(rows[0].map(() => '---')), ...rows.slice(1).map(fmt)].join('\n');
@@ -336,12 +338,44 @@ window.BlockEditor = (() => {
       return (target.innerText || target.textContent || '').replace(/\n$/, '');
     }
 
+    function blocksToHtml(arr) {
+      const ri = t => renderInline(t || '');
+      const parts = arr.map(b => {
+        const indent = (b.indent || 0) > 0 ? ` style="margin-left:${(b.indent||0)*1.5}em"` : '';
+        switch (b.type) {
+          case 'h1': return `<h1${indent}>${ri(b.content)}</h1>`;
+          case 'h2': return `<h2${indent}>${ri(b.content)}</h2>`;
+          case 'h3': return `<h3${indent}>${ri(b.content)}</h3>`;
+          case 'h4': return `<h4${indent}>${ri(b.content)}</h4>`;
+          case 'bullet': return `<ul${indent}><li>${ri(b.content)}</li></ul>`;
+          case 'numbered': return `<ol${indent}><li>${ri(b.content)}</li></ol>`;
+          case 'todo': return `<ul${indent}><li><input type="checkbox"${b.checked ? ' checked' : ''} disabled> ${ri(b.content)}</li></ul>`;
+          case 'quote': return `<blockquote${indent}>${ri(b.content)}</blockquote>`;
+          case 'code': return `<pre><code>${(b.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`;
+          case 'divider': return `<hr>`;
+          case 'table': {
+            const rows = (b.content||'').split('\n').filter(l => l.trim().startsWith('|'));
+            const parse = l => l.trim().replace(/^\||\|$/g,'').split('|').map(c => c.trim());
+            const [head, , ...body] = rows;
+            if (!head) return '';
+            const th = parse(head).map(c => `<th>${ri(c)}</th>`).join('');
+            const tb = body.map(l => `<tr>${parse(l).map(c => `<td>${ri(c)}</td>`).join('')}</tr>`).join('');
+            return `<table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table>`;
+          }
+          default: return b.content ? `<p${indent}>${ri(b.content)}</p>` : '';
+        }
+      });
+      return parts.filter(Boolean).join('\n');
+    }
+
     function writeSelectedBlocksToClipboard(e) {
       if (_activeSelectionEditor !== _selfRef) return false;
       if (_selected.size === 0) return false;
-      const md = blocksToMd(selectedBlocksInOrder());
+      const ordered = selectedBlocksInOrder();
+      const md = blocksToMd(ordered);
       if (!md) return false;
       e.clipboardData?.setData('text/plain', md);
+      e.clipboardData?.setData('text/html', blocksToHtml(ordered));
       e.preventDefault();
       return true;
     }
@@ -498,6 +532,26 @@ window.BlockEditor = (() => {
         if (!content && type !== 'divider') return;
         blocks.push({ id: uid(), type, content, checked:false, indent: baseIndent, ...extra });
       };
+      const htmlNodeToMd = (el) => {
+        const conv = (node) => {
+          if (node.nodeType === Node.TEXT_NODE) return node.textContent.replace(/\u00a0/g, ' ');
+          if (node.nodeType !== Node.ELEMENT_NODE) return '';
+          const tag = node.tagName.toLowerCase();
+          const inner = Array.from(node.childNodes).map(conv).join('');
+          if (tag === 'strong' || tag === 'b') return `**${inner.trim()}**`;
+          if (tag === 'em'     || tag === 'i') return `*${inner.trim()}*`;
+          if (tag === 'code') return `\`${inner}\``;
+          if (tag === 'a') {
+            const href = node.getAttribute('href') || '';
+            return href && !href.startsWith('javascript') ? `[${inner}](${href})` : inner;
+          }
+          if (tag === 'br') return '\n';
+          if (tag === 's' || tag === 'del') return `~~${inner.trim()}~~`;
+          if (tag === 'mark') return `==${inner.trim()}==`;
+          return inner;
+        };
+        return Array.from(el.childNodes).map(conv).join('').replace(/\u00a0/g, ' ').trim();
+      };
       const walk = (node, indent = baseIndent) => {
         if (node.nodeType === Node.TEXT_NODE) {
           const text = node.textContent.trim();
@@ -513,7 +567,7 @@ window.BlockEditor = (() => {
           return;
         }
         if (/^h[1-4]$/.test(tag)) {
-          pushText(tag, cleanText(node), { indent });
+          pushText(tag, htmlNodeToMd(node), { indent });
           return;
         }
         if (tag === 'pre') {
@@ -525,7 +579,12 @@ window.BlockEditor = (() => {
           return;
         }
         if (tag === 'blockquote') {
-          pushText('quote', cleanText(node), { indent });
+          const paras = Array.from(node.querySelectorAll('p, div')).filter(p => !p.closest('ul,ol'));
+          if (paras.length) {
+            paras.forEach(p => { const t = htmlNodeToMd(p); if (t) pushText('quote', t, { indent }); });
+          } else {
+            pushText('quote', htmlNodeToMd(node), { indent });
+          }
           return;
         }
         if (tag === 'hr') {
@@ -537,25 +596,25 @@ window.BlockEditor = (() => {
             if (child.tagName?.toLowerCase() !== 'li') return;
             const nested = Array.from(child.children).filter(c => ['ul','ol'].includes(c.tagName?.toLowerCase()));
             nested.forEach(n => n.remove());
-            const liText = cleanText(child);
+            const liText = htmlNodeToMd(child);
             pushText(tag === 'ol' ? 'numbered' : 'bullet', liText, { indent });
             nested.forEach(n => walk(n, indent + 1));
           });
           return;
         }
         if (tag === 'li') {
-          pushText('bullet', cleanText(node), { indent });
+          pushText('bullet', htmlNodeToMd(node), { indent });
           return;
         }
         if (tag === 'p' || tag === 'div' || tag === 'section' || tag === 'article') {
           const hasBlockChildren = Array.from(node.children).some(child => blockTags.has(child.tagName?.toLowerCase()));
           if (!hasBlockChildren) {
-            pushText('text', cleanText(node), { indent });
+            pushText('text', htmlNodeToMd(node), { indent });
             return;
           }
           const childBlocksBefore = blocks.length;
           Array.from(node.children).forEach(child => walk(child, indent));
-          if (blocks.length === childBlocksBefore) pushText('text', cleanText(node), { indent });
+          if (blocks.length === childBlocksBefore) pushText('text', htmlNodeToMd(node), { indent });
           return;
         }
         Array.from(node.childNodes).forEach(child => walk(child, indent));
@@ -611,12 +670,41 @@ window.BlockEditor = (() => {
       }
 
       function saveFromDom() {
-        const headers = Array.from(wrap.querySelectorAll('.eb-simple-th')).map(th => th.innerText.trim());
+        const headers = Array.from(wrap.querySelectorAll('.eb-simple-th')).map(th =>
+          th.dataset.plaintext !== undefined ? th.dataset.plaintext : th.innerText.trim()
+        );
         const rows = Array.from(wrap.querySelectorAll('tbody tr')).map(tr =>
-          Array.from(tr.querySelectorAll('.eb-simple-cell')).map(td => td.innerText.replace(/\n$/, ''))
+          Array.from(tr.querySelectorAll('.eb-simple-cell')).map(td =>
+            td.dataset.plaintext !== undefined ? td.dataset.plaintext : td.innerText.replace(/\n$/, '')
+          )
         );
         b.content = modelToMd(headers, rows);
         sync();
+      }
+
+      function setCellContent(el, text) {
+        el.dataset.plaintext = text;
+        if (hasInlineMarkdown(text)) {
+          el.innerHTML = renderInline(text);
+          el.dataset.rendered = '1';
+        } else {
+          delete el.dataset.rendered;
+          el.innerText = text;
+        }
+      }
+
+      function onCellFocus(el) {
+        if (el.dataset.rendered) {
+          const plain = el.dataset.plaintext || '';
+          delete el.dataset.rendered;
+          el.innerText = plain;
+          placeCursorEnd(el);
+        }
+      }
+
+      function onCellBlur(el) {
+        const text = el.innerText.replace(/\n$/, '');
+        setCellContent(el, text);
       }
 
       function readLatestModel() {
@@ -744,8 +832,9 @@ window.BlockEditor = (() => {
           th.contentEditable = 'true';
           th.spellcheck = false;
           th.dataset.col = String(ci);
-          th.innerText = h || `Col ${ci + 1}`;
-          th.addEventListener('focus', () => { active.col = ci; });
+          setCellContent(th, h || `Col ${ci + 1}`);
+          th.addEventListener('focus', () => { active.col = ci; onCellFocus(th); });
+          th.addEventListener('blur', () => onCellBlur(th));
           th.addEventListener('input', saveFromDom);
           th.addEventListener('keydown', e => {
             if (e.key === 'Enter') { e.preventDefault(); focusCell(0, ci); }
@@ -1664,14 +1753,18 @@ window.BlockEditor = (() => {
         if (l.startsWith('## '))    { pushBlock({ id:uid(), type:'h2', content:l.slice(3), indent: 0 }); i++; continue; }
         if (l.startsWith('# '))     { pushBlock({ id:uid(), type:'h1', content:l.slice(2), indent: 0 }); i++; continue; }
 
-        // todo
-        if (l.startsWith('- [x] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:true,  indent: 0 }); i++; continue; }
-        if (l.startsWith('- [ ] ')) { pushBlock({ id:uid(), type:'todo', content:l.slice(6), checked:false, indent: 0 }); i++; continue; }
+        // todo / list — support indented variants
+        const trimmedL = l.trimStart();
+        const leadingSpaces = l.length - trimmedL.length;
+        const listIndent = Math.floor(leadingSpaces / 2);
+
+        if (trimmedL.startsWith('- [x] ')) { pushBlock({ id:uid(), type:'todo', content:trimmedL.slice(6), checked:true,  indent: listIndent }); i++; continue; }
+        if (trimmedL.startsWith('- [ ] ')) { pushBlock({ id:uid(), type:'todo', content:trimmedL.slice(6), checked:false, indent: listIndent }); i++; continue; }
 
         // list
-        if (l.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2), indent: 0 }); i++; continue; }
-        if (l.startsWith('* '))     { pushBlock({ id:uid(), type:'bullet',   content:l.slice(2), indent: 0 }); i++; continue; }
-        if (/^\d+\. /.test(l))      { pushBlock({ id:uid(), type:'numbered', content:l.replace(/^\d+\. /, ''), indent: 0 }); i++; continue; }
+        if (trimmedL.startsWith('- '))     { pushBlock({ id:uid(), type:'bullet',   content:trimmedL.slice(2), indent: listIndent }); i++; continue; }
+        if (trimmedL.startsWith('* '))     { pushBlock({ id:uid(), type:'bullet',   content:trimmedL.slice(2), indent: listIndent }); i++; continue; }
+        if (/^\d+\. /.test(trimmedL))      { pushBlock({ id:uid(), type:'numbered', content:trimmedL.replace(/^\d+\. /, ''), indent: listIndent }); i++; continue; }
 
         // quote
         if (l.startsWith('> '))     { pushBlock({ id:uid(), type:'quote',   content:l.slice(2), indent: 0 }); i++; continue; }
@@ -1728,11 +1821,11 @@ window.BlockEditor = (() => {
         }
 
         // markdown table — accumulate consecutive | lines
-        if (l.startsWith('|')) {
-          const tableLines = [l];
+        if (l.trimStart().startsWith('|')) {
+          const tableLines = [l.trimStart()];
           i++;
           while (i < lines.length && lines[i].trim().startsWith('|')) {
-            tableLines.push(lines[i]); i++;
+            tableLines.push(lines[i].trim()); i++;
           }
           pushBlock({ id:uid(), type:'table', content:tableLines.join('\n'), indent: 0 });
           continue;
