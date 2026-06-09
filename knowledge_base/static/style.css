@@ -728,10 +728,6 @@ input, textarea, select { font-family: inherit; }
   .home-wrap { padding: 0 0 60px; }
   .home-hero { min-height: 140px; }
   .home-hero-content { padding: 16px 16px 40px; }
-  /* Override the 2.6rem !important base rule */
-  .home-greeting { font-size: 1.5rem !important; }
-  /* Pull weather chip out of flex flow → position inside hero, bottom-right */
-  .home-weather-chip { position: absolute; bottom: 14px; right: 14px; margin: 0; font-size: 0.75rem; padding: 4px 10px; }
   .home-stats-row,
   .home-section,
   .home-empty,
@@ -7476,4 +7472,31 @@ body.home-ambient .home-hero { overflow: visible; }
 
   /* Boards list header (non-workspace view) */
   .kb-boards-header { padding: 14px 16px 10px !important; }
+}
+
+/* ── Mobile: home screen — fixes placed here so they beat earlier !important rules ── */
+@media (max-width: 600px) {
+  /* Greeting: 1.3rem overrides 2.6rem !important at line 5166 (same spec, later = wins) */
+  .home-greeting { font-size: 1.3rem !important; line-height: 1.2 !important; }
+
+  /* Weather chip: pull out of flex flow, anchor to hero bottom-right */
+  .home-weather-chip {
+    position: absolute !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    margin: 0 !important;
+    font-size: 0.72rem !important;
+    padding: 4px 10px !important;
+  }
+
+  /* Stats cards: equal flex width so both rows match */
+  .home-stat { flex: 1 1 calc(50% - 4px) !important; min-width: 0 !important; padding: 10px 8px !important; }
+  .home-stat-num { font-size: 1.35rem !important; }
+  .home-stats-row { gap: 8px !important; margin-top: -10px !important; }
+}
+
+/* ── Prevent horizontal overflow on all mobile screens ── */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  .content-area { overflow-x: hidden; }
 }
