@@ -299,6 +299,7 @@ async function loadKanbanSidebar() {
         el.classList.add('active');
         showKanbanArea();
         if (window.KanbanApp) window.KanbanApp.showBoard(el.dataset.id);
+        if (isMobile()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -4194,11 +4195,13 @@ function setSidebarVisible(visible) {
       btn.addEventListener('click', () => switchSpace(btn.dataset.space));
     });
 
-    // Mobile drawer space nav — switch space + close drawer on tap
+    // Mobile drawer space nav — switch space, close only for spaces with no sidebar tree
     document.querySelectorAll('.msn-item[data-space]').forEach(btn => {
       btn.addEventListener('click', () => {
-        switchSpace(btn.dataset.space);
-        closeSidebarMobile();
+        const space = btn.dataset.space;
+        switchSpace(space);
+        const noTree = ['home', 'graph', 'radar'];
+        if (noTree.includes(space)) closeSidebarMobile();
       });
     });
 
