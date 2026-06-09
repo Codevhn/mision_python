@@ -611,12 +611,41 @@ window.BlockEditor = (() => {
       }
 
       function saveFromDom() {
-        const headers = Array.from(wrap.querySelectorAll('.eb-simple-th')).map(th => th.innerText.trim());
+        const headers = Array.from(wrap.querySelectorAll('.eb-simple-th')).map(th =>
+          th.dataset.plaintext !== undefined ? th.dataset.plaintext : th.innerText.trim()
+        );
         const rows = Array.from(wrap.querySelectorAll('tbody tr')).map(tr =>
-          Array.from(tr.querySelectorAll('.eb-simple-cell')).map(td => td.innerText.replace(/\n$/, ''))
+          Array.from(tr.querySelectorAll('.eb-simple-cell')).map(td =>
+            td.dataset.plaintext !== undefined ? td.dataset.plaintext : td.innerText.replace(/\n$/, '')
+          )
         );
         b.content = modelToMd(headers, rows);
         sync();
+      }
+
+      function setCellContent(el, text) {
+        el.dataset.plaintext = text;
+        if (hasInlineMarkdown(text)) {
+          el.innerHTML = renderInline(text);
+          el.dataset.rendered = '1';
+        } else {
+          delete el.dataset.rendered;
+          el.innerText = text;
+        }
+      }
+
+      function onCellFocus(el) {
+        if (el.dataset.rendered) {
+          const plain = el.dataset.plaintext || '';
+          delete el.dataset.rendered;
+          el.innerText = plain;
+          placeCursorEnd(el);
+        }
+      }
+
+      function onCellBlur(el) {
+        const text = el.innerText.replace(/\n$/, '');
+        setCellContent(el, text);
       }
 
       function readLatestModel() {
@@ -744,8 +773,9 @@ window.BlockEditor = (() => {
           th.contentEditable = 'true';
           th.spellcheck = false;
           th.dataset.col = String(ci);
-          th.innerText = h || `Col ${ci + 1}`;
-          th.addEventListener('focus', () => { active.col = ci; });
+          setCellContent(th, h || `Col ${ci + 1}`);
+          th.addEventListener('focus', () => { active.col = ci; onCellFocus(th); });
+          th.addEventListener('blur', () => onCellBlur(th));
           th.addEventListener('input', saveFromDom);
           th.addEventListener('keydown', e => {
             if (e.key === 'Enter') { e.preventDefault(); focusCell(0, ci); }
@@ -766,8 +796,9 @@ window.BlockEditor = (() => {
             td.spellcheck = false;
             td.dataset.row = String(ri);
             td.dataset.col = String(ci);
-            td.innerText = row[ci] || '';
-            td.addEventListener('focus', () => { active = { row: ri, col: ci }; });
+            setCellContent(td, row[ci] || '');
+            td.addEventListener('focus', () => { active = { row: ri, col: ci }; onCellFocus(td); });
+            td.addEventListener('blur', () => onCellBlur(td));
             td.addEventListener('input', saveFromDom);
             td.addEventListener('keydown', e => {
               if (e.key === 'Tab') {
