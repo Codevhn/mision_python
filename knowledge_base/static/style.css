@@ -726,15 +726,18 @@ input, textarea, select { font-family: inherit; }
 
 @media (max-width: 600px) {
   .home-wrap { padding: 0 0 60px; }
-  .home-hero { min-height: 160px; }
-  .home-hero-content { padding: 18px 20px 16px; }
-  .home-greeting { font-size: 1.4rem; }
-  .home-weather-chip { margin: 0 14px 14px 0; }
+  .home-hero { min-height: 140px; }
+  .home-hero-content { padding: 16px 16px 40px; }
+  /* Override the 2.6rem !important base rule */
+  .home-greeting { font-size: 1.5rem !important; }
+  /* Pull weather chip out of flex flow → position inside hero, bottom-right */
+  .home-weather-chip { position: absolute; bottom: 14px; right: 14px; margin: 0; font-size: 0.75rem; padding: 4px 10px; }
   .home-stats-row,
   .home-section,
   .home-empty,
-  .home-radar-teaser { padding-left: 20px; padding-right: 20px; }
-  .home-recent-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .home-radar-teaser { padding-left: 16px; padding-right: 16px; }
+  /* Override the minmax(210px) !important rule — force 2 columns on mobile */
+  .home-recent-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
 }
 
 /* Entry view */
@@ -1597,8 +1600,9 @@ input, textarea, select { font-family: inherit; }
   #reindexBtn, #statsBtn { display: none; }
   #themeToggle { display: none; }
   #themeToggleSidebar { display: inline-flex; }
-  /* Brand compacto */
+  /* Brand compacto: ocultar texto "Project Atlas", dejar solo el badge PA */
   .brand { display: none; }
+  .topbar-brand-name { display: none; }
   /* Botón nueva entrada solo ícono */
   #newEntryBtn { font-size: 0; padding: 6px 10px; }
   #newEntryBtn::before { content: "+"; font-size: 1.1rem; }
