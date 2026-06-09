@@ -3422,10 +3422,13 @@ function initMove() {
 }
 
 async function loadMoveCatSuggestions() {
-  const res = await fetch("/api/categories");
-  const cats = await res.json();
-  const dl = $("moveCatSuggestions");
-  dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+  try {
+    const res = await fetch("/api/categories");
+    if (!res.ok) return;
+    const cats = await res.json();
+    const dl = $("moveCatSuggestions");
+    if (dl) dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
+  } catch { /* categories endpoint unavailable — non-critical */ }
 }
 
 function toggleMovePanel() {
@@ -4996,12 +4999,27 @@ async function loadCourseView(courseSlug, courseEntity) {
   function _applyCvCover(coverValue) {
     if (coverValue) {
       if (coverValue.startsWith('url(')) {
-        hero.setAttribute('style',
-          `background-image:${coverValue};background-size:cover;background-position:center`);
+        // Probe image before committing — avoid applying has-cover for broken URLs
+        const urlMatch = coverValue.match(/^url\(['"]?(.+?)['"]?\)$/);
+        const src = urlMatch ? urlMatch[1] : '';
+        if (src) {
+          const img = new Image();
+          img.onload  = () => {
+            hero.setAttribute('style',
+              `background-image:${coverValue};background-size:cover;background-position:center`);
+            hero.classList.add('has-cover');
+          };
+          img.onerror = () => {
+            // Image not found — clear cover from model silently
+            hero.removeAttribute('style');
+            hero.classList.remove('has-cover');
+          };
+          img.src = src;
+        }
       } else {
         hero.setAttribute('style', `background:${coverValue}`);
+        hero.classList.add('has-cover');
       }
-      hero.classList.add('has-cover');
     } else {
       hero.removeAttribute('style');
       hero.classList.remove('has-cover');
