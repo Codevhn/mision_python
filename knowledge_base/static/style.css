@@ -1743,7 +1743,7 @@ body.focus-mode #sidebar,
 body.focus-mode #entryHeader,
 body.focus-mode .toc-panel { display: none !important; }
 
-body.focus-mode .layout { margin-top: 0; height: 100vh; }
+body.focus-mode .layout { margin-top: 0; height: 100dvh; }
 body.focus-mode .content-area { display: flex; justify-content: center; padding: 60px 20px 80px; }
 body.focus-mode #entryView { max-width: 800px; width: 100%; }
 body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
@@ -4850,6 +4850,40 @@ body.sidebar-open .layout {
   .layout { padding-left: 0 !important; }
 }
 
+/* ── Compact (769–1024px): sidebar is an overlay drawer, layout never pushed ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Sidebar behaves like mobile drawer but sits to the right of the activity bar */
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    left: var(--activity-bar-w);
+    height: calc(100dvh - var(--topbar-h));
+    z-index: 90;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.45);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  /* Overlay dims content when sidebar is open */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    top: var(--topbar-h);
+    background: rgba(0,0,0,0.45);
+    z-index: 89;
+  }
+  .sidebar-overlay.active { display: block; }
+
+  /* Layout is NEVER pushed — sidebar floats over content */
+  .layout { padding-left: var(--activity-bar-w) !important; }
+  body.sidebar-open .layout { padding-left: var(--activity-bar-w) !important; }
+}
+
 /* =============================================
    PHASE D — Breadcrumb + Context Toolbar
    ============================================= */
@@ -7551,4 +7585,122 @@ body.home-ambient .home-hero { overflow: visible; }
     transition: color 0.12s, background 0.12s;
   }
   .breadcrumb-collapse:hover { color: var(--text); background: var(--bg-hover); }
+}
+
+/* ── Fase 3: touch targets, breadcrumb collapse, code copy, dvh modals ── */
+@media (max-width: 768px) {
+  /* ctx-bar + buttons: meet 44px minimum touch target */
+  .ctx-bar { height: 44px !important; padding: 0 10px !important; gap: 8px !important; }
+  .ctx-btn { height: 36px !important; min-width: 36px !important; padding: 0 10px !important; font-size: 0.72rem !important; }
+
+  /* Breadcrumb segments on mobile */
+  .breadcrumb-seg { max-width: 110px; }
+  .breadcrumb-seg.breadcrumb-current { max-width: none; flex: 1; min-width: 0; }
+
+  /* Collapse indicator ··· */
+  .breadcrumb-collapse {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+    transition: color 0.12s, background 0.12s;
+  }
+  .breadcrumb-collapse:hover { color: var(--text); background: var(--bg-hover); }
+
+  /* Code copy button: smaller so it doesn't cover the first line of code */
+  .eb-code-copy-floating {
+    font-size: 0.6rem !important;
+    padding: 2px 6px !important;
+    opacity: 0.8 !important;
+    top: 4px !important;
+    right: 4px !important;
+  }
+
+  /* Modals: use dynamic viewport height to avoid mobile browser chrome overlap */
+  .modal { max-height: 90dvh !important; }
+  .kb-card-modal .kb-modal-body { max-height: calc(90dvh - 100px) !important; }
+}
+
+/* ── Fase 4: dynamic viewport + safe-area for iPhone notch / home indicator ── */
+
+/* Body: use dvh so browser chrome doesn't clip the layout */
+body { height: 100dvh; }
+.layout { height: calc(100dvh - var(--topbar-h)); }
+.sidebar { height: calc(100dvh - var(--topbar-h)); }
+body.focus-mode .layout { height: 100dvh; }
+
+/* Peek panel (fixed right drawer): full dynamic height */
+.eb-db-peek { height: 100dvh; }
+
+/* Topbar: pad for notch/status bar on top (iPhone landscape left) */
+.topbar {
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-top: env(safe-area-inset-top);
+  height: calc(var(--topbar-h) + env(safe-area-inset-top));
+}
+
+/* Layout: offset so content starts below the padded topbar */
+.layout { margin-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+.sidebar { top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+.ctx-bar { top: 0; }
+
+/* Activity bar: pad bottom for home indicator */
+.activity-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* Sidebar drawer on mobile: respects left/right notch in landscape */
+@media (max-width: 768px) {
+  .sidebar {
+    top: calc(var(--topbar-h) + env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+  }
+  .topbar {
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+  /* Bottom-pinned elements: stay above home indicator */
+  .eb-float-toolbar, .eb-add-btn { bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+
+/* ── Compact (769–1024px): content + breadcrumb improvements ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Entry body: fill available width without huge side margins */
+  .entry-view { max-width: 100%; padding: 0 0 80px; }
+  .entry-body { padding: 0 20px !important; }
+
+  /* Inline title: less horizontal padding */
+  .inline-title-wrap { padding: 12px 20px 0 !important; }
+
+  /* Breadcrumb: collapse intermediates like mobile */
+  .breadcrumb-seg { max-width: 130px; }
+  .breadcrumb-seg.breadcrumb-current { max-width: none; flex: 1; min-width: 0; }
+  .breadcrumb-collapse {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+    transition: color 0.12s, background 0.12s;
+  }
+  .breadcrumb-collapse:hover { color: var(--text); background: var(--bg-hover); }
+
+  /* ctx-bar: comfortable height for mouse + trackpad */
+  .ctx-bar { height: 40px !important; }
+
+  /* Kanban: allow horizontal scroll at this width */
+  .kb-columns-wrap { overflow-x: auto; }
 }
