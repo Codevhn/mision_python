@@ -1591,8 +1591,8 @@ input, textarea, select { font-family: inherit; }
   /* TOPBAR */
   .topbar { padding: 0 12px 0 8px; gap: 6px; }
   .topbar-left { min-width: unset; gap: 6px; }
-  .topbar-center { display: flex; flex: 1; max-width: unset; }
-  .topbar-right { gap: 4px; padding-right: 4px; }
+  .topbar-center { display: flex; flex: 1; max-width: unset; margin-right: 6px; }
+  .topbar-right { gap: 4px; }
   #reindexBtn, #statsBtn { display: none; }
   #themeToggle { display: none; }
   #themeToggleSidebar { display: inline-flex; }
@@ -1644,6 +1644,8 @@ input, textarea, select { font-family: inherit; }
   .content-area { width: 100%; overflow-x: auto; }
   /* Entry view: tight side padding so content fills the screen */
   .entry-view { padding: 4px 4px 80px; max-width: 100%; }
+  /* Entry body: 40px desktop padding → 12px on mobile (was squeezing text) */
+  .entry-body { padding: 0 12px !important; }
 
   /* ENTRY COVER — reduce height on mobile */
   .entry-cover { height: 110px; }

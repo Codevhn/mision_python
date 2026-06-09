@@ -873,8 +873,8 @@ function _weatherInfo(code, isDay) {
   const isNight = cond.endsWith('-night');
   const base = cond.replace(/-day$|-night$/, '');
   const map = {
-    'clear':         isNight ? { icon: '🌙',  label: 'Noche despejada'       } : { icon: '☀️',  label: 'Despejado' },
-    'partly-cloudy': isNight ? { icon: '🌤️', label: 'Parcialmente nublado'  } : { icon: '⛅',  label: 'Parcialmente nublado' },
+    'clear':         isNight ? { icon: '🌙',  label: 'Noche despejada'       } : { icon: '☀️',  label: 'Despejado'            },
+    'partly-cloudy': isNight ? { icon: '🌙',  label: 'Parcialmente nublado'  } : { icon: '🌤️', label: 'Parcialmente nublado'  },
     'overcast':      { icon: '☁️',  label: 'Nublado'  },
     'foggy':         { icon: '🌫️', label: 'Niebla'   },
     'rain':          { icon: '🌧️', label: 'Lluvia'   },
