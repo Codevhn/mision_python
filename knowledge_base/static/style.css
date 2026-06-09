@@ -7430,12 +7430,6 @@ body.home-ambient .home-hero { overflow: visible; }
     flex-shrink: 0;
   }
 
-  /* Main boards area: no side padding — inner elements handle their own */
-  .kb-ws-main { padding: 12px 0 16px; }
-  .kb-ws-main-header { padding: 0 16px; }
-  .kb-ws-boards-label { padding: 0 16px; }
-  .kb-ws-main .kb-boards-grid { padding: 0 16px !important; }
-
   /* Board grid: 2 cols on mobile */
   .kb-boards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }

@@ -2722,4 +2722,10 @@ kbd {
   /* Modal header: compact */
   .kb-modal-header { padding: 12px 16px 8px; }
   .kb-modal-header h2 { font-size: 0.95rem; }
+
+  /* Workspace main area: remove large desktop padding */
+  .kb-ws-main { padding: 12px 0 16px !important; }
+  .kb-ws-main-header { padding: 0 16px; }
+  .kb-ws-boards-label { padding: 0 16px; }
+  .kb-ws-main .kb-boards-grid { padding: 0 16px !important; }
 }
