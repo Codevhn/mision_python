@@ -4210,6 +4210,8 @@ function setSidebarVisible(visible) {
         const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
         if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
       }
+      // Compact/mobile: close drawer so the roadmap is fully visible
+      if (isMobile() || isCompact()) closeSidebarMobile();
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
@@ -4976,6 +4978,9 @@ async function loadCourseView(courseSlug, courseEntity) {
   if ($('entryAddCover')) $('entryAddCover').classList.add('hidden');
   if ($('ctxBar')) $('ctxBar').classList.add('hidden');
   cv.classList.remove('hidden');
+  // Compact/mobile: close the sidebar drawer so the course view is fully visible.
+  // The user can reopen it via the hamburger button to navigate between courses.
+  if (isMobile() || isCompact()) closeSidebarMobile();
 
   // Populate header
   $('cvTitle').textContent = courseEntity.label || courseSlug;
