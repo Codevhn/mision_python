@@ -855,8 +855,9 @@ window.BlockEditor = (() => {
             td.spellcheck = false;
             td.dataset.row = String(ri);
             td.dataset.col = String(ci);
-            td.innerText = row[ci] || '';
-            td.addEventListener('focus', () => { active = { row: ri, col: ci }; });
+            setCellContent(td, row[ci] || '');
+            td.addEventListener('focus', () => { active = { row: ri, col: ci }; onCellFocus(td); });
+            td.addEventListener('blur', () => onCellBlur(td));
             td.addEventListener('input', saveFromDom);
             td.addEventListener('keydown', e => {
               if (e.key === 'Tab') {
