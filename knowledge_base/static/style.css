@@ -7479,15 +7479,40 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Greeting: 1.3rem overrides 2.6rem !important at line 5166 (same spec, later = wins) */
   .home-greeting { font-size: 1.3rem !important; line-height: 1.2 !important; }
 
-  /* Weather chip: pull out of flex flow, anchor to hero bottom-right */
-  .home-weather-chip {
-    position: absolute !important;
-    bottom: 10px !important;
-    right: 10px !important;
-    margin: 0 !important;
-    font-size: 0.72rem !important;
-    padding: 4px 10px !important;
+  /* Hero: stack weather on top, content below */
+  .home-hero {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+    min-height: 210px !important;
+    overflow: hidden !important;
   }
+
+  /* Weather chip: first in visual order, no pill, centered, large temp */
+  .home-weather-chip {
+    order: -1 !important;
+    position: static !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px 16px 4px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    gap: 2px !important;
+    opacity: 1 !important;
+  }
+  .hw-icon { font-size: 2.2rem !important; line-height: 1 !important; }
+  .hw-temp { font-size: 3rem !important; font-weight: 700 !important; line-height: 1.05 !important; color: #fff !important; }
+  .hw-label { font-size: 0.78rem !important; opacity: 0.65 !important; color: #fff !important; }
+
+  /* Content: greeting + date below weather */
+  .home-hero-content { padding: 8px 16px 14px !important; flex: unset !important; }
 
   /* Stats cards: equal flex width so both rows match */
   .home-stat { flex: 1 1 calc(50% - 4px) !important; min-width: 0 !important; padding: 10px 8px !important; }
