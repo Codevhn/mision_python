@@ -732,14 +732,15 @@ input, textarea, select { font-family: inherit; }
 
 @media (max-width: 600px) {
   .home-wrap { padding: 0 0 60px; }
-  .home-hero { min-height: 140px; }
-  .home-hero-content { padding: 16px 16px 40px; }
+  .home-hero { min-height: 160px; }
+  .home-hero-content { padding: 18px 18px 42px; }
   .home-stats-row,
   .home-section,
   .home-empty,
   .home-radar-teaser { padding-left: 16px; padding-right: 16px; }
-  /* Override the minmax(210px) !important rule — force 2 columns on mobile */
   .home-recent-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+  .home-stat { padding: 12px 18px; min-width: 80px; }
+  .home-stat-num { font-size: 1.5rem; }
 }
 
 /* Entry view */
@@ -5217,15 +5218,14 @@ body {
 
 /* ── HOME ── */
 .home-greeting {
-  font-size: 2.6rem !important; font-weight: 700 !important;
-  color: #fff !important; letter-spacing: -0.05em !important;
-  line-height: 1.1 !important;
+  font-size: 2.8rem !important; font-weight: 700 !important;
+  color: #fff !important; letter-spacing: -0.04em !important;
+  line-height: 1.08 !important;
 }
-/* Do NOT override color for hero context — canvas is always dark */
 .home-greeting::before { content: none !important; }
 .home-section-label {
-  font-size: 0.67rem !important; font-weight: 600 !important;
-  text-transform: uppercase !important; letter-spacing: 0.12em !important;
+  font-size: 0.67rem !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.13em !important;
   color: var(--text-muted) !important; opacity: 1 !important;
 }
 .home-section-label::before { content: none !important; }
@@ -6213,6 +6213,7 @@ body[data-accent="slate"] {
   gap: 12px;
   margin: -20px auto 28px;
   flex-wrap: wrap;
+  justify-content: center;
   position: relative;
   z-index: 5;
 }
@@ -6220,38 +6221,53 @@ body[data-accent="slate"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg-elevated);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 22px;
-  min-width: 90px;
-  gap: 2px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px 28px;
+  min-width: 100px;
+  gap: 3px;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
 }
 .home-stat:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 16px var(--accent-soft, color-mix(in srgb, var(--accent) 15%, transparent));
+  box-shadow: 0 6px 24px var(--accent-soft, color-mix(in srgb, var(--accent) 20%, transparent));
+  transform: translateY(-2px);
 }
 .home-stat-num {
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--accent);
   font-family: var(--font-ui);
   line-height: 1;
+  letter-spacing: -0.03em;
 }
 .home-stat-label {
-  font-size: 0.67rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.10em;
   color: var(--text-muted);
   font-family: var(--font-ui);
+  margin-top: 1px;
 }
 [data-theme="light"] .home-stat {
-  background: rgba(255,255,255,0.6) !important;
-  backdrop-filter: blur(12px) !important;
+  background: rgba(255,255,255,0.72) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08) !important;
+}
+[data-theme="light"] .home-stat:hover {
+  background: rgba(255,255,255,0.90) !important;
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+[data-theme="light"] .home-section-label {
+  color: color-mix(in srgb, var(--accent) 60%, #50507a) !important;
+  opacity: 0.85 !important;
 }
 
 /* ── Fase G: Graph View ──────────────────────────────────────────────── */
@@ -6942,25 +6958,26 @@ body[data-accent="slate"] {
 .home-hero {
   position: relative;
   width: 100%;
-  min-height: 240px;
+  min-height: 260px;
   display: flex; align-items: flex-end;
   padding: 0;
   overflow: hidden;
   flex-shrink: 0;
-  background-color: #080d18;
+  background-color: #060b18;
+  background-image: linear-gradient(160deg, #060b18 0%, #0c1630 50%, #060b18 100%);
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
 }
-/* Legibility overlay — darkens the image slightly so text is always readable */
+/* Legibility overlay — subtle vignette so text is always readable */
 .home-hero::before {
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(
-    to bottom,
-    rgba(0,0,0,0.30) 0%,
-    rgba(0,0,0,0.12) 50%,
-    rgba(0,0,0,0)    75%
+    160deg,
+    rgba(0,0,0,0.28) 0%,
+    rgba(0,0,0,0.08) 60%,
+    rgba(0,0,0,0)    100%
   );
   pointer-events: none;
   z-index: 1;
@@ -6984,25 +7001,26 @@ body[data-accent="slate"] {
 }
 .home-hero-content {
   position: relative; z-index: 3;
-  padding: 28px 36px 22px;
+  padding: 32px 40px 24px;
   flex: 1;
 }
-/* Hero text is always white — canvas is always dark regardless of theme */
+/* Hero text is always white — canvas is always dark */
 .home-hero-content .home-greeting {
   color: #fff !important;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.6) !important;
-  margin: 0 0 4px;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.90), 0 1px 6px rgba(0,0,0,0.70) !important;
+  margin: 0 0 6px;
 }
 .home-username {
   cursor: pointer;
-  border-bottom: 1px dashed rgba(255,255,255,0.35);
+  border-bottom: 1px dashed rgba(255,255,255,0.40);
   transition: border-color 0.15s, opacity 0.15s;
 }
-.home-username:hover { border-color: rgba(255,255,255,0.75); opacity: 0.9; }
+.home-username:hover { border-color: rgba(255,255,255,0.85); opacity: 0.9; }
 .home-date {
-  font-size: 0.82rem; color: rgba(255,255,255,0.65);
+  font-size: 0.84rem; color: rgba(255,255,255,0.72);
   margin: 0; text-transform: capitalize;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.70);
+  letter-spacing: 0.01em;
 }
 
 /* Weather chip — sits bottom-right of hero */
@@ -7010,22 +7028,24 @@ body[data-accent="slate"] {
   position: relative; z-index: 5;
   display: flex; align-items: center; gap: 6px;
   align-self: flex-end;
-  margin: 0 24px 20px 0;
-  padding: 6px 14px;
-  background: rgba(0,0,0,0.38);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.14);
+  margin: 0 28px 22px 0;
+  padding: 7px 16px;
+  background: rgba(0,0,0,0.42);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 99px;
   color: #fff;
   font-size: 0.82rem;
+  font-family: var(--font-ui);
   white-space: nowrap;
   transition: opacity 0.4s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
 }
 .home-weather-chip.hw-hidden { opacity: 0; pointer-events: none; }
-.hw-icon { font-size: 1rem; line-height: 1; }
-.hw-temp { font-weight: 700; }
-.hw-label { font-size: 0.74rem; opacity: 0.80; }
+.hw-icon { font-size: 1.05rem; line-height: 1; }
+.hw-temp { font-weight: 700; letter-spacing: -0.02em; }
+.hw-label { font-size: 0.74rem; opacity: 0.82; }
 
 /* ── Ambient weather background (Home only) ────────────────────────────────── */
 /* html gets a base color so fixed z-index:-1 elements paint above it           */
@@ -7048,7 +7068,23 @@ html { background-color: var(--bg, #060610); }
   pointer-events: none; display: none;
   background: rgba(0, 0, 0, 0.22);
 }
-[data-theme="light"] #homeAmbientScrim { background: rgba(255,255,255,0.08); }
+[data-theme="light"] #homeAmbientScrim { background: rgba(255,255,255,0.10); }
+
+/* Light mode: hero keeps a dark look so animation/text stays legible */
+[data-theme="light"] .home-hero {
+  background-color: #0c1630;
+  background-image: linear-gradient(160deg, #0c1630 0%, #172044 50%, #0c1630 100%);
+}
+/* Soften the bottom fade to the light page background */
+[data-theme="light"] .home-hero::after {
+  background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
+}
+/* Ambient mode: hero is transparent in both themes — canvas takes over */
+[data-theme="light"] body.home-ambient .home-hero {
+  background-color: transparent;
+  background-image: none;
+}
+
 body.home-ambient #homeAmbientCanvas,
 body.home-ambient #homeAmbientScrim { display: block; }
 
