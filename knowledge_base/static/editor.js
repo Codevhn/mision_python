@@ -304,6 +304,29 @@ window.BlockEditor = (() => {
       return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
 
+    function addSemanticSpacing(blocks) {
+      if (blocks.length <= 1) return blocks;
+      const isHeading = t => /^h[1-4]$/.test(t);
+      const isBlank   = b => b.type === 'text' && !(b.content || '').trim();
+      const blank     = () => ({ id: uid(), type: 'text', content: '', checked: false, indent: 0 });
+      const result = [];
+      for (let i = 0; i < blocks.length; i++) {
+        const b    = blocks[i];
+        const prev = result[result.length - 1];
+        const next = blocks[i + 1];
+        // Blank before heading if previous block is non-blank, non-heading content
+        if (isHeading(b.type) && prev && !isBlank(prev) && !isHeading(prev.type)) {
+          result.push(blank());
+        }
+        result.push(b);
+        // Blank after heading if next block is non-blank, non-heading content
+        if (isHeading(b.type) && next && !isBlank(next) && !isHeading(next.type)) {
+          result.push(blank());
+        }
+      }
+      return result;
+    }
+
     function tsvToMd(text) {
       const rows = text.split(/\r?\n/)
         .map(line => line.trimEnd())
@@ -3345,7 +3368,7 @@ window.BlockEditor = (() => {
       // Markdown paste: works whether clipboard has HTML or only plain text
       if (normalizedText && looksLikeMarkdown(normalizedText)) {
         e.preventDefault();
-        const newBlocks = mdToBlocks(normalizedText);
+        const newBlocks = addSemanticSpacing(mdToBlocks(normalizedText));
         newBlocks.forEach(b => {
           if (b.type === 'code' && !b.lang) b.lang = inferCodeLang(b.content || '');
         });
@@ -3355,7 +3378,7 @@ window.BlockEditor = (() => {
       }
 
       if (html && /<(h[1-4]|p|div|ul|ol|li|blockquote|pre|table|hr)\b/i.test(html)) {
-        const htmlBlocks = htmlToPasteBlocks(html, insertIndent);
+        const htmlBlocks = addSemanticSpacing(htmlToPasteBlocks(html, insertIndent));
         if (htmlBlocks.length) {
           e.preventDefault();
           insertBlocks(htmlBlocks);
