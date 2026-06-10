@@ -4104,12 +4104,12 @@ function setSidebarVisible(visible) {
       // Auto-open drawer when switching to a space that has a sidebar tree.
       s.classList.add('mobile-open');
       if (ov) ov.classList.add('active');
+      document.body.classList.add('sidebar-open');
     } else {
       s.classList.remove('mobile-open');
       if (ov) ov.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
     }
-    // Layout padding must NOT account for sidebar in overlay mode.
-    document.body.classList.remove('sidebar-open');
   } else {
     s.style.display = visible ? '' : 'none';
     document.body.classList.toggle('sidebar-open', visible);
@@ -4907,6 +4907,7 @@ async function openCourseDetail(courseSlug) {
   _activeCourseSlug = courseSlug;
   expandedCourses[courseSlug] = true;
   closeHistoryPanel();
+  if (isMobile() || isCompact()) closeSidebarMobile();
 
   let courses;
   try { courses = await fetch('/api/courses').then(r => r.json()); }

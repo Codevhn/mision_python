@@ -4881,9 +4881,9 @@ body.sidebar-open .layout {
   }
   .sidebar-overlay.active { display: block; }
 
-  /* Layout is NEVER pushed — sidebar floats over content */
-  .layout { padding-left: var(--activity-bar-w) !important; }
-  body.sidebar-open .layout { padding-left: var(--activity-bar-w) !important; }
+  /* Layout pushes right when sidebar is open (same as desktop) */
+  .layout { padding-left: var(--activity-bar-w); }
+  body.sidebar-open .layout { padding-left: calc(var(--activity-bar-w) + var(--sidebar-w)); }
 }
 
 /* =============================================
