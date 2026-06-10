@@ -2850,12 +2850,27 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .eb--h3 .eb-content { font-size: 1.05rem; font-weight: 600; font-family: var(--font-ui); color: var(--h3-color); }
 .eb--h4 .eb-content { font-size: 0.95rem; font-weight: 600; font-family: var(--font-ui); color: var(--text-muted); }
 
-/* List blocks */
-.eb--bullet .eb-content::before  { content: "•"; color: var(--accent); margin-right: 8px; }
+/* List blocks — hanging indent so wrapped lines align after the marker */
+.eb--bullet .eb-content,
+.eb--numbered .eb-content {
+  padding-left: 1.4em;
+  position: relative;
+}
+.eb--bullet .eb-content::before {
+  content: "•";
+  color: var(--accent);
+  position: absolute;
+  left: 0;
+}
 .block-editor { counter-reset: eb-num; }
 .eb:not(.eb--numbered) { counter-reset: eb-num; }
 .eb--numbered { counter-increment: eb-num; }
-.eb--numbered .eb-content::before { content: counter(eb-num) "."; color: var(--accent); margin-right: 8px; }
+.eb--numbered .eb-content::before {
+  content: counter(eb-num) ".";
+  color: var(--accent);
+  position: absolute;
+  left: 0;
+}
 
 /* Todo */
 .eb--todo { align-items: center; }
