@@ -369,6 +369,7 @@ function toggleSidebar() {
   if (isMobile() || isCompact()) {
     const open = $("sidebar").classList.toggle("mobile-open");
     $("sidebarOverlay").classList.toggle("active", open);
+    document.body.classList.toggle("sidebar-open", open);
   } else {
     $("sidebar").classList.toggle("collapsed");
   }
@@ -377,6 +378,7 @@ function toggleSidebar() {
 function closeSidebarMobile() {
   $("sidebar").classList.remove("mobile-open");
   $("sidebarOverlay").classList.remove("active");
+  document.body.classList.remove("sidebar-open");
 }
 
 // ---- TREE ----
