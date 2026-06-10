@@ -4216,8 +4216,6 @@ function setSidebarVisible(visible) {
         const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
         if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
       }
-      // Compact/mobile: close drawer so the roadmap is fully visible
-      if (isMobile() || isCompact()) closeSidebarMobile();
     } else {
       // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
