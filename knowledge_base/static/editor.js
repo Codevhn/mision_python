@@ -395,6 +395,31 @@ window.BlockEditor = (() => {
       if (_activeSelectionEditor !== _selfRef) return false;
       if (_selected.size === 0) return false;
       const ordered = selectedBlocksInOrder();
+
+      // Option B: partial text when selection came from a cross-block drag
+      if (xDragAnchorId && xDragEndId && xDragAnchorId !== xDragEndId &&
+          _selected.has(xDragAnchorId) && _selected.has(xDragEndId) && ordered.length >= 2) {
+        const getPlain = b => {
+          const el = container.querySelector(`[data-id="${b.id}"] .eb-content, [data-id="${b.id}"] .eb-toggle-header`);
+          return el ? (el.dataset.plaintext || el.innerText || b.content || '') : (b.content || '');
+        };
+        const anchorIdx = _blocks.findIndex(b => b.id === xDragAnchorId);
+        const endIdx    = _blocks.findIndex(b => b.id === xDragEndId);
+        const dragDown  = anchorIdx <= endIdx;
+        const startOff  = dragDown ? xDragAnchorOff : (xDragEndOff ?? 0);
+        const endOff    = dragDown ? (xDragEndOff  ?? Infinity) : xDragAnchorOff;
+        const parts = ordered.map((b, i) => {
+          const t = getPlain(b);
+          if (i === 0)                  return t.slice(startOff);
+          if (i === ordered.length - 1) return t.slice(0, endOff ?? t.length);
+          return t;
+        }).filter(t => t.length > 0);
+        e.clipboardData?.setData('text/plain', parts.join('\n'));
+        e.clipboardData?.setData('text/html', blocksToHtml(ordered));
+        e.preventDefault();
+        return true;
+      }
+
       const md = blocksToMd(ordered);
       if (!md) return false;
       e.clipboardData?.setData('text/plain', md);
@@ -3521,6 +3546,87 @@ window.BlockEditor = (() => {
     document.addEventListener('mouseup', () => {
       marginSelecting = false;
       marginStartIdx = -1;
+    });
+
+    // ── Cross-block content drag-select (Option A + B) ───────────────────────
+    let xDragAnchorId  = null;  // block where drag started
+    let xDragAnchorOff = 0;     // plain-text offset in anchor block
+    let xDragEndId     = null;  // block where drag ended
+    let xDragEndOff    = null;  // plain-text offset in end block
+    let xDragActive    = false; // drag has crossed a block boundary
+
+    function _plainOffsetAtPoint(contentEl, x, y) {
+      try {
+        let sc, so;
+        if (document.caretRangeFromPoint) {
+          const r = document.caretRangeFromPoint(x, y);
+          if (!r || !contentEl.contains(r.startContainer)) return null;
+          sc = r.startContainer; so = r.startOffset;
+        } else if (document.caretPositionFromPoint) {
+          const p = document.caretPositionFromPoint(x, y);
+          if (!p || !contentEl.contains(p.offsetNode)) return null;
+          sc = p.offsetNode; so = p.offset;
+        } else return null;
+        const rng = document.createRange();
+        rng.setStart(contentEl, 0);
+        rng.setEnd(sc, so);
+        return rng.toString().length;
+      } catch { return null; }
+    }
+
+    // Record anchor block + offset on mousedown inside content
+    container.addEventListener('mousedown', e => {
+      const contentEl = e.target.closest('.eb-content, .eb-toggle-header');
+      if (!contentEl) { xDragAnchorId = null; return; }
+      const blockEl = contentEl.closest('.eb[data-id]');
+      if (!blockEl)   { xDragAnchorId = null; return; }
+      xDragAnchorId  = blockEl.dataset.id;
+      xDragAnchorOff = _plainOffsetAtPoint(contentEl, e.clientX, e.clientY) ?? 0;
+      xDragEndId = null; xDragEndOff = null; xDragActive = false;
+    });
+
+    // Detect when drag crosses a block boundary
+    document.addEventListener('mousemove', e => {
+      if (marginSelecting || !(e.buttons & 1) || !xDragAnchorId) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.eb[data-id]');
+      if (!el || !container.contains(el)) return;
+      const hoverId = el.dataset.id;
+      if (hoverId === xDragAnchorId && !xDragActive) return;
+
+      if (!xDragActive) {
+        xDragActive = true;
+        window.getSelection()?.removeAllRanges();
+        clearSelection();
+        _activeSelectionEditor = _selfRef;
+      }
+      // Keep killing native selection while dragging across blocks
+      window.getSelection()?.removeAllRanges();
+
+      const anchorIdx = _blocks.findIndex(b => b.id === xDragAnchorId);
+      const hoverIdx  = _blocks.findIndex(b => b.id === hoverId);
+      if (anchorIdx < 0 || hoverIdx < 0) return;
+      clearSelection();
+      _activeSelectionEditor = _selfRef;
+      const from = Math.min(anchorIdx, hoverIdx);
+      const to   = Math.max(anchorIdx, hoverIdx);
+      for (let i = from; i <= to; i++) {
+        _selected.add(_blocks[i].id);
+        container.querySelector(`[data-id="${_blocks[i].id}"]`)?.classList.add('eb--selected');
+      }
+      _lastSelIdx = hoverIdx;
+      xDragEndId = hoverId;
+    });
+
+    // Capture end offset when drag finishes
+    document.addEventListener('mouseup', e => {
+      if (xDragActive && xDragEndId) {
+        const endEl = container.querySelector(
+          `[data-id="${xDragEndId}"] .eb-content, [data-id="${xDragEndId}"] .eb-toggle-header`
+        );
+        if (endEl) xDragEndOff = _plainOffsetAtPoint(endEl, e.clientX, e.clientY);
+      }
+      if (!xDragActive) xDragAnchorId = null;
+      xDragActive = false;
     });
 
     // Notion-like click: clicking in vertical whitespace inserts a new block at that position.
