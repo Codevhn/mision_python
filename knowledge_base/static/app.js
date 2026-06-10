@@ -1063,8 +1063,13 @@ const _AMBIENT_ANIM_CONDS = new Set([
 function _setHomeAmbient(active) {
   if (active) {
     document.body.classList.add('home-ambient');
-    // Stop hero overlay — ambient canvas covers the full viewport including hero
+    // Clear inline style set by _applyWeatherBackground (inline style > CSS rule)
+    const hero = document.getElementById('homeHero');
+    if (hero) { hero.style.backgroundImage = ''; hero.style.backgroundColor = ''; }
+    // Stop hero overlay and clear canvas pixels
     if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop = null; }
+    const hc = document.getElementById('homeHeroCanvas');
+    if (hc) { try { hc.getContext('2d').clearRect(0,0,hc.width,hc.height); } catch {} }
   } else {
     document.body.classList.remove('home-ambient');
     if (_ambientCanvasStop)  { _ambientCanvasStop(); _ambientCanvasStop = null; }
@@ -1114,16 +1119,16 @@ function _startAmbientCanvas(cond) {
         particles.push({ k:'star', x:Math.random()*W, y:Math.random()*H*0.62,
           r:Math.random()*1.1+0.25, ph:Math.random()*Math.PI*2, sp:Math.random()*0.011+0.003 });
     } else if (cond==='rain-day'||cond==='rain-night'||cond==='thunderstorm-day'||cond==='thunderstorm-night') {
-      const n = Math.floor(250 * density);
+      const n = Math.floor(280 * density);
       for (let i = 0; i < n; i++)
         particles.push({ k:'rain', x:Math.random()*W, y:Math.random()*H,
-          len:Math.random()*14+7, sp:Math.random()*1.4+1.0, a:Math.random()*0.28+0.10 });
+          len:Math.random()*16+8, sp:Math.random()*1.6+1.2, a:Math.random()*0.38+0.22 });
     } else if (cond==='snow-day'||cond==='snow-night') {
-      const n = Math.floor(140 * density);
+      const n = Math.floor(160 * density);
       for (let i = 0; i < n; i++)
         particles.push({ k:'snow', x:Math.random()*W, y:Math.random()*H,
-          r:Math.random()*3+0.8, sp:Math.random()*0.9+0.3,
-          dr:(Math.random()-0.5)*0.4, a:Math.random()*0.5+0.25 });
+          r:Math.random()*3.5+0.9, sp:Math.random()*0.9+0.3,
+          dr:(Math.random()-0.5)*0.4, a:Math.random()*0.55+0.35 });
     } else if (cond==='foggy-day'||cond==='foggy-night') {
       const n = Math.floor(10 * density);
       for (let i = 0; i < n; i++)
@@ -1179,8 +1184,8 @@ function _startAmbientCanvas(cond) {
 
       } else if (p.k==='rain') {
         p.y+=p.sp; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
-        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.4,p.y+p.len);
-        ctx.strokeStyle=`rgba(160,205,245,${p.a})`; ctx.lineWidth=0.8; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.6,p.y+p.len);
+        ctx.strokeStyle=`rgba(180,218,255,${p.a})`; ctx.lineWidth=1.0; ctx.stroke();
         alive.push(p);
 
       } else if (p.k==='snow') {
@@ -1278,7 +1283,12 @@ function _fetchWeather() {
         const chip = document.getElementById('homeWeatherChip');
         if (chip) {
           const info = _weatherInfo(data.weather_code, data.is_day);
-          chip.innerHTML = `<span class="hw-icon">${info.icon}</span><span class="hw-temp">${Math.round(data.temp)}°C</span><span class="hw-label">${info.label}</span>`;
+          const city = data.city ? `<span class="hw-sep">·</span><span class="hw-city">${escapeHtml(data.city)}</span>` : '';
+          chip.innerHTML = `<span class="hw-icon">${info.icon}</span>
+            <div class="hw-body">
+              <div class="hw-top"><span class="hw-temp">${Math.round(data.temp)}°</span><span class="hw-unit">C</span></div>
+              <div class="hw-bottom"><span class="hw-label">${info.label}</span>${city}</div>
+            </div>`;
           chip.classList.remove('hw-hidden');
         }
       })
@@ -1325,9 +1335,19 @@ function renderHome() {
   const coursesCount = new Set(_index.filter(e => e.type === 'course').map(e => e.course).filter(Boolean)).size;
   const starredCount = starred.length;
 
+  function _buildWeatherChip(data) {
+    const i = _weatherInfo(data.weather_code, data.is_day);
+    const city = data.city ? `<span class="hw-city">${escapeHtml(data.city)}</span>` : '';
+    return `<div class="home-weather-chip" id="homeWeatherChip">
+      <span class="hw-icon">${i.icon}</span>
+      <div class="hw-body">
+        <div class="hw-top"><span class="hw-temp">${Math.round(data.temp)}°</span><span class="hw-unit">C</span></div>
+        <div class="hw-bottom"><span class="hw-label">${i.label}</span>${city ? `<span class="hw-sep">·</span>${city}` : ''}</div>
+      </div>
+    </div>`;
+  }
   const chipHtml = _weatherData
-    ? (() => { const i = _weatherInfo(_weatherData.weather_code, _weatherData.is_day);
-        return `<div class="home-weather-chip" id="homeWeatherChip"><span class="hw-icon">${i.icon}</span><span class="hw-temp">${Math.round(_weatherData.temp)}°C</span><span class="hw-label">${i.label}</span></div>`; })()
+    ? _buildWeatherChip(_weatherData)
     : `<div class="home-weather-chip hw-hidden" id="homeWeatherChip"></div>`;
 
   function cardHtml(r) {
