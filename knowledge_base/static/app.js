@@ -580,7 +580,7 @@ function renderCoursesTree(tree, filterSlug, _container = null) {
   const modulesDiv = nav; // modules go straight into nav
 
     for (const [moduleSlug, moduleData] of Object.entries(courseData.modules)) {
-      if (!state.modules[moduleSlug]) state.modules[moduleSlug] = { open: true };
+      if (!state.modules[moduleSlug]) state.modules[moduleSlug] = { open: false };
       const modState = state.modules[moduleSlug];
 
       const topicDiv = document.createElement("div");
