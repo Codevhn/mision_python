@@ -1748,6 +1748,9 @@ window.BlockEditor = (() => {
         // blank line → skip
         if (!l.trim()) { i++; continue; }
 
+        // intentional spacer block (persisted via blocksToMd)
+        if (l === '<!--blank-->') { pushBlock({ id:uid(), type:'text', content:'', checked:false, indent: 0 }); i++; continue; }
+
         // headings
         if (l.startsWith('#### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(5), indent: 0 }); i++; continue; }
         if (l.startsWith('### '))   { pushBlock({ id:uid(), type:'h3', content:l.slice(4), indent: 0 }); i++; continue; }
@@ -1930,7 +1933,10 @@ window.BlockEditor = (() => {
           case 'table':   push(b.content || ''); break;
           case 'divider': push('---'); break;
           case 'page':    push('[[' + c + (b.pageId ? '|' + b.pageId : '') + ']]'); break;
-          default: if (c.trim()) push(c);
+          case 'text':
+            if (c.trim()) push(c);
+            else if (idx > 0 && idx < list.length - 1) push('<!--blank-->');
+            break;
         }
       }
       let out = '';
