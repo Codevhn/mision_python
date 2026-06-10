@@ -6815,7 +6815,6 @@ body[data-accent="slate"] {
 }
 .course-list-item:hover { background: var(--bg-hover); }
 .course-list-item.active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-left: 2px solid var(--accent);
   padding-left: 10px;
 }
