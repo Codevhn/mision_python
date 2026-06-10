@@ -418,8 +418,8 @@ window.BlockEditor = (() => {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
       h = h.replace(/`([^`\n]+)`/g, '<code class="eb-ic">$1</code>');
-      h = h.replace(/\*\*\*([^*\n]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-      h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      h = h.replace(/\*\*\*((?:[^*\n]|\*(?!\*))+)\*\*\*/g, '<strong><em>$1</em></strong>');
+      h = h.replace(/\*\*((?:[^*\n]|\*(?!\*))+)\*\*/g, '<strong>$1</strong>');
       h = h.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
       h = h.replace(/(?<![a-zA-Z0-9])\*([^*\n]+)\*(?![a-zA-Z0-9])/g, '<em>$1</em>');
       h = h.replace(/(?<![a-zA-Z0-9])_([^_\n]+)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
