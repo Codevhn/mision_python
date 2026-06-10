@@ -2417,7 +2417,26 @@ def weather_proxy():
             "temp":         current.get("temperature_2m"),
             "weather_code": current.get("weather_code"),
             "is_day":       current.get("is_day", 1),
+            "city":         None,
         }
+        # Reverse geocoding via Nominatim
+        try:
+            geo_url = (
+                f"https://nominatim.openstreetmap.org/reverse"
+                f"?lat={lat}&lon={lon}&format=json&zoom=10"
+            )
+            geo_req = urllib.request.Request(
+                geo_url,
+                headers={"User-Agent": "ProjectAtlas/1.0 (knowledge-base-app)"}
+            )
+            with urllib.request.urlopen(geo_req, timeout=4) as gr:
+                geo = json.loads(gr.read())
+            addr = geo.get("address", {})
+            city = (addr.get("city") or addr.get("town") or addr.get("village")
+                    or addr.get("municipality") or addr.get("county") or "")
+            result["city"] = city or None
+        except Exception:
+            pass
         _weather_cache = {"ts": now, "data": result, "key": cache_key}
         return jsonify(result)
     except Exception as e:
