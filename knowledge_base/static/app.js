@@ -4128,11 +4128,6 @@ function setSidebarVisible(visible) {
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
   let _sidebarWasOpen = false;
-  // On initial desktop load ensure layout padding accounts for the sidebar
-  if (_lastWasWide) {
-    const _s = document.getElementById('sidebar');
-    if (_s && !_s.classList.contains('collapsed')) document.body.classList.add('sidebar-open');
-  }
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
