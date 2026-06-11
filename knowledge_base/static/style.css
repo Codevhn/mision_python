@@ -5249,7 +5249,7 @@ body {
   background: rgba(28,28,46,0.80) !important;
 }
 .home-card-title { font-size: 0.83rem !important; font-weight: 600 !important; color: rgba(255,255,255,0.92) !important; }
-.home-card-meta  { font-size: 0.66rem !important; color: rgba(255,255,255,0.60) !important; opacity: 1 !important; margin-top: 6px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; }
+.home-card-meta  { font-size: 0.66rem !important; color: inherit !important; opacity: 1 !important; margin-top: 8px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 6px !important; }
 .home-card-cover { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
 .home-card-body  { padding: 14px 16px 16px !important; }
 
@@ -5615,7 +5615,7 @@ body {
 [data-theme="light"] .home-card:hover {
   background: rgba(255,255,255,0.88) !important; border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important; }
 [data-theme="light"] .home-card-title { color: #0c0c1e !important; }
-[data-theme="light"] .home-card-meta  { color: rgba(0,0,0,0.42) !important; }
+[data-theme="light"] .home-card-meta  { color: inherit !important; }
 [data-theme="light"] .ctx-bar { background: rgba(230,230,244,0.85) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .breadcrumb-seg { color: rgba(0,0,0,0.40) !important; }
 [data-theme="light"] .breadcrumb-space { color: var(--accent) !important; }
@@ -7443,9 +7443,34 @@ body.home-ambient .home-hero { overflow: visible; }
 .home-stat[data-stat="starred"]:hover    { border-color: #f59e0b !important; box-shadow: 0 4px 16px rgba(245,158,11,0.18) !important; }
 
 /* ── Home: card meta (type badge + time) ─────────────────────────────── */
-.hcm-type { font-size: 0.64rem; font-weight: 500; color: var(--text-faint); }
-.hcm-type--course { color: #22c55e !important; }
-.hcm-time { font-size: 0.64rem; color: var(--text-faint); white-space: nowrap; }
+.hcm-type {
+  font-size: 0.61rem; font-weight: 600; letter-spacing: 0.02em;
+  padding: 2px 8px; border-radius: 20px; line-height: 1.6; white-space: nowrap;
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.80);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.hcm-type--course {
+  background: rgba(34,197,94,0.18) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34,197,94,0.32) !important;
+}
+.hcm-time {
+  font-size: 0.61rem; white-space: nowrap; letter-spacing: 0.01em;
+  color: rgba(255,255,255,0.55);
+}
+[data-theme="light"] .hcm-type {
+  background: rgba(0,0,0,0.06) !important;
+  color: rgba(0,0,0,0.65) !important;
+  border-color: rgba(0,0,0,0.11) !important;
+}
+[data-theme="light"] .hcm-type--course {
+  background: rgba(22,163,74,0.10) !important;
+  color: #15803d !important;
+  border-color: rgba(22,163,74,0.22) !important;
+}
+[data-theme="light"] .hcm-time { color: rgba(0,0,0,0.50) !important; }
+
 
 /* =============================================================================
    FASE 1 — Mobile drawer navigation
