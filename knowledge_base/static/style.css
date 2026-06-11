@@ -6400,6 +6400,20 @@ body[data-accent="slate"] {
 }
 .course-view.hidden { display: none; }
 
+/* Empty state when courses space is active but no course is selected */
+.course-empty-state {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; flex-direction: column;
+}
+.course-empty-state.hidden { display: none; }
+.ces-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  opacity: 0.45;
+}
+.ces-icon  { font-size: 2.8rem; line-height: 1; }
+.ces-title { font-size: 1rem; font-weight: 600; color: var(--text); font-family: var(--font-ui); margin: 0; }
+.ces-sub   { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-ui); margin: 0; text-align: center; }
+
 /* ── Course hero: cover + title fused ── */
 .cv-hero {
   width: 100%;

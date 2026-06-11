@@ -4186,28 +4186,30 @@ function setSidebarVisible(visible) {
     });
 
     // Always hide ALL main panels first, then selectively show the right one
-    const graphView  = document.getElementById('graphView');
-    const courseView = document.getElementById('courseView');
-    const kanbanArea = document.getElementById('kanbanArea');
-    const entryView  = document.getElementById('entryView');
-    const entryCover = document.getElementById('entryCover');
-    const entryAddCover = document.getElementById('entryAddCover');
-    const welcome    = document.getElementById('welcome');
+    const graphView       = document.getElementById('graphView');
+    const courseView      = document.getElementById('courseView');
+    const courseEmptySt   = document.getElementById('courseEmptyState');
+    const kanbanArea      = document.getElementById('kanbanArea');
+    const entryView       = document.getElementById('entryView');
+    const entryCover      = document.getElementById('entryCover');
+    const entryAddCover   = document.getElementById('entryAddCover');
+    const welcome         = document.getElementById('welcome');
 
     const ctxBarEl = document.getElementById('ctxBar');
 
     const radarView   = document.getElementById('radarView');
 
-    if (graphView)     graphView.classList.add('hidden');
-    if (radarView)     radarView.classList.add('hidden');
-    if (courseView)    courseView.classList.add('hidden');
-    if (kanbanArea)    kanbanArea.classList.add('hidden');
-    if (entryView)     entryView.classList.add('hidden');
-    if (entryCover)    entryCover.classList.add('hidden');
-    if (entryAddCover) entryAddCover.classList.add('hidden');
-    if (welcome)       welcome.style.display = 'none';
+    if (graphView)      graphView.classList.add('hidden');
+    if (radarView)      radarView.classList.add('hidden');
+    if (courseView)     courseView.classList.add('hidden');
+    if (courseEmptySt)  courseEmptySt.classList.add('hidden');
+    if (kanbanArea)     kanbanArea.classList.add('hidden');
+    if (entryView)      entryView.classList.add('hidden');
+    if (entryCover)     entryCover.classList.add('hidden');
+    if (entryAddCover)  entryAddCover.classList.add('hidden');
+    if (welcome)        welcome.style.display = 'none';
     _setHomeAmbient(false);
-    if (ctxBarEl)      ctxBarEl.classList.add('hidden');
+    if (ctxBarEl)       ctxBarEl.classList.add('hidden');
 
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
@@ -4237,8 +4239,11 @@ function setSidebarVisible(visible) {
         const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
         if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
       }
+    } else if (space === 'courses') {
+      // Courses space but no active course — show clean empty state, not the home screen
+      if (courseEmptySt) courseEmptySt.classList.remove('hidden');
     } else {
-      // knowledge, teamspace, boards, courses-without-active — show welcome unless entry open
+      // knowledge, teamspace, boards — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
       if (currentEntryId && entryView) entryView.classList.remove('hidden');
       if (currentEntryId && ctxBarEl) ctxBarEl.classList.remove('hidden');
