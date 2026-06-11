@@ -5008,6 +5008,7 @@ async function loadCourseView(courseSlug, courseEntity) {
   if (entryCover) entryCover.classList.add('hidden');
   if ($('entryAddCover')) $('entryAddCover').classList.add('hidden');
   if ($('ctxBar')) $('ctxBar').classList.add('hidden');
+  if ($('courseEmptyState')) $('courseEmptyState').classList.add('hidden');
   cv.classList.remove('hidden');
   // Compact/mobile: close the sidebar drawer so the course view is fully visible.
   // The user can reopen it via the hamburger button to navigate between courses.
