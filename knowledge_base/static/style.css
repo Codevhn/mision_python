@@ -6273,6 +6273,13 @@ body[data-accent="slate"] {
 [data-theme="light"] .hsc-time { color: rgba(0,0,0,0.52) !important; }
 [data-theme="light"] .home-study-featured { background: rgba(255,255,255,0.72) !important; border-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .home-study-compact  { background: rgba(255,255,255,0.60) !important; border-color: rgba(0,0,0,0.07) !important; }
+/* Light mode: course sidebar tree entries need stronger contrast */
+[data-theme="light"] .course-inline-tree .tree-entry { color: #1a1a3a !important; opacity: 0.80 !important; }
+[data-theme="light"] .course-inline-tree .tree-entry.active,
+[data-theme="light"] .course-inline-tree .tree-entry:hover { color: #0c0c1e !important; opacity: 1 !important; }
+[data-theme="light"] .course-list-name { color: #0c0c1e !important; }
+[data-theme="light"] .cv-roadmap-entry-title { color: #0c0c1e !important; }
+[data-theme="light"] .cv-roadmap-mod-label  { color: #0c0c1e !important; }
 
 /* ── Fase G: Graph View ──────────────────────────────────────────────── */
 .graph-view {
@@ -6550,7 +6557,7 @@ body[data-accent="slate"] {
 .cv-roadmap-entry--en_progreso .cv-roadmap-status { color: var(--accent); }
 .cv-roadmap-entry--pendiente .cv-roadmap-status { color: var(--text-muted); }
 .cv-roadmap-status { font-size: 0.8rem; flex-shrink: 0; width: 14px; text-align: center; }
-.cv-roadmap-entry-title { font-size: 0.78rem; color: var(--text); }
+.cv-roadmap-entry-title { font-size: 0.80rem; color: var(--text); font-weight: 500; }
 
 /* Stats tab */
 .cv-stats-grid {
@@ -6843,11 +6850,12 @@ body[data-accent="slate"] {
   margin-left: 0;
   border-left: none;
   padding: 3px 8px 3px 18px;
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  color: var(--text);
+  opacity: 0.80;
 }
 .course-inline-tree .tree-entry.active,
-.course-inline-tree .tree-entry:hover { color: var(--text); }
+.course-inline-tree .tree-entry:hover { color: var(--text); opacity: 1; }
 .course-inline-tree .tree-entry::before { content: ''; display: none; }
 .course-inline-tree .tree-entry-icon { display: none; }
 
@@ -6871,9 +6879,10 @@ body[data-accent="slate"] {
   display: flex; align-items: center; gap: 4px; min-width: 0;
 }
 .course-list-name {
-  font-size: 0.78rem; color: var(--text); font-weight: 500;
+  font-size: 0.78rem; color: var(--text); font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   flex: 1; min-width: 0;
+  opacity: 0.90;
 }
 .course-list-item.active .course-list-name { color: var(--accent); }
 .course-list-gear {
