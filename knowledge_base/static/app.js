@@ -4139,15 +4139,21 @@ function setSidebarVisible(visible) {
       if (ov) ov.classList.remove('active');
       document.body.classList.remove('sidebar-open');
     } else if (!_lastWasWide && nowWide) {
-      // Compact → desktop: sidebar is always inline in desktop layout
+      // Compact → desktop
       const s = document.getElementById('sidebar');
-      if (s) { s.classList.remove('mobile-open'); s.style.display = ''; }
+      if (s) s.classList.remove('mobile-open');
       const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
-      // Desktop sidebar is always visible (fixed); layout always needs sidebar padding
       if (s && !s.classList.contains('collapsed')) {
-        document.body.classList.add('sidebar-open');
+        // Only show sidebar + layout padding when a space panel has content.
+        // Without this check, opening a note from the home screen (where all
+        // sidebar panels are display:none) would create an empty panel on expand.
+        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spaceRadar','spaceGraph'];
+        const _hasPanel = _PANEL_IDS.some(id => { const p = document.getElementById(id); return p && p.style.display !== 'none'; });
+        s.style.display = _hasPanel ? '' : 'none';
+        document.body.classList.toggle('sidebar-open', _hasPanel);
       } else {
+        if (s) s.style.display = 'none';
         document.body.classList.remove('sidebar-open');
       }
     }
