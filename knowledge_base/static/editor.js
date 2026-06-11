@@ -203,7 +203,7 @@ window.BlockEditor = (() => {
     // ── HELPERS ─────────────────────────────────────────────────
     function isSpecialLine(l) {
       if (!l) return false;
-      return /^#{1,4} /.test(l) || l.startsWith('- ') || l.startsWith('* ') || l.startsWith('> ') ||
+      return /^#{1,6} /.test(l) || l.startsWith('- ') || l.startsWith('* ') || l.startsWith('> ') ||
              l === '---' || l === '***' || l.startsWith('```') || /^\d+\. /.test(l) ||
              /^\[\[.+\]\]$/.test(l.trim()) || l.startsWith('|') || l.startsWith(':::');
     }
@@ -301,7 +301,7 @@ window.BlockEditor = (() => {
     function looksLikeMarkdown(text) {
       const normalized = normalizePastedText(text);
       const lines = normalized.split('\n');
-      return lines.some(l => /^#{1,4} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
+      return lines.some(l => /^#{1,6} |^[-*] |^> |^\d+\. |^```|^\|/.test(l.trim()));
     }
 
     function addSemanticSpacing(blocks) {
@@ -1799,11 +1799,13 @@ window.BlockEditor = (() => {
         // intentional spacer block (persisted via blocksToMd)
         if (l === '<!--blank-->') { pushBlock({ id:uid(), type:'text', content:'', checked:false, indent: 0 }); i++; continue; }
 
-        // headings
-        if (l.startsWith('#### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(5), indent: 0 }); i++; continue; }
-        if (l.startsWith('### '))   { pushBlock({ id:uid(), type:'h3', content:l.slice(4), indent: 0 }); i++; continue; }
-        if (l.startsWith('## '))    { pushBlock({ id:uid(), type:'h2', content:l.slice(3), indent: 0 }); i++; continue; }
-        if (l.startsWith('# '))     { pushBlock({ id:uid(), type:'h1', content:l.slice(2), indent: 0 }); i++; continue; }
+        // headings (h5/h6 map to h4 — editor max)
+        if (l.startsWith('###### ')) { pushBlock({ id:uid(), type:'h4', content:l.slice(7), indent: 0 }); i++; continue; }
+        if (l.startsWith('##### '))  { pushBlock({ id:uid(), type:'h4', content:l.slice(6), indent: 0 }); i++; continue; }
+        if (l.startsWith('#### '))   { pushBlock({ id:uid(), type:'h4', content:l.slice(5), indent: 0 }); i++; continue; }
+        if (l.startsWith('### '))    { pushBlock({ id:uid(), type:'h3', content:l.slice(4), indent: 0 }); i++; continue; }
+        if (l.startsWith('## '))     { pushBlock({ id:uid(), type:'h2', content:l.slice(3), indent: 0 }); i++; continue; }
+        if (l.startsWith('# '))      { pushBlock({ id:uid(), type:'h1', content:l.slice(2), indent: 0 }); i++; continue; }
 
         // todo / list — support indented variants
         const trimmedL = l.trimStart();
