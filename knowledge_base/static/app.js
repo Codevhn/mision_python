@@ -4140,13 +4140,13 @@ function setSidebarVisible(visible) {
       if (ov) ov.classList.remove('active');
       document.body.classList.remove('sidebar-open');
     } else if (!_lastWasWide && nowWide) {
-      // Compact → desktop: restore sidebar to its pre-compact state
+      // Compact → desktop: sidebar is always inline in desktop layout
       const s = document.getElementById('sidebar');
       if (s) { s.classList.remove('mobile-open'); s.style.display = ''; }
       const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
-      // Ensure layout class matches actual sidebar visibility
-      if (_sidebarWasOpen && s && s.style.display !== 'none') {
+      // Desktop sidebar is always visible (fixed); layout always needs sidebar padding
+      if (s && !s.classList.contains('collapsed')) {
         document.body.classList.add('sidebar-open');
       } else {
         document.body.classList.remove('sidebar-open');
