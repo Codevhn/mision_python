@@ -4127,8 +4127,12 @@ function setSidebarVisible(visible) {
 // Auto-manage sidebar when crossing the 1024px compact breakpoint
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
-  // Track whether the sidebar was open before entering compact mode
   let _sidebarWasOpen = false;
+  // On initial desktop load ensure layout padding accounts for the sidebar
+  if (_lastWasWide) {
+    const _s = document.getElementById('sidebar');
+    if (_s && !_s.classList.contains('collapsed')) document.body.classList.add('sidebar-open');
+  }
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
