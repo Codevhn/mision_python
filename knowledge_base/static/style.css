@@ -5250,27 +5250,33 @@ body {
 /* ── HOME CARDS ── */
 .home-card {
   position: relative !important;
-  background: rgba(24,24,40,0.68) !important;
-  backdrop-filter: blur(18px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
-  border: 1px solid rgba(255,255,255,0.09) !important;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05) inset !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.06) inset !important;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s !important;
-  min-height: 110px !important;
+  min-height: 140px !important;
   overflow: hidden !important;
 }
 .home-card:hover {
   transform: translateY(-4px) !important;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 1px 0 rgba(255,255,255,0.08) inset !important;
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent) !important;
-  background: rgba(28,28,46,0.80) !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
 }
-.home-card-title { font-size: 0.83rem !important; font-weight: 600 !important; color: rgba(255,255,255,0.92) !important; }
-.home-card-meta  { font-size: 0.66rem !important; color: inherit !important; opacity: 1 !important; margin-top: 8px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 6px !important; }
+/* ::before: gradient covers FULL card height — no more split look */
+.home-card::before { height: 100% !important; border-radius: var(--radius-lg) !important; }
+/* Bottom scrim so text pops above the gradient */
+.home-card::after {
+  content: '' !important; position: absolute !important;
+  bottom: 0 !important; left: 0 !important; right: 0 !important; height: 65% !important;
+  background: linear-gradient(to top, rgba(0,0,0,0.52) 0%, transparent 100%) !important;
+  z-index: 1 !important; pointer-events: none !important; border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+}
 .home-card-cover { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; display: block !important; }
-.home-card::before { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
-.home-card-body  { padding: 14px 16px 16px !important; position: relative !important; z-index: 1 !important; }
+.home-card-body  { padding: 12px 14px 14px !important; position: relative !important; z-index: 2 !important; background: transparent !important; }
+.home-card-title { font-size: 0.83rem !important; font-weight: 600 !important; color: rgba(255,255,255,0.95) !important; }
+.home-card-meta  { font-size: 0.66rem !important; color: inherit !important; opacity: 1 !important; margin-top: 6px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 6px !important; }
+.home-card-icon  { position: relative !important; z-index: 2 !important; }
 
 /* Semantic border-top: Nota = neutral, Curso = green */
 .home-card { border-top: 2px solid rgba(255,255,255,0.10) !important; }
@@ -5630,14 +5636,17 @@ body {
 [data-theme="light"] .template-chip:hover, [data-theme="light"] .template-chip.active {
   background: color-mix(in srgb, var(--accent) 10%, transparent) !important; color: var(--accent) !important; }
 [data-theme="light"] .home-card {
-  background: rgba(255,255,255,0.96) !important;
-  border-color: rgba(0,0,0,0.07) !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 4px 20px rgba(0,0,0,0.07) !important;
+  background: transparent !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8) inset !important;
 }
 [data-theme="light"] .home-card:hover {
-  background: rgba(255,255,255,1) !important;
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent) !important;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12), 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent) !important;
+}
+/* Light mode: scrim lighter so pastel gradient shows; text dark */
+[data-theme="light"] .home-card::after {
+  background: linear-gradient(to top, rgba(255,255,255,0.55) 0%, transparent 100%) !important;
 }
 [data-theme="light"] .home-card-title { color: #0c0c1e !important; }
 [data-theme="light"] .home-card-meta  { color: inherit !important; }
