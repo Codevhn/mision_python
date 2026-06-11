@@ -673,25 +673,28 @@ input, textarea, select { font-family: inherit; }
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(23,147,209,0.1);
 }
+/* Cover area — always shown; transparent so inline-style real covers show on top */
 .home-card-cover {
-  width: 100%;
-  height: 72px;
-  background: var(--bg-surface);
-  flex-shrink: 0;
+  width: 100%; height: 72px; background: transparent;
+  flex-shrink: 0; display: block; position: relative; z-index: 1;
 }
-.home-card-cover:not([style]) { display: none; }
-.home-card-cover[style] { display: block; }
-/* Gradient placeholder when no real cover image is assigned */
-.home-card-cover[style=""] {
+/* Remove old visibility toggle rules — cover always visible now */
+
+/* Gradient placeholder via ::before (behind the cover; real covers sit above it) */
+.home-card { position: relative; }
+.home-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 72px;
   background: linear-gradient(150deg, #1a1040 0%, #0f2a4a 100%);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  z-index: 0; pointer-events: none;
 }
-.home-card:has(.hcm-type--course) .home-card-cover[style=""] {
-  background: linear-gradient(150deg, #052e16 0%, #0a3256 100%);
+.home-card:has(.hcm-type--course)::before {
+  background: linear-gradient(150deg, #0a3256 0%, #052e16 100%);
 }
-[data-theme="light"] .home-card-cover[style=""] {
+[data-theme="light"] .home-card::before {
   background: linear-gradient(150deg, #ede9fe 0%, #dbeafe 100%);
 }
-[data-theme="light"] .home-card:has(.hcm-type--course) .home-card-cover[style=""] {
+[data-theme="light"] .home-card:has(.hcm-type--course)::before {
   background: linear-gradient(150deg, #dcfce7 0%, #cffafe 100%);
 }
 .home-card-body {
@@ -5246,6 +5249,7 @@ body {
 
 /* ── HOME CARDS ── */
 .home-card {
+  position: relative !important;
   background: rgba(24,24,40,0.68) !important;
   backdrop-filter: blur(18px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
@@ -5254,6 +5258,7 @@ body {
   box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05) inset !important;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s !important;
   min-height: 110px !important;
+  overflow: hidden !important;
 }
 .home-card:hover {
   transform: translateY(-4px) !important;
@@ -5263,8 +5268,9 @@ body {
 }
 .home-card-title { font-size: 0.83rem !important; font-weight: 600 !important; color: rgba(255,255,255,0.92) !important; }
 .home-card-meta  { font-size: 0.66rem !important; color: inherit !important; opacity: 1 !important; margin-top: 8px !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 6px !important; }
-.home-card-cover { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
-.home-card-body  { padding: 14px 16px 16px !important; }
+.home-card-cover { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; display: block !important; }
+.home-card::before { height: 80px !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; }
+.home-card-body  { padding: 14px 16px 16px !important; position: relative !important; z-index: 1 !important; }
 
 /* Semantic border-top: Nota = neutral, Curso = green */
 .home-card { border-top: 2px solid rgba(255,255,255,0.10) !important; }
