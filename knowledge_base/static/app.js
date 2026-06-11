@@ -1322,8 +1322,7 @@ function _findEntryModule(courseSlug, entryId) {
 }
 
 function renderHome() {
-  const hour     = new Date().getHours();
-  const name     = _getUserName();
+  const hour      = new Date().getHours();
   const greetWord = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
   const recent   = _getRecent();
   const studying = _getStudying();
@@ -1332,7 +1331,7 @@ function renderHome() {
 
   const totalEntries = _index.length;
   const categories   = new Set(_index.map(e => e.category).filter(Boolean)).size;
-  const coursesCount = new Set(_index.filter(e => e.type === 'course').map(e => e.course).filter(Boolean)).size;
+  const coursesCount = _index.filter(e => e.type === 'course_root').length;
   const starredCount = starred.length;
 
   function _buildWeatherChip(data) {
@@ -1407,7 +1406,7 @@ function renderHome() {
       <div class="home-hero" id="homeHero">
         <canvas class="home-hero-canvas" id="homeHeroCanvas"></canvas>
         <div class="home-hero-content">
-          <h1 class="home-greeting">${escapeHtml(greetWord)}, <span class="home-username" id="homeUsername" title="Clic para cambiar nombre">${escapeHtml(name)}</span></h1>
+          <h1 class="home-greeting">${escapeHtml(greetWord)}</h1>
           <p class="home-date">${new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })}</p>
         </div>
         ${chipHtml}
@@ -1491,19 +1490,6 @@ function renderHome() {
 
   const coursesLink = $("homeCoursesLink");
   if (coursesLink) coursesLink.addEventListener("click", () => window.switchSpace?.('courses'));
-
-  // Editable user name
-  const unameEl = $("homeUsername");
-  if (unameEl) {
-    unameEl.addEventListener("click", () => {
-      const cur = _getUserName();
-      const n = prompt("Tu nombre:", cur);
-      if (n && n.trim()) {
-        try { localStorage.setItem(KB_USER_NAME_KEY, n.trim()); } catch {}
-        renderHome();
-      }
-    });
-  }
 
   // Activate ambient mode — full-viewport background replaces hero-only canvas
   const initCond = _weatherData
@@ -4141,15 +4127,30 @@ function setSidebarVisible(visible) {
 // Auto-manage sidebar when crossing the 1024px compact breakpoint
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
+  // Track whether the sidebar was open before entering compact mode
+  let _sidebarWasOpen = false;
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
-      // Desktop → compact: close sidebar (becomes drawer), layout no longer pushed
+      // Desktop → compact: remember open state, then close sidebar as drawer
+      _sidebarWasOpen = document.body.classList.contains('sidebar-open');
       const s = document.getElementById('sidebar');
       if (s) { s.style.display = ''; s.classList.remove('mobile-open'); }
       const ov = document.getElementById('sidebarOverlay');
       if (ov) ov.classList.remove('active');
       document.body.classList.remove('sidebar-open');
+    } else if (!_lastWasWide && nowWide) {
+      // Compact → desktop: restore sidebar to its pre-compact state
+      const s = document.getElementById('sidebar');
+      if (s) { s.classList.remove('mobile-open'); s.style.display = ''; }
+      const ov = document.getElementById('sidebarOverlay');
+      if (ov) ov.classList.remove('active');
+      // Ensure layout class matches actual sidebar visibility
+      if (_sidebarWasOpen && s && s.style.display !== 'none') {
+        document.body.classList.add('sidebar-open');
+      } else {
+        document.body.classList.remove('sidebar-open');
+      }
     }
     _lastWasWide = nowWide;
   });
