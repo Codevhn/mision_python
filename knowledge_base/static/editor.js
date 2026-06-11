@@ -2027,6 +2027,7 @@ window.BlockEditor = (() => {
         el.style.marginLeft = relativeIndent ? `${relativeIndent * INDENT_STEP_PX}px` : '';
         if (parentToggle?.trail) el.dataset.trail = parentToggle.trail;
         (parentBody || container).appendChild(el);
+        if (_selected.has(b.id)) el.classList.add('eb--selected');
         if (b.type && b.type.startsWith('toggle')) {
           const bodyEl = el.querySelector(':scope > .eb-toggle-body-wrap > .eb-toggle-nested');
           if (bodyEl) {
@@ -3658,7 +3659,8 @@ window.BlockEditor = (() => {
       }
 
       // If click is not on a block at all, insert based on Y position.
-      if (!e.target.closest('.eb[data-id]')) {
+      // Don't insert when blocks are already selected (drag-select just completed).
+      if (!e.target.closest('.eb[data-id]') && _selected.size === 0) {
         const visible = Array.from(container.querySelectorAll('.eb[data-id]')).filter(el => el.offsetParent !== null);
         const y = e.clientY;
         let beforeId = null;
