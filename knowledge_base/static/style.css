@@ -4962,6 +4962,11 @@ body.sidebar-open .layout {
   cursor: default;
 }
 
+@media (min-width: 1025px) {
+  .breadcrumb-seg { max-width: none; }
+  .breadcrumb-seg.breadcrumb-current { flex: 1; min-width: 0; }
+}
+
 .breadcrumb-space {
   color: var(--accent);
   cursor: pointer;
