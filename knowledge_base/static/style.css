@@ -6550,14 +6550,14 @@ body[data-accent="slate"] {
   padding: 6px 10px; border-radius: var(--radius-xs);
   cursor: pointer; transition: background 0.12s;
   border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  background: rgba(28,28,52,0.92);
 }
 .cv-roadmap-entry:hover { background: var(--bg-hover); border-color: var(--accent); }
 .cv-roadmap-entry--completado .cv-roadmap-status { color: #22c55e; }
 .cv-roadmap-entry--en_progreso .cv-roadmap-status { color: var(--accent); }
 .cv-roadmap-entry--pendiente .cv-roadmap-status { color: var(--text-muted); }
 .cv-roadmap-status { font-size: 0.8rem; flex-shrink: 0; width: 14px; text-align: center; }
-.cv-roadmap-entry-title { font-size: 0.80rem; color: var(--text); font-weight: 500; }
+.cv-roadmap-entry-title { font-size: 0.80rem; color: rgba(255,255,255,0.88); font-weight: 600; }
 
 /* Stats tab */
 .cv-stats-grid {
