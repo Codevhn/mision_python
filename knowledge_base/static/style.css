@@ -6280,6 +6280,8 @@ body[data-accent="slate"] {
 [data-theme="light"] .course-list-name { color: #0c0c1e !important; }
 [data-theme="light"] .cv-roadmap-entry-title { color: #0c0c1e !important; }
 [data-theme="light"] .cv-roadmap-mod-label  { color: #0c0c1e !important; }
+[data-theme="light"] .cv-roadmap-entry { background: var(--bg-elevated) !important; }
+[data-theme="light"] .cv-outline-item { color: #1a1a3a !important; }
 
 /* ── Fase G: Graph View ──────────────────────────────────────────────── */
 .graph-view {
@@ -6704,7 +6706,7 @@ body[data-accent="slate"] {
   display: flex; flex-direction: column; gap: 2px;
 }
 .cv-outline-item {
-  font-size: 0.74rem; color: var(--text-muted);
+  font-size: 0.74rem; color: var(--text);
   padding: 2px 0; line-height: 1.4;
   cursor: pointer; transition: color 0.1s;
 }
