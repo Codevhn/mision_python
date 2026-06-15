@@ -1975,8 +1975,8 @@ function _updateRecentCover(id, cover) {
     const addBtn    = $("addCoverBtn");
     const changeBtn = $("coverChangeBtn");
     const removeBtn = $("coverRemoveBtn");
-    if (addBtn)    addBtn.addEventListener("click", openCoverPicker);
-    if (changeBtn) changeBtn.addEventListener("click", openCoverPicker);
+    if (addBtn)    addBtn.addEventListener("click", () => openCoverPicker());
+    if (changeBtn) changeBtn.addEventListener("click", () => openCoverPicker());
     if (removeBtn) removeBtn.addEventListener("click", () => saveCover(""));
   });
 })();
