@@ -1629,14 +1629,20 @@ function renderHome() {
   const coursesLink = $("homeCoursesLink");
   if (coursesLink) coursesLink.addEventListener("click", () => window.switchSpace?.('courses'));
 
-  // Activate ambient mode — full-viewport background replaces hero-only canvas
-  const initCond = _weatherData
-    ? _weatherCondition(_weatherData.weather_code, _weatherData.is_day)
-    : _defaultCondition();
-  _applyWeatherBackground(initCond); // hero asset (fallback when ambient disabled)
-  _setHomeAmbient(true);             // class + stop hero canvas
-  _startAmbientCanvas(initCond);     // full-viewport canvas
-  _fetchWeather();
+  // Activate ambient mode — full-viewport background replaces hero-only canvas.
+  // Only do this when Home is actually the active space — renderHome() is also
+  // called as a side-effect of unrelated actions (icon change, cover save) while
+  // viewing another space, and must not re-enable the ambient background then.
+  const _activeSpaceNow = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
+  if (!_activeSpaceNow || _activeSpaceNow === 'home') {
+    const initCond = _weatherData
+      ? _weatherCondition(_weatherData.weather_code, _weatherData.is_day)
+      : _defaultCondition();
+    _applyWeatherBackground(initCond); // hero asset (fallback when ambient disabled)
+    _setHomeAmbient(true);             // class + stop hero canvas
+    _startAmbientCanvas(initCond);     // full-viewport canvas
+    _fetchWeather();
+  }
 }
 
 // ---- ENTRY VIEW ----
