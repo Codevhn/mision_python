@@ -3549,6 +3549,9 @@ async function restoreVersion() {
 // NEW FEATURE: BACKLINKS
 // ============================================================
 async function loadBacklinks(id) {
+  // Remove previous backlinks section before adding the new one
+  $("entryView").querySelector(".backlinks-section")?.remove();
+
   const res = await fetch(`/api/entry/${id}/backlinks`);
   if (!res.ok) return;
   const backlinks = await res.json();
@@ -3566,7 +3569,8 @@ async function loadBacklinks(id) {
   section.querySelectorAll(".backlink-item").forEach(item => {
     item.addEventListener("click", () => loadEntry(item.dataset.id));
   });
-  $("entryBody").appendChild(section);
+  // Insert as a sibling after entryBody (the BlockNote root), never as a child of it
+  $("entryBody").after(section);
 }
 
 // ============================================================

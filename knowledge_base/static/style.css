@@ -170,6 +170,25 @@
   --glass-shadow: 0 4px 24px rgba(0, 40, 100, 0.12);
 }
 
+/* BlockNote ships fixed pastel block background colors (toggle/callout/highlight)
+   with no dark-theme counterpart; they're tuned for a near-white editor canvas.
+   In our light theme the canvas already has a tinted gradient, so the raw pastels
+   clash. Blend them into the theme surface instead of using BlockNote's literal hex. */
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="gray"])   { --bn-block-bg: #ebeced; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="brown"])  { --bn-block-bg: #e9e5e3; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="red"])    { --bn-block-bg: #fbe4e4; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="orange"]) { --bn-block-bg: #f6e9d9; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="yellow"]) { --bn-block-bg: #fbf3db; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="green"])  { --bn-block-bg: #ddedea; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="blue"])   { --bn-block-bg: #ddebf1; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="purple"]) { --bn-block-bg: #eae4f2; }
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color="pink"])   { --bn-block-bg: #f4dfeb; }
+
+[data-theme="light"] [data-background-color],
+[data-theme="light"] .bn-block:has(> .bn-block-content[data-background-color]) {
+  background-color: color-mix(in srgb, var(--bn-block-bg) 55%, var(--bg-surface)) !important;
+}
+
 [data-theme="light"] body {
   background-color: var(--layer-0);
   background-image:
