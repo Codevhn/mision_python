@@ -64,14 +64,12 @@ document.addEventListener("DOMContentLoaded", () => {
   BlockEditor.init({
     container:   document.getElementById("blockEditor"),
     syncTarget:  document.getElementById("fieldContent"),
-    menuEl:      document.getElementById("slashMenu"),
     onPageCreate: null,
   });
 
   // Inline entry editor (for viewing/editing entries)
   _inlineEditor = BlockEditor.create({
     container:    document.getElementById("entryBody"),
-    menuEl:       document.getElementById("slashMenuInline"),
     onChange:     _scheduleAutoSave,
     onPageCreate: true,  // enable page creation (handled via window._promptPageName)
   });
