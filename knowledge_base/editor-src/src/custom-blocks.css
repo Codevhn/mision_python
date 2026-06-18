@@ -26,6 +26,28 @@
   background-color: var(--bg-code) !important;
 }
 
+/* style.css decorates `.entry-body h1/h2/h3` with a literal "#"/"→" prefix
+   and a blockquote-style left border, meant to make the read-only
+   markdown-rendered review/version-history panels look like raw markdown.
+   #entryBody is the live BlockNote view, where headings are edited
+   directly, not previewed as markdown source, so that decoration reads as
+   a stray duplicate symbol instead. The #entryBody id beats the plain
+   class selector on specificity, so this only resets the live editor and
+   leaves the read-only panels (#reviewBody, #versionModalBody) untouched. */
+#entryBody h1::before,
+#entryBody h3::before {
+  content: none;
+}
+#entryBody h1 {
+  border-bottom: 1px solid var(--bn-colors-border);
+}
+#entryBody h2 {
+  border-left: none;
+  padding-left: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .bn-pagelink-chip {
   display: inline-flex;
   align-items: center;
