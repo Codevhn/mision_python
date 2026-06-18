@@ -12,7 +12,102 @@ function textContent(str) {
 function plain(content) {
   if (!content) return "";
   if (typeof content === "string") return content;
+  // Non-array content (e.g. a table block's `{ type: "tableContent", rows }`)
+  // never goes through this path on purpose — callers serialize it themselves.
+  if (!Array.isArray(content)) return "";
   return content.map((c) => (c.type === "text" ? c.text : c.type === "link" ? plain(c.content) : "")).join("");
+}
+
+// ── INLINE MARKDOWN (bold/italic/code/strike/links) ─────────────────
+// Mirrors the dialect the legacy static/editor.js renderInline/htmlToMd
+// pair used, so old on-disk content (and anything still produced by that
+// dialect) round-trips into real BlockNote rich-text instead of showing
+// literal **/`` markers. Patterns are tried in priority order (most
+// specific delimiter first) and the earliest match in the string wins,
+// same precedence the legacy sequential .replace() chain implied.
+const INLINE_PATTERNS = [
+  { re: /\[([^\]]+)\]\(([^)]+)\)/, type: "link" },
+  { re: /\*\*\*((?:[^*]|\*(?!\*))+?)\*\*\*/, styles: { bold: true, italic: true } },
+  { re: /\*\*((?:[^*]|\*(?!\*))+?)\*\*/, styles: { bold: true } },
+  { re: /__([^_]+?)__/, styles: { bold: true } },
+  { re: /~~([^~]+?)~~/, styles: { strike: true } },
+  { re: /`([^`]+?)`/, styles: { code: true } },
+  { re: /(?<![a-zA-Z0-9])\*([^*\n]+?)\*(?![a-zA-Z0-9])/, styles: { italic: true } },
+  { re: /(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/, styles: { italic: true } },
+  { re: /(https?:\/\/[^\s<>"]+|www\.[^\s<>"\]]+)/i, type: "autolink" },
+];
+
+// Trim trailing punctuation that's almost certainly not part of the URL
+// (e.g. "ver https://x.com." or "(ver https://x.com)") — same heuristic
+// as the legacy editor's autolink().
+function trimUrlTrail(raw) {
+  let url = raw;
+  let trail = "";
+  const m = url.match(/[.,;:!?)\]}'"]+$/);
+  if (m) { trail = m[0]; url = url.slice(0, -trail.length); }
+  return { url, trail };
+}
+
+function parseInline(text, baseStyles = {}) {
+  if (!text) return [];
+  let best = null;
+  for (const p of INLINE_PATTERNS) {
+    const m = p.re.exec(text);
+    if (m && (!best || m.index < best.m.index)) best = { p, m };
+  }
+  if (!best) return [{ type: "text", text, styles: { ...baseStyles } }];
+  const { p, m } = best;
+  const before = text.slice(0, m.index);
+  let after = text.slice(m.index + m[0].length);
+  const runs = [];
+  if (before) runs.push({ type: "text", text: before, styles: { ...baseStyles } });
+
+  if (p.type === "link") {
+    runs.push({ type: "link", href: m[2], content: parseInline(m[1], baseStyles) });
+  } else if (p.type === "autolink") {
+    const { url, trail } = trimUrlTrail(m[0]);
+    if (!url) {
+      runs.push({ type: "text", text: m[0], styles: { ...baseStyles } });
+    } else {
+      const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      runs.push({ type: "link", href, content: [{ type: "text", text: url, styles: { ...baseStyles } }] });
+      after = trail + after;
+    }
+  } else {
+    runs.push(...parseInline(m[1], { ...baseStyles, ...p.styles }));
+  }
+  runs.push(...parseInline(after, baseStyles));
+  return runs;
+}
+
+function styleWrap(text, styles) {
+  if (!text) return text;
+  if (styles.code) return "`" + text + "`";
+  let out = text;
+  if (styles.bold && styles.italic) out = "***" + out + "***";
+  else if (styles.bold) out = "**" + out + "**";
+  else if (styles.italic) out = "_" + out + "_";
+  if (styles.strike) out = "~~" + out + "~~";
+  return out;
+}
+
+function inlineToMd(content) {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((c) => {
+    if (c.type === "link") {
+      const inner = inlineToMd(c.content);
+      const bareHref = c.href.replace(/^https?:\/\//, "");
+      // Re-emit as a bare URL (not [text](url)) when the visible text is
+      // just the href, so plain autolinked URLs round-trip losslessly
+      // through the same dialect the legacy editor wrote.
+      if (inner === c.href || inner === bareHref) return c.href;
+      return `[${inner}](${c.href})`;
+    }
+    if (c.type === "text") return styleWrap(c.text, c.styles || {});
+    return "";
+  }).join("");
 }
 
 function colorProps(block) {
@@ -160,18 +255,20 @@ function flatToBlock(fb) {
   const props = colorProps(fb);
   switch (fb.type) {
     case "heading":
-      return { id: fb.id, type: "heading", props: { ...props, level: fb.level }, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "heading", props: { ...props, level: fb.level }, content: parseInline(fb.content), children: [] };
     case "bullet":
-      return { id: fb.id, type: "bulletListItem", props, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "bulletListItem", props, content: parseInline(fb.content), children: [] };
     case "numbered":
-      return { id: fb.id, type: "numberedListItem", props, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "numberedListItem", props, content: parseInline(fb.content), children: [] };
     case "todo":
-      return { id: fb.id, type: "checkListItem", props: { ...props, checked: !!fb.checked }, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "checkListItem", props: { ...props, checked: !!fb.checked }, content: parseInline(fb.content), children: [] };
     case "quote":
-      return { id: fb.id, type: "quote", props, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "quote", props, content: parseInline(fb.content), children: [] };
     case "divider":
       return { id: fb.id, type: "divider", props, children: [] };
     case "code":
+      // Code blocks are never inline-parsed: literal `**`, `_`, backtick,
+      // etc. inside source code must stay exactly as typed.
       return { id: fb.id, type: "codeBlock", props: { language: fb.lang || "" }, content: textContent(fb.content), children: [] };
     case "pageLink":
       return { id: fb.id, type: "pageLink", props: { ...props, title: fb.title || "", pageId: fb.pageId || "" }, children: [] };
@@ -179,19 +276,19 @@ function flatToBlock(fb) {
       return { id: fb.id, type: "database", props: { ...props, data: fb.data || "{}" }, children: [] };
     case "table": {
       const rows = parseMdTable(fb.tableLines).map((cells) => ({
-        cells: cells.map((c) => textContent(c)),
+        cells: cells.map((c) => parseInline(c)),
       }));
       return { id: fb.id, type: "table", props, content: { type: "tableContent", rows }, children: [] };
     }
     case "toggle": {
       const children = buildTree(fb._children || []);
       if (fb.toggleLevel) {
-        return { id: fb.id, type: "heading", props: { ...props, level: fb.toggleLevel, isToggleable: true }, content: textContent(fb.content), children };
+        return { id: fb.id, type: "heading", props: { ...props, level: fb.toggleLevel, isToggleable: true }, content: parseInline(fb.content), children };
       }
-      return { id: fb.id, type: "toggleListItem", props, content: textContent(fb.content), children };
+      return { id: fb.id, type: "toggleListItem", props, content: parseInline(fb.content), children };
     }
     default:
-      return { id: fb.id, type: "paragraph", props, content: textContent(fb.content), children: [] };
+      return { id: fb.id, type: "paragraph", props, content: parseInline(fb.content), children: [] };
   }
 }
 
@@ -234,7 +331,9 @@ function serializeListChildren(children, indentLevel) {
 function blockToMd(block, indentLevel = 0) {
   const prefix = colorComment(block.props || {});
   const ind = "  ".repeat(indentLevel);
-  const text = plain(block.content);
+  // codeBlock content must round-trip byte-for-byte, never re-encoded as
+  // markdown emphasis/links (see the matching note in flatToBlock).
+  const text = block.type === "codeBlock" ? plain(block.content) : inlineToMd(block.content);
 
   switch (block.type) {
     case "heading": {
@@ -266,7 +365,7 @@ function blockToMd(block, indentLevel = 0) {
     }
     case "table": {
       const rows = block.content?.rows || [];
-      const lines = rows.map((r) => "| " + r.cells.map((c) => plain(c)).join(" | ") + " |");
+      const lines = rows.map((r) => "| " + r.cells.map((c) => inlineToMd(c)).join(" | ") + " |");
       if (lines.length) {
         const sep = "| " + rows[0].cells.map(() => "---").join(" | ") + " |";
         lines.splice(1, 0, sep);
