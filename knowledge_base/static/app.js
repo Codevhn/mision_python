@@ -389,12 +389,13 @@ let _navStack = [];  // [{ type, id, label, space }]
 let _navPos   = -1;  // current position in stack
 
 async function loadTree() {
-  const [r1, r2, r3, r4, r5] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses")]);
+  const [r1, r2, r3, r4, r5, r6] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses"), fetch("/api/pages/tree")]);
   const knowledgeTree  = await r1.json();
   const coursesTree    = await r2.json();
   const teamspaceTree  = await r3.json();
   const entries        = await r4.json();
   const coursesFlat    = await r5.json();
+  const pagesTree      = await r6.json();
   // Merge course root entities into _index so they appear in relation searcher
   const courseIndexEntries = (Array.isArray(coursesFlat) ? coursesFlat : []).map(c => ({
     id:       c.id,
@@ -410,6 +411,7 @@ async function loadTree() {
   _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
   renderTeamspaceTree(teamspaceTree);
+  renderPagesTree(pagesTree);
   renderCourseList(); // sidebar course list (async)
   // Restore starred section from starredMap
   renderStarredSection(
@@ -740,6 +742,142 @@ function renderTeamspaceTree(tree) {
     nav.appendChild(spaceDiv);
   }
 }
+
+// ---- PAGES TREE (recursive, type: "page") ----
+function renderPagesTree(tree) {
+  const nav = $("pagesTree");
+  nav.innerHTML = "";
+  if (!tree || !tree.length) {
+    nav.innerHTML = '<div class="tree-empty">No hay páginas aún.</div>';
+    return;
+  }
+
+  function buildNodeEl(node) {
+    const item = document.createElement("div");
+    item.className = "tree-page-node";
+    item.dataset.id = node.id;
+
+    const row = document.createElement("div");
+    row.className = "tree-entry tree-page-row" + (node.id === currentEntryId ? " active" : "");
+    row.draggable = true;
+
+    const hasChildren = node.children && node.children.length > 0;
+    const toggle = document.createElement("span");
+    toggle.className = "tree-page-toggle";
+    toggle.textContent = hasChildren ? "▾" : "";
+    row.appendChild(toggle);
+
+    const label = document.createElement("span");
+    label.className = "tree-entry-label";
+    label.innerHTML = renderTreeEntryLabel(node.icon, node.title, ENTRY_ICON_DEFAULTS.page);
+    row.appendChild(label);
+
+    const childrenEl = document.createElement("div");
+    childrenEl.className = "tree-page-children";
+    (node.children || []).forEach(child => childrenEl.appendChild(buildNodeEl(child)));
+
+    if (hasChildren) {
+      toggle.addEventListener("click", e => {
+        e.stopPropagation();
+        const open = childrenEl.style.display !== "none";
+        childrenEl.style.display = open ? "none" : "";
+        toggle.textContent = open ? "▸" : "▾";
+      });
+    }
+
+    row.addEventListener("click", () => loadEntry(node.id));
+
+    // Drag-and-drop reparenting: dropping a page onto another makes it a child
+    row.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", node.id);
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => row.classList.remove("dragging"));
+    row.addEventListener("dragover", e => {
+      e.preventDefault();
+      row.classList.add("drag-over");
+    });
+    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+    row.addEventListener("drop", async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.remove("drag-over");
+      const draggedId = e.dataTransfer.getData("text/plain");
+      if (!draggedId || draggedId === node.id) return;
+      const res = await fetch(`/api/entry/${draggedId}/parent`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent_id: node.id }),
+      });
+      if (res.ok) {
+        await loadTree();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "No se pudo mover la página", "error");
+      }
+    });
+
+    item.appendChild(row);
+    item.appendChild(childrenEl);
+    return item;
+  }
+
+  // Root drop zone: dropping on the tree background (not on a node) makes a page a root page
+  nav.addEventListener("dragover", e => e.preventDefault());
+  nav.addEventListener("drop", async e => {
+    if (e.target !== nav) return;
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId) return;
+    const res = await fetch(`/api/entry/${draggedId}/parent`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parent_id: null }),
+    });
+    if (res.ok) await loadTree();
+  });
+
+  tree.forEach(node => nav.appendChild(buildNodeEl(node)));
+}
+
+// ---- NEW ROOT PAGE MODAL ----
+function openNewPageModal() {
+  $("newPageTitle").value = "";
+  setIconButtonValue($("newPageIconBtn"), ENTRY_ICON_DEFAULTS.page, ENTRY_ICON_DEFAULTS.page);
+  $("newPageOverlay").classList.remove("hidden");
+  setTimeout(() => $("newPageTitle").focus(), 50);
+}
+
+$("newPageBtn").addEventListener("click", openNewPageModal);
+$("newPageClose").addEventListener("click", () => $("newPageOverlay").classList.add("hidden"));
+$("newPageCancel").addEventListener("click", () => $("newPageOverlay").classList.add("hidden"));
+$("newPageOverlay").addEventListener("click", e => { if (e.target === $("newPageOverlay")) $("newPageOverlay").classList.add("hidden"); });
+$("newPageTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("newPageCreate").click(); } });
+
+$("newPageCreate").addEventListener("click", async () => {
+  const title = $("newPageTitle").value.trim();
+  if (!title) { $("newPageTitle").focus(); return; }
+  const icon = getIconButtonValue("newPageIconBtn");
+  const res = await fetch("/api/entry", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      entry_type: "page",
+      title,
+      icon,
+      raw_text: "# " + title + "\n\n",
+      already_markdown: true,
+    }),
+  });
+  if (res.ok) {
+    const d = await res.json();
+    $("newPageOverlay").classList.add("hidden");
+    await loadTree();
+    loadEntry(d.id);
+  } else {
+    showToast("Error al crear la página", "error");
+  }
+});
 
 // ---- NEW TEAMSPACE MODAL ----
 function openNewTeamspaceModal() {
@@ -1548,6 +1686,10 @@ async function loadEntry(id, opts = {}) {
     }
   } catch {}
 
+  // "Mover" (category/topic move) only applies to knowledge entries
+  const moveBtnEl = $("moveBtn");
+  if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
+
   // Render inline editor with entry markdown
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
   $("entryBody").classList.toggle("note-entry", isNote);
@@ -2102,6 +2244,12 @@ async function openEditModal() {
     $("courseFields").classList.add("hidden");
     $("teamspaceFields").classList.remove("hidden");
     $("fieldTeamspace").value = m.teamspace_label || m.teamspace || "";
+  } else if (m.type === "page") {
+    // Pages have no category/topic/teamspace — title and icon only
+    if (window._setModalMode) window._setModalMode("page");
+    $("knowledgeFields").classList.add("hidden");
+    $("courseFields").classList.add("hidden");
+    $("teamspaceFields")?.classList.add("hidden");
   } else {
     if (window._setModalMode) window._setModalMode("knowledge");
     document.querySelectorAll(".type-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "knowledge"));
@@ -2186,6 +2334,28 @@ async function saveEntry() {
         }
         const titleEl = $("inlineTitle");
         if (titleEl) titleEl.textContent = title;
+      } else {
+        showToast("Error al actualizar", "error");
+      }
+      return;
+    }
+    if (currentModalMode === "page") {
+      if (!title) { showToast("Ingresa un título", "error"); return; }
+      const res = await fetch(`/api/entry/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, icon }),
+      });
+      if (res.ok) {
+        closeModal();
+        showToast("Información actualizada");
+        await loadTree();
+        const titleEl = $("inlineTitle");
+        if (titleEl) titleEl.textContent = title;
+        if (currentEntryMeta) {
+          currentEntryMeta.title = title;
+          currentEntryMeta.icon = icon;
+        }
       } else {
         showToast("Error al actualizar", "error");
       }
@@ -2707,6 +2877,7 @@ function initIconPickers() {
   initIconButton("ntsIconBtn", ENTRY_ICON_DEFAULTS.teamspace);
   initIconButton("tsPageIconBtn", ENTRY_ICON_DEFAULTS.page);
   initIconButton("pageNameIconBtn", ENTRY_ICON_DEFAULTS.page);
+  initIconButton("newPageIconBtn", ENTRY_ICON_DEFAULTS.page);
 }
 
 function showToast(msg, type = "success") {
@@ -3728,15 +3899,19 @@ function buildBreadcrumb(meta) {
 
   const isCourse    = meta.type === "course"    || !!meta.course;
   const isTeamspace = meta.type === "teamspace" || !!meta.teamspace;
+  const isPage      = meta.type === "page";
 
   // Space root label
   let spaceLabel = "Conocimiento";
   let spaceSpace = "knowledge";
   if (isCourse)    { spaceLabel = "Cursos";   spaceSpace = "courses"; }
   if (isTeamspace) { spaceLabel = "Team";     spaceSpace = "teamspace"; }
+  if (isPage)      { spaceLabel = "Páginas";  spaceSpace = "pages"; }
 
-  const catLabel   = escapeHtml(isCourse ? (_coursesTreeData[meta.course]?.label || meta.course_label || meta.course) : isTeamspace ? "Teamspace" : (meta.category_label || meta.category)) || "";
-  const topicLabel = escapeHtml(isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : (meta.topic_label || meta.topic)) || "";
+  const catLabelRaw   = isCourse ? (_coursesTreeData[meta.course]?.label || meta.course_label || meta.course) : isTeamspace ? "Teamspace" : isPage ? "" : (meta.category_label || meta.category);
+  const topicLabelRaw = isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : isPage ? "" : (meta.topic_label || meta.topic);
+  const catLabel   = catLabelRaw   ? escapeHtml(catLabelRaw)   : "";
+  const topicLabel = topicLabelRaw ? escapeHtml(topicLabelRaw) : "";
   const entryTitle = escapeHtml(meta.title || "Sin título");
 
   const hasIntermediates = !!(catLabel || topicLabel);
@@ -4148,7 +4323,7 @@ function setSidebarVisible(visible) {
         // Only show sidebar + layout padding when a space panel has content.
         // Without this check, opening a note from the home screen (where all
         // sidebar panels are display:none) would create an empty panel on expand.
-        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spaceRadar','spaceGraph'];
+        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spacePages','spaceRadar','spaceGraph'];
         const _hasPanel = _PANEL_IDS.some(id => { const p = document.getElementById(id); return p && p.style.display !== 'none'; });
         s.style.display = _hasPanel ? '' : 'none';
         document.body.classList.toggle('sidebar-open', _hasPanel);
@@ -4162,7 +4337,7 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'graph', 'radar'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'pages', 'graph', 'radar'];
 
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
@@ -4248,7 +4423,7 @@ function setSidebarVisible(visible) {
       // Courses space but no active course — show clean empty state, not the home screen
       if (courseEmptySt) courseEmptySt.classList.remove('hidden');
     } else {
-      // knowledge, teamspace, boards — show welcome unless entry open
+      // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
       if (currentEntryId && entryView) entryView.classList.remove('hidden');
       if (currentEntryId && ctxBarEl) ctxBarEl.classList.remove('hidden');

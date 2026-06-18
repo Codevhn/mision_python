@@ -105,6 +105,8 @@ def _entry_path(entry_id, meta):
         return KNOWLEDGE_DIR / "courses" / meta["course"] / meta["module"] / f"{entry_id}.md"
     if meta.get("type") == "teamspace":
         return KNOWLEDGE_DIR / "teamspace" / meta.get("teamspace", "general") / f"{entry_id}.md"
+    if meta.get("type") == "page":
+        return KNOWLEDGE_DIR / "pages" / f"{entry_id}.md"
     return KNOWLEDGE_DIR / meta["category"] / meta["topic"] / f"{entry_id}.md"
 
 
@@ -447,7 +449,7 @@ def get_tree():
     cat_labels = {}
     topic_labels = {}
     for entry_id, meta in index.items():
-        if meta.get("type") in ("course", "teamspace"):
+        if meta.get("type") in ("course", "teamspace", "page"):
             continue
         cat = meta["category"]
         topic = meta["topic"]
@@ -479,6 +481,70 @@ def get_tree():
             }
         }
     return jsonify(result)
+
+
+@app.route("/api/pages/tree")
+def get_pages_tree():
+    """Recursive nested tree of all type=='page' entries, ordered by (order, created_at)."""
+    index = load_index()
+    nodes = {}
+    for entry_id, meta in index.items():
+        if meta.get("type") != "page":
+            continue
+        nodes[entry_id] = {
+            "id": entry_id,
+            "title": meta.get("title", ""),
+            "icon": meta.get("icon", ""),
+            "created_at": meta.get("created_at", ""),
+            "order": meta.get("order", 0),
+            "parent_id": meta.get("parent_id"),
+            "children": [],
+        }
+
+    roots = []
+    for entry_id, node in nodes.items():
+        parent_id = node["parent_id"]
+        if parent_id and parent_id in nodes:
+            nodes[parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+
+    def sort_tree(node_list):
+        node_list.sort(key=lambda n: (n["order"], n["created_at"]))
+        for n in node_list:
+            sort_tree(n["children"])
+
+    sort_tree(roots)
+    return jsonify(roots)
+
+
+@app.route("/api/entry/<entry_id>/parent", methods=["PATCH"])
+def set_entry_parent(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json or {}
+    new_parent_id = data.get("parent_id") or None
+
+    if new_parent_id:
+        if new_parent_id not in index:
+            return jsonify({"error": "Parent not found"}), 404
+        if new_parent_id == entry_id:
+            return jsonify({"error": "Cannot be its own parent"}), 400
+        # cycle detection: walk up from new_parent_id, ensure entry_id is not an ancestor
+        cursor = new_parent_id
+        seen = set()
+        while cursor:
+            if cursor == entry_id:
+                return jsonify({"error": "Cannot move a page under its own descendant"}), 400
+            if cursor in seen:
+                break
+            seen.add(cursor)
+            cursor = index.get(cursor, {}).get("parent_id")
+
+    index[entry_id]["parent_id"] = new_parent_id
+    save_index(index)
+    return jsonify({"message": "Updated"})
 
 
 def resolve_entry_id(ref, index):
@@ -561,6 +627,24 @@ def create_entry():
             "parent_id": parent_id,
             "icon": icon,
             "is_teamspace_home": bool(data.get("is_teamspace_home")),
+        }
+        save_index(index)
+        return jsonify({"id": entry_id, "message": "Saved"})
+
+    if entry_type == "page":
+        folder = KNOWLEDGE_DIR / "pages"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{entry_id}.md").write_text(md_content)
+        index[entry_id] = {
+            "uid": uuid.uuid4().hex[:8],
+            "title": title,
+            "type": "page",
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "status": "pendiente",
+            "order": 0,
+            "tags": tags,
+            "parent_id": parent_id,
+            "icon": icon,
         }
         save_index(index)
         return jsonify({"id": entry_id, "message": "Saved"})
@@ -679,6 +763,22 @@ def update_entry(entry_id):
         save_index(index)
         return jsonify({"message": "Updated"})
 
+    if meta.get("type") == "page":
+        if raw_text:
+            _save_history_snapshot(entry_id, meta, old_path)
+            old_path.parent.mkdir(parents=True, exist_ok=True)
+            old_path.write_text(rendered_text)
+        if title:
+            index[entry_id]["title"] = title
+        if icon is not None:
+            index[entry_id]["icon"] = icon.strip()
+        if "parent_id" in data:
+            index[entry_id]["parent_id"] = data.get("parent_id") or None
+        if "order" in data:
+            index[entry_id]["order"] = int(data["order"])
+        save_index(index)
+        return jsonify({"message": "Updated"})
+
     # Knowledge entry — update file if content provided, move if cat/topic changed
     new_category = slugify(category) if category else meta["category"]
     new_topic    = slugify(topic)    if topic    else meta["topic"]
@@ -711,25 +811,49 @@ def update_entry(entry_id):
     return jsonify({"message": "Updated"})
 
 
+def _collect_descendants(entry_id, index):
+    """Return all descendant entry_ids of entry_id (children, grandchildren, ...)."""
+    children_by_parent = {}
+    for eid, meta in index.items():
+        pid = meta.get("parent_id")
+        if pid:
+            children_by_parent.setdefault(pid, []).append(eid)
+    descendants = []
+    stack = list(children_by_parent.get(entry_id, []))
+    while stack:
+        cur = stack.pop()
+        descendants.append(cur)
+        stack.extend(children_by_parent.get(cur, []))
+    return descendants
+
+
 @app.route("/api/entry/<entry_id>", methods=["DELETE"])
 def delete_entry(entry_id):
     index = load_index()
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
-    meta = index[entry_id]
-    uid  = meta.get("uid")
-    path = _entry_path(entry_id, meta)
-    if path.exists():
-        path.unlink()
-    del index[entry_id]
+
+    ids_to_delete = [entry_id] + _collect_descendants(entry_id, index)
+    uids = set()
+    for eid in ids_to_delete:
+        meta = index.get(eid)
+        if not meta:
+            continue
+        uid = meta.get("uid")
+        if uid:
+            uids.add(uid)
+        path = _entry_path(eid, meta)
+        if path.exists():
+            path.unlink()
+        del index[eid]
     save_index(index)
-    # Clean up any relations that reference this entry's UID
-    if uid:
+    # Clean up any relations that reference any deleted entry's UID
+    if uids:
         relations = load_relations()
         before = len(relations["relations"])
         relations["relations"] = {
             rid: rel for rid, rel in relations["relations"].items()
-            if rel.get("from_uid") != uid and rel.get("to_uid") != uid
+            if rel.get("from_uid") not in uids and rel.get("to_uid") not in uids
         }
         if len(relations["relations"]) != before:
             save_relations(relations)
@@ -846,7 +970,7 @@ def get_categories():
     index = load_index()
     cats = {}
     for meta in index.values():
-        if meta.get("type") == "course":
+        if meta.get("type") in ("course", "teamspace", "page"):
             continue
         cat = meta["category"]
         cats[cat] = meta.get("category_label", cat)
@@ -877,7 +1001,7 @@ def get_stats():
     last_dt = None
 
     for entry_id, meta in index.items():
-        if meta.get("type") == "course":
+        if meta.get("type") in ("course", "teamspace", "page"):
             continue
         cat = meta["category"]
         cat_label = meta.get("category_label", cat)
@@ -919,7 +1043,7 @@ def export_category_md(category):
     found = False
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for entry_id, meta in index.items():
-            if meta.get("type") == "course":
+            if meta.get("type") in ("course", "teamspace", "page"):
                 continue
             if meta["category"] == category:
                 path = _entry_path(entry_id, meta)
@@ -941,7 +1065,7 @@ def export_category_pdf(category):
     index = load_index()
     combined_html = ""
     for entry_id, meta in index.items():
-        if meta.get("type") == "course":
+        if meta.get("type") in ("course", "teamspace", "page"):
             continue
         if meta["category"] == category:
             path = _entry_path(entry_id, meta)
@@ -967,7 +1091,7 @@ def search_filtered():
     index = load_index()
     results = []
     for entry_id, meta in index.items():
-        if meta.get("type") == "course":
+        if meta.get("type") in ("course", "teamspace", "page"):
             continue
         # Category filter
         if category_filter and meta["category"] != category_filter:

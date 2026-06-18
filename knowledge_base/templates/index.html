@@ -94,6 +94,10 @@
           <span class="ab-icon">👥</span>
           <span class="ab-label">Team</span>
         </button>
+        <button class="ab-item" id="abPages" data-space="pages" title="Páginas">
+          <span class="ab-icon">📄</span>
+          <span class="ab-label">Páginas</span>
+        </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
           <span class="ab-icon">◎</span>
           <span class="ab-label">Grafo</span>
@@ -135,6 +139,7 @@
         <button class="msn-item" data-space="courses"><span class="msn-icon">🎓</span><span class="msn-label">Cursos</span></button>
         <button class="msn-item" data-space="boards"><span class="msn-icon">⊞</span><span class="msn-label">Tableros</span></button>
         <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
+        <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
       </nav>
@@ -186,6 +191,17 @@
         </div>
         <nav class="tree" id="teamspaceTree">
           <div class="tree-empty">No hay contenido aún.</div>
+        </nav>
+      </div>
+
+      <!-- SPACE: PAGES -->
+      <div class="sidebar-space" id="spacePages" style="display:none">
+        <div class="sidebar-space-header">
+          <span>Páginas</span>
+          <button class="ts-new-btn" id="newPageBtn" title="Nueva página">+</button>
+        </div>
+        <nav class="tree" id="pagesTree">
+          <div class="tree-empty">No hay páginas aún.</div>
         </nav>
       </div>
 
@@ -930,6 +946,29 @@
       <div class="modal-footer">
         <button class="btn-ghost" id="tsPageCancel">Cancelar</button>
         <button class="btn-primary" id="tsPageCreate">Crear página</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW ROOT PAGE MODAL -->
+  <div class="modal-overlay hidden" id="newPageOverlay">
+    <div class="modal nts-modal">
+      <div class="modal-header">
+        <span>Nueva página</span>
+        <button class="modal-close" id="newPageClose">×</button>
+      </div>
+      <div class="modal-body" style="padding:24px 28px 8px;">
+        <div class="form-group">
+          <label>Título</label>
+          <div class="icon-field-row">
+            <button type="button" class="entry-icon-btn" id="newPageIconBtn" title="Elegir icono"></button>
+            <input type="text" id="newPageTitle" placeholder="Nombre de la página…" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="newPageCancel">Cancelar</button>
+        <button class="btn-primary" id="newPageCreate">Crear página</button>
       </div>
     </div>
   </div>
