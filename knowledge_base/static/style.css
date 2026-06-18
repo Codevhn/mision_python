@@ -760,7 +760,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Entry view */
-.entry-view { max-width: 960px; margin: 0 auto; padding: 0 0 80px; }
+.entry-view { max-width: 1280px; margin: 0 auto; padding: 0 0 80px; }
 
 /* ---- Entry cover ---- */
 .entry-cover {
@@ -7975,4 +7975,18 @@ body.focus-mode .layout { height: 100dvh; }
 
   /* Kanban: allow horizontal scroll at this width */
   .kb-columns-wrap { overflow-x: auto; }
+}
+
+/* ── FLAT BACKGROUND ──
+   The ambient radial-gradient body backgrounds above made the editor's
+   now solid-colored background (synced to --bg) look mismatched: a flat
+   box sitting on top of blurred colorful corners. Collapse to a single
+   flat color per theme so the editor blends seamlessly with the page in
+   both dark and light mode. Appended last (and `!important`) so it wins
+   over the earlier ambient-gradient `body` rules regardless of source
+   order. */
+body {
+  background: var(--bg) !important;
+  background-image: none !important;
+  background-attachment: scroll !important;
 }
