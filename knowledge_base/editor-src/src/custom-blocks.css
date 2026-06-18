@@ -1,3 +1,31 @@
+/* BlockNote/Mantine's built-in light/dark themes ship a fixed palette
+   (#fff / #1f1f1f) that doesn't match this app's custom CSS variables,
+   leaving a visibly mismatched box behind the editor content. These
+   variables are set inline on the editor root by BlockNoteView itself, so
+   `!important` is needed to win the cascade; they reference the app's own
+   custom properties so they stay in sync with toggleTheme() in app.js. */
+.bn-container {
+  --bn-colors-editor-text: var(--text) !important;
+  --bn-colors-editor-background: var(--bg) !important;
+  --bn-colors-menu-text: var(--text) !important;
+  --bn-colors-menu-background: var(--bg-elevated) !important;
+  --bn-colors-tooltip-text: var(--text) !important;
+  --bn-colors-tooltip-background: var(--bg-elevated) !important;
+  --bn-colors-hovered-text: var(--text) !important;
+  --bn-colors-hovered-background: var(--bg-hover) !important;
+  --bn-colors-selected-text: var(--text) !important;
+  --bn-colors-selected-background: var(--bg-hover) !important;
+  --bn-colors-disabled-text: var(--text-faint) !important;
+  --bn-colors-disabled-background: var(--bg-surface) !important;
+  --bn-colors-shadow: var(--bg-overlay) !important;
+  --bn-colors-border: var(--bg-hover) !important;
+  --bn-colors-side-menu: var(--text-muted) !important;
+}
+
+.bn-block-content[data-content-type="codeBlock"] {
+  background-color: var(--bg-code) !important;
+}
+
 .bn-pagelink-chip {
   display: inline-flex;
   align-items: center;

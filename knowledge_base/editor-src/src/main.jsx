@@ -7,8 +7,33 @@ import "./custom-blocks.css";
 import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
 
+function currentAppTheme() {
+  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+
+// Reads a File into a base64 data URL and uploads it through the same
+// endpoint the cover-image picker already uses, so no backend changes
+// are needed to support image blocks.
+async function uploadFile(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const res = await fetch("/api/upload/cover", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataUrl }),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "Upload failed");
+  return data.url;
+}
+
 function EditorView({ instanceRef, onChange, onReady }) {
-  const editor = useCreateBlockNote({ schema });
+  const editor = useCreateBlockNote({ schema, uploadFile });
+  const [theme, setTheme] = React.useState(currentAppTheme());
 
   React.useEffect(() => {
     instanceRef.editor = editor;
@@ -16,9 +41,16 @@ function EditorView({ instanceRef, onChange, onReady }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(currentAppTheme()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <BlockNoteView
       editor={editor}
+      theme={theme}
       onChange={() => {
         if (instanceRef.suppressChange) return;
         if (onChange) onChange(blocksToMd(editor.document));
@@ -128,4 +160,5 @@ window.BlockEditor = {
   },
   loadMarkdown(md) { window._modalBlockEditor && window._modalBlockEditor.load(md); },
   getMarkdown() { return window._modalBlockEditor ? window._modalBlockEditor.getMarkdown() : ""; },
+  focusFirst() { window._modalBlockEditor && window._modalBlockEditor.focusFirst(); },
 };

@@ -12,7 +12,8 @@
     "@blocknote/mantine": "0.51.4",
     "@blocknote/react": "0.51.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "shiki": "^4.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
