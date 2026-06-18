@@ -460,6 +460,22 @@ window.BlockEditor = (() => {
     // WYSIWYG model: rendered HTML stays visible while editing.
     // We read back plaintext by walking the DOM (htmlToMd).
 
+    const AUTOLINK_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+
+    // Trim trailing punctuation that's almost certainly not part of the URL
+    // (e.g. "check https://x.com." or "(see https://x.com)").
+    function autolink(h) {
+      return h.replace(AUTOLINK_RE, raw => {
+        let url = raw;
+        let trail = '';
+        const m = url.match(/[.,;:!?)\]}'"]+$/);
+        if (m) { trail = m[0]; url = url.slice(0, -trail.length); }
+        if (!url) return raw;
+        const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`;
+      });
+    }
+
     function renderInline(text) {
       let h = text
         .replace(/&/g, '&amp;')
@@ -471,12 +487,14 @@ window.BlockEditor = (() => {
       h = h.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
       h = h.replace(/(?<![a-zA-Z0-9])\*([^*\n]+)\*(?![a-zA-Z0-9])/g, '<em>$1</em>');
       h = h.replace(/(?<![a-zA-Z0-9])_([^_\n]+)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
+      h = autolink(h);
       h = h.replace(/\n/g, '<br>');
       return h;
     }
 
     function hasInlineMarkdown(text) {
-      return /`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|__[^_]+__|_[^_\n]+_/.test(text);
+      AUTOLINK_RE.lastIndex = 0;
+      return /`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|__[^_]+__|_[^_\n]+_/.test(text) || AUTOLINK_RE.test(text);
     }
 
     // Walk DOM → extract plain markdown text (reverse of renderInline)

@@ -2860,6 +2860,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* Inline bold/italic */
 .eb-content strong { font-weight: 700; color: inherit; }
 .eb-content em { font-style: italic; opacity: 0.9; }
+.eb-content a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(23, 147, 209, 0.4); cursor: pointer; }
+.eb-content a:hover { text-decoration-color: var(--accent); }
 
 /* Heading blocks */
 .eb--h1 .eb-content { font-size: 1.6rem; font-weight: 700; font-family: var(--font-ui); color: var(--h1-color); }
