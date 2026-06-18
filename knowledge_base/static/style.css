@@ -4221,6 +4221,22 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 .ts-empty-hint { padding-left: 30px !important; font-style: italic; }
 
+/* ── PAGES TREE (recursive) ─────────────────────────────── */
+.tree-page-node { min-width: 0; }
+.tree-page-row { position: relative; }
+.tree-page-toggle {
+  width: 12px;
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-align: center;
+  cursor: pointer;
+}
+.tree-page-children {
+  margin-left: 14px;
+}
+.tree-page-row.drag-over { border-left-color: var(--accent); background: var(--accent-light); }
+
 /* ── NEW TEAMSPACE MODAL ────────────────────────────────── */
 .nts-modal { max-width: 460px; }
 .icon-field-row,
