@@ -1655,14 +1655,7 @@ async function loadEntry(id, opts = {}) {
   const moveBtnEl = $("moveBtn");
   if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
 
-  // Render inline editor with entry markdown
-  const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
-  $("entryBody").classList.toggle("note-entry", isNote);
-  if (_inlineEditor.setPersistenceKey) _inlineEditor.setPersistenceKey(id);
-  _inlineEditor.load(data.markdown);
-  $("contentArea").scrollTo(0, 0);
-
-  // Set inline title
+  // Set inline title (before editor render, so a content-load failure can't leave it blank)
   const titleEl = $("inlineTitle");
   if (titleEl) {
     titleEl.textContent = m.title || "";
@@ -1676,6 +1669,18 @@ async function loadEntry(id, opts = {}) {
   const entryStatus = m.status || "pendiente";
   statusMap[id] = entryStatus;
   updateStatusBtn($("statusBtn"), entryStatus);
+
+  // Render inline editor with entry markdown
+  const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
+  $("entryBody").classList.toggle("note-entry", isNote);
+  if (_inlineEditor.setPersistenceKey) _inlineEditor.setPersistenceKey(id);
+  try {
+    _inlineEditor.load(data.markdown);
+  } catch (err) {
+    console.error("Error al renderizar el contenido de la entrada:", err);
+    showToast("No se pudo renderizar el contenido de esta entrada", "error");
+  }
+  $("contentArea").scrollTo(0, 0);
 
   // Word count + reading time
   const wordCount = getWordCount($("entryBody"));
