@@ -5942,6 +5942,7 @@ body[data-accent="slate"] {
 /* ── Ambient weather background (Home only) ────────────────────────────────── */
 /* html gets a base color so fixed z-index:-1 elements paint above it           */
 html { background-color: var(--bg, #060610); }
+html[data-theme="light"] { background-color: #ffffff; }
 
 /* Canvas (weather asset + particles) + scrim sit behind ALL page content.
    Placed as first children in <body> so DOM paint order puts content on top. */
@@ -5988,6 +5989,16 @@ body.home-ambient #homeAmbientScrim { display: block; }
 body.home-ambient { background-color: transparent; background-image: none; }
 body.home-ambient .content-area { background: transparent !important; }
 body.home-ambient .welcome      { background: transparent; }
+
+/* Light mode: the ambient weather canvas/scrim is tuned for a dark backdrop and
+   washes the solid-white page gray — keep the page solid white and restore the
+   hero's static dark-gradient look instead of the ambient transparent hero. */
+[data-theme="light"] body.home-ambient #homeAmbientCanvas,
+[data-theme="light"] body.home-ambient #homeAmbientScrim { display: none !important; }
+[data-theme="light"] body.home-ambient .home-hero {
+  background-color: #0c1630 !important;
+  background-image: linear-gradient(160deg, #0c1630 0%, #172044 50%, #0c1630 100%) !important;
+}
 
 /* Ensure content-area stacks ABOVE the z-index:0 ambient canvas */
 body.home-ambient .content-area { position: relative; z-index: 1; }
