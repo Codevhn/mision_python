@@ -190,11 +190,8 @@
 }
 
 [data-theme="light"] body {
-  background-color: var(--layer-0);
-  background-image:
-    radial-gradient(ellipse 70% 50% at 15% 20%, rgba(15, 114, 168, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 55% at 85% 75%, rgba(109, 40, 217, 0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(200, 220, 248, 0.20) 0%, transparent 70%);
+  background-color: #ffffff;
+  background-image: none;
 }
 
 /* ---- RESET ---- */
@@ -4463,13 +4460,8 @@ body {
   --glass-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.7) inset;
 }
 [data-theme="light"] body {
-  background: #e8e8f5 !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(109,40,217,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(23,147,209,0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(16,185,129,0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 5%  90%,  rgba(236,72,153,0.10) 0%, transparent 50%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 [data-theme="light"] .topbar {
   background: rgba(238,238,248,0.85) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
@@ -4805,54 +4797,15 @@ body[data-accent="red"] {
   box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 15%, transparent) !important;
 }
 
-/* ── Accent themes: light mode body gradients (intensificados) ───────── */
-[data-theme="light"] body[data-accent="orange"] {
-  background: #f5ece8 !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(249,115,22,0.42) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   rgba(234,179,8,0.28)  0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(239,68,68,0.22)  0%, transparent 55%) !important;
-  background-attachment: fixed !important;
-}
-[data-theme="light"] body[data-accent="yellow"] {
-  background: #f5f3e0 !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(234,179,8,0.45)  0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   rgba(249,115,22,0.25) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(161,161,170,0.15) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
-}
-[data-theme="light"] body[data-accent="cyan"] {
-  background: #e2eff5 !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(6,182,212,0.40)  0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   color-mix(in srgb, var(--accent) 25%, transparent) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(16,185,129,0.20) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
-}
-[data-theme="light"] body[data-accent="pink"] {
-  background: #f5e8f0 !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(236,72,153,0.42)  0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   rgba(168,85,247,0.25)  0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(239,68,68,0.18)   0%, transparent 55%) !important;
-  background-attachment: fixed !important;
-}
-[data-theme="light"] body[data-accent="green"] {
-  background: #e4f2eb !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(34,197,94,0.40)  0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   rgba(6,182,212,0.25)  0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
-}
+/* ── Accent themes: light mode body stays solid white regardless of accent ── */
+[data-theme="light"] body[data-accent="orange"],
+[data-theme="light"] body[data-accent="yellow"],
+[data-theme="light"] body[data-accent="cyan"],
+[data-theme="light"] body[data-accent="pink"],
+[data-theme="light"] body[data-accent="green"],
 [data-theme="light"] body[data-accent="red"] {
-  background: #f5e8e8 !important;
-  background-image:
-    radial-gradient(ellipse 100% 80% at 5% 0%,   rgba(239,68,68,0.42)   0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,   rgba(249,115,22,0.25)  0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(168,85,247,0.16)  0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 /* ── Dark tone accents ───────────────────────────────────────────────── */
@@ -4867,12 +4820,8 @@ body[data-accent="deep-blue"] {
               var(--bg);
 }
 [data-theme="light"] body[data-accent="deep-blue"] {
-  background: #dde8f5 !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(30,58,138,0.30) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(37,99,235,0.22) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(6,182,212,0.14) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 [data-accent="deep-purple"] {
@@ -4886,12 +4835,8 @@ body[data-accent="deep-purple"] {
               var(--bg);
 }
 [data-theme="light"] body[data-accent="deep-purple"] {
-  background: #ece8f5 !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(76,29,149,0.28) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(124,58,237,0.20) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(236,72,153,0.12) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 [data-accent="deep-teal"] {
@@ -4905,12 +4850,8 @@ body[data-accent="deep-teal"] {
               var(--bg);
 }
 [data-theme="light"] body[data-accent="deep-teal"] {
-  background: #ddf0ee !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(19,78,74,0.28) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(13,148,136,0.22) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(34,197,94,0.12) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 [data-accent="deep-rose"] {
@@ -4924,12 +4865,8 @@ body[data-accent="deep-rose"] {
               var(--bg);
 }
 [data-theme="light"] body[data-accent="deep-rose"] {
-  background: #f5dde4 !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(136,19,55,0.28) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(190,18,60,0.22) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(249,115,22,0.12) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 [data-accent="slate"] {
@@ -4943,12 +4880,8 @@ body[data-accent="slate"] {
               var(--bg);
 }
 [data-theme="light"] body[data-accent="slate"] {
-  background: #e2e6ec !important;
-  background-image:
-    radial-gradient(ellipse 90% 70% at 10% 0%,  rgba(51,65,85,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 60% at 90% 5%,  rgba(100,116,139,0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 80% 100%, rgba(148,163,184,0.12) 0%, transparent 55%) !important;
-  background-attachment: fixed !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 /* ── Fase E: Relations Panel ─────────────────────────────────────────── */
