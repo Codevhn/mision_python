@@ -28,6 +28,13 @@ check("color", "<!-- color:red bgColor:blue -->\n# Colored");
 check("toggle", ":::toggle Header\ninner text\n:::");
 check("toggle-h2", ":::toggle-h2 Header2\ninner text\n:::");
 check("database", ':::database\n{"cols":[{"id":"c0","name":"Nombre"}],"rows":[{"id":"r0","cells":{"c0":"x"}}]}\n:::');
+check("table", "| a | b |\n| c | d |", "| a | b |\n| --- | --- |\n| c | d |");
+
+// Legacy content sometimes used a separator-only line (e.g. "|---|") as a
+// blank-space hack before this editor existed. That has zero real rows, so
+// BlockNote's table node would previously throw RangeError on load; it must
+// now degrade to a blank paragraph instead of crashing the whole editor.
+check("legacy blank table hack", "|---|", "");
 
 // NOTE: toggle-inside-toggle round-tripping was already broken in the legacy
 // static/editor.js (its fence-scanning loop stops at the first nested `:::`

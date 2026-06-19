@@ -278,6 +278,13 @@ function flatToBlock(fb) {
       const rows = parseMdTable(fb.tableLines).map((cells) => ({
         cells: cells.map((c) => parseInline(c)),
       }));
+      // Legacy content sometimes used a separator-only table line (e.g. "|---|")
+      // as a visual blank-space hack before this editor existed. That leaves
+      // zero real rows here, and BlockNote's table node rejects empty content
+      // with a RangeError. Fall back to a blank paragraph instead of crashing.
+      if (rows.length === 0) {
+        return { id: fb.id, type: "paragraph", props, content: [], children: [] };
+      }
       return { id: fb.id, type: "table", props, content: { type: "tableContent", rows }, children: [] };
     }
     case "toggle": {
@@ -365,7 +372,12 @@ function blockToMd(block, indentLevel = 0) {
     }
     case "table": {
       const rows = block.content?.rows || [];
-      const lines = rows.map((r) => "| " + r.cells.map((c) => inlineToMd(c)).join(" | ") + " |");
+      // BlockNote normalizes each cell into a `tableCell` node ({ content, props })
+      // once it has passed through the live editor; cells produced fresh by
+      // mdToBlocks (never round-tripped through the editor) are still plain
+      // inline-content arrays. Support both shapes here.
+      const cellMd = (c) => inlineToMd(c && c.content !== undefined ? c.content : c);
+      const lines = rows.map((r) => "| " + r.cells.map(cellMd).join(" | ") + " |");
       if (lines.length) {
         const sep = "| " + rows[0].cells.map(() => "---").join(" | ") + " |";
         lines.splice(1, 0, sep);
