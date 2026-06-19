@@ -1674,11 +1674,19 @@ async function loadEntry(id, opts = {}) {
   const isNote = (m.category || "").toLowerCase() === "quick notes" || (m.category || "").toLowerCase() === "quick-notes";
   $("entryBody").classList.toggle("note-entry", isNote);
   if (_inlineEditor.setPersistenceKey) _inlineEditor.setPersistenceKey(id);
+  // Loading can trigger the editor's onChange (e.g. while it clears old blocks before
+  // inserting new ones) — guard against that being mistaken for a real edit and
+  // auto-saved, which would overwrite the entry's real content with blank/partial data.
+  _restoreInProgress = true;
   try {
     _inlineEditor.load(data.markdown);
   } catch (err) {
     console.error("Error al renderizar el contenido de la entrada:", err);
     showToast("No se pudo renderizar el contenido de esta entrada", "error");
+  } finally {
+    _restoreInProgress = false;
+    clearTimeout(_autoSaveTimer);
+    _autoSaveTimer = null;
   }
   $("contentArea").scrollTo(0, 0);
 
