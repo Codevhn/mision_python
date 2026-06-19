@@ -1604,6 +1604,20 @@ function renderHome() {
   }
 }
 
+// The block editor's "code" mark is exclusive — a text run can't carry both
+// bold/italic and inline code marks at once. Markdown like "**`foo`**" or
+// "*`foo`*" produces exactly that overlap and crashes the editor's markdown
+// parser (RangeError: Invalid collection of marks for node text). Strip the
+// emphasis markers immediately wrapping an inline code span before loading.
+function _sanitizeMarkdownForEditor(md) {
+  if (!md) return md;
+  return md
+    .replace(/\*\*(`[^`\n]+`)\*\*/g, "$1")
+    .replace(/__(`[^`\n]+`)__/g, "$1")
+    .replace(/\*(`[^`\n]+`)\*/g, "$1")
+    .replace(/_(`[^`\n]+`)_/g, "$1");
+}
+
 // ---- ENTRY VIEW ----
 async function loadEntry(id, opts = {}) {
   // CRITICAL: cancel any pending auto-save from the previous entry before switching
@@ -1679,7 +1693,7 @@ async function loadEntry(id, opts = {}) {
   // auto-saved, which would overwrite the entry's real content with blank/partial data.
   _restoreInProgress = true;
   try {
-    _inlineEditor.load(data.markdown);
+    _inlineEditor.load(_sanitizeMarkdownForEditor(data.markdown));
   } catch (err) {
     console.error("Error al renderizar el contenido de la entrada:", err);
     showToast("No se pudo renderizar el contenido de esta entrada", "error");
@@ -3503,7 +3517,7 @@ async function restoreVersion() {
       closeVersionModal();
       $("historyPanel").classList.add("hidden");
       $("historyBtn").classList.remove("active");
-      _inlineEditor.load(fresh.markdown || "");
+      _inlineEditor.load(_sanitizeMarkdownForEditor(fresh.markdown || ""));
       showToast("Versión restaurada");
       await loadEntry(restoredEntryId, { force: true });
       // Scroll entry body to top after restore
