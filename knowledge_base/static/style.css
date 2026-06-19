@@ -6060,7 +6060,7 @@ body.home-ambient .home-hero::after  { opacity: 0; }
 body.home-ambient .home-hero::before { opacity: 0; }
 body.home-ambient .home-hero { overflow: visible; }
 
-/* prefers-reduced-motion — canvas hidden; fall back to static hero asset  */
+/* prefers-reduced-motion — hide the particle canvas, keep the bare CSS gradient */
 @media (prefers-reduced-motion: reduce) {
   body.home-ambient #homeAmbientCanvas { display: none; }
 }

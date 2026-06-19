@@ -1023,35 +1023,9 @@ function _weatherInfo(code, isDay) {
   return map[base] || { icon: '🌡️', label: '' };
 }
 
-// ── Weather asset system ────────────────────────────────────────────────────────
-const _WEATHER_ASSET_BASE = '/static/img/weather/';
-
-// Architecture note: to support per-condition variants (e.g. rain-night/01.webp),
-// update this function to pick among them. The rest of the system stays unchanged.
-function _weatherAssetUrl(condition) {
-  return `${_WEATHER_ASSET_BASE}${condition}.webp`;
-}
-
-function _applyWeatherBackground(condition) {
-  const hero = document.getElementById('homeHero');
-  if (!hero) return;
-  const primaryUrl  = _weatherAssetUrl(condition);
-  const fallbackUrl = _weatherAssetUrl('fallback');
-
-  function tryLoad(url, onFail) {
-    const img = new Image();
-    img.onload  = () => { hero.style.backgroundImage = `url("${url}")`; };
-    img.onerror = onFail;
-    img.src = url;
-  }
-  tryLoad(primaryUrl, () => {
-    if (primaryUrl !== fallbackUrl)
-      tryLoad(fallbackUrl, () => {}); // leave current bg intact if both fail
-  });
-}
-
 // ── Animated weather canvas overlay ──────────────────────────────────────────
-// Draws only animated particles over the local asset background.
+// No background image asset — the hero/ambient canvas draws particles directly
+// over the theme's own CSS gradient (see .home-hero / [data-theme="light"] .home-hero).
 // Conditions that need no animation skip requestAnimationFrame entirely.
 let _heroCanvasStop = null;
 
@@ -1199,9 +1173,6 @@ const _AMBIENT_ANIM_CONDS = new Set([
 function _setHomeAmbient(active) {
   if (active) {
     document.body.classList.add('home-ambient');
-    // Clear inline style set by _applyWeatherBackground (inline style > CSS rule)
-    const hero = document.getElementById('homeHero');
-    if (hero) { hero.style.backgroundImage = ''; hero.style.backgroundColor = ''; }
     // Stop hero overlay and clear canvas pixels
     if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop = null; }
     const hc = document.getElementById('homeHeroCanvas');
@@ -1211,7 +1182,7 @@ function _setHomeAmbient(active) {
     if (_ambientCanvasStop)  { _ambientCanvasStop(); _ambientCanvasStop = null; }
     if (_ambientShootingTimer) { clearTimeout(_ambientShootingTimer); _ambientShootingTimer = null; }
     const ac = document.getElementById('homeAmbientCanvas');
-    if (ac) { ac.style.backgroundImage = ''; ac.getContext('2d').clearRect(0,0,ac.width,ac.height); }
+    if (ac) ac.getContext('2d').clearRect(0,0,ac.width,ac.height);
   }
 }
 
@@ -1222,15 +1193,7 @@ function _startAmbientCanvas(cond) {
   const canvas = document.getElementById('homeAmbientCanvas');
   if (!canvas) return;
 
-  // Apply weather asset as CSS background on the canvas element
-  const assetUrl = _weatherAssetUrl(cond);
-  const fbUrl    = _weatherAssetUrl('fallback');
-  const imgTest  = new Image();
-  imgTest.onload  = () => { canvas.style.backgroundImage = `url("${assetUrl}")`; };
-  imgTest.onerror = () => { canvas.style.backgroundImage = `url("${fbUrl}")`; };
-  imgTest.src = assetUrl;
-
-  // No particles for static conditions — just the background image
+  // Static conditions get no particle overlay — just the theme's CSS gradient
   if (!_AMBIENT_ANIM_CONDS.has(cond) ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -1409,7 +1372,6 @@ function _fetchWeather() {
         _weatherData = data;
         _weatherFetched = true;
         const cond = _weatherCondition(data.weather_code, data.is_day);
-        _applyWeatherBackground(cond);
         if (document.body.classList.contains('home-ambient')) {
           _startAmbientCanvas(cond);
         } else {
@@ -1636,7 +1598,6 @@ function renderHome() {
     const initCond = _weatherData
       ? _weatherCondition(_weatherData.weather_code, _weatherData.is_day)
       : _defaultCondition();
-    _applyWeatherBackground(initCond); // hero asset (fallback when ambient disabled)
     _setHomeAmbient(true);             // class + stop hero canvas
     _startAmbientCanvas(initCond);     // full-viewport canvas
     _fetchWeather();
