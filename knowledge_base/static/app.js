@@ -1606,16 +1606,81 @@ function renderHome() {
 
 // The block editor's "code" mark is exclusive — a text run can't carry both
 // bold/italic and inline code marks at once. Markdown like "**`foo`**" or
-// "*`foo`*" produces exactly that overlap and crashes the editor's markdown
-// parser (RangeError: Invalid collection of marks for node text). Strip the
-// emphasis markers immediately wrapping an inline code span before loading.
+// "**Listas (`list`):**" (a code span anywhere inside an emphasis run, not
+// just wrapping it entirely) produces exactly that overlap and crashes the
+// editor's markdown parser (RangeError: Invalid collection of marks for
+// node text). Split the emphasis run around any inline code span(s) inside
+// it so the emphasis closes before the code and reopens after, e.g.
+// "**Listas (`list`):**" -> "**Listas (**`list`**):**".
+//
+// This must pair markers correctly (1st with 2nd, 3rd with 4th, ...) rather
+// than just regex-matching "any two markers with a backtick between them" —
+// that naive approach treats the *gap* between two unrelated emphasis runs
+// (e.g. "**A** plain `code` plain **B**") as if it were itself emphasized,
+// corrupting content that had no overlap problem at all.
+function _wrapSplitCode(content, marker) {
+  if (!content.includes("`")) return marker + content + marker;
+  const codeRe = /`[^`\n]+`/g;
+  let out = "";
+  let emphasisOpen = false;
+  let last = 0;
+  let m;
+  while ((m = codeRe.exec(content)) !== null) {
+    const before = content.slice(last, m.index);
+    if (before) {
+      if (!emphasisOpen) { out += marker; emphasisOpen = true; }
+      out += before;
+    }
+    if (emphasisOpen) { out += marker; emphasisOpen = false; }
+    out += m[0];
+    last = m.index + m[0].length;
+  }
+  const tail = content.slice(last);
+  if (tail) {
+    if (!emphasisOpen) { out += marker; emphasisOpen = true; }
+    out += tail;
+  }
+  if (emphasisOpen) out += marker;
+  return out;
+}
+
+function _reconstructMarkerPairs(parts, marker) {
+  let out = parts[0];
+  for (let k = 1; k < parts.length; k += 2) {
+    out += _wrapSplitCode(parts[k], marker) + (parts[k + 1] ?? "");
+  }
+  return out;
+}
+
+// Splits on a literal (non-overlapping) marker string, e.g. "**" or "__".
+function _splitMarkerPairs(line, marker) {
+  if (!line.includes(marker)) return line;
+  const parts = line.split(marker);
+  if (parts.length < 3 || parts.length % 2 === 0) return line; // unbalanced, leave alone
+  return _reconstructMarkerPairs(parts, marker);
+}
+
+// Splits on a single-char marker using lookarounds so a "**" pair's stars
+// aren't mistaken for two single "*" markers.
+function _splitMarkerPairsRegex(line, re, marker) {
+  if (!re.test(line)) return line;
+  const parts = line.split(re);
+  if (parts.length < 3 || parts.length % 2 === 0) return line;
+  return _reconstructMarkerPairs(parts, marker);
+}
+
+const _SINGLE_STAR_RE = /(?<!\*)\*(?!\*)/;
+const _SINGLE_UNDERSCORE_RE = /(?<!_)_(?!_)/;
+
 function _sanitizeMarkdownForEditor(md) {
   if (!md) return md;
-  return md
-    .replace(/\*\*(`[^`\n]+`)\*\*/g, "$1")
-    .replace(/__(`[^`\n]+`)__/g, "$1")
-    .replace(/\*(`[^`\n]+`)\*/g, "$1")
-    .replace(/_(`[^`\n]+`)_/g, "$1");
+  return md.split("\n").map(line => {
+    line = _splitMarkerPairs(line, "**");
+    line = _splitMarkerPairs(line, "__");
+    line = _splitMarkerPairsRegex(line, _SINGLE_STAR_RE, "*");
+    line = _splitMarkerPairsRegex(line, _SINGLE_UNDERSCORE_RE, "_");
+    return line;
+  }).join("\n");
 }
 
 // ---- ENTRY VIEW ----
