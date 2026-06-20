@@ -109,7 +109,7 @@
 
 /* ── LIGHT variant ── */
 [data-theme="light"] {
-  --layer-0: #d4dde8;
+  --layer-0: #ffffff;
   --layer-1: #dce4ee;
   --layer-2: #e4ecf6;
   --layer-3: #eaf0f8;
@@ -4449,7 +4449,7 @@ body {
 
 /* ── LIGHT MODE ── */
 [data-theme="light"] {
-  --layer-0: #f0f0f8; --layer-1: #e8e8f2; --layer-2: #e2e2ee;
+  --layer-0: #ffffff; --layer-1: #e8e8f2; --layer-2: #e2e2ee;
   --layer-3: #dcdcea; --layer-4: #d6d6e6;
   --bg: var(--layer-0); --bg-sidebar: rgba(232,232,244,0.88);
   --bg-surface: rgba(240,240,252,0.72); --bg-elevated: rgba(248,248,255,0.82);
