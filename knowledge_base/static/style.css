@@ -4460,7 +4460,7 @@ body {
   --glass-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.7) inset;
 }
 [data-theme="light"] body {
-  background: #ffffff !important;
+  background: var(--layer-0) !important;
   background-image: none !important;
 }
 [data-theme="light"] .topbar {
@@ -5942,7 +5942,6 @@ body[data-accent="slate"] {
 /* ── Ambient weather background (Home only) ────────────────────────────────── */
 /* html gets a base color so fixed z-index:-1 elements paint above it           */
 html { background-color: var(--bg, #060610); }
-html[data-theme="light"] { background-color: #ffffff; }
 
 /* Canvas (weather asset + particles) + scrim sit behind ALL page content.
    Placed as first children in <body> so DOM paint order puts content on top. */
