@@ -2,6 +2,9 @@
    KNOWLEDGE BASE — Frontend Logic
    ============================================= */
 
+// Clean up any stored accent from the removed tone system
+try { localStorage.removeItem('accentColor'); } catch(e) {}
+
 const $ = id => document.getElementById(id);
 
 // ---- State ----
@@ -4550,56 +4553,6 @@ function setSidebarVisible(visible) {
   window.switchSpace = switchSpace;
 })();
 
-// ── Accent color picker ────────────────────────────────────────────────────
-(function initAccentPicker() {
-  const ACCENTS = {
-    indigo: '#6366f1', orange: '#f97316', yellow: '#eab308',
-    cyan: '#06b6d4', pink: '#ec4899', green: '#22c55e', red: '#ef4444',
-    'deep-blue': '#1e3a8a', 'deep-purple': '#4c1d95', 'deep-teal': '#134e4a',
-    'deep-rose': '#881337', slate: '#334155',
-  };
-
-  function applyAccent(name, dot, panel) {
-    document.body.dataset.accent = name;
-    if (dot) dot.style.background = ACCENTS[name] || ACCENTS.indigo;
-    if (panel) panel.querySelectorAll('.ap-swatch').forEach(s => {
-      s.classList.toggle('active', s.dataset.accent === name);
-    });
-    try { localStorage.setItem('accentColor', name); } catch(e) {}
-  }
-
-  function init() {
-    const btn = document.getElementById('accentPickerBtn');
-    const panel = document.getElementById('accentPanel');
-    const dot = document.getElementById('accentDot');
-    if (!btn || !panel) return;
-
-    let current = 'indigo';
-    try { current = localStorage.getItem('accentColor') || 'indigo'; } catch(e) {}
-    applyAccent(current, dot, panel);
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      panel.classList.toggle('hidden');
-    });
-
-    panel.querySelectorAll('.ap-swatch').forEach(swatch => {
-      swatch.addEventListener('click', (e) => {
-        e.stopPropagation();
-        applyAccent(swatch.dataset.accent, dot, panel);
-        panel.classList.add('hidden');
-      });
-    });
-
-    document.addEventListener('click', () => panel.classList.add('hidden'));
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
 
 // ── FASE E: Relations Panel ──────────────────────────────────────────────
 const REL_LABELS = {
