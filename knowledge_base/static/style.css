@@ -6746,22 +6746,20 @@ body {
 }
 
 /* ── RESPONSIVE: BlockNote + layout fixes ──
-   BlockNote renders headings as data-attribute divs, not <h1>/<h2>/<h3>
-   HTML tags, so all earlier `.entry-body h1` mobile overrides had no
-   effect on editor headings. The custom property --level drives font-size
-   in BlockNote's bundled CSS (3em/2em/1.3em for h1/h2/h3 by default).
-   Additionally, .entry-header and .entry-tags-bar never had their 40px
-   desktop padding overridden on mobile, causing excessive side margins. */
+   BlockNote's font-size rule for headings is a long compound selector with
+   specificity 0,7,2 — overriding --level alone is not enough because the
+   font-size property itself must be overridden directly with !important.
+   The base [data-content-type=heading] rule (no data-level) covers H1;
+   data-level="2"/"3"/"4" rules cascade on top for finer control. */
 
 @media (max-width: 768px) {
-  /* BlockNote heading sizes — replaces the unreachable .entry-body h1/h2/h3 rules */
-  [data-content-type="heading"][data-level="1"] { --level: 1.5rem !important; padding-top: 10px !important; }
-  [data-content-type="heading"][data-level="2"] { --level: 1.2rem !important; padding-top: 8px !important; }
-  [data-content-type="heading"][data-level="3"] { --level: 1.05rem !important; padding-top: 6px !important; }
-  [data-content-type="heading"][data-level="4"] { --level: 0.95rem !important; }
+  /* BlockNote headings: override font-size directly (--level override was insufficient) */
+  [data-content-type="heading"]              { font-size: 1.5rem !important; padding-top: 10px !important; }
+  [data-content-type="heading"][data-level="2"] { font-size: 1.2rem !important; padding-top: 8px !important; }
+  [data-content-type="heading"][data-level="3"] { font-size: 1.05rem !important; padding-top: 6px !important; }
+  [data-content-type="heading"][data-level="4"] { font-size: 0.95rem !important; }
 
-  /* Fix entry-header and entry-tags-bar: still 40px on mobile, inconsistent
-     with entry-body (12px) and inline-title-wrap (8px) */
+  /* Fix entry-header and entry-tags-bar: still 40px on mobile */
   .entry-header   { padding-left: 12px !important; padding-right: 12px !important; }
   .entry-tags-bar { padding-left: 12px !important; padding-right: 12px !important; }
   .entry-add-cover { padding-left: 12px !important; padding-right: 12px !important; }
@@ -6773,21 +6771,19 @@ body {
   .relations-panel  { padding-left: 12px !important; padding-right: 12px !important; }
   .backlinks-panel  { padding-left: 12px !important; padding-right: 12px !important; }
 
-  /* Home greeting: fill the gap between ≤600px (1.3rem) and 601–768px (2.8rem).
-     The design theme sets 2.8rem !important at all widths; this caps it for
-     mid-range phones (landscape) and small tablets hitting this breakpoint. */
+  /* Home greeting: cap at 1.6rem (design theme sets 2.8rem globally) */
   .home-greeting { font-size: 1.6rem !important; }
 
-  /* Inline title: give slightly more horizontal room than the current 8px */
+  /* Inline title: slightly more room than the current 8px override */
   .inline-title-wrap { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* BlockNote heading sizes for tablet — no override existed at all */
-  [data-content-type="heading"][data-level="1"] { --level: 2rem !important; }
-  [data-content-type="heading"][data-level="2"] { --level: 1.5rem !important; }
-  [data-content-type="heading"][data-level="3"] { --level: 1.2rem !important; }
-  [data-content-type="heading"][data-level="4"] { --level: 1.05rem !important; }
+  /* BlockNote heading sizes for tablet */
+  [data-content-type="heading"]              { font-size: 2rem !important; }
+  [data-content-type="heading"][data-level="2"] { font-size: 1.5rem !important; }
+  [data-content-type="heading"][data-level="3"] { font-size: 1.2rem !important; }
+  [data-content-type="heading"][data-level="4"] { font-size: 1.05rem !important; }
 
   /* Entry chrome: reduce 40px side padding to 20px on tablet */
   .entry-header    { padding-left: 20px !important; padding-right: 20px !important; }
