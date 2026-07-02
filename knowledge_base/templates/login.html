@@ -2,44 +2,82 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>login — knowledge_base</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── Design tokens — dark (default) ── */
     :root {
-      --bg:       #0e0e0e;
-      --surface:  #161616;
-      --elevated: #1c1c1c;
-      --border:   #2a2a2a;
-      --accent:   #1793d1;
-      --accent2:  #0f6fa0;
-      --text:     #d4d4d4;
-      --muted:    #6b6b6b;
-      --faint:    #3a3a3a;
-      --danger:   #e06c75;
-      --green:    #4ec9b0;
-      --font:     "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+      --bg:          #060610;
+      --layer-1:     #0a0a18;
+      --layer-2:     #0f0f1e;
+      --layer-3:     #141426;
+      --layer-4:     #1a1a30;
+      --text:        #d8d8e8;
+      --text-muted:  #9292b4;
+      --text-faint:  #5c5c7c;
+      --border:      rgba(255,255,255,0.08);
+      --border-focus:rgba(99,102,241,0.55);
+      --accent:      #6366f1;
+      --accent-hover:#818cf8;
+      --accent-glow: rgba(99,102,241,0.30);
+      --danger:      #ef4444;
+      --success:     #10b981;
+      --glass-blur:  blur(20px) saturate(180%);
+      --glass-border:rgba(99,102,241,0.14);
+      --shadow-card: 0 8px 40px rgba(0,0,0,0.70), 0 0 0 1px rgba(255,255,255,0.06);
+      --shadow-glow: 0 0 40px rgba(99,102,241,0.18);
+      --font-ui:     "Inter", "Segoe UI", system-ui, sans-serif;
+      --font-mono:   "JetBrains Mono", "Fira Code", monospace;
+    }
+
+    /* ── Design tokens — light ── */
+    [data-theme="light"] {
+      --bg:          #ffffff;
+      --layer-1:     #dce4ee;
+      --layer-2:     #e4ecf6;
+      --layer-3:     #eaf0f8;
+      --layer-4:     #f0f5fc;
+      --text:        #0d0d1c;
+      --text-muted:  #4a4a72;
+      --text-faint:  #7878a0;
+      --border:      rgba(0,0,0,0.12);
+      --border-focus:rgba(99,102,241,0.50);
+      --accent:      #6366f1;
+      --accent-hover:#4f46e5;
+      --accent-glow: rgba(99,102,241,0.18);
+      --danger:      #dc2626;
+      --success:     #059669;
+      --glass-blur:  blur(20px) saturate(200%);
+      --glass-border:rgba(99,102,241,0.16);
+      --shadow-card: 0 8px 40px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06);
+      --shadow-glow: 0 0 32px rgba(99,102,241,0.12);
     }
 
     html, body {
       height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
+      font-family: var(--font-ui);
       font-size: 14px;
+      color: var(--text);
     }
 
     body {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       padding: 20px;
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(ellipse 70% 50% at 15% 20%, rgba(23,147,209,0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 50% at 85% 80%, rgba(124,58,237,0.11) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(99,102,241,0.06) 0%, transparent 70%);
+      background-attachment: fixed;
+      transition: background-color 0.25s;
     }
 
-    /* boot lines */
+    /* ── Boot log (decorative) ── */
     .boot-log {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -47,190 +85,299 @@
       display: flex;
       flex-direction: column;
       gap: 3px;
-      opacity: 0.35;
+      opacity: 0.28;
       pointer-events: none;
-      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-faint);
     }
-    .boot-line { color: var(--muted); }
-    .boot-line .ok  { color: var(--green); }
-    .boot-line .err { color: var(--danger); }
+    .boot-ok  { color: var(--success); }
+    .boot-err { color: var(--danger); }
 
-    /* terminal card */
-    .terminal {
-      width: 100%;
-      max-width: 480px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      box-shadow: 0 0 0 1px var(--faint), 0 24px 64px rgba(0,0,0,0.6);
-    }
-
-    .term-bar {
-      background: var(--elevated);
-      border-bottom: 1px solid var(--border);
-      padding: 9px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .term-dots { display: flex; gap: 6px; }
-    .term-dots span {
-      width: 10px; height: 10px;
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      position: fixed;
+      top: 14px; right: 18px;
+      width: 32px; height: 32px;
       border-radius: 50%;
-      background: var(--faint);
+      background: var(--layer-3);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      z-index: 10;
     }
-    .term-title {
-      flex: 1;
-      text-align: center;
-      font-size: 0.7rem;
-      color: var(--muted);
-      letter-spacing: 0.08em;
+    .theme-toggle:hover { background: var(--layer-4); color: var(--text); }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--layer-1);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-card), var(--shadow-glow);
+      overflow: hidden;
+      animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both;
     }
 
-    .term-body { padding: 28px 28px 32px; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-    .prompt-line {
+    /* ── Card header ── */
+    .card-header {
+      padding: 28px 32px 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 24px;
+      text-align: center;
     }
-    .prompt-user { color: var(--green); }
-    .prompt-at   { color: var(--muted); }
-    .prompt-host { color: var(--accent); }
-    .prompt-sep  { color: var(--muted); }
-    .prompt-path { color: var(--text); }
-    .prompt-cmd  { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
 
-    .field-group { margin-bottom: 18px; }
+    .logo-ring {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(99,102,241,0.20) 0%, rgba(124,58,237,0.15) 100%);
+      border: 1.5px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+
+    .card-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Divider ── */
+    .card-divider {
+      margin: 22px 32px 0;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 24px 32px 28px; }
+
+    /* ── Field ── */
+    .field { margin-bottom: 20px; }
 
     .field-label {
       display: block;
-      font-size: 0.68rem;
-      color: var(--muted);
-      letter-spacing: 0.1em;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
 
-    .field-wrap {
+    .field-input-wrap {
+      position: relative;
       display: flex;
       align-items: center;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      transition: border-color 0.15s;
-    }
-    .field-wrap:focus-within { border-color: var(--accent); }
-
-    .field-prefix {
-      padding: 0 10px;
-      color: var(--accent);
-      font-size: 0.9rem;
-      flex-shrink: 0;
-      user-select: none;
     }
 
-    .field-wrap input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 0.9rem;
-      padding: 10px 12px 10px 0;
-      letter-spacing: 0.12em;
+    .field-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-faint);
+      font-size: 13px;
+      pointer-events: none;
+      font-family: var(--font-mono);
     }
-    .field-wrap input::placeholder { color: var(--faint); letter-spacing: 0; }
 
-    .error-line {
-      font-size: 0.75rem;
-      color: var(--danger);
-      margin-bottom: 14px;
-      padding-left: 2px;
-    }
-    .error-line::before { content: "✗ "; }
-
-    .submit-btn {
+    .field-input-wrap input {
       width: 100%;
-      padding: 11px;
+      padding: 10px 12px 10px 34px;
+      background: var(--layer-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      letter-spacing: 0.1em;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .field-input-wrap input::placeholder {
+      color: var(--text-faint);
+      letter-spacing: 0.06em;
+    }
+
+    .field-input-wrap input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Error ── */
+    .error-msg {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.78rem;
+      color: var(--danger);
+      background: rgba(239,68,68,0.10);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 7px;
+      padding: 9px 12px;
+      margin-bottom: 16px;
+    }
+    .error-icon { font-size: 12px; flex-shrink: 0; }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 11px 16px;
       background: var(--accent);
       color: #fff;
       border: none;
-      font-family: var(--font);
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      border-radius: 9px;
+      font-family: var(--font-ui);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
       cursor: pointer;
-      transition: background 0.15s;
-      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+      box-shadow: 0 2px 12px var(--accent-glow);
     }
-    .submit-btn:hover { background: var(--accent2); }
-    .submit-btn:active { transform: translateY(1px); }
+    .btn-submit:hover  { background: var(--accent-hover); box-shadow: 0 4px 20px var(--accent-glow); }
+    .btn-submit:active { transform: translateY(1px); }
 
-    .term-footer {
+    /* ── Card footer ── */
+    .card-footer {
       border-top: 1px solid var(--border);
-      padding: 10px 28px;
-      font-size: 0.65rem;
-      color: var(--faint);
+      padding: 10px 32px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+    }
+    .card-footer span {
+      font-size: 0.65rem;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+    }
+    .card-footer .version-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 5px;
+      box-shadow: 0 0 6px var(--success);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .card { border-radius: 12px; }
+      .card-header { padding: 22px 20px 0; }
+      .card-body   { padding: 20px 20px 22px; }
+      .card-footer { padding: 10px 20px; }
+      .card-divider { margin: 18px 20px 0; }
     }
   </style>
 </head>
 <body>
 
   <div class="boot-log" aria-hidden="true">
-    <div class="boot-line">[ <span class="ok">  OK  </span> ] Started Journal Service.</div>
-    <div class="boot-line">[ <span class="ok">  OK  </span> ] Reached target Network.</div>
-    <div class="boot-line">[ <span class="ok">  OK  </span> ] Started knowledge_base.service.</div>
-    <div class="boot-line">[ <span class="ok">  OK  </span> ] Reached target Multi-User System.</div>
+    <div>[ <span class="boot-ok">  OK  </span> ] Started Journal Service.</div>
+    <div>[ <span class="boot-ok">  OK  </span> ] Reached target Network.</div>
+    <div>[ <span class="boot-ok">  OK  </span> ] Started knowledge_base.service.</div>
+    <div>[ <span class="boot-ok">  OK  </span> ] Reached target Multi-User System.</div>
   </div>
 
-  <div class="terminal" role="main">
-    <div class="term-bar">
-      <div class="term-dots">
-        <span></span><span></span><span></span>
-      </div>
-      <div class="term-title">bash — knowledge_base</div>
+  <button class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
+    <span id="themeIcon">☀</span>
+  </button>
+
+  <div class="card" role="main">
+    <div class="card-header">
+      <div class="logo-ring" aria-hidden="true">🧠</div>
+      <div class="card-title">knowledge_base</div>
+      <div class="card-subtitle">user@arch ~ $ sudo unlock</div>
     </div>
 
-    <div class="term-body">
-      <div class="prompt-line" aria-hidden="true">
-        <span class="prompt-user">user</span><span class="prompt-at">@</span><span class="prompt-host">arch</span>
-        <span class="prompt-sep">~/</span><span class="prompt-path">knowledge_base</span>
-        <span class="prompt-cmd">$ sudo unlock</span>
+    <div class="card-divider"></div>
+
+    <div class="card-body">
+      {% if error %}
+      <div class="error-msg">
+        <span class="error-icon">✕</span>
+        <span>{{ error }}</span>
       </div>
+      {% endif %}
 
       <form method="POST" action="/login" autocomplete="off">
-        <div class="field-group">
+        <div class="field">
           <label class="field-label" for="password">Contraseña</label>
-          <div class="field-wrap">
-            <span class="field-prefix">▶</span>
+          <div class="field-input-wrap">
+            <span class="field-icon">▶</span>
             <input
               type="password"
               id="password"
               name="password"
-              placeholder="········"
+              placeholder="················"
               autofocus
               required
             />
           </div>
         </div>
 
-        {% if error %}
-        <div class="error-line">{{ error }}</div>
-        {% endif %}
-
-        <button type="submit" class="submit-btn">Autenticar →</button>
+        <button type="submit" class="btn-submit">
+          Autenticar
+          <span aria-hidden="true">→</span>
+        </button>
       </form>
     </div>
 
-    <div class="term-footer">
-      <span>knowledge_base v1.0</span>
+    <div class="card-footer">
+      <span><span class="version-dot"></span>knowledge_base v1.0</span>
       <span>arch linux</span>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const root = document.documentElement;
+      const btn  = document.getElementById('themeToggle');
+      const icon = document.getElementById('themeIcon');
+      const stored = localStorage.getItem('theme');
+      const system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      let theme = stored || system;
+      apply(theme);
+
+      btn.addEventListener('click', function () {
+        theme = theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', theme);
+        apply(theme);
+      });
+
+      function apply(t) {
+        root.setAttribute('data-theme', t);
+        icon.textContent = t === 'dark' ? '☀' : '🌙';
+      }
+    })();
+  </script>
 
 </body>
 </html>
