@@ -77,22 +77,6 @@
       transition: background-color 0.25s;
     }
 
-    /* ── Boot log (decorative) ── */
-    .boot-log {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      padding: 14px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      opacity: 0.28;
-      pointer-events: none;
-      font-family: var(--font-mono);
-      font-size: 0.68rem;
-      color: var(--text-faint);
-    }
-    .boot-ok  { color: var(--success); }
-    .boot-err { color: var(--danger); }
 
     /* ── Theme toggle ── */
     .theme-toggle {
@@ -194,18 +178,9 @@
       align-items: center;
     }
 
-    .field-icon {
-      position: absolute;
-      left: 12px;
-      color: var(--text-faint);
-      font-size: 13px;
-      pointer-events: none;
-      font-family: var(--font-mono);
-    }
-
     .field-input-wrap input {
       width: 100%;
-      padding: 10px 12px 10px 34px;
+      padding: 10px 14px;
       background: var(--layer-2);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -299,13 +274,6 @@
 </head>
 <body>
 
-  <div class="boot-log" aria-hidden="true">
-    <div>[ <span class="boot-ok">  OK  </span> ] Started Journal Service.</div>
-    <div>[ <span class="boot-ok">  OK  </span> ] Reached target Network.</div>
-    <div>[ <span class="boot-ok">  OK  </span> ] Started knowledge_base.service.</div>
-    <div>[ <span class="boot-ok">  OK  </span> ] Reached target Multi-User System.</div>
-  </div>
-
   <button class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
     <span id="themeIcon">☀</span>
   </button>
@@ -314,7 +282,7 @@
     <div class="card-header">
       <div class="logo-ring" aria-hidden="true">🧠</div>
       <div class="card-title">knowledge_base</div>
-      <div class="card-subtitle">user@arch ~ $ sudo unlock</div>
+      <div class="card-subtitle">Base de conocimiento personal</div>
     </div>
 
     <div class="card-divider"></div>
@@ -331,7 +299,6 @@
         <div class="field">
           <label class="field-label" for="password">Contraseña</label>
           <div class="field-input-wrap">
-            <span class="field-icon">▶</span>
             <input
               type="password"
               id="password"
@@ -352,7 +319,7 @@
 
     <div class="card-footer">
       <span><span class="version-dot"></span>knowledge_base v1.0</span>
-      <span>arch linux</span>
+      <span>acceso seguro</span>
     </div>
   </div>
 
