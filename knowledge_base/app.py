@@ -297,7 +297,7 @@ def render_markdown(md_text):
         return chat_html
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
-        renderer=CodeBlockRenderer(),
+        renderer=CodeBlockRenderer(escape=False),
         plugins=["strikethrough", "table", "url"],
     )
     html = renderer(processed)
