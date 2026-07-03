@@ -228,6 +228,7 @@ function bindEvents() {
   $("moreDup").addEventListener("click",       () => $("dupBtn").click());
   $("moreMove").addEventListener("click",      () => $("moveBtn").click());
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
+  $("moreAI").addEventListener("click",        () => $("aiBtn").click());
   $("modalClose").addEventListener("click", closeModal);
   $("cancelBtn").addEventListener("click", closeModal);
   $("saveBtn").addEventListener("click", saveEntry);
