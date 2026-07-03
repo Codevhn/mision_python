@@ -6845,7 +6845,7 @@ function initAIPanel() {
   const errorEl      = $('aiError');
   const copyBtn      = $('aiCopyBtn');
   const insertBtn    = $('aiInsertBtn');
-  const selBubble    = $('aiSelBubble');
+  const selBubble    = null; // replaced by #aiInlineBar
   const selCtx       = $('aiSelCtx');
   const selCtxText   = $('aiSelCtxText');
   const selCtxClear  = $('aiSelCtxClear');
@@ -6956,61 +6956,138 @@ function initAIPanel() {
     showToast('Respuesta insertada', 'success');
   });
 
-  // ── Selection bubble ──────────────────────────────────────
-  let _bubbleTimer = null;
+  // ── Inline AI toolbar ────────────────────────────────────
+  const inlineBar     = document.getElementById('aiInlineBar');
+  const inlineLoading = document.getElementById('aiInlineLoading');
+  let _barTimer  = null;
+  let _barSelText = '';
 
-  function _hideBubble() {
-    if (selBubble) selBubble.classList.add('hidden');
+  function _hideBar() {
+    if (inlineBar) inlineBar.classList.add('hidden');
+    if (inlineLoading) inlineLoading.classList.add('hidden');
+    inlineBar?.querySelectorAll('.ai-inline-btn').forEach(b => b.classList.remove('loading'));
+  }
+
+  function _showBar(rect) {
+    if (!inlineBar) return;
+    inlineBar.style.left = (rect.left + rect.width / 2) + 'px';
+    inlineBar.style.top  = (rect.top + window.scrollY - 48) + 'px';
+    inlineLoading.classList.add('hidden');
+    inlineBar.querySelectorAll('.ai-inline-btn').forEach(b => { b.classList.remove('loading'); b.style.display = ''; });
+    inlineBar.classList.remove('hidden');
   }
 
   function _onMouseUp() {
-    clearTimeout(_bubbleTimer);
-    _bubbleTimer = setTimeout(() => {
+    clearTimeout(_barTimer);
+    _barTimer = setTimeout(() => {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.toString().trim()) { _hideBubble(); return; }
+      if (!sel || sel.isCollapsed) { _hideBar(); return; }
+      const text = sel.toString().trim();
+      if (!text) { _hideBar(); return; }
 
-      // Only show bubble when selection is inside the editor
+      // Only inside the editor
       const editorEl = $('entryBody');
-      if (!editorEl) { _hideBubble(); return; }
+      if (!editorEl) { _hideBar(); return; }
       let node = sel.anchorNode;
-      while (node) {
-        if (node === editorEl) break;
-        node = node.parentNode;
-      }
-      if (!node) { _hideBubble(); return; }
+      while (node) { if (node === editorEl) break; node = node.parentNode; }
+      if (!node) { _hideBar(); return; }
 
-      // Position bubble above the selection
       const range = sel.getRangeAt(0);
       const rect  = range.getBoundingClientRect();
-      if (!rect.width && !rect.height) { _hideBubble(); return; }
+      if (!rect.width && !rect.height) { _hideBar(); return; }
 
-      selBubble.style.left = (rect.left + rect.width / 2) + 'px';
-      selBubble.style.top  = (rect.top + window.scrollY - 36) + 'px';
-      selBubble.classList.remove('hidden');
-    }, 120);
+      _barSelText = text;
+      _showBar(rect);
+    }, 150);
   }
 
   document.addEventListener('mouseup', _onMouseUp);
 
-  // Hide bubble when clicking outside the editor or bubble
   document.addEventListener('mousedown', e => {
-    if (selBubble && !selBubble.contains(e.target)) {
-      _hideBubble();
-    }
+    if (inlineBar && !inlineBar.contains(e.target)) _hideBar();
   });
 
-  // Bubble click → open panel with selected text as context
-  if (selBubble) {
-    selBubble.addEventListener('mousedown', e => {
-      e.preventDefault(); // prevent selection from clearing
-    });
-    selBubble.addEventListener('click', () => {
-      const sel = window.getSelection();
-      const text = sel ? sel.toString().trim() : '';
-      _hideBubble();
-      openPanel(text || null);
+  if (inlineBar) {
+    inlineBar.addEventListener('mousedown', e => e.preventDefault());
+
+    inlineBar.querySelectorAll('.ai-inline-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const action = btn.dataset.action;
+        const selText = _barSelText;
+
+        if (action === 'panel') {
+          _hideBar();
+          openPanel(selText || null);
+          return;
+        }
+
+        // Show loading state
+        inlineBar.querySelectorAll('.ai-inline-btn').forEach(b => { b.classList.add('loading'); b.style.display = 'none'; });
+        inlineLoading.classList.remove('hidden');
+
+        try {
+          const res  = await fetch('/api/ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, prompt: '', context: selText }),
+          });
+          const data = await res.json();
+          if (data.error) { showToast(data.error, 'error'); _hideBar(); return; }
+
+          const result = data.result || '';
+          _inlineInsert(action, selText, result);
+          showToast('✦ IA: texto insertado', 'success');
+        } catch (err) {
+          showToast('Error: ' + err.message, 'error');
+        } finally {
+          _hideBar();
+        }
+      });
     });
   }
+}
+
+// Insert AI result into the editor ──────────────────────────────────────────
+function _inlineInsert(action, selText, result) {
+  if (!currentEntryId || !_inlineEditor) return;
+  const md = _inlineEditor.getMarkdown();
+
+  // Actions that REPLACE the selected text
+  if (action === 'fix' || action === 'improve') {
+    const snippet = selText.slice(0, 80);
+    const idx = md.indexOf(snippet);
+    if (idx !== -1) {
+      // Find full paragraph boundaries around the selection
+      const start = md.lastIndexOf('\n\n', idx);
+      const end   = md.indexOf('\n\n', idx + selText.length);
+      const s = start !== -1 ? start + 2 : 0;
+      const e = end   !== -1 ? end       : md.length;
+      _inlineEditor.load(md.slice(0, s) + result + md.slice(e));
+      return;
+    }
+  }
+
+  // All other actions INSERT after the paragraph containing the selection
+  const snippet = selText.slice(0, 80);
+  const idx = md.indexOf(snippet);
+  let insertAt = md.length;
+  if (idx !== -1) {
+    const afterSel = idx + selText.length;
+    const nextPara = md.indexOf('\n\n', afterSel);
+    insertAt = nextPara !== -1 ? nextPara : md.length;
+  }
+
+  // Format the inserted block based on action
+  let block = '';
+  if (action === 'quiz') {
+    block = '\n\n---\n\n' + result + '\n\n---';
+  } else if (action === 'explain' || action === 'expand') {
+    block = '\n\n' + result;
+  } else {
+    block = '\n\n' + result;
+  }
+
+  _inlineEditor.load(md.slice(0, insertAt) + block + md.slice(insertAt));
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────

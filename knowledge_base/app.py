@@ -2670,12 +2670,18 @@ def ai_ask():
     systems = {
         "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara y concisa con ejemplos prácticos. Responde en español.",
         "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso. Responde en español.",
-        "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado.",
+        "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin añadir comentarios ni prefijos.",
         "example":   "Genera un ejemplo práctico y completo del concepto. Usa código Python si aplica. Responde en español.",
         "ask":       "Eres un asistente técnico experto en programación. Responde de forma clara y útil en español.",
+        # Inline AI actions
+        "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
+        "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
+        "continue":  "Continúa escribiendo de forma natural a partir del siguiente fragmento, manteniendo el estilo, tono y tema. Devuelve solo la continuación.",
+        "quiz":      "Genera 3-5 preguntas de comprensión con sus respuestas sobre el siguiente contenido. Formato: **Pregunta:** ... / **Respuesta:** ... Responde en español.",
+        "translate_en": "Traduce el siguiente texto al inglés de forma natural y precisa. Devuelve solo la traducción.",
     }
     system = systems.get(action, systems["ask"])
-    user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if context else prompt
+    user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","quiz","translate_en","improve")) else (context or prompt)
 
     try:
         body = json.dumps({

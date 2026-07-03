@@ -484,8 +484,18 @@
     <div class="toc-panel-items" id="tocItems"></div>
   </div>
 
-  <!-- AI SELECTION BUBBLE (appears on text selection inside editor) -->
-  <div class="ai-sel-bubble hidden" id="aiSelBubble">✦ Ask AI</div>
+  <!-- AI INLINE TOOLBAR (appears on text selection inside editor) -->
+  <div class="ai-inline-bar hidden" id="aiInlineBar">
+    <button class="ai-inline-btn" data-action="explain"     title="Explicar">✦ Explicar</button>
+    <button class="ai-inline-btn" data-action="expand"      title="Ampliar">⇧ Ampliar</button>
+    <button class="ai-inline-btn" data-action="fix"         title="Corregir">✓ Corregir</button>
+    <button class="ai-inline-btn" data-action="summarize"   title="Resumir">⊟ Resumir</button>
+    <button class="ai-inline-btn" data-action="continue"    title="Continuar">→ Continuar</button>
+    <button class="ai-inline-btn" data-action="quiz"        title="Generar quiz">? Quiz</button>
+    <div class="ai-inline-sep"></div>
+    <button class="ai-inline-btn ai-inline-btn--panel" data-action="panel" title="Abrir panel AI">⋯</button>
+    <div class="ai-inline-loading hidden" id="aiInlineLoading">✦ procesando…</div>
+  </div>
 
   <!-- AI PANEL -->
   <div class="ai-panel hidden" id="aiPanel">

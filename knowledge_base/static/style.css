@@ -6809,27 +6809,72 @@ body {
 }
 #aiBtn.active { color: var(--accent); border-color: var(--accent); }
 
-/* ── AI selection bubble ── */
-.ai-sel-bubble {
+/* ── AI inline toolbar (selection) ── */
+.ai-inline-bar {
   position: fixed;
   z-index: 2000;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 4px 10px;
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 4px 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.06) inset;
+  transform: translateX(-50%) translateY(-6px);
   pointer-events: all;
-  white-space: nowrap;
-  transform: translateX(-50%) translateY(-8px);
-  transition: opacity 0.12s, transform 0.12s;
   user-select: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-.ai-sel-bubble:hover { filter: brightness(1.12); }
-.ai-sel-bubble.hidden { display: none; }
+.ai-inline-bar.hidden { display: none; }
+
+.ai-inline-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  padding: 3px 8px;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+  letter-spacing: 0.02em;
+}
+.ai-inline-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.ai-inline-btn--panel {
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  color: var(--text-faint);
+}
+.ai-inline-btn--panel:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+.ai-inline-btn.loading {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.ai-inline-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+.ai-inline-loading {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 2px 8px;
+  animation: aiPulse 1.2s ease-in-out infinite;
+}
+.ai-inline-loading.hidden { display: none; }
 
 /* ── AI selection context strip (inside panel) ── */
 .ai-sel-ctx {
