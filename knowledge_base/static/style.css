@@ -6957,3 +6957,9 @@ body {
   font-size: 0.78rem;
   font-family: var(--font-mono);
 }
+
+/* ── Paste Markdown modal — mobile adjustments ─────────────────────────────── */
+@media (max-width: 768px) {
+  #pasteMarkdownOverlay .modal { width: 96vw; margin: 8px; }
+  #pasteMarkdownInput { height: 200px; font-size: 0.85rem; }
+}
