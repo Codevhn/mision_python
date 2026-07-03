@@ -6680,6 +6680,36 @@ function initPasteMarkdown() {
   });
 }
 
+// ── Minimal Markdown → HTML for AI responses ─────────────────────────────────
+function _mdToHtml(md) {
+  let html = md
+    // Escape HTML first to prevent XSS
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Fenced code blocks (```lang\n...\n```)
+    .replace(/```[\w]*\n?([\s\S]*?)```/g, (_, c) => `<pre><code>${c.trim()}</code></pre>`)
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,  '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,   '<h1>$1</h1>')
+    // Bold + italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,         '<em>$1</em>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Unordered lists
+    .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\s*\d+\. (.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/(<li>[\s\S]*?<\/li>)(\n<li>[\s\S]*?<\/li>)*/g, m => `<ul>${m}</ul>`)
+    // Paragraphs: double newline → <p>
+    .replace(/\n{2,}/g, '</p><p>')
+    // Single newlines inside paragraphs → <br>
+    .replace(/\n/g, '<br>');
+  return `<p>${html}</p>`;
+}
+
 // ── Ask AI panel ─────────────────────────────────────────────────────────────
 function initAIPanel() {
   const panel      = $('aiPanel');
@@ -6769,7 +6799,7 @@ function initAIPanel() {
           return;
         }
         lastResult = data.result || '';
-        responseBody.textContent = lastResult;
+        responseBody.innerHTML = _mdToHtml(lastResult);
         responseEl.classList.remove('hidden');
       })
       .catch(err => {
