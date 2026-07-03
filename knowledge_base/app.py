@@ -2581,9 +2581,9 @@ def ai_ask():
     context = data.get("context", "").strip()
     action  = data.get("action",  "ask")
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY no configurada. Añádela con: fly secrets set ANTHROPIC_API_KEY=sk-ant-..."}), 503
+        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
 
     systems = {
         "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara y concisa con ejemplos prácticos. Responde en español.",
@@ -2597,23 +2597,24 @@ def ai_ask():
 
     try:
         body = json.dumps({
-            "model": "claude-haiku-4-5-20251001",
+            "model": "deepseek-chat",
             "max_tokens": 2048,
-            "system": system,
-            "messages": [{"role": "user", "content": user_msg}],
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_msg},
+            ],
         }).encode("utf-8")
         req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
+            "https://api.deepseek.com/chat/completions",
             data=body,
             headers={
                 "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
+                "Authorization": f"Bearer {api_key}",
             },
         )
         with urllib.request.urlopen(req, timeout=30) as r:
             result = json.loads(r.read())
-        return jsonify({"result": result["content"][0]["text"]})
+        return jsonify({"result": result["choices"][0]["message"]["content"]})
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
