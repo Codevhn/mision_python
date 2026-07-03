@@ -126,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initReview();
   initPageFind();
   initRelationsPanel();
+  initAIPanel();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
   if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
@@ -1862,6 +1863,9 @@ async function loadEntry(id, opts = {}) {
 
   // Prev/next navigation for course lessons
   _updateCourseNav(id, m);
+
+  // Post-process entry: code execution buttons, Mermaid, KaTeX
+  setTimeout(postProcessEntry, 250);
 }
 
 // ── Course lesson prev/next navigation ───────────────────────────────────
@@ -6616,3 +6620,257 @@ function initCoursesSpace() {
     init();
   }
 })();
+
+// ── Ask AI panel ─────────────────────────────────────────────────────────────
+function initAIPanel() {
+  const panel    = $('aiPanel');
+  const btn      = $('aiBtn');
+  const closeBtn = $('aiPanelClose');
+  const input    = $('aiInput');
+  const sendBtn  = $('aiSendBtn');
+  const responseEl   = $('aiResponse');
+  const responseBody = $('aiResponseBody');
+  const loadingEl    = $('aiLoading');
+  const errorEl      = $('aiError');
+  const copyBtn      = $('aiCopyBtn');
+  const insertBtn    = $('aiInsertBtn');
+  if (!panel || !btn) return;
+
+  let lastResult = '';
+
+  function togglePanel() {
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    btn.classList.toggle('active', isHidden);
+    if (isHidden) setTimeout(() => input.focus(), 50);
+  }
+
+  btn.addEventListener('click', togglePanel);
+  closeBtn.addEventListener('click', () => {
+    panel.classList.add('hidden');
+    btn.classList.remove('active');
+  });
+
+  document.querySelectorAll('.ai-action-btn').forEach(b => {
+    b.addEventListener('click', () => sendAI(b.dataset.action, ''));
+  });
+
+  function sendAI(action, prompt) {
+    const ctx = currentEntryId ? (_inlineEditor.getMarkdown() || '') : '';
+    const userPrompt = (prompt || input.value || '').trim();
+
+    responseEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    loadingEl.classList.remove('hidden');
+
+    fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, prompt: userPrompt, context: ctx }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        loadingEl.classList.add('hidden');
+        if (data.error) {
+          errorEl.textContent = data.error;
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        lastResult = data.result || '';
+        responseBody.textContent = lastResult;
+        responseEl.classList.remove('hidden');
+      })
+      .catch(err => {
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = 'Error de red: ' + err.message;
+        errorEl.classList.remove('hidden');
+      });
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const q = input.value.trim();
+    if (!q) return;
+    sendAI('ask', q);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+  });
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(lastResult).then(() => {
+      copyBtn.textContent = '✓ copiado';
+      setTimeout(() => { copyBtn.textContent = '⎘ copiar'; }, 1500);
+    });
+  });
+
+  insertBtn.addEventListener('click', () => {
+    if (!lastResult || !currentEntryId) return;
+    const md = _inlineEditor.getMarkdown();
+    _inlineEditor.load(md + '\n\n' + lastResult);
+    panel.classList.add('hidden');
+    btn.classList.remove('active');
+    showToast('Respuesta insertada', 'success');
+  });
+}
+
+// ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────
+function postProcessEntry() {
+  const body = $('entryBody');
+  if (!body) return;
+  body.querySelectorAll('.code-run-wrap, .mermaid-wrap, .math-wrap').forEach(el => el.remove());
+  _initCodeExecution(body);
+  _initMermaid(body);
+  _initKaTeX(body);
+}
+
+function _initCodeExecution(body) {
+  body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]').forEach((block, i) => {
+    const anchor = block.closest('.bn-block-outer') || block.parentElement;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'code-run-wrap';
+
+    const runBtn = document.createElement('button');
+    runBtn.className = 'code-run-btn';
+    runBtn.textContent = '▶ Ejecutar';
+
+    const outputWrap = document.createElement('div');
+    outputWrap.className = 'code-output-wrap hidden';
+
+    const stdout = document.createElement('pre');
+    stdout.className = 'code-output-stdout';
+    const stderr = document.createElement('pre');
+    stderr.className = 'code-output-stderr hidden';
+    const metaEl = document.createElement('div');
+    metaEl.className = 'code-output-meta';
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'code-output-clear';
+    clearBtn.textContent = '✕ cerrar';
+
+    outputWrap.append(stdout, stderr, metaEl, clearBtn);
+    wrap.append(runBtn, outputWrap);
+    anchor.after(wrap);
+
+    runBtn.addEventListener('click', () => {
+      const code = block.querySelector('.bn-inline-content, code')?.textContent || '';
+      if (!code.trim()) return;
+      runBtn.disabled = true;
+      runBtn.textContent = '⏳ Ejecutando…';
+      stdout.textContent = '';
+      stderr.classList.add('hidden');
+      stderr.textContent = '';
+      outputWrap.classList.remove('hidden');
+
+      fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language: 'python' }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Ejecutar';
+          stdout.textContent = data.output || '(sin salida)';
+          if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
+          metaEl.textContent = 'código de salida: ' + (data.returncode ?? '?');
+        })
+        .catch(err => {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Ejecutar';
+          stdout.textContent = 'Error: ' + err.message;
+        });
+    });
+
+    clearBtn.addEventListener('click', () => {
+      outputWrap.classList.add('hidden');
+      stdout.textContent = '';
+      stderr.textContent = '';
+      stderr.classList.add('hidden');
+    });
+  });
+}
+
+let _mermaidLoaded = false;
+function _initMermaid(body) {
+  const blocks = body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]');
+  if (!blocks.length) return;
+
+  function renderMermaid() {
+    blocks.forEach((block, i) => {
+      const code = block.querySelector('.bn-inline-content, code')?.textContent?.trim() || '';
+      if (!code) return;
+      const anchor = block.closest('.bn-block-outer') || block.parentElement;
+      const wrap = document.createElement('div');
+      wrap.className = 'mermaid-wrap';
+      anchor.after(wrap);
+
+      window.mermaid.render('mermaid-svg-' + Date.now() + '-' + i, code)
+        .then(({ svg }) => { wrap.innerHTML = svg; })
+        .catch(err => { wrap.innerHTML = '<div class="mermaid-error">Error: ' + escapeHtml(String(err?.message || err)) + '</div>'; });
+    });
+  }
+
+  if (_mermaidLoaded) { renderMermaid(); return; }
+
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+  script.onload = () => {
+    _mermaidLoaded = true;
+    window.mermaid.initialize({ startOnLoad: false, theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark' });
+    renderMermaid();
+  };
+  script.onerror = () => {
+    blocks.forEach(block => {
+      const anchor = block.closest('.bn-block-outer') || block.parentElement;
+      const wrap = document.createElement('div');
+      wrap.className = 'mermaid-wrap';
+      wrap.innerHTML = '<div class="mermaid-error">No se pudo cargar Mermaid.js</div>';
+      anchor.after(wrap);
+    });
+  };
+  document.head.appendChild(script);
+}
+
+let _katexLoaded = false;
+function _initKaTeX(body) {
+  const blocks = body.querySelectorAll('[data-content-type="codeBlock"][data-language="math"]');
+  if (!blocks.length) return;
+
+  function renderKaTeX() {
+    blocks.forEach(block => {
+      const code = block.querySelector('.bn-inline-content, code')?.textContent?.trim() || '';
+      if (!code) return;
+      const anchor = block.closest('.bn-block-outer') || block.parentElement;
+      const wrap = document.createElement('div');
+      wrap.className = 'math-wrap';
+      anchor.after(wrap);
+      try {
+        wrap.innerHTML = window.katex.renderToString(code, { displayMode: true, throwOnError: false });
+      } catch (err) {
+        wrap.innerHTML = '<div class="math-error">Error KaTeX: ' + escapeHtml(String(err?.message || err)) + '</div>';
+      }
+    });
+  }
+
+  if (_katexLoaded) { renderKaTeX(); return; }
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css';
+  document.head.appendChild(link);
+
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js';
+  script.onload = () => { _katexLoaded = true; renderKaTeX(); };
+  script.onerror = () => {
+    blocks.forEach(block => {
+      const anchor = block.closest('.bn-block-outer') || block.parentElement;
+      const wrap = document.createElement('div');
+      wrap.className = 'math-wrap';
+      wrap.innerHTML = '<div class="math-error">No se pudo cargar KaTeX</div>';
+      anchor.after(wrap);
+    });
+  };
+  document.head.appendChild(script);
+}

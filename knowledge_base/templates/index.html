@@ -373,6 +373,7 @@
             <button class="btn-ghost secondary-action" id="dupBtn">⎘ dup</button>
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
             <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
+            <button class="btn-ghost secondary-action ai-entry-btn" id="aiBtn">✦ AI</button>
             <button class="btn-ghost secondary-action" id="fmtBtn" title="Agregar espaciado lógico entre elementos">⬚ fmt</button>
             <!-- Mobile: más acciones -->
             <button class="btn-ghost" id="moreActionsBtn" style="display:none">⋯</button>
@@ -470,6 +471,33 @@
   <div class="toc-panel hidden" id="tocPanel">
     <div class="toc-panel-header">¶ contents</div>
     <div class="toc-panel-items" id="tocItems"></div>
+  </div>
+
+  <!-- AI PANEL -->
+  <div class="ai-panel hidden" id="aiPanel">
+    <div class="ai-panel-header">
+      <span class="ai-panel-title">✦ Ask AI</span>
+      <button class="ai-panel-close" id="aiPanelClose">×</button>
+    </div>
+    <div class="ai-actions">
+      <button class="ai-action-btn" data-action="explain">Explicar</button>
+      <button class="ai-action-btn" data-action="summarize">Resumir</button>
+      <button class="ai-action-btn" data-action="improve">Mejorar</button>
+      <button class="ai-action-btn" data-action="example">Ejemplo</button>
+    </div>
+    <div class="ai-input-row">
+      <input type="text" class="ai-input" id="aiInput" placeholder="Pregunta algo sobre este contenido…" autocomplete="off" />
+      <button class="ai-send-btn" id="aiSendBtn">→</button>
+    </div>
+    <div class="ai-response hidden" id="aiResponse">
+      <div class="ai-response-body" id="aiResponseBody"></div>
+      <div class="ai-response-actions">
+        <button class="ai-copy-btn" id="aiCopyBtn">⎘ copiar</button>
+        <button class="ai-insert-btn" id="aiInsertBtn">↓ insertar</button>
+      </div>
+    </div>
+    <div class="ai-loading hidden" id="aiLoading"><span class="ai-dots">✦ pensando</span></div>
+    <div class="ai-error hidden" id="aiError"></div>
   </div>
 
   <!-- FOCUS MODE EXIT BUTTON -->

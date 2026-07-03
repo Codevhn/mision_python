@@ -2567,5 +2567,83 @@ def weather_proxy():
         return jsonify({"error": str(e)}), 502
 
 
+# ── Ask AI ────────────────────────────────────────────────────────────────────
+
+@app.route("/api/ai", methods=["POST"])
+def ai_ask():
+    data = request.json or {}
+    prompt  = data.get("prompt",  "").strip()
+    context = data.get("context", "").strip()
+    action  = data.get("action",  "ask")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY no configurada. Añádela con: fly secrets set ANTHROPIC_API_KEY=sk-ant-..."}), 503
+
+    systems = {
+        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara y concisa con ejemplos prácticos. Responde en español.",
+        "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso. Responde en español.",
+        "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado.",
+        "example":   "Genera un ejemplo práctico y completo del concepto. Usa código Python si aplica. Responde en español.",
+        "ask":       "Eres un asistente técnico experto en programación. Responde de forma clara y útil en español.",
+    }
+    system = systems.get(action, systems["ask"])
+    user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if context else prompt
+
+    try:
+        body = json.dumps({
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 2048,
+            "system": system,
+            "messages": [{"role": "user", "content": user_msg}],
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            result = json.loads(r.read())
+        return jsonify({"result": result["content"][0]["text"]})
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Code execution ────────────────────────────────────────────────────────────
+
+@app.route("/api/execute", methods=["POST"])
+def execute_code():
+    data     = request.json or {}
+    code     = data.get("code", "").strip()
+    language = data.get("language", "python").lower().replace("python3", "python")
+
+    if not code:
+        return jsonify({"output": "", "stderr": ""}), 200
+    if language != "python":
+        return jsonify({"error": f"Lenguaje '{language}' no soportado. Solo Python disponible."}), 400
+
+    try:
+        result = subprocess.run(
+            ["python3", "-c", code],
+            capture_output=True, text=True, timeout=10, cwd="/tmp",
+        )
+        return jsonify({
+            "output":     result.stdout,
+            "stderr":     result.stderr,
+            "returncode": result.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "⏱ Timeout: el código superó 10 segundos."}), 408
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
