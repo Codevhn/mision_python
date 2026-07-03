@@ -127,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initPageFind();
   initRelationsPanel();
   initAIPanel();
+  initPasteMarkdown();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
   if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
@@ -229,6 +230,7 @@ function bindEvents() {
   $("moreMove").addEventListener("click",      () => $("moveBtn").click());
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("moreAI").addEventListener("click",        () => $("aiBtn").click());
+  $("morePasteMd").addEventListener("click",   () => $("pasteMarkdownBtn").click());
   $("modalClose").addEventListener("click", closeModal);
   $("cancelBtn").addEventListener("click", closeModal);
   $("saveBtn").addEventListener("click", saveEntry);
@@ -6621,6 +6623,44 @@ function initCoursesSpace() {
     init();
   }
 })();
+
+// ── Paste Markdown modal ──────────────────────────────────────────────────────
+function initPasteMarkdown() {
+  const btn     = $('pasteMarkdownBtn');
+  const overlay = $('pasteMarkdownOverlay');
+  const closeBtn = $('pasteMarkdownClose');
+  const cancelBtn = $('pasteMarkdownCancel');
+  const confirmBtn = $('pasteMarkdownConfirm');
+  const textarea = $('pasteMarkdownInput');
+  const appendChk = $('pasteMarkdownAppend');
+  if (!btn || !overlay) return;
+
+  function open() {
+    textarea.value = '';
+    appendChk.checked = false;
+    overlay.classList.remove('hidden');
+    setTimeout(() => textarea.focus(), 80);
+  }
+  function close() { overlay.classList.add('hidden'); }
+
+  btn.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  confirmBtn.addEventListener('click', () => {
+    const md = textarea.value.trim();
+    if (!md) return;
+    if (appendChk.checked) {
+      const current = _inlineEditor.getMarkdown().trimEnd();
+      _inlineEditor.load(current + '\n\n' + md);
+    } else {
+      _inlineEditor.load(md);
+    }
+    close();
+    showToast('Contenido cargado en el editor', 'success');
+  });
+}
 
 // ── Ask AI panel ─────────────────────────────────────────────────────────────
 function initAIPanel() {

@@ -374,6 +374,7 @@
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
             <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ AI</button>
+            <button class="btn-ghost secondary-action" id="pasteMarkdownBtn" title="Pegar Markdown">↓ md</button>
             <button class="btn-ghost secondary-action" id="fmtBtn" title="Agregar espaciado lógico entre elementos">⬚ fmt</button>
             <!-- Mobile: más acciones -->
             <button class="btn-ghost" id="moreActionsBtn" style="display:none">⋯</button>
@@ -387,6 +388,7 @@
               <button class="btn-ghost" id="moreMove">⇄ move</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
               <button class="btn-ghost" id="moreAI">✦ AI</button>
+              <button class="btn-ghost" id="morePasteMd">↓ md</button>
             </div>
           </div>
         </div>
@@ -1037,6 +1039,35 @@
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
         <button class="btn-ghost" id="exportModalCancel">Cancelar</button>
         <button class="btn-primary" id="exportModalConfirm">↓ Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASTE MARKDOWN MODAL -->
+  <div class="modal-overlay hidden" id="pasteMarkdownOverlay">
+    <div class="modal" style="max-width:680px;width:95vw">
+      <div class="modal-header">
+        <span>↓ Pegar Markdown</span>
+        <button class="modal-close" id="pasteMarkdownClose">×</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+        <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
+          Pega aquí el contenido en Markdown. Se cargará en el editor de la entrada actual.
+        </p>
+        <textarea id="pasteMarkdownInput"
+          placeholder="# Título&#10;&#10;Pega tu contenido markdown aquí…"
+          style="width:100%;height:360px;font-family:var(--font-mono);font-size:0.8rem;
+                 background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;
+                 color:var(--text);padding:12px;resize:vertical;outline:none;
+                 line-height:1.6;box-sizing:border-box"></textarea>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);cursor:pointer">
+          <input type="checkbox" id="pasteMarkdownAppend" style="cursor:pointer" />
+          Añadir al final (sin reemplazar el contenido actual)
+        </label>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
+        <button class="btn-ghost" id="pasteMarkdownCancel">Cancelar</button>
+        <button class="btn-primary" id="pasteMarkdownConfirm">↓ Cargar en editor</button>
       </div>
     </div>
   </div>
