@@ -6785,6 +6785,8 @@ function _initCodeExecution(container, blocks) {
     section.appendChild(item);
 
     runBtn.addEventListener('click', () => {
+      // Scroll the code block into view so the user can see which block ran
+      block.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const currentCode = _codeText(block);
       if (!currentCode.trim()) return;
       runBtn.disabled = true;

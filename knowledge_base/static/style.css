@@ -6739,6 +6739,76 @@ body {
 /* ============================================================
    FEATURE PANELS (code runner, mermaid, math) — sit BELOW the editor
    ============================================================ */
+
+/* CSS counter to label each Python block with its number — no DOM injection needed */
+#entryBody { counter-reset: py-block mmd-block math-block; }
+
+[data-content-type="codeBlock"][data-language="python"] {
+  counter-increment: py-block;
+  position: relative;
+}
+[data-content-type="codeBlock"][data-language="python"]::after {
+  content: "▶ bloque " counter(py-block);
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: #0d9669;
+  background: color-mix(in srgb, #10b981 12%, var(--bg));
+  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+[data-theme="dark"] [data-content-type="codeBlock"][data-language="python"]::after {
+  color: #10b981;
+}
+
+[data-content-type="codeBlock"][data-language="mermaid"] {
+  counter-increment: mmd-block;
+  position: relative;
+}
+[data-content-type="codeBlock"][data-language="mermaid"]::after {
+  content: "⬡ diagrama " counter(mmd-block);
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+[data-content-type="codeBlock"][data-language="math"] {
+  counter-increment: math-block;
+  position: relative;
+}
+[data-content-type="codeBlock"][data-language="math"]::after {
+  content: "∑ fórmula " counter(math-block);
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
 #_entryFeaturePanels {
   margin: 0 0 24px;
   display: flex;
