@@ -7002,8 +7002,19 @@ function initAIPanel() {
 
   function _showBar(rect) {
     if (!inlineBar) return;
-    inlineBar.style.left = (rect.left + rect.width / 2) + 'px';
-    inlineBar.style.top  = (rect.top + window.scrollY - 48) + 'px';
+    const BAR_W = 192;
+    const BAR_H = 240; // rough max height
+    // Position below the selection, left-aligned to selection start
+    let left = rect.left;
+    let top  = rect.bottom + 6;
+    // Keep inside viewport
+    if (left + BAR_W > window.innerWidth - 8) left = window.innerWidth - BAR_W - 8;
+    if (left < 8) left = 8;
+    // Flip above if would overflow bottom
+    if (top + BAR_H > window.innerHeight - 8) top = rect.top - BAR_H - 6;
+    inlineBar.style.left      = left + 'px';
+    inlineBar.style.top       = top  + 'px';
+    inlineBar.style.transform = 'none';
     inlineLoading.classList.add('hidden');
     inlineBar.querySelectorAll('.ai-inline-btn').forEach(b => { b.classList.remove('loading'); b.style.display = ''; });
     inlineBar.classList.remove('hidden');

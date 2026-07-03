@@ -6840,43 +6840,51 @@ body {
   position: fixed;
   z-index: 2000;
   display: flex;
-  align-items: center;
-  gap: 2px;
+  flex-direction: column;
+  min-width: 186px;
   background: var(--bg-surface);
   border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  padding: 4px 6px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.06) inset;
-  transform: translateX(-50%) translateY(-6px);
+  border-radius: 10px;
+  padding: 4px 0;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.06) inset;
   pointer-events: all;
   user-select: none;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .ai-inline-bar.hidden { display: none; }
+
+.ai-inline-header {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 5px 12px 3px;
+  font-family: var(--font-ui);
+}
 
 .ai-inline-btn {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
   font-family: var(--font-ui);
-  padding: 3px 8px;
-  border-radius: 14px;
+  padding: 5px 12px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s, color 0.12s;
-  letter-spacing: 0.02em;
+  text-align: left;
+  width: 100%;
+  transition: background 0.1s, color 0.1s;
 }
 .ai-inline-btn:hover {
   background: var(--accent-light);
   color: var(--accent);
 }
 .ai-inline-btn--panel {
-  font-size: 0.9rem;
-  padding: 2px 6px;
   color: var(--text-faint);
+  font-size: 0.72rem;
 }
 .ai-inline-btn--panel:hover {
   background: var(--bg-elevated);
@@ -6884,20 +6892,18 @@ body {
 }
 .ai-inline-btn.loading {
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 .ai-inline-sep {
-  width: 1px;
-  height: 14px;
+  height: 1px;
   background: var(--border);
-  margin: 0 2px;
-  flex-shrink: 0;
+  margin: 3px 0;
 }
 .ai-inline-loading {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--accent);
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 5px 12px;
   animation: aiPulse 1.2s ease-in-out infinite;
 }
 .ai-inline-loading.hidden { display: none; }
