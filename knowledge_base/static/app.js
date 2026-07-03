@@ -4091,17 +4091,31 @@ function _wireCtxBtn(ctxId, sourceId) {
 
   // ── Static actions shown when query is empty ──────────────
   const ACTIONS = [
-    { id: 'act:new-entry',    label: 'Nueva entrada',      icon: '✦', group: 'Acciones', shortcut: null,
-      run: () => { document.getElementById('newEntryBtn')?.click(); } },
-    { id: 'act:new-board',    label: 'Nuevo tablero Kanban', icon: '⊞', group: 'Acciones', shortcut: null,
+    // Crear
+    { id: 'act:new-entry',   label: 'Nueva entrada',        icon: '✦', group: 'Crear', shortcut: null,
+      run: () => { openNewModal(); } },
+    { id: 'act:new-board',   label: 'Nuevo tablero Kanban', icon: '⊞', group: 'Crear', shortcut: null,
       run: () => { document.getElementById('newKanbanBoardBtn')?.click(); } },
-    { id: 'act:home',         label: 'Ir al Inicio',        icon: '⌂', group: 'Acciones', shortcut: null,
-      run: () => { document.getElementById('wsHome')?.click(); } },
-    { id: 'act:starred',      label: 'Ver Favoritos',       icon: '☆', group: 'Acciones', shortcut: null,
-      run: () => { document.getElementById('wsStarred')?.click(); } },
-    { id: 'act:reindex',      label: 'Reindexar archivos',  icon: '⟳', group: 'Acciones', shortcut: null,
-      run: () => { document.getElementById('reindexBtn')?.click(); } },
-    { id: 'act:theme',        label: 'Cambiar tema',         icon: '◐', group: 'Acciones', shortcut: null,
+    // Navegar
+    { id: 'act:home',        label: 'Inicio',               icon: '⌂', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="home"]')?.click(); } },
+    { id: 'act:knowledge',   label: 'Conocimiento',         icon: '◉', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="knowledge"]')?.click(); } },
+    { id: 'act:courses',     label: 'Mis Cursos',           icon: '◎', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="courses"]')?.click(); } },
+    { id: 'act:starred',     label: 'Ver Favoritos',        icon: '☆', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="knowledge"]')?.click(); document.getElementById('wsStarred')?.click(); } },
+    // Herramientas (activas al tener una entrada abierta)
+    { id: 'act:ask-ai',      label: 'Consultar IA',         icon: '✦', group: 'Herramientas', shortcut: null,
+      run: () => { document.getElementById('cmAI')?.click(); } },
+    { id: 'act:focus',       label: 'Modo Focus',           icon: '⊙', group: 'Herramientas', shortcut: null,
+      run: () => { document.getElementById('cmFocus')?.click(); } },
+    { id: 'act:toc',         label: 'Tabla de contenidos',  icon: '¶', group: 'Herramientas', shortcut: null,
+      run: () => { document.getElementById('cmToc')?.click(); } },
+    { id: 'act:paste-md',    label: 'Pegar Markdown',       icon: '↓', group: 'Herramientas', shortcut: null,
+      run: () => { document.getElementById('cmPasteMd')?.click(); } },
+    // Sistema
+    { id: 'act:theme',       label: 'Cambiar tema',         icon: '◐', group: 'Sistema', shortcut: null,
       run: () => { document.getElementById('themeToggle')?.click(); } },
   ];
 
