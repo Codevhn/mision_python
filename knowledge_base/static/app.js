@@ -3075,27 +3075,48 @@ function renderStarredSection(index) {
 let _tocScrollSpy = null;
 
 function initTOC() {
-  $("tocBtn").addEventListener("click", toggleTOC);
+  let _hideTimer = null;
+  const trigger = $("tocTrigger");
+  const panel   = $("tocPanel");
 
-  // Close on click outside the panel
-  document.addEventListener("mousedown", e => {
-    const panel = $("tocPanel");
+  function _showTOC() {
     if (!panel || panel.classList.contains("hidden")) return;
-    if (!panel.contains(e.target) && e.target !== $("tocBtn")) closeTOC();
+    clearTimeout(_hideTimer);
+    panel.classList.add("toc-visible");
+    $("tocBtn")?.classList.add("active");
+    _startScrollSpy();
+  }
+
+  function _scheduleHide() {
+    _hideTimer = setTimeout(() => closeTOC(), 320);
+  }
+
+  trigger?.addEventListener("mouseenter", _showTOC);
+  trigger?.addEventListener("mouseleave", _scheduleHide);
+  panel?.addEventListener("mouseenter",   () => clearTimeout(_hideTimer));
+  panel?.addEventListener("mouseleave",   _scheduleHide);
+
+  // Button click as fallback (command palette, moreToc, etc.)
+  $("tocBtn")?.addEventListener("click", toggleTOC);
+
+  document.addEventListener("mousedown", e => {
+    if (!panel || !panel.classList.contains("toc-visible")) return;
+    if (!panel.contains(e.target) && e.target !== trigger && e.target !== $("tocBtn")) closeTOC();
   });
 }
 
 function toggleTOC() {
   const panel = $("tocPanel");
-  const isHidden = panel.classList.contains("hidden");
-  panel.classList.toggle("hidden", !isHidden);
-  $("tocBtn").classList.toggle("active", isHidden);
-  if (isHidden) _startScrollSpy();
+  if (!panel || panel.classList.contains("hidden")) return;
+  const isVisible = panel.classList.contains("toc-visible");
+  panel.classList.toggle("toc-visible", !isVisible);
+  $("tocBtn")?.classList.toggle("active", !isVisible);
+  if (!isVisible) _startScrollSpy();
   else _stopScrollSpy();
 }
 
 function closeTOC() {
-  $("tocPanel")?.classList.add("hidden");
+  $("tocPanel")?.classList.remove("toc-visible");
   $("tocBtn")?.classList.remove("active");
   _stopScrollSpy();
 }
@@ -3146,15 +3167,26 @@ function buildTOC() {
 
   if (headings.length < 1) {
     tocPanel.classList.add("hidden");
-    $("tocBtn").classList.remove("active");
+    tocPanel.classList.remove("toc-visible");
+    $("tocBtn")?.classList.remove("active");
     tocItems.innerHTML = '<div class="toc-empty">Sin secciones</div>';
+    _stopScrollSpy();
     return;
   }
+
+  // Remove the "no headings" gate so hover can reveal the panel
+  tocPanel.classList.remove("hidden");
 
   const clsMap = { H2: "toc-item", H3: "toc-item toc-h3", H4: "toc-item toc-h4" };
   tocItems.innerHTML = headings.map(h => {
     const cls  = clsMap[h.tagName] || "toc-item";
-    const text = h.textContent.replace(/^[→#]\s*/, "").trim();
+    // Strip emojis, special symbols, and leading markers
+    const text = h.textContent
+      .replace(/[\u{1F000}-\u{1FAFF}]/gu, '')
+      .replace(/[\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+      .replace(/^[→#✦•\-\s]+/, '')
+      .trim();
     return `<div class="${cls}" data-target="${h.id}">${escapeHtml(text)}</div>`;
   }).join("");
 
@@ -3165,7 +3197,7 @@ function buildTOC() {
     });
   });
 
-  if (!tocPanel.classList.contains("hidden")) _startScrollSpy();
+  if (tocPanel.classList.contains("toc-visible")) _startScrollSpy();
 }
 
 // ============================================================
