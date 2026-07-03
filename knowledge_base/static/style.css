@@ -6736,6 +6736,66 @@ body {
 }
 #aiBtn.active { color: var(--accent); border-color: var(--accent); }
 
+/* ── AI selection bubble ── */
+.ai-sel-bubble {
+  position: fixed;
+  z-index: 2000;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  pointer-events: all;
+  white-space: nowrap;
+  transform: translateX(-50%) translateY(-8px);
+  transition: opacity 0.12s, transform 0.12s;
+  user-select: none;
+}
+.ai-sel-bubble:hover { filter: brightness(1.12); }
+.ai-sel-bubble.hidden { display: none; }
+
+/* ── AI selection context strip (inside panel) ── */
+.ai-sel-ctx {
+  margin: 8px 12px 4px;
+  border-left: 3px solid var(--accent);
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+.ai-sel-ctx.hidden { display: none; }
+.ai-sel-ctx-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.ai-sel-ctx-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  max-height: 60px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.ai-sel-ctx-clear {
+  background: none;
+  border: none;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 0 0;
+  text-decoration: underline;
+}
+.ai-sel-ctx-clear:hover { color: var(--danger); }
+
 /* ============================================================
    FEATURE PANELS (code runner, mermaid, math) — sit BELOW the editor
    ============================================================ */

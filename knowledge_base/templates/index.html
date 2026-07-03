@@ -481,11 +481,20 @@
     <div class="toc-panel-items" id="tocItems"></div>
   </div>
 
+  <!-- AI SELECTION BUBBLE (appears on text selection inside editor) -->
+  <div class="ai-sel-bubble hidden" id="aiSelBubble">✦ Ask AI</div>
+
   <!-- AI PANEL -->
   <div class="ai-panel hidden" id="aiPanel">
     <div class="ai-panel-header">
       <span class="ai-panel-title">✦ Ask AI</span>
       <button class="ai-panel-close" id="aiPanelClose">×</button>
+    </div>
+    <!-- Selected text context strip (visible only when triggered from a selection) -->
+    <div class="ai-sel-ctx hidden" id="aiSelCtx">
+      <div class="ai-sel-ctx-label">Selección activa:</div>
+      <div class="ai-sel-ctx-text" id="aiSelCtxText"></div>
+      <button class="ai-sel-ctx-clear" id="aiSelCtxClear">× usar entrada completa</button>
     </div>
     <div class="ai-actions">
       <button class="ai-action-btn" data-action="explain">Explicar</button>

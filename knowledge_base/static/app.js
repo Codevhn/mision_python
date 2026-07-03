@@ -6682,32 +6682,64 @@ function initPasteMarkdown() {
 
 // ── Ask AI panel ─────────────────────────────────────────────────────────────
 function initAIPanel() {
-  const panel    = $('aiPanel');
-  const btn      = $('aiBtn');
-  const closeBtn = $('aiPanelClose');
-  const input    = $('aiInput');
-  const sendBtn  = $('aiSendBtn');
+  const panel      = $('aiPanel');
+  const btn        = $('aiBtn');
+  const closeBtn   = $('aiPanelClose');
+  const input      = $('aiInput');
+  const sendBtn    = $('aiSendBtn');
   const responseEl   = $('aiResponse');
   const responseBody = $('aiResponseBody');
   const loadingEl    = $('aiLoading');
   const errorEl      = $('aiError');
   const copyBtn      = $('aiCopyBtn');
   const insertBtn    = $('aiInsertBtn');
+  const selBubble    = $('aiSelBubble');
+  const selCtx       = $('aiSelCtx');
+  const selCtxText   = $('aiSelCtxText');
+  const selCtxClear  = $('aiSelCtxClear');
   if (!panel || !btn) return;
 
-  let lastResult = '';
+  let lastResult   = '';
+  let _selContext  = '';  // text pinned from a selection
+
+  // ── Open / close ──────────────────────────────────────────
+  function openPanel(selText) {
+    if (selText) {
+      _selContext = selText;
+      selCtxText.textContent = selText.length > 200 ? selText.slice(0, 200) + '…' : selText;
+      selCtx.classList.remove('hidden');
+      input.placeholder = 'Pregunta sobre la selección…';
+    } else {
+      _selContext = '';
+      selCtx.classList.add('hidden');
+      input.placeholder = 'Pregunta algo sobre este contenido…';
+    }
+    panel.classList.remove('hidden');
+    btn.classList.add('active');
+    responseEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function closePanel() {
+    panel.classList.add('hidden');
+    btn.classList.remove('active');
+    _selContext = '';
+    selCtx.classList.add('hidden');
+  }
 
   function togglePanel() {
-    const isHidden = panel.classList.contains('hidden');
-    panel.classList.toggle('hidden', !isHidden);
-    btn.classList.toggle('active', isHidden);
-    if (isHidden) setTimeout(() => input.focus(), 50);
+    if (panel.classList.contains('hidden')) openPanel(null);
+    else closePanel();
   }
 
   btn.addEventListener('click', togglePanel);
-  closeBtn.addEventListener('click', () => {
-    panel.classList.add('hidden');
-    btn.classList.remove('active');
+  closeBtn.addEventListener('click', closePanel);
+  selCtxClear.addEventListener('click', () => {
+    _selContext = '';
+    selCtx.classList.add('hidden');
+    input.placeholder = 'Pregunta algo sobre este contenido…';
+    input.focus();
   });
 
   document.querySelectorAll('.ai-action-btn').forEach(b => {
@@ -6715,7 +6747,8 @@ function initAIPanel() {
   });
 
   function sendAI(action, prompt) {
-    const ctx = currentEntryId ? (_inlineEditor.getMarkdown() || '') : '';
+    // Use pinned selection as context when available, otherwise full entry
+    const ctx = _selContext || (currentEntryId ? (_inlineEditor.getMarkdown() || '') : '');
     const userPrompt = (prompt || input.value || '').trim();
 
     responseEl.classList.add('hidden');
@@ -6767,10 +6800,65 @@ function initAIPanel() {
     if (!lastResult || !currentEntryId) return;
     const md = _inlineEditor.getMarkdown();
     _inlineEditor.load(md + '\n\n' + lastResult);
-    panel.classList.add('hidden');
-    btn.classList.remove('active');
+    closePanel();
     showToast('Respuesta insertada', 'success');
   });
+
+  // ── Selection bubble ──────────────────────────────────────
+  let _bubbleTimer = null;
+
+  function _hideBubble() {
+    if (selBubble) selBubble.classList.add('hidden');
+  }
+
+  function _onMouseUp() {
+    clearTimeout(_bubbleTimer);
+    _bubbleTimer = setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) { _hideBubble(); return; }
+
+      // Only show bubble when selection is inside the editor
+      const editorEl = $('entryBody');
+      if (!editorEl) { _hideBubble(); return; }
+      let node = sel.anchorNode;
+      while (node) {
+        if (node === editorEl) break;
+        node = node.parentNode;
+      }
+      if (!node) { _hideBubble(); return; }
+
+      // Position bubble above the selection
+      const range = sel.getRangeAt(0);
+      const rect  = range.getBoundingClientRect();
+      if (!rect.width && !rect.height) { _hideBubble(); return; }
+
+      selBubble.style.left = (rect.left + rect.width / 2) + 'px';
+      selBubble.style.top  = (rect.top + window.scrollY - 36) + 'px';
+      selBubble.classList.remove('hidden');
+    }, 120);
+  }
+
+  document.addEventListener('mouseup', _onMouseUp);
+
+  // Hide bubble when clicking outside the editor or bubble
+  document.addEventListener('mousedown', e => {
+    if (selBubble && !selBubble.contains(e.target)) {
+      _hideBubble();
+    }
+  });
+
+  // Bubble click → open panel with selected text as context
+  if (selBubble) {
+    selBubble.addEventListener('mousedown', e => {
+      e.preventDefault(); // prevent selection from clearing
+    });
+    selBubble.addEventListener('click', () => {
+      const sel = window.getSelection();
+      const text = sel ? sel.toString().trim() : '';
+      _hideBubble();
+      openPanel(text || null);
+    });
+  }
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────
