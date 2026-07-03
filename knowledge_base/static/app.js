@@ -6718,22 +6718,54 @@ function initAIPanel() {
 function postProcessEntry() {
   const body = $('entryBody');
   if (!body) return;
-  body.querySelectorAll('.code-run-wrap, .mermaid-wrap, .math-wrap').forEach(el => el.remove());
-  _initCodeExecution(body);
-  _initMermaid(body);
-  _initKaTeX(body);
+  // Remove previous feature panels (inserted AFTER entryBody, outside ProseMirror)
+  const old = document.getElementById('_entryFeaturePanels');
+  if (old) old.remove();
+
+  const pyBlocks   = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
+  const mmdBlocks  = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]')];
+  const mathBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="math"]')];
+
+  if (!pyBlocks.length && !mmdBlocks.length && !mathBlocks.length) return;
+
+  // Create container OUTSIDE #entryBody (sibling, not child) — ProseMirror never sees this
+  const panels = document.createElement('div');
+  panels.id = '_entryFeaturePanels';
+  body.after(panels);   // inserts as next sibling of #entryBody, inside #entryView
+
+  if (pyBlocks.length)   _initCodeExecution(panels, pyBlocks);
+  if (mmdBlocks.length)  _initMermaid(panels, mmdBlocks);
+  if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
 }
 
-function _initCodeExecution(body) {
-  body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]').forEach((block, i) => {
-    const anchor = block.closest('.bn-block-outer') || block.parentElement;
+function _codeText(block) {
+  return block.querySelector('code, .bn-inline-content')?.textContent || '';
+}
 
-    const wrap = document.createElement('div');
-    wrap.className = 'code-run-wrap';
+function _codePreview(code, maxLines = 3) {
+  return code.split('\n').slice(0, maxLines).join('\n');
+}
+
+function _initCodeExecution(container, blocks) {
+  const section = document.createElement('div');
+  section.className = 'feature-panel code-runner-panel';
+  section.innerHTML = '<div class="feature-panel-header">⚙ Bloques Python</div>';
+  container.appendChild(section);
+
+  blocks.forEach((block, i) => {
+    const code = _codeText(block);
+    const preview = _codePreview(code);
+
+    const item = document.createElement('div');
+    item.className = 'code-run-item';
+
+    const previewEl = document.createElement('pre');
+    previewEl.className = 'code-run-preview';
+    previewEl.textContent = preview || '(vacío)';
 
     const runBtn = document.createElement('button');
     runBtn.className = 'code-run-btn';
-    runBtn.textContent = '▶ Ejecutar';
+    runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
 
     const outputWrap = document.createElement('div');
     outputWrap.className = 'code-output-wrap hidden';
@@ -6746,15 +6778,15 @@ function _initCodeExecution(body) {
     metaEl.className = 'code-output-meta';
     const clearBtn = document.createElement('button');
     clearBtn.className = 'code-output-clear';
-    clearBtn.textContent = '✕ cerrar';
+    clearBtn.textContent = '✕ cerrar salida';
 
     outputWrap.append(stdout, stderr, metaEl, clearBtn);
-    wrap.append(runBtn, outputWrap);
-    anchor.after(wrap);
+    item.append(previewEl, runBtn, outputWrap);
+    section.appendChild(item);
 
     runBtn.addEventListener('click', () => {
-      const code = block.querySelector('.bn-inline-content, code')?.textContent || '';
-      if (!code.trim()) return;
+      const currentCode = _codeText(block);
+      if (!currentCode.trim()) return;
       runBtn.disabled = true;
       runBtn.textContent = '⏳ Ejecutando…';
       stdout.textContent = '';
@@ -6765,20 +6797,20 @@ function _initCodeExecution(body) {
       fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language: 'python' }),
+        body: JSON.stringify({ code: currentCode, language: 'python' }),
       })
         .then(r => r.json())
         .then(data => {
           runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar';
+          runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
           stdout.textContent = data.output || '(sin salida)';
           if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
           metaEl.textContent = 'código de salida: ' + (data.returncode ?? '?');
         })
         .catch(err => {
           runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar';
-          stdout.textContent = 'Error: ' + err.message;
+          runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
+          stdout.textContent = 'Error de red: ' + err.message;
         });
     });
 
@@ -6792,18 +6824,19 @@ function _initCodeExecution(body) {
 }
 
 let _mermaidLoaded = false;
-function _initMermaid(body) {
-  const blocks = body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]');
-  if (!blocks.length) return;
+function _initMermaid(container, blocks) {
+  const section = document.createElement('div');
+  section.className = 'feature-panel mermaid-panel';
+  section.innerHTML = '<div class="feature-panel-header">⬡ Diagramas Mermaid</div>';
+  container.appendChild(section);
 
   function renderMermaid() {
     blocks.forEach((block, i) => {
-      const code = block.querySelector('.bn-inline-content, code')?.textContent?.trim() || '';
+      const code = _codeText(block).trim();
       if (!code) return;
-      const anchor = block.closest('.bn-block-outer') || block.parentElement;
       const wrap = document.createElement('div');
       wrap.className = 'mermaid-wrap';
-      anchor.after(wrap);
+      section.appendChild(wrap);
 
       window.mermaid.render('mermaid-svg-' + Date.now() + '-' + i, code)
         .then(({ svg }) => { wrap.innerHTML = svg; })
@@ -6821,30 +6854,25 @@ function _initMermaid(body) {
     renderMermaid();
   };
   script.onerror = () => {
-    blocks.forEach(block => {
-      const anchor = block.closest('.bn-block-outer') || block.parentElement;
-      const wrap = document.createElement('div');
-      wrap.className = 'mermaid-wrap';
-      wrap.innerHTML = '<div class="mermaid-error">No se pudo cargar Mermaid.js</div>';
-      anchor.after(wrap);
-    });
+    section.innerHTML += '<div class="mermaid-error">No se pudo cargar Mermaid.js</div>';
   };
   document.head.appendChild(script);
 }
 
 let _katexLoaded = false;
-function _initKaTeX(body) {
-  const blocks = body.querySelectorAll('[data-content-type="codeBlock"][data-language="math"]');
-  if (!blocks.length) return;
+function _initKaTeX(container, blocks) {
+  const section = document.createElement('div');
+  section.className = 'feature-panel math-panel';
+  section.innerHTML = '<div class="feature-panel-header">∑ Fórmulas</div>';
+  container.appendChild(section);
 
   function renderKaTeX() {
     blocks.forEach(block => {
-      const code = block.querySelector('.bn-inline-content, code')?.textContent?.trim() || '';
+      const code = _codeText(block).trim();
       if (!code) return;
-      const anchor = block.closest('.bn-block-outer') || block.parentElement;
       const wrap = document.createElement('div');
       wrap.className = 'math-wrap';
-      anchor.after(wrap);
+      section.appendChild(wrap);
       try {
         wrap.innerHTML = window.katex.renderToString(code, { displayMode: true, throwOnError: false });
       } catch (err) {
@@ -6864,13 +6892,7 @@ function _initKaTeX(body) {
   script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js';
   script.onload = () => { _katexLoaded = true; renderKaTeX(); };
   script.onerror = () => {
-    blocks.forEach(block => {
-      const anchor = block.closest('.bn-block-outer') || block.parentElement;
-      const wrap = document.createElement('div');
-      wrap.className = 'math-wrap';
-      wrap.innerHTML = '<div class="math-error">No se pudo cargar KaTeX</div>';
-      anchor.after(wrap);
-    });
+    section.innerHTML += '<div class="math-error">No se pudo cargar KaTeX</div>';
   };
   document.head.appendChild(script);
 }

@@ -2645,5 +2645,31 @@ def execute_code():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/cleanup-injected-text", methods=["POST"])
+def cleanup_injected_text():
+    """Remove lines that were accidentally injected into entries by the buggy postProcessEntry."""
+    # Lines matching the corrupted button text patterns
+    bad_patterns = [
+        re.compile(r'^[▶⏳]\s*(Ejecutar|Ejecutando)[^\n]*$', re.MULTILINE),
+        re.compile(r'^✕\s*cerrar[^\n]*$', re.MULTILINE),
+    ]
+    index = load_index()
+    fixed = []
+    for entry_id, meta in index.items():
+        path = _entry_path(entry_id, meta)
+        if not path.exists():
+            continue
+        original = path.read_text()
+        cleaned = original
+        for pat in bad_patterns:
+            cleaned = pat.sub('', cleaned)
+        # Also collapse multiple blank lines left behind
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned).strip() + '\n'
+        if cleaned != original:
+            path.write_text(cleaned)
+            fixed.append({"id": entry_id, "title": meta.get("title", "")})
+    return jsonify({"fixed": len(fixed), "entries": fixed})
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

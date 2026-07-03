@@ -6737,36 +6737,81 @@ body {
 #aiBtn.active { color: var(--accent); border-color: var(--accent); }
 
 /* ============================================================
+   FEATURE PANELS (code runner, mermaid, math) — sit BELOW the editor
+   ============================================================ */
+#_entryFeaturePanels {
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.feature-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.feature-panel-header {
+  padding: 8px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ============================================================
    FEATURE: CODE EXECUTION OUTPUT
    ============================================================ */
+.code-run-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.code-run-item:last-child { border-bottom: none; }
+.code-run-preview {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 0 8px;
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 72px;
+  line-height: 1.5;
+}
 .code-run-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   background: color-mix(in srgb, #10b981 15%, transparent);
-  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
-  color: #10b981;
+  border: 1px solid color-mix(in srgb, #10b981 40%, transparent);
+  color: #0d9669;
   border-radius: 5px;
-  padding: 3px 10px;
-  font-size: 0.72rem;
+  padding: 4px 12px;
+  font-size: 0.75rem;
   font-family: var(--font-ui);
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
-  margin-top: 4px;
 }
+[data-theme="dark"] .code-run-btn { color: #10b981; }
 .code-run-btn:hover { background: color-mix(in srgb, #10b981 25%, transparent); }
 .code-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .code-output-wrap {
-  margin-top: 6px;
+  margin-top: 8px;
   border-radius: 6px;
   overflow: hidden;
+  border: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: 0.8rem;
 }
 .code-output-stdout {
-  background: #0d1117;
-  color: #7ee787;
+  background: var(--bg-elevated);
+  color: #0d7a4e;
   padding: 10px 14px;
   white-space: pre-wrap;
   word-break: break-all;
@@ -6774,25 +6819,28 @@ body {
   overflow-y: auto;
   line-height: 1.5;
 }
+[data-theme="dark"] .code-output-stdout { background: #0d1117; color: #7ee787; }
 .code-output-stderr {
-  background: #1a0d0d;
-  color: #f87171;
+  background: var(--bg-elevated);
+  color: #c0392b;
   padding: 10px 14px;
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 200px;
   overflow-y: auto;
   line-height: 1.5;
+  border-top: 1px solid var(--border);
 }
+[data-theme="dark"] .code-output-stderr { background: #1a0d0d; color: #f87171; }
 .code-output-meta {
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-top: none;
+  border-top: 1px solid var(--border);
   padding: 4px 14px;
   font-size: 0.68rem;
   color: var(--text-faint);
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 .code-output-clear {
   background: none;
@@ -6801,6 +6849,7 @@ body {
   cursor: pointer;
   font-size: 0.68rem;
   font-family: var(--font-ui);
+  padding: 0;
 }
 .code-output-clear:hover { color: var(--danger); }
 
@@ -6808,12 +6857,8 @@ body {
    FEATURE: MERMAID DIAGRAMS
    ============================================================ */
 .mermaid-wrap {
-  margin: 8px 0;
+  padding: 20px 16px;
   text-align: center;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
   overflow-x: auto;
 }
 .mermaid-wrap svg { max-width: 100%; height: auto; }
