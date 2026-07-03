@@ -18,12 +18,17 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
 
 KB_PASSWORD = os.environ.get("KB_PASSWORD", "")
 
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
 @app.before_request
 def require_auth():
     if not KB_PASSWORD:
         return
     public = {"/login", "/logout"}
     if request.path in public or request.path.startswith("/static/"):
+        return
+    # Allow admin endpoints with a bearer token
+    if ADMIN_TOKEN and request.headers.get("Authorization") == f"Bearer {ADMIN_TOKEN}":
         return
     if not session.get("authenticated"):
         if request.path.startswith("/api/"):
