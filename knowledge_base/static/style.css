@@ -1889,6 +1889,9 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   scrollbar-width: thin;
 }
 .toc-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 7px 10px;
   color: var(--accent);
   font-size: 0.68rem;
@@ -1911,10 +1914,18 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   border-left: 2px solid transparent;
 }
 .toc-item:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--accent); }
+.toc-item--active { color: var(--accent) !important; border-left-color: var(--accent) !important; background: var(--accent-light) !important; font-weight: 600; }
 .toc-item.toc-h3 { padding-left: 20px; color: var(--text-muted); font-size: 0.68rem; }
 .toc-item.toc-h3:hover { color: var(--text); }
 .toc-item.toc-h4 { padding-left: 32px; color: var(--text-muted); font-size: 0.65rem; }
 .toc-item.toc-h4:hover { color: var(--text); }
+.toc-empty { padding: 10px; font-size: 0.72rem; color: var(--text-faint); text-align: center; }
+.toc-panel-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1rem; line-height: 1;
+  padding: 0 2px;
+}
+.toc-panel-close:hover { color: var(--danger); }
 
 #tocBtn.active { color: var(--accent); border-color: var(--accent); }
 

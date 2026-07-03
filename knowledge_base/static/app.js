@@ -3072,8 +3072,17 @@ function renderStarredSection(index) {
 // ============================================================
 // FEATURE 4 — TABLE OF CONTENTS
 // ============================================================
+let _tocScrollSpy = null;
+
 function initTOC() {
   $("tocBtn").addEventListener("click", toggleTOC);
+
+  // Close on click outside the panel
+  document.addEventListener("mousedown", e => {
+    const panel = $("tocPanel");
+    if (!panel || panel.classList.contains("hidden")) return;
+    if (!panel.contains(e.target) && e.target !== $("tocBtn")) closeTOC();
+  });
 }
 
 function toggleTOC() {
@@ -3081,11 +3090,48 @@ function toggleTOC() {
   const isHidden = panel.classList.contains("hidden");
   panel.classList.toggle("hidden", !isHidden);
   $("tocBtn").classList.toggle("active", isHidden);
+  if (isHidden) _startScrollSpy();
+  else _stopScrollSpy();
 }
 
 function closeTOC() {
   $("tocPanel")?.classList.add("hidden");
   $("tocBtn")?.classList.remove("active");
+  _stopScrollSpy();
+}
+
+function _startScrollSpy() {
+  _stopScrollSpy();
+  const items = document.querySelectorAll("#tocItems .toc-item");
+  if (!items.length) return;
+
+  const headingIds = [...items].map(i => i.dataset.target);
+  const headingEls = headingIds.map(id => document.getElementById(id)).filter(Boolean);
+  if (!headingEls.length) return;
+
+  function _updateActive() {
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    let active = headingEls[0];
+    for (const h of headingEls) {
+      if (h.getBoundingClientRect().top <= 80) active = h;
+    }
+    items.forEach(item => {
+      item.classList.toggle("toc-item--active", item.dataset.target === active.id);
+    });
+  }
+
+  const contentEl = $("entryView") || window;
+  contentEl.addEventListener("scroll", _updateActive, { passive: true });
+  window.addEventListener("scroll", _updateActive, { passive: true });
+  _tocScrollSpy = () => {
+    contentEl.removeEventListener("scroll", _updateActive);
+    window.removeEventListener("scroll", _updateActive);
+  };
+  _updateActive();
+}
+
+function _stopScrollSpy() {
+  if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
 }
 
 function buildTOC() {
@@ -3098,17 +3144,18 @@ function buildTOC() {
     if (!h.id) h.id = "toc-heading-" + i;
   });
 
-  if (headings.length < 2) {
+  if (headings.length < 1) {
     tocPanel.classList.add("hidden");
     $("tocBtn").classList.remove("active");
-    tocItems.innerHTML = "";
+    tocItems.innerHTML = '<div class="toc-empty">Sin secciones</div>';
     return;
   }
 
   const clsMap = { H2: "toc-item", H3: "toc-item toc-h3", H4: "toc-item toc-h4" };
   tocItems.innerHTML = headings.map(h => {
-    const cls = clsMap[h.tagName] || "toc-item";
-    return `<div class="${cls}" data-target="${h.id}">${escapeHtml(h.textContent.replace(/^[→#]\s*/, ""))}</div>`;
+    const cls  = clsMap[h.tagName] || "toc-item";
+    const text = h.textContent.replace(/^[→#]\s*/, "").trim();
+    return `<div class="${cls}" data-target="${h.id}">${escapeHtml(text)}</div>`;
   }).join("");
 
   tocItems.querySelectorAll(".toc-item").forEach(item => {
@@ -3117,6 +3164,8 @@ function buildTOC() {
       if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
+
+  if (!tocPanel.classList.contains("hidden")) _startScrollSpy();
 }
 
 // ============================================================

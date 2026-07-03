@@ -310,49 +310,126 @@ def render_markdown(md_text):
     return html
 
 
-def _build_pdf_html(title, date, body_html):
+def _build_pdf_html(title, date, body_html, meta=None):
+    category  = (meta or {}).get("category_label") or (meta or {}).get("category", "")
+    topic     = (meta or {}).get("topic", "")
+    status    = (meta or {}).get("status", "")
+    meta_parts = [p for p in [category, topic] if p]
+    meta_line  = " · ".join(meta_parts)
+
     return f"""<!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <style>
-  @page {{ margin: 1.8cm 1.5cm; }}
-  body {{ font-family: "DejaVu Sans", sans-serif; font-size: 10.5pt; color: #1a1a1a; line-height: 1.7; }}
-  h1 {{ font-size: 1.6em; border-bottom: 2.5px solid #1793d1; padding-bottom: 8px; color: #0a0a0a; margin-top: 0; margin-bottom: 0.7em; letter-spacing: -0.02em; }}
-  h2 {{ font-size: 1.15em; color: #fff; background: #1793d1; padding: 5px 10px; margin-top: 1.6em; margin-bottom: 0.5em; border-radius: 3px; letter-spacing: 0.03em; text-transform: uppercase; }}
-  h3 {{ font-size: 1em; color: #1793d1; font-weight: 700; margin-top: 1.3em; margin-bottom: 0.3em; border-bottom: 1px solid #d0e8f5; padding-bottom: 3px; }}
-  h4 {{ font-size: 0.92em; color: #555; font-weight: 700; margin-top: 1em; margin-bottom: 0.3em; text-transform: uppercase; letter-spacing: 0.05em; font-style: italic; }}
+  @page {{
+    margin: 2cm 1.8cm 2.4cm;
+    @bottom-center {{
+      content: counter(page) " / " counter(pages);
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 8pt;
+      color: #aaa;
+    }}
+  }}
+  body {{
+    font-family: "DejaVu Sans", sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    line-height: 1.75;
+    margin: 0;
+  }}
+  /* ── Cover block ── */
+  .pdf-cover {{
+    border-bottom: 2px solid #1793d1;
+    padding-bottom: 18px;
+    margin-bottom: 28px;
+  }}
+  .pdf-cover-meta {{
+    font-size: 8pt;
+    color: #1793d1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    font-family: "DejaVu Sans Mono", monospace;
+  }}
+  .pdf-cover-title {{
+    font-size: 20pt;
+    font-weight: bold;
+    color: #0a0a0a;
+    line-height: 1.2;
+    margin: 0 0 10px;
+    letter-spacing: -0.02em;
+  }}
+  .pdf-cover-date {{
+    font-size: 8.5pt;
+    color: #888;
+    font-family: "DejaVu Sans Mono", monospace;
+  }}
+  /* ── Headings ── */
+  h1 {{ font-size: 15pt; color: #0a0a0a; border-bottom: 1.5px solid #1793d1; padding-bottom: 4px; margin: 1.4em 0 0.5em; page-break-after: avoid; }}
+  h2 {{ font-size: 12pt; color: #0a0a0a; border-left: 3px solid #1793d1; padding-left: 9px; margin: 1.4em 0 0.4em; page-break-after: avoid; }}
+  h3 {{ font-size: 10.5pt; color: #333; font-weight: 700; margin: 1.1em 0 0.3em; page-break-after: avoid; }}
+  h4 {{ font-size: 9.5pt; color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.9em 0 0.2em; }}
+  /* ── Body ── */
   p  {{ margin: 0 0 0.7em; }}
-  code {{ font-family: "DejaVu Sans Mono", monospace; font-size: 0.82em; background: #f4f4f4; padding: 1px 5px; border: 1px solid #ddd; border-radius: 3px; }}
+  strong {{ color: #0a0a0a; }}
+  em     {{ color: #333; }}
+  a {{ color: #1793d1; text-decoration: none; }}
+  hr {{ border: none; border-top: 1px solid #ddd; margin: 1.4em 0; }}
+  /* ── Lists ── */
+  ul, ol {{ margin: 0.3em 0 0.8em 1.4em; padding: 0; }}
+  li {{ margin: 3px 0; line-height: 1.65; }}
+  /* ── Inline code ── */
+  code {{
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 0.82em;
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+  }}
+  /* ── Code blocks ── */
   pre {{
     font-family: "DejaVu Sans Mono", monospace;
-    font-size: 0.78em;
-    background: #f7f7f7;
-    border: 1px solid #ccc;
+    font-size: 8pt;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
     border-left: 3px solid #1793d1;
-    padding: 10px 12px;
-    margin: 0.9em 0;
+    padding: 10px 14px;
+    margin: 0.8em 0;
     white-space: pre-wrap;
     word-break: break-all;
     overflow-wrap: break-word;
     page-break-inside: avoid;
-    line-height: 1.5;
+    line-height: 1.55;
+    border-radius: 0 3px 3px 0;
   }}
-  pre code {{ background: none; border: none; padding: 0; font-size: inherit; word-break: break-all; }}
-  blockquote {{ border-left: 3px solid #1793d1; padding: 5px 14px; color: #555; background: #f0f7fc; margin: 0.9em 0; border-radius: 0 3px 3px 0; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 0.88em; page-break-inside: avoid; }}
-  th {{ background: #1793d1; color: #fff; padding: 6px 9px; text-align: left; }}
-  td {{ padding: 5px 9px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; }}
+  pre code {{ background: none; border: none; padding: 0; font-size: inherit; }}
+  /* ── Blockquote ── */
+  blockquote {{
+    border-left: 3px solid #1793d1;
+    padding: 6px 14px;
+    color: #555;
+    background: #f4f8fc;
+    margin: 0.9em 0;
+    border-radius: 0 3px 3px 0;
+    font-style: italic;
+  }}
+  /* ── Tables ── */
+  table {{ border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 9pt; page-break-inside: avoid; }}
+  th {{ background: #1793d1; color: #fff; padding: 6px 10px; text-align: left; font-size: 9pt; }}
+  td {{ padding: 5px 10px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; }}
   tr:nth-child(even) td {{ background: #f9f9f9; }}
-  ul, ol {{ margin: 0.4em 0 0.8em 1.4em; padding: 0; }}
-  li {{ margin: 3px 0; line-height: 1.6; }}
-  .meta {{ font-size: 0.78em; color: #777; margin-bottom: 1.6em; font-family: "DejaVu Sans Mono", monospace; }}
-  hr {{ border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }}
-  a {{ color: #1793d1; text-decoration: none; }}
+  /* ── Callout / note boxes ── */
+  .note {{ background: #eef6fc; border-left: 3px solid #1793d1; padding: 8px 12px; margin: 0.8em 0; border-radius: 0 3px 3px 0; }}
 </style>
 </head>
 <body>
-<div class="meta">{date}</div>
+<div class="pdf-cover">
+  {"<div class='pdf-cover-meta'>" + meta_line + "</div>" if meta_line else ""}
+  <h1 class="pdf-cover-title">{title}</h1>
+  <div class="pdf-cover-date">{date}{(" · " + status) if status else ""}</div>
+</div>
 {body_html}
 </body>
 </html>"""
@@ -930,16 +1007,21 @@ def export_pdf(entry_id):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
-    md_path = _entry_path(entry_id, meta)
-    pdf_path = DATA_DIR / f"{entry_id}.pdf"
-
-    from weasyprint import HTML as WeasyprintHTML, CSS
-    md_content = md_path.read_text()
-    body_html = render_markdown(md_content)
-    date = meta.get("created_at", "")[:10]
-    full_html = _build_pdf_html(meta["title"], date, body_html)
-    WeasyprintHTML(string=full_html).write_pdf(str(pdf_path))
-    return send_file(pdf_path, as_attachment=True, download_name=f"{entry_id}.pdf")
+    try:
+        from weasyprint import HTML as WeasyprintHTML
+    except ImportError:
+        return jsonify({"error": "weasyprint no instalado en el servidor"}), 503
+    from io import BytesIO
+    md_content = _entry_path(entry_id, meta).read_text()
+    body_html  = render_markdown(md_content)
+    date       = meta.get("created_at", "")[:10]
+    full_html  = _build_pdf_html(meta["title"], date, body_html, meta=meta)
+    buf = BytesIO()
+    WeasyprintHTML(string=full_html).write_pdf(buf)
+    buf.seek(0)
+    safe_name  = entry_id.replace("/", "_")
+    return send_file(buf, mimetype="application/pdf",
+                     as_attachment=True, download_name=f"{safe_name}.pdf")
 
 
 @app.route("/api/export/<entry_id>/html")
