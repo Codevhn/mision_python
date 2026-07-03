@@ -3902,14 +3902,28 @@ body.sidebar-open .layout {
 }
 
 .ctx-btn--more {
-  font-size: 1rem;
-  letter-spacing: 0.05em;
-  padding: 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0 10px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  gap: 4px;
+}
+.ctx-btn--more::before {
+  content: "Más";
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
 }
 
-.ctx-btn--more.active {
-  background: var(--bg-elevated);
+.ctx-btn--more.active,
+.ctx-btn--more:hover {
+  background: var(--bg-hover);
   color: var(--text);
+  border-color: var(--accent);
 }
 
 .ctx-more-menu {
@@ -6521,6 +6535,22 @@ body {
 .bn-editor {
   padding-inline: 0 !important;
   padding: 0 !important;
+}
+
+/* BlockNote "Turn into" current block type indicator */
+[data-radix-popper-content-wrapper] [data-bn-current="true"] {
+  position: relative;
+  font-weight: 600 !important;
+  color: var(--accent) !important;
+}
+[data-radix-popper-content-wrapper] [data-bn-current="true"]::after {
+  content: "✓";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--accent);
 }
 
 /* BlockNote headings: neutral colors, no accent/purple tints */

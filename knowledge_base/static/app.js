@@ -128,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initRelationsPanel();
   initAIPanel();
   initPasteMarkdown();
+  initBlockTypeIndicator();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
   if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
@@ -6678,6 +6679,78 @@ function initPasteMarkdown() {
     close();
     showToast('Contenido cargado en el editor', 'success');
   });
+}
+
+// ── Block type indicator in BlockNote "Turn into" submenu ────────────────────
+function initBlockTypeIndicator() {
+  // Map data-content-type (+ optional data-level) → label text in the Turn into menu
+  const TYPE_LABELS = {
+    'paragraph':        'Paragraph',
+    'heading:1':        'Heading 1',
+    'heading:2':        'Heading 2',
+    'heading:3':        'Heading 3',
+    'bulletListItem':   'Bullet List',
+    'numberedListItem': 'Numbered List',
+    'checkListItem':    'To-do',
+    'quote':            'Quote',
+    'codeBlock':        'Code Block',
+  };
+
+  function _getHoveredBlockType() {
+    // BlockNote shows a drag handle on hover; the handle's parent chain leads
+    // back to .bn-block-outer which contains [data-content-type].
+    const handle = document.querySelector('.bn-drag-handle-menu, [data-radix-popper-content-wrapper]');
+    // Fall back: find the block whose drag handle is currently shown
+    // BlockNote adds a class or shows the handle element near the hovered block.
+    // We detect the focused/selected block instead.
+    const sel = window.getSelection();
+    let node = sel && sel.anchorNode;
+    while (node && node !== document.body) {
+      if (node.dataset && node.dataset.contentType) {
+        const t = node.dataset.contentType;
+        const lvl = node.dataset.level;
+        return lvl ? `${t}:${lvl}` : t;
+      }
+      node = node.parentElement;
+    }
+    // Also check nearest .bn-block-outer with [data-content-type] child
+    const blocks = document.querySelectorAll('#entryBody [data-content-type]');
+    for (const b of blocks) {
+      if (b.closest('[data-selected]') || b.closest('.bn-block--selected')) {
+        const t = b.dataset.contentType;
+        const lvl = b.dataset.level;
+        return lvl ? `${t}:${lvl}` : t;
+      }
+    }
+    return null;
+  }
+
+  function _markCurrentType(submenu, blockType) {
+    if (!blockType || !submenu) return;
+    const label = TYPE_LABELS[blockType];
+    if (!label) return;
+    submenu.querySelectorAll('[role="menuitem"], button, [data-mantine-component]').forEach(item => {
+      const text = item.textContent.trim();
+      item.removeAttribute('data-bn-current');
+      if (text === label || text.startsWith(label)) {
+        item.setAttribute('data-bn-current', 'true');
+      }
+    });
+  }
+
+  // Watch for BlockNote's menu/submenu to appear in the DOM
+  const _obs = new MutationObserver(() => {
+    // BlockNote renders menus inside a Radix portal at the end of body
+    const submenus = document.querySelectorAll('[data-radix-popper-content-wrapper]');
+    submenus.forEach(sm => {
+      if (sm.dataset.bnProcessed) return;
+      sm.dataset.bnProcessed = 'true';
+      const blockType = _getHoveredBlockType();
+      _markCurrentType(sm, blockType);
+    });
+  });
+
+  _obs.observe(document.body, { childList: true, subtree: true });
 }
 
 // ── Minimal Markdown → HTML for AI responses ─────────────────────────────────
