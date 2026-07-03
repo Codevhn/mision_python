@@ -4061,14 +4061,18 @@ function buildBreadcrumb(meta) {
     if (e.key === "Escape") _closeCtxMenu();
   });
 
-  $("cmEdit")?.addEventListener("click",      () => { $("editBtn")?.click();    _closeCtxMenu(); });
-  $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click(); _closeCtxMenu(); });
-  $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();     _closeCtxMenu(); });
-  $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();    _closeCtxMenu(); });
-  $("cmExport")?.addEventListener("click",    () => { openExportModal();        _closeCtxMenu(); });
-  $("cmStar")?.addEventListener("click",      () => { $("starBtn")?.click();    _closeCtxMenu(); });
-  $("cmPin")?.addEventListener("click",       () => { $("pinBtn")?.click();     _closeCtxMenu(); });
-  $("cmDelete")?.addEventListener("click",    () => { $("deleteBtn")?.click();  _closeCtxMenu(); });
+  $("cmEdit")?.addEventListener("click",      () => { $("editBtn")?.click();         _closeCtxMenu(); });
+  $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click();      _closeCtxMenu(); });
+  $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();          _closeCtxMenu(); });
+  $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();         _closeCtxMenu(); });
+  $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
+  $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
+  $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });
+  $("cmFocus")?.addEventListener("click",     () => { $("focusBtn")?.click();        _closeCtxMenu(); });
+  $("cmExport")?.addEventListener("click",    () => { openExportModal();             _closeCtxMenu(); });
+  $("cmStar")?.addEventListener("click",      () => { $("starBtn")?.click();         _closeCtxMenu(); });
+  $("cmPin")?.addEventListener("click",       () => { $("pinBtn")?.click();          _closeCtxMenu(); });
+  $("cmDelete")?.addEventListener("click",    () => { $("deleteBtn")?.click();       _closeCtxMenu(); });
 })();
 
 function _wireCtxBtn(ctxId, sourceId) {
