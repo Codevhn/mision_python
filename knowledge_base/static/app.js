@@ -1376,6 +1376,7 @@ function _fetchWeather() {
     fetch(`/api/weather?lat=${lat}&lon=${lon}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
+        _weatherFetched = true; // mark done regardless of result to prevent retries
         if (!data || data.error) return;
         _weatherData = data;
         _weatherFetched = true;

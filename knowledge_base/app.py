@@ -2621,7 +2621,7 @@ def weather_proxy():
             f"&temperature_unit=celsius&timezone=auto"
         )
         req = urllib.request.Request(url, headers={"User-Agent": "ProjectAtlas/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
+        with urllib.request.urlopen(req, timeout=2) as r:
             data = json.loads(r.read())
         current = data.get("current", {})
         result = {
@@ -2650,8 +2650,8 @@ def weather_proxy():
             pass
         _weather_cache = {"ts": now, "data": result, "key": cache_key}
         return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
+    except Exception:
+        return jsonify({"error": "weather_unavailable"})
 
 
 # ── Ask AI ────────────────────────────────────────────────────────────────────
