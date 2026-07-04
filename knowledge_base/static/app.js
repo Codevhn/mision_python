@@ -7197,11 +7197,25 @@ function postProcessEntry() {
   if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
 }
 
+// Read Python code from BlockNote's markdown (reliable, React-safe).
+// Falls back to DOM extraction if editor not available.
+function _pyCodeFromMd(idx) {
+  try {
+    const md = typeof _inlineEditor?.getMarkdown === 'function' ? _inlineEditor.getMarkdown() : '';
+    if (!md) return null;
+    const blocks = [];
+    const re = /```(?:python3?|py|Python[^\n]*)\r?\n([\s\S]*?)```/g;
+    let m;
+    while ((m = re.exec(md)) !== null) blocks.push(m[1].replace(/\r?\n$/, ''));
+    return blocks[idx] ?? null;
+  } catch { return null; }
+}
+
 function _codeText(block) {
   if (!block) return '';
-  // BlockNote renders code in <code> (possibly with syntax-highlight spans inside)
-  // Fall back to any inline-content element, then full textContent of the block
-  const el = block.querySelector('code') || block.querySelector('.bn-inline-content') || block;
+  // BlockNote renders code inside a <pre> (from .bn-block-content > div > pre)
+  const el = block.querySelector('pre') || block.querySelector('code')
+          || block.querySelector('.bn-inline-content') || block;
   return el.textContent || '';
 }
 
@@ -7248,23 +7262,26 @@ function _initCodeExecution(container, blocks) {
     section.appendChild(item);
 
     runBtn.addEventListener('click', () => {
-      // Re-query at click time — block ref may be stale after React re-renders
-      const body = $('entryBody');
-      const liveBlock = body
-        ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
-        : null;
-
-      if (liveBlock) {
-        liveBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Refresh preview with current code
-        previewEl.textContent = _codePreview(_codeText(liveBlock));
+      // 1. Get code from markdown state (reliable) or fall back to DOM
+      const mdCode = _pyCodeFromMd(i);
+      let currentCode = mdCode;
+      if (currentCode === null) {
+        const body = $('entryBody');
+        const liveBlock = body
+          ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
+          : null;
+        currentCode = _codeText(liveBlock);
+        // Refresh preview
+        if (liveBlock) previewEl.textContent = _codePreview(currentCode);
+      } else {
+        previewEl.textContent = _codePreview(currentCode);
       }
 
-      const currentCode = _codeText(liveBlock);
-      if (!currentCode.trim()) {
+      if (!currentCode || !currentCode.trim()) {
         outputWrap.classList.remove('hidden');
-        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
+        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada (Ctrl+S) e intenta de nuevo.';
         metaEl.textContent = '';
+        outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
 
@@ -7275,6 +7292,8 @@ function _initCodeExecution(container, blocks) {
       stderr.textContent = '';
       metaEl.textContent = '';
       outputWrap.classList.remove('hidden');
+      // Scroll to output, not to code — user needs to see the result
+      outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       fetch('/api/execute', {
         method: 'POST',
@@ -7294,6 +7313,7 @@ function _initCodeExecution(container, blocks) {
           if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
           const rc = data.returncode ?? '?';
           metaEl.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
+          outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         })
         .catch(err => {
           runBtn.disabled = false;
