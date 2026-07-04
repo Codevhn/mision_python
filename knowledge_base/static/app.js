@@ -7198,7 +7198,11 @@ function postProcessEntry() {
 }
 
 function _codeText(block) {
-  return block.querySelector('code, .bn-inline-content')?.textContent || '';
+  if (!block) return '';
+  // BlockNote renders code in <code> (possibly with syntax-highlight spans inside)
+  // Fall back to any inline-content element, then full textContent of the block
+  const el = block.querySelector('code') || block.querySelector('.bn-inline-content') || block;
+  return el.textContent || '';
 }
 
 function _codePreview(code, maxLines = 3) {
@@ -7244,15 +7248,32 @@ function _initCodeExecution(container, blocks) {
     section.appendChild(item);
 
     runBtn.addEventListener('click', () => {
-      // Scroll the code block into view so the user can see which block ran
-      block.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const currentCode = _codeText(block);
-      if (!currentCode.trim()) return;
+      // Re-query at click time — block ref may be stale after React re-renders
+      const body = $('entryBody');
+      const liveBlock = body
+        ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
+        : null;
+
+      if (liveBlock) {
+        liveBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Refresh preview with current code
+        previewEl.textContent = _codePreview(_codeText(liveBlock));
+      }
+
+      const currentCode = _codeText(liveBlock);
+      if (!currentCode.trim()) {
+        outputWrap.classList.remove('hidden');
+        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
+        metaEl.textContent = '';
+        return;
+      }
+
       runBtn.disabled = true;
       runBtn.textContent = '⏳ Ejecutando…';
       stdout.textContent = '';
       stderr.classList.add('hidden');
       stderr.textContent = '';
+      metaEl.textContent = '';
       outputWrap.classList.remove('hidden');
 
       fetch('/api/execute', {
@@ -7264,14 +7285,20 @@ function _initCodeExecution(container, blocks) {
         .then(data => {
           runBtn.disabled = false;
           runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
+          if (data.error) {
+            stdout.textContent = '✗ ' + data.error;
+            metaEl.textContent = '';
+            return;
+          }
           stdout.textContent = data.output || '(sin salida)';
           if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
-          metaEl.textContent = 'código de salida: ' + (data.returncode ?? '?');
+          const rc = data.returncode ?? '?';
+          metaEl.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
         })
         .catch(err => {
           runBtn.disabled = false;
           runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
-          stdout.textContent = 'Error de red: ' + err.message;
+          stdout.textContent = '✗ Error de red: ' + err.message;
         });
     });
 

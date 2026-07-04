@@ -7128,13 +7128,15 @@ body {
 .code-output-meta {
   background: var(--bg-elevated);
   border-top: 1px solid var(--border);
-  padding: 4px 14px;
+  padding: 5px 14px;
   font-size: 0.68rem;
   color: var(--text-faint);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-family: var(--font-mono);
 }
+.code-output-meta:empty { display: none; }
 .code-output-clear {
   background: none;
   border: none;
