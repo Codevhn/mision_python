@@ -20,6 +20,7 @@ let _reviewIndex = 0;
 let _inlineEditor = null;  // inline entry editor instance
 let _autoSaveTimer = null;
 let _restoreInProgress = false;
+let _codeExecResizeHandler = null;
 
 const ENTRY_ICON_DEFAULTS = {
   knowledge: "lucide:file-text",
@@ -7177,9 +7178,18 @@ function _inlineInsert(action, selText, result) {
 function postProcessEntry() {
   const body = $('entryBody');
   if (!body) return;
-  // Remove previous feature panels (inserted AFTER entryBody, outside ProseMirror)
+
+  // Remove previous feature panels (Mermaid/KaTeX bottom panel)
   const old = document.getElementById('_entryFeaturePanels');
   if (old) old.remove();
+
+  // Remove previous inline code execution panels
+  const entryView = $('entryView');
+  if (entryView) entryView.querySelectorAll('.code-exec-inline').forEach(p => p.remove());
+  if (_codeExecResizeHandler) {
+    window.removeEventListener('resize', _codeExecResizeHandler);
+    _codeExecResizeHandler = null;
+  }
 
   const pyBlocks   = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
   const mmdBlocks  = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]')];
@@ -7187,14 +7197,17 @@ function postProcessEntry() {
 
   if (!pyBlocks.length && !mmdBlocks.length && !mathBlocks.length) return;
 
-  // Create container OUTSIDE #entryBody (sibling, not child) — ProseMirror never sees this
-  const panels = document.createElement('div');
-  panels.id = '_entryFeaturePanels';
-  body.after(panels);   // inserts as next sibling of #entryBody, inside #entryView
+  // Mermaid & KaTeX still use the bottom container panel
+  if (mmdBlocks.length || mathBlocks.length) {
+    const panels = document.createElement('div');
+    panels.id = '_entryFeaturePanels';
+    body.after(panels);
+    if (mmdBlocks.length)  _initMermaid(panels, mmdBlocks);
+    if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
+  }
 
-  if (pyBlocks.length)   _initCodeExecution(panels, pyBlocks);
-  if (mmdBlocks.length)  _initMermaid(panels, mmdBlocks);
-  if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
+  // Python gets Jupyter-style inline panels below each code block
+  if (pyBlocks.length) _initCodeExecution(pyBlocks);
 }
 
 // Read Python code from BlockNote's markdown (reliable, React-safe).
@@ -7223,46 +7236,69 @@ function _codePreview(code, maxLines = 3) {
   return code.split('\n').slice(0, maxLines).join('\n');
 }
 
-function _initCodeExecution(container, blocks) {
-  const section = document.createElement('div');
-  section.className = 'feature-panel code-runner-panel';
-  section.innerHTML = '<div class="feature-panel-header">⚙ Bloques Python</div>';
-  container.appendChild(section);
+// Position all inline code execution panels below their respective code blocks.
+// Always re-queries code blocks fresh (React may have re-rendered them).
+function _positionCodePanels(panels) {
+  const entryView = $('entryView');
+  const entryBody = $('entryBody');
+  if (!entryView || !entryBody) return;
+  const freshBlocks = [...entryBody.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
+  const evRect = entryView.getBoundingClientRect();
+  panels.forEach((panel, i) => {
+    const block = freshBlocks[i];
+    if (!block) return;
+    const blockRect = block.getBoundingClientRect();
+    // top relative to #entryView content origin (scroll-invariant: scroll cancels out)
+    panel.style.top = (blockRect.top - evRect.top + blockRect.height) + 'px';
+  });
+}
 
-  blocks.forEach((block, i) => {
-    const code = _codeText(block);
-    const preview = _codePreview(code);
+function _initCodeExecution(blocks) {
+  const entryView = $('entryView');
+  if (!entryView) return;
 
-    const item = document.createElement('div');
-    item.className = 'code-run-item';
+  const panels = [];
 
-    const previewEl = document.createElement('pre');
-    previewEl.className = 'code-run-preview';
-    previewEl.textContent = preview || '(vacío)';
+  blocks.forEach((_, i) => {
+    const panel = document.createElement('div');
+    panel.className = 'code-exec-inline';
+
+    // Run bar — always visible just below the code block
+    const runBar = document.createElement('div');
+    runBar.className = 'code-exec-runbar';
+
+    const langTag = document.createElement('span');
+    langTag.className = 'code-exec-lang';
+    langTag.textContent = 'Python';
 
     const runBtn = document.createElement('button');
-    runBtn.className = 'code-run-btn';
-    runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
+    runBtn.className = 'code-exec-btn';
+    runBtn.textContent = '▶ Ejecutar';
 
-    const outputWrap = document.createElement('div');
-    outputWrap.className = 'code-output-wrap hidden';
+    runBar.append(langTag, runBtn);
+
+    // Output zone — hidden until executed
+    const outputZone = document.createElement('div');
+    outputZone.className = 'code-exec-output hidden';
 
     const stdout = document.createElement('pre');
-    stdout.className = 'code-output-stdout';
+    stdout.className = 'code-exec-stdout';
     const stderr = document.createElement('pre');
-    stderr.className = 'code-output-stderr hidden';
-    const metaEl = document.createElement('div');
-    metaEl.className = 'code-output-meta';
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'code-output-clear';
-    clearBtn.textContent = '✕ cerrar salida';
+    stderr.className = 'code-exec-stderr hidden';
+    const meta = document.createElement('div');
+    meta.className = 'code-exec-meta';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'code-exec-close';
+    closeBtn.title = 'Cerrar salida';
+    closeBtn.textContent = '✕';
 
-    outputWrap.append(stdout, stderr, metaEl, clearBtn);
-    item.append(previewEl, runBtn, outputWrap);
-    section.appendChild(item);
+    outputZone.append(stdout, stderr, meta, closeBtn);
+    panel.append(runBar, outputZone);
+    entryView.appendChild(panel);
+    panels.push(panel);
 
     runBtn.addEventListener('click', () => {
-      // 1. Get code from markdown state (reliable) or fall back to DOM
+      // Read code from editor markdown state (React-safe) or fall back to DOM
       const mdCode = _pyCodeFromMd(i);
       let currentCode = mdCode;
       if (currentCode === null) {
@@ -7270,18 +7306,14 @@ function _initCodeExecution(container, blocks) {
         const liveBlock = body
           ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
           : null;
-        currentCode = _codeText(liveBlock);
-        // Refresh preview
-        if (liveBlock) previewEl.textContent = _codePreview(currentCode);
-      } else {
-        previewEl.textContent = _codePreview(currentCode);
+        currentCode = liveBlock ? _codeText(liveBlock) : '';
       }
 
       if (!currentCode || !currentCode.trim()) {
-        outputWrap.classList.remove('hidden');
-        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada (Ctrl+S) e intenta de nuevo.';
-        metaEl.textContent = '';
-        outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        outputZone.classList.remove('hidden');
+        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
+        meta.textContent = '';
+        _positionCodePanels(panels);
         return;
       }
 
@@ -7290,10 +7322,9 @@ function _initCodeExecution(container, blocks) {
       stdout.textContent = '';
       stderr.classList.add('hidden');
       stderr.textContent = '';
-      metaEl.textContent = '';
-      outputWrap.classList.remove('hidden');
-      // Scroll to output, not to code — user needs to see the result
-      outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      meta.textContent = '';
+      outputZone.classList.remove('hidden');
+      _positionCodePanels(panels);
 
       fetch('/api/execute', {
         method: 'POST',
@@ -7303,32 +7334,46 @@ function _initCodeExecution(container, blocks) {
         .then(r => r.json())
         .then(data => {
           runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
+          runBtn.textContent = '▶ Ejecutar';
           if (data.error) {
             stdout.textContent = '✗ ' + data.error;
-            metaEl.textContent = '';
-            return;
+            meta.textContent = '';
+          } else {
+            stdout.textContent = data.output || '(sin salida)';
+            if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
+            const rc = data.returncode ?? '?';
+            meta.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
           }
-          stdout.textContent = data.output || '(sin salida)';
-          if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
-          const rc = data.returncode ?? '?';
-          metaEl.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
-          outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          _positionCodePanels(panels);
         })
         .catch(err => {
           runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar bloque ' + (i + 1);
+          runBtn.textContent = '▶ Ejecutar';
           stdout.textContent = '✗ Error de red: ' + err.message;
+          _positionCodePanels(panels);
         });
     });
 
-    clearBtn.addEventListener('click', () => {
-      outputWrap.classList.add('hidden');
+    closeBtn.addEventListener('click', () => {
+      outputZone.classList.add('hidden');
       stdout.textContent = '';
       stderr.textContent = '';
       stderr.classList.add('hidden');
+      meta.textContent = '';
+      _positionCodePanels(panels);
     });
   });
+
+  // Position after next paint (layout must be settled), then once more after 350ms
+  // to catch any late BlockNote re-render
+  requestAnimationFrame(() => {
+    _positionCodePanels(panels);
+    setTimeout(() => _positionCodePanels(panels), 350);
+  });
+
+  // Reposition on window resize
+  _codeExecResizeHandler = () => _positionCodePanels(panels);
+  window.addEventListener('resize', _codeExecResizeHandler);
 }
 
 let _mermaidLoaded = false;
