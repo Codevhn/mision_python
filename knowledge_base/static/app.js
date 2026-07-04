@@ -1680,6 +1680,33 @@ function _splitMarkerPairsRegex(line, re, marker) {
 const _SINGLE_STAR_RE = /(?<!\*)\*(?!\*)/;
 const _SINGLE_UNDERSCORE_RE = /(?<!_)_(?!_)/;
 
+// Strip the first heading from markdown if it matches the entry title (Notion-style:
+// the title lives in metadata, the body should not repeat it as an H1/H2).
+function _stripDuplicateHeading(md, title) {
+  if (!md || !title) return md;
+  const _clean = s => s
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+    .replace(/^[\s#\-*>]+/, '')
+    .trim()
+    .toLowerCase();
+  const cleanTitle = _clean(title);
+  if (!cleanTitle) return md;
+  const lines = md.split('\n');
+  for (let i = 0; i < Math.min(4, lines.length); i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    const m = line.match(/^#{1,3}\s+(.*)/);
+    if (m && _clean(m[1]) === cleanTitle) {
+      lines.splice(i, 1);
+      // Remove the blank line that immediately follows, if any
+      if (lines[i] !== undefined && !lines[i].trim()) lines.splice(i, 1);
+      return lines.join('\n');
+    }
+    break; // only inspect the very first non-empty line
+  }
+  return md;
+}
+
 function _sanitizeMarkdownForEditor(md) {
   if (!md) return md;
   return md.split("\n").map(line => {
@@ -1766,7 +1793,7 @@ async function loadEntry(id, opts = {}) {
   // auto-saved, which would overwrite the entry's real content with blank/partial data.
   _restoreInProgress = true;
   try {
-    _inlineEditor.load(_sanitizeMarkdownForEditor(data.markdown));
+    _inlineEditor.load(_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown, m.title)));
   } catch (err) {
     console.error("Error al renderizar el contenido de la entrada:", err);
     showToast("No se pudo renderizar el contenido de esta entrada", "error");
@@ -3674,7 +3701,7 @@ async function restoreVersion() {
       closeVersionModal();
       $("historyPanel").classList.add("hidden");
       $("historyBtn").classList.remove("active");
-      _inlineEditor.load(_sanitizeMarkdownForEditor(fresh.markdown || ""));
+      _inlineEditor.load(_sanitizeMarkdownForEditor(_stripDuplicateHeading(fresh.markdown || "", currentEntryMeta?.title || "")));
       showToast("Versión restaurada");
       await loadEntry(restoredEntryId, { force: true });
       // Scroll entry body to top after restore
