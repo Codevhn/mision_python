@@ -310,12 +310,71 @@ def render_markdown(md_text):
     return html
 
 
+def _strip_duplicate_heading_md(md, title):
+    """Remove leading H1/H2/H3 from markdown if it matches the entry title."""
+    import unicodedata
+    def _clean(s):
+        s = re.sub(r'[\U0001F000-\U0001FAFF\U00002600-\U000027BF]', '', s)
+        s = re.sub(r'^[\s#\-*>]+', '', s)
+        return s.strip().lower()
+    ct = _clean(title)
+    if not ct:
+        return md
+    lines = md.split('\n')
+    for i, line in enumerate(lines[:4]):
+        if not line.strip():
+            continue
+        m = re.match(r'^#{1,3}\s+(.*)', line)
+        if m and _clean(m.group(1)) == ct:
+            lines.pop(i)
+            if i < len(lines) and not lines[i].strip():
+                lines.pop(i)
+            return '\n'.join(lines)
+        break
+    return md
+
+
+def _inject_toc(body_html):
+    """Add id attrs to h2/h3/h4, return (toc_html, patched_body)."""
+    heading_re = re.compile(r'<(h[234])(\s[^>]*)?>(.+?)</\1>', re.IGNORECASE | re.DOTALL)
+    items = []
+
+    def _patch(m):
+        tag   = m.group(1).lower()
+        attrs = m.group(2) or ''
+        inner = m.group(3)
+        text  = re.sub(r'<[^>]+>', '', inner).strip()
+        idx   = len(items)
+        anchor = f'pdf-h-{idx}'
+        items.append((tag, text, anchor))
+        return f'<{tag}{attrs} id="{anchor}">{inner}</{tag}>'
+
+    new_body = heading_re.sub(_patch, body_html)
+    if not items:
+        return '', new_body
+
+    rows = []
+    for tag, text, anchor in items:
+        cls = {'h2': 'toc-h2', 'h3': 'toc-h3', 'h4': 'toc-h4'}.get(tag, 'toc-h2')
+        rows.append(f'<div class="toc-row {cls}"><a href="#{anchor}">{text}</a></div>')
+
+    toc_html = (
+        '<div class="pdf-toc">'
+        '<div class="pdf-toc-label">Contenidos</div>'
+        + ''.join(rows) +
+        '</div>'
+    )
+    return toc_html, new_body
+
+
 def _build_pdf_html(title, date, body_html, meta=None):
     category  = (meta or {}).get("category_label") or (meta or {}).get("category", "")
-    topic     = (meta or {}).get("topic", "")
+    topic     = (meta or {}).get("topic_label")     or (meta or {}).get("topic", "")
     status    = (meta or {}).get("status", "")
     meta_parts = [p for p in [category, topic] if p]
     meta_line  = " · ".join(meta_parts)
+
+    toc_html, body_html = _inject_toc(body_html)
 
     return f"""<!DOCTYPE html>
 <html lang="es">
@@ -323,113 +382,172 @@ def _build_pdf_html(title, date, body_html, meta=None):
 <meta charset="utf-8">
 <style>
   @page {{
-    margin: 2cm 1.8cm 2.4cm;
-    @bottom-center {{
+    margin: 2.2cm 2cm 2.6cm;
+    @bottom-right {{
       content: counter(page) " / " counter(pages);
       font-family: "DejaVu Sans", sans-serif;
-      font-size: 8pt;
-      color: #aaa;
+      font-size: 7.5pt;
+      color: #bbb;
     }}
+    @bottom-left {{
+      content: "{title}";
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 7.5pt;
+      color: #bbb;
+    }}
+  }}
+  @page :first {{
+    @bottom-left {{ content: ""; }}
+    @bottom-right {{ content: ""; }}
   }}
   body {{
     font-family: "DejaVu Sans", sans-serif;
     font-size: 10.5pt;
     color: #1a1a1a;
-    line-height: 1.75;
+    line-height: 1.8;
     margin: 0;
   }}
-  /* ── Cover block ── */
+  /* ── Cover ── */
   .pdf-cover {{
     border-bottom: 2px solid #1793d1;
-    padding-bottom: 18px;
-    margin-bottom: 28px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
   }}
   .pdf-cover-meta {{
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #1793d1;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 6px;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
     font-family: "DejaVu Sans Mono", monospace;
   }}
   .pdf-cover-title {{
-    font-size: 20pt;
+    font-size: 22pt;
     font-weight: bold;
-    color: #0a0a0a;
-    line-height: 1.2;
-    margin: 0 0 10px;
-    letter-spacing: -0.02em;
+    color: #050505;
+    line-height: 1.15;
+    margin: 0 0 12px;
   }}
   .pdf-cover-date {{
-    font-size: 8.5pt;
-    color: #888;
+    font-size: 8pt;
+    color: #999;
     font-family: "DejaVu Sans Mono", monospace;
   }}
+  .pdf-status {{
+    display: inline-block;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: #1793d1;
+    color: #fff;
+    padding: 1px 7px;
+    border-radius: 2px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }}
+  /* ── TOC ── */
+  .pdf-toc {{
+    background: #f5f9fd;
+    border: 1px solid #d8e8f4;
+    border-radius: 4px;
+    padding: 14px 18px 12px;
+    margin-bottom: 32px;
+    page-break-inside: avoid;
+  }}
+  .pdf-toc-label {{
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #1793d1;
+    margin-bottom: 10px;
+    font-family: "DejaVu Sans Mono", monospace;
+  }}
+  .toc-row {{ margin: 2px 0; font-size: 9pt; }}
+  .toc-row a {{ color: #1a1a1a; text-decoration: none; }}
+  .toc-row.toc-h2 {{ font-weight: 600; margin-top: 5px; }}
+  .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.5pt; color: #444; }}
+  .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8pt;   color: #777; }}
   /* ── Headings ── */
-  h1 {{ font-size: 15pt; color: #0a0a0a; border-bottom: 1.5px solid #1793d1; padding-bottom: 4px; margin: 1.4em 0 0.5em; page-break-after: avoid; }}
-  h2 {{ font-size: 12pt; color: #0a0a0a; border-left: 3px solid #1793d1; padding-left: 9px; margin: 1.4em 0 0.4em; page-break-after: avoid; }}
-  h3 {{ font-size: 10.5pt; color: #333; font-weight: 700; margin: 1.1em 0 0.3em; page-break-after: avoid; }}
-  h4 {{ font-size: 9.5pt; color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.9em 0 0.2em; }}
+  h2 {{ font-size: 13pt; color: #050505; border-bottom: 1.5px solid #1793d1; padding-bottom: 4px; margin: 1.6em 0 0.5em; page-break-after: avoid; }}
+  h3 {{ font-size: 11pt; color: #1a1a1a; border-left: 3px solid #1793d1; padding-left: 8px; margin: 1.3em 0 0.4em; page-break-after: avoid; }}
+  h4 {{ font-size: 10pt; color: #333; font-weight: 700; margin: 1.1em 0 0.3em; page-break-after: avoid; }}
+  h5 {{ font-size: 9pt;  color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.9em 0 0.2em; }}
   /* ── Body ── */
-  p  {{ margin: 0 0 0.7em; }}
-  strong {{ color: #0a0a0a; }}
-  em     {{ color: #333; }}
+  p  {{ margin: 0 0 0.75em; }}
+  strong {{ color: #050505; }}
+  em     {{ color: #2a2a2a; }}
   a {{ color: #1793d1; text-decoration: none; }}
-  hr {{ border: none; border-top: 1px solid #ddd; margin: 1.4em 0; }}
+  hr {{ border: none; border-top: 1px solid #dde; margin: 1.6em 0; }}
   /* ── Lists ── */
-  ul, ol {{ margin: 0.3em 0 0.8em 1.4em; padding: 0; }}
-  li {{ margin: 3px 0; line-height: 1.65; }}
+  ul, ol {{ margin: 0.3em 0 0.9em 1.5em; padding: 0; }}
+  li {{ margin: 3px 0; line-height: 1.7; }}
+  li > ul, li > ol {{ margin-top: 2px; margin-bottom: 2px; }}
   /* ── Inline code ── */
   code {{
     font-family: "DejaVu Sans Mono", monospace;
-    font-size: 0.82em;
-    background: #f0f0f0;
+    font-size: 0.8em;
+    background: #f0f2f5;
     padding: 1px 5px;
-    border: 1px solid #ddd;
-    border-radius: 2px;
+    border: 1px solid #dde;
+    border-radius: 3px;
   }}
   /* ── Code blocks ── */
   pre {{
     font-family: "DejaVu Sans Mono", monospace;
     font-size: 8pt;
-    background: #f8f8f8;
-    border: 1px solid #ddd;
+    background: #f7f8fa;
+    border: 1px solid #dde;
     border-left: 3px solid #1793d1;
     padding: 10px 14px;
-    margin: 0.8em 0;
+    margin: 0.9em 0;
     white-space: pre-wrap;
     word-break: break-all;
     overflow-wrap: break-word;
     page-break-inside: avoid;
-    line-height: 1.55;
-    border-radius: 0 3px 3px 0;
+    line-height: 1.6;
+    border-radius: 0 4px 4px 0;
   }}
   pre code {{ background: none; border: none; padding: 0; font-size: inherit; }}
   /* ── Blockquote ── */
   blockquote {{
     border-left: 3px solid #1793d1;
     padding: 6px 14px;
-    color: #555;
-    background: #f4f8fc;
-    margin: 0.9em 0;
-    border-radius: 0 3px 3px 0;
+    color: #444;
+    background: #f3f8fc;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
     font-style: italic;
   }}
   /* ── Tables ── */
-  table {{ border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 9pt; page-break-inside: avoid; }}
-  th {{ background: #1793d1; color: #fff; padding: 6px 10px; text-align: left; font-size: 9pt; }}
-  td {{ padding: 5px 10px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; }}
-  tr:nth-child(even) td {{ background: #f9f9f9; }}
-  /* ── Callout / note boxes ── */
-  .note {{ background: #eef6fc; border-left: 3px solid #1793d1; padding: 8px 12px; margin: 0.8em 0; border-radius: 0 3px 3px 0; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 9pt; page-break-inside: avoid; }}
+  th {{ background: #1793d1; color: #fff; padding: 6px 10px; text-align: left; font-size: 9pt; font-weight: 600; }}
+  td {{ padding: 5px 10px; border: 1px solid #dde; vertical-align: top; word-break: break-word; }}
+  tr:nth-child(even) td {{ background: #f8fafb; }}
+  /* ── Callout / alert boxes ── */
+  .alert, .note {{
+    padding: 9px 14px;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }}
+  .alert-info,  .note {{ background: #eef6fc; border-left: 3px solid #1793d1; }}
+  .alert-warn        {{ background: #fdf6e3; border-left: 3px solid #e6a817; }}
+  .alert-danger      {{ background: #fdf0f0; border-left: 3px solid #e05252; }}
+  .alert-success     {{ background: #eefaf2; border-left: 3px solid #27ae60; }}
+  /* ── Task lists ── */
+  input[type="checkbox"] {{ margin-right: 6px; }}
 </style>
 </head>
 <body>
 <div class="pdf-cover">
   {"<div class='pdf-cover-meta'>" + meta_line + "</div>" if meta_line else ""}
-  <h1 class="pdf-cover-title">{title}</h1>
-  <div class="pdf-cover-date">{date}{(" · " + status) if status else ""}</div>
+  <div class="pdf-cover-title">{title}{"<span class='pdf-status'>" + status + "</span>" if status else ""}</div>
+  <div class="pdf-cover-date">{date}</div>
 </div>
+{toc_html}
 {body_html}
 </body>
 </html>"""
@@ -1013,6 +1131,7 @@ def export_pdf(entry_id):
         return jsonify({"error": "weasyprint no instalado en el servidor"}), 503
     from io import BytesIO
     md_content = _entry_path(entry_id, meta).read_text()
+    md_content = _strip_duplicate_heading_md(md_content, meta.get("title", ""))
     body_html  = render_markdown(md_content)
     date       = meta.get("created_at", "")[:10]
     full_html  = _build_pdf_html(meta["title"], date, body_html, meta=meta)
