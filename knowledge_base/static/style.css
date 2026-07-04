@@ -1887,7 +1887,7 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   top: calc(var(--topbar-h) + 48px);
   right: 0;
   width: 220px;
-  background: var(--bg-surface);
+  background: var(--layer-3);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 1px solid var(--glass-border);
