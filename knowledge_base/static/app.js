@@ -1856,8 +1856,8 @@ async function loadEntry(id, opts = {}) {
   // Breadcrumb
   buildBreadcrumb(m);
 
-  // Build TOC (from markdown headings, not DOM)
-  buildTOC();
+  // Build TOC after BlockNote (React) finishes rendering
+  setTimeout(buildTOC, 300);
 
   // Backlinks (async, non-blocking)
   loadBacklinks(id);
@@ -3154,22 +3154,19 @@ function _startScrollSpy() {
   const items = document.querySelectorAll("#tocItems .toc-item");
   if (!items.length) return;
 
-  const headingIds = [...items].map(i => i.dataset.target);
-  const headingEls = headingIds.map(id => document.getElementById(id)).filter(Boolean);
-  if (!headingEls.length) return;
-
   function _updateActive() {
-    const scrollY = window.scrollY || document.documentElement.scrollTop;
-    let active = headingEls[0];
-    for (const h of headingEls) {
-      if (h.getBoundingClientRect().top <= 80) active = h;
+    const headingEls = _tocHeadings();
+    if (!headingEls.length) return;
+    let activeIdx = 0;
+    for (let i = 0; i < headingEls.length; i++) {
+      if (headingEls[i].getBoundingClientRect().top <= 80) activeIdx = i;
     }
     items.forEach(item => {
-      item.classList.toggle("toc-item--active", item.dataset.target === active.id);
+      item.classList.toggle("toc-item--active", parseInt(item.dataset.idx, 10) === activeIdx);
     });
   }
 
-  const contentEl = $("entryView") || window;
+  const contentEl = $("contentArea") || window;
   contentEl.addEventListener("scroll", _updateActive, { passive: true });
   window.addEventListener("scroll", _updateActive, { passive: true });
   _tocScrollSpy = () => {
@@ -3183,15 +3180,17 @@ function _stopScrollSpy() {
   if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
 }
 
+function _tocHeadings() {
+  return Array.from($("entryBody")?.querySelectorAll("h1, h2, h3, h4") ?? []);
+}
+
 function buildTOC() {
-  const body = $("entryBody");
-  const headings = Array.from(body.querySelectorAll("h2, h3, h4"));
+  const body     = $("entryBody");
   const tocItems = $("tocItems");
   const tocPanel = $("tocPanel");
+  if (!body || !tocItems || !tocPanel) return;
 
-  headings.forEach((h, i) => {
-    if (!h.id) h.id = "toc-heading-" + i;
-  });
+  const headings = _tocHeadings();
 
   if (headings.length < 1) {
     tocPanel.classList.add("hidden");
@@ -3202,26 +3201,34 @@ function buildTOC() {
     return;
   }
 
-  // Remove the "no headings" gate so hover can reveal the panel
   tocPanel.classList.remove("hidden");
 
-  const clsMap = { H2: "toc-item", H3: "toc-item toc-h3", H4: "toc-item toc-h4" };
-  tocItems.innerHTML = headings.map(h => {
+  const clsMap = { H1: "toc-item", H2: "toc-item", H3: "toc-item toc-h3", H4: "toc-item toc-h4" };
+  tocItems.innerHTML = headings.map((h, i) => {
     const cls  = clsMap[h.tagName] || "toc-item";
-    // Strip emojis, special symbols, and leading markers
     const text = h.textContent
       .replace(/[\u{1F000}-\u{1FAFF}]/gu, '')
       .replace(/[\u{2600}-\u{27BF}]/gu, '')
       .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
       .replace(/^[→#✦•\-\s]+/, '')
       .trim();
-    return `<div class="${cls}" data-target="${h.id}">${escapeHtml(text)}</div>`;
+    return `<div class="${cls}" data-idx="${i}">${escapeHtml(text)}</div>`;
   }).join("");
 
   tocItems.querySelectorAll(".toc-item").forEach(item => {
     item.addEventListener("click", () => {
-      const target = document.getElementById(item.dataset.target);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Re-query at click time — avoids stale refs from React re-renders
+      const idx    = parseInt(item.dataset.idx, 10);
+      const target = _tocHeadings()[idx];
+      if (!target) return;
+      const container = $("contentArea");
+      if (container) {
+        const top = container.scrollTop + target.getBoundingClientRect().top
+                    - container.getBoundingClientRect().top - 16;
+        container.scrollTo({ top, behavior: "smooth" });
+      } else {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   });
 
