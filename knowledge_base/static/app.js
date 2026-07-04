@@ -186,6 +186,7 @@ function bindEvents() {
     $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
     $("kanbanArea").classList.add("hidden");
     $("welcome").classList.remove("hidden");
+    closeTOC();
     renderHome();
   });
   $("wsSearch").addEventListener("click", e => {
@@ -281,6 +282,7 @@ function showKanbanArea() {
   _setHomeAmbient(false);
   if ($("ctxBar")) $("ctxBar").classList.add("hidden");
   $("kanbanArea").classList.remove("hidden");
+  closeTOC();
 }
 
 async function loadKanbanSidebar() {
@@ -3109,6 +3111,9 @@ function initTOC() {
 
   function _showTOC() {
     if (!panel || panel.classList.contains("hidden")) return;
+    // Only show when an entry is being viewed, not on home/course/kanban pages
+    const ev = $("entryView");
+    if (!ev || ev.classList.contains("hidden")) return;
     clearTimeout(_hideTimer);
     panel.classList.add("toc-visible");
     $("tocBtn")?.classList.add("active");

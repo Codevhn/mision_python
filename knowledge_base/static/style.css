@@ -1882,6 +1882,18 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   pointer-events: all;
 }
 
+/* TOC panel own color tokens — independent of global text-muted/faint */
+.toc-panel {
+  --toc-text:  #d4d8e2;
+  --toc-faint: #9099aa;
+  --toc-sep:   rgba(255,255,255,0.08);
+}
+[data-theme="light"] .toc-panel {
+  --toc-text:  #111827;
+  --toc-faint: #4b5563;
+  --toc-sep:   rgba(0,0,0,0.1);
+}
+
 .toc-panel {
   position: fixed;
   top: calc(var(--topbar-h) + 48px);
@@ -1920,18 +1932,18 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px 6px;
-  color: var(--text-faint);
+  color: var(--accent);
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-bottom: 1px solid var(--toc-sep);
 }
 .toc-panel-items { padding: 6px 0 10px; }
 .toc-item {
   display: block;
   padding: 4px 14px;
-  color: var(--text-muted);
+  color: var(--toc-text);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -1941,14 +1953,15 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   font-size: 0.72rem;
   line-height: 1.5;
 }
-.toc-item:hover { color: var(--text); background: color-mix(in srgb, var(--bg-hover) 60%, transparent); border-left-color: var(--accent); }
+.toc-item:hover { color: #fff; background: color-mix(in srgb, var(--accent) 15%, transparent); border-left-color: var(--accent); }
+[data-theme="light"] .toc-item:hover { color: #000; }
 .toc-item--active { color: var(--accent) !important; border-left-color: var(--accent) !important; font-weight: 600; }
-.toc-item.toc-h3 { padding-left: 24px; font-size: 0.68rem; }
-.toc-item.toc-h4 { padding-left: 34px; font-size: 0.65rem; color: var(--text-faint); }
-.toc-empty { padding: 12px; font-size: 0.72rem; color: var(--text-faint); text-align: center; }
+.toc-item.toc-h3 { padding-left: 24px; font-size: 0.68rem; color: var(--toc-faint); }
+.toc-item.toc-h4 { padding-left: 34px; font-size: 0.65rem; color: var(--toc-faint); }
+.toc-empty { padding: 12px; font-size: 0.72rem; color: var(--toc-faint); text-align: center; }
 .toc-panel-close {
   background: none; border: none; cursor: pointer;
-  color: var(--text-faint); font-size: 1rem; line-height: 1;
+  color: var(--toc-faint); font-size: 1rem; line-height: 1;
   padding: 0 2px;
 }
 .toc-panel-close:hover { color: var(--danger); }
