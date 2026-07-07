@@ -1626,8 +1626,15 @@ input, textarea, select { font-family: inherit; }
   /* TOPBAR */
   .topbar { padding: 0 12px 0 8px; gap: 6px; }
   .topbar-left { min-width: unset; gap: 6px; }
-  .topbar-center { display: flex; flex: 1; max-width: unset; margin-right: 6px; }
+  .topbar-center { display: flex; flex: 1; max-width: unset; margin-right: 10px; }
   .topbar-right { gap: 4px; }
+  /* Hamburger: boost contrast so it's visible in both themes */
+  .sidebar-toggle { color: var(--text); opacity: 0.85; font-size: 1.1rem; }
+  /* Hide Ctrl+K hint — not useful on touch, wastes search bar width */
+  .cmd-trigger-kbd { display: none; }
+  /* Search bar label & icon: use text-muted (not text-faint) for readability */
+  .cmd-trigger-label { color: var(--text-muted) !important; }
+  .cmd-trigger-icon { color: var(--text-muted) !important; font-size: 1rem; }
   #reindexBtn, #statsBtn { display: none; }
   #themeToggle { display: none; }
   #themeToggleSidebar { display: inline-flex; }
@@ -1650,14 +1657,17 @@ input, textarea, select { font-family: inherit; }
     width: 80vw;
     min-width: unset;
     max-width: 300px;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    box-shadow: none; /* shadow only when open — prevents left-edge bleed in light mode */
     overflow-y: scroll;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
   }
-  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.45);
+  }
   .sidebar.collapsed {
     width: 80vw;
     min-width: unset;
@@ -4101,6 +4111,17 @@ body.sidebar-open .layout {
   --glass-blur: blur(24px) saturate(180%);
   --glass-border: rgba(255,255,255,0.10);
   --glass-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.06) inset;
+}
+
+/* Restore proper text contrast after Taskade global :root overrides them with
+   near-black values (#5c5c80 / #28283e) that are nearly invisible on dark BGs. */
+[data-theme="dark"] {
+  --text-muted: #a1a7b3;
+  --text-faint: #6b7280;
+}
+[data-theme="light"] {
+  --text-muted: #4b5563;
+  --text-faint: #9ca3af;
 }
 
 /* ── BODY — vivid gradient background ── */
