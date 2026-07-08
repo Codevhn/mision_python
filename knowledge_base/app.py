@@ -1365,6 +1365,51 @@ def update_cover(entry_id):
     return jsonify({"ok": True, "cover": cover})
 
 
+@app.route("/api/photos/search")
+def search_photos():
+    """Search photos via Unsplash API (requires UNSPLASH_ACCESS_KEY env var)."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"photos": [], "source": "none"})
+
+    key = os.environ.get("UNSPLASH_ACCESS_KEY", "")
+    if key:
+        try:
+            url = (
+                f"https://api.unsplash.com/photos/random"
+                f"?query={urllib.request.quote(q)}&count=12&orientation=landscape"
+                f"&client_id={key}"
+            )
+            req = urllib.request.Request(url, headers={"Accept-Version": "v1"})
+            with urllib.request.urlopen(req, timeout=6) as r:
+                data = json.loads(r.read())
+            photos = [
+                {
+                    "thumb": p["urls"]["small"],
+                    "full": p["urls"]["regular"],
+                    "alt": p.get("alt_description") or q,
+                    "author": p["user"]["name"],
+                    "author_url": p["user"]["links"]["html"],
+                }
+                for p in data
+            ]
+            return jsonify({"photos": photos, "source": "unsplash"})
+        except Exception:
+            pass  # fall through to loremflickr
+
+    # Fallback: loremflickr (free, no key, keyword search)
+    safe_q = urllib.request.quote(q.replace(" ", ","))
+    photos = [
+        {
+            "thumb": f"https://loremflickr.com/400/220/{safe_q}?random={i}",
+            "full": f"https://loremflickr.com/1280/480/{safe_q}?random={i}",
+            "alt": q,
+        }
+        for i in range(12)
+    ]
+    return jsonify({"photos": photos, "source": "flickr"})
+
+
 @app.route("/api/upload/cover", methods=["POST"])
 def upload_cover_image():
     """Receive a base64-encoded image, save to static/covers/, return URL."""

@@ -2161,14 +2161,24 @@ function openCoverPicker(saveFn) {
   async function searchUnsplash(query) {
     photoGrid.innerHTML = "";
     photoStatus.innerHTML = '<span class="cover-photo-loading">Buscando imágenes…</span>';
-    const THUMB_W = 400, THUMB_H = 220, COVER_W = 1280, COVER_H = 480;
-    const swatches = [];
-    for (let sig = 0; sig < 12; sig++) {
-      const thumbUrl = `https://source.unsplash.com/featured/${THUMB_W}x${THUMB_H}/?${encodeURIComponent(query)}&sig=${sig}`;
-      const coverUrl = `https://source.unsplash.com/featured/${COVER_W}x${COVER_H}/?${encodeURIComponent(query)}&sig=${sig}`;
-      _addPhotoSwatch(thumbUrl, null, coverUrl);
+    try {
+      const res = await fetch(`/api/photos/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error("api");
+      const data = await res.json();
+      const photos = data.photos || [];
+      if (!photos.length) {
+        photoStatus.innerHTML = `<span class="cover-photo-hint">Sin resultados para "${escapeHtml(query)}".</span>`;
+        return;
+      }
+      photos.forEach(p => _addPhotoSwatch(p.thumb, null, p.full));
+      const sourceLabel = data.source === "unsplash"
+        ? `Imágenes de <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>`
+        : `Imágenes de <a href="https://www.flickr.com" target="_blank" rel="noopener">Flickr</a>`;
+      photoStatus.innerHTML = `<span class="cover-photo-hint">${sourceLabel}</span>`;
+    } catch (_) {
+      photoGrid.innerHTML = "";
+      photoStatus.innerHTML = '<span class="cover-photo-hint">Error al buscar imágenes.</span>';
     }
-    photoStatus.innerHTML = `<span class="cover-photo-hint">Imágenes de <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a></span>`;
   }
 
   function triggerPhotoSearch() {
