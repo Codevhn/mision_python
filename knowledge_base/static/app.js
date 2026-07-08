@@ -1714,6 +1714,12 @@ function _stripDuplicateHeading(md, title) {
 function _sanitizeMarkdownForEditor(md) {
   if (!md) return md;
   return md.split("\n").map(line => {
+    // Collapse ***...*** / ___...___ (bold+italic) → **...** / __...__ FIRST.
+    // If processed as separate ** and * passes, the intermediate result is
+    // malformed and the single-star pass can't recover it, leaving italic+code
+    // overlap that crashes BlockNote (RangeError: Invalid collection of marks).
+    line = line.replace(/\*\*\*((?:[^*]|\*(?!\*))+)\*\*\*/g, '**$1**');
+    line = line.replace(/___((?:[^_]|_(?!_))+)___/g,           '__$1__');
     line = _splitMarkerPairs(line, "**");
     line = _splitMarkerPairs(line, "__");
     line = _splitMarkerPairsRegex(line, _SINGLE_STAR_RE, "*");
@@ -1796,11 +1802,20 @@ async function loadEntry(id, opts = {}) {
   // inserting new ones) — guard against that being mistaken for a real edit and
   // auto-saved, which would overwrite the entry's real content with blank/partial data.
   _restoreInProgress = true;
+  const _sanitizedMd = _sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown, m.title));
   try {
-    _inlineEditor.load(_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown, m.title)));
+    _inlineEditor.load(_sanitizedMd);
   } catch (err) {
-    console.error("Error al renderizar el contenido de la entrada:", err);
-    showToast("No se pudo renderizar el contenido de esta entrada", "error");
+    console.warn("Sanitized markdown still caused render error:", err.message);
+    // Fallback: strip ALL inline code backticks so any remaining italic+code
+    // overlaps can't crash the editor. Heading/list structure is preserved.
+    try {
+      _inlineEditor.load(_sanitizedMd.replace(/`([^`\n]*)`/g, '$1'));
+      showToast("Formato de código ajustado por compatibilidad", "warning");
+    } catch (err2) {
+      console.error("Error al renderizar el contenido de la entrada:", err2);
+      showToast("No se pudo renderizar el contenido de esta entrada", "error");
+    }
   } finally {
     _restoreInProgress = false;
     clearTimeout(_autoSaveTimer);
