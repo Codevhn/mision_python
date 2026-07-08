@@ -7126,8 +7126,13 @@ function initAIPanel() {
 
   insertBtn.addEventListener('click', () => {
     if (!lastResult || !currentEntryId) return;
-    const md = _inlineEditor.getMarkdown();
-    _inlineEditor.load(md + '\n\n' + lastResult);
+    if (_selContext) {
+      // Insert after the paragraph containing the selection (not at the bottom)
+      _inlineInsert('explain', _selContext, lastResult);
+    } else {
+      const md = _inlineEditor.getMarkdown();
+      _inlineEditor.load(md + '\n\n' + lastResult);
+    }
     closePanel();
     showToast('Respuesta insertada', 'success');
   });
@@ -7135,8 +7140,9 @@ function initAIPanel() {
   // ── Inline AI toolbar ────────────────────────────────────
   const inlineBar     = document.getElementById('aiInlineBar');
   const inlineLoading = document.getElementById('aiInlineLoading');
-  let _barTimer  = null;
+  let _barTimer   = null;
   let _barSelText = '';
+  let _barSelRect = null; // viewport rect of the selection (for popover positioning)
 
   function _hideBar() {
     if (inlineBar) inlineBar.classList.add('hidden');
@@ -7147,14 +7153,11 @@ function initAIPanel() {
   function _showBar(rect) {
     if (!inlineBar) return;
     const BAR_W = 192;
-    const BAR_H = 240; // rough max height
-    // Position below the selection, left-aligned to selection start
+    const BAR_H = 240;
     let left = rect.left;
     let top  = rect.bottom + 6;
-    // Keep inside viewport
     if (left + BAR_W > window.innerWidth - 8) left = window.innerWidth - BAR_W - 8;
     if (left < 8) left = 8;
-    // Flip above if would overflow bottom
     if (top + BAR_H > window.innerHeight - 8) top = rect.top - BAR_H - 6;
     inlineBar.style.left      = left + 'px';
     inlineBar.style.top       = top  + 'px';
@@ -7164,43 +7167,68 @@ function initAIPanel() {
     inlineBar.classList.remove('hidden');
   }
 
-  function _onMouseUp() {
-    clearTimeout(_barTimer);
-    _barTimer = setTimeout(() => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) { _hideBar(); return; }
-      const text = sel.toString().trim();
-      if (!text) { _hideBar(); return; }
+  // Capture selection — works on desktop (mouseup) AND mobile (selectionchange + touchend)
+  function _captureSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) { _hideBar(); return; }
+    const text = sel.toString().trim();
+    if (!text) { _hideBar(); return; }
 
-      // Only inside the editor
-      const editorEl = $('entryBody');
-      if (!editorEl) { _hideBar(); return; }
-      let node = sel.anchorNode;
-      while (node) { if (node === editorEl) break; node = node.parentNode; }
-      if (!node) { _hideBar(); return; }
+    const editorEl = $('entryBody');
+    if (!editorEl) { _hideBar(); return; }
+    // Verify selection is inside the editor
+    let node = sel.anchorNode;
+    while (node) { if (node === editorEl) break; node = node.parentNode; }
+    if (!node) { _hideBar(); return; }
 
-      const range = sel.getRangeAt(0);
-      const rect  = range.getBoundingClientRect();
-      if (!rect.width && !rect.height) { _hideBar(); return; }
+    const range = sel.getRangeAt(0);
+    const rect  = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) { _hideBar(); return; }
 
-      _barSelText = text;
-      _showBar(rect);
-    }, 150);
+    _barSelText = text;
+    _barSelRect = rect;
+    _showBar(rect);
   }
 
-  document.addEventListener('mouseup', _onMouseUp);
+  // Desktop: mouseup
+  document.addEventListener('mouseup', () => {
+    clearTimeout(_barTimer);
+    _barTimer = setTimeout(_captureSelection, 120);
+  });
+
+  // Mobile: selectionchange fires as the user drags selection handles
+  // Debounce 450ms so we capture the final selection, not intermediate states
+  document.addEventListener('selectionchange', () => {
+    clearTimeout(_barTimer);
+    _barTimer = setTimeout(_captureSelection, 450);
+  });
+
+  // Mobile: also trigger on touchend (catches tap-to-select and handle release)
+  document.addEventListener('touchend', () => {
+    clearTimeout(_barTimer);
+    _barTimer = setTimeout(_captureSelection, 300);
+  });
 
   document.addEventListener('mousedown', e => {
     if (inlineBar && !inlineBar.contains(e.target)) _hideBar();
   });
+  document.addEventListener('touchstart', e => {
+    if (inlineBar && !inlineBar.contains(e.target)) {
+      // Don't hide if the user might be starting a new selection drag
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) _hideBar();
+    }
+  }, { passive: true });
 
   if (inlineBar) {
     inlineBar.addEventListener('mousedown', e => e.preventDefault());
+    inlineBar.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
 
     inlineBar.querySelectorAll('.ai-inline-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const action = btn.dataset.action;
+        const action  = btn.dataset.action;
         const selText = _barSelText;
+        const selRect = _barSelRect;
 
         if (action === 'panel') {
           _hideBar();
@@ -7208,30 +7236,101 @@ function initAIPanel() {
           return;
         }
 
-        // Show loading state
-        inlineBar.querySelectorAll('.ai-inline-btn').forEach(b => { b.classList.add('loading'); b.style.display = 'none'; });
-        inlineLoading.classList.remove('hidden');
-
-        try {
-          const res  = await fetch('/api/ai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, prompt: '', context: selText }),
-          });
-          const data = await res.json();
-          if (data.error) { showToast(data.error, 'error'); _hideBar(); return; }
-
-          const result = data.result || '';
-          _inlineInsert(action, selText, result);
-          showToast('✦ IA: texto insertado', 'success');
-        } catch (err) {
-          showToast('Error: ' + err.message, 'error');
-        } finally {
-          _hideBar();
-        }
+        _hideBar();
+        // Show Notion-style inline result popover below the selection
+        _showAiResultPopover(selText, selRect, action);
       });
     });
   }
+}
+
+// Notion-style inline AI result popover ─────────────────────────────────────
+function _showAiResultPopover(selText, selRect, action) {
+  document.querySelectorAll('.ai-result-pop').forEach(e => e.remove());
+
+  const pop = document.createElement('div');
+  pop.className = 'ai-result-pop';
+  pop.innerHTML = `
+    <div class="arp-header">
+      <span class="arp-icon">✦</span>
+      <span class="arp-label">IA · ${escapeHtml(selText.length > 60 ? selText.slice(0, 60) + '…' : selText)}</span>
+    </div>
+    <div class="arp-body arp-loading">
+      <span class="arp-spinner"></span><span>Analizando…</span>
+    </div>
+    <div class="arp-actions hidden">
+      <button class="arp-insert btn-primary">↓ Insertar abajo</button>
+      <button class="arp-copy btn-ghost">Copiar</button>
+      <button class="arp-discard btn-ghost">Descartar</button>
+    </div>`;
+  document.body.appendChild(pop);
+
+  // Position below selection (fixed, viewport-relative)
+  const POP_W = Math.min(520, window.innerWidth - 24);
+  let left = (selRect ? selRect.left : window.innerWidth / 2 - POP_W / 2);
+  let top  = (selRect ? selRect.bottom + 8 : window.innerHeight / 2);
+  if (left + POP_W > window.innerWidth - 12) left = window.innerWidth - POP_W - 12;
+  if (left < 12) left = 12;
+  pop.style.width = POP_W + 'px';
+  pop.style.left  = left + 'px';
+  pop.style.top   = top + 'px';
+
+  const bodyEl   = pop.querySelector('.arp-body');
+  const actionsEl = pop.querySelector('.arp-actions');
+  let _result = '';
+
+  fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, prompt: '', context: selText }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      bodyEl.innerHTML = `<span class="arp-error">${escapeHtml(data.error)}</span>`;
+      actionsEl.classList.remove('hidden');
+      actionsEl.querySelector('.arp-insert').style.display = 'none';
+      return;
+    }
+    _result = data.result || '';
+    bodyEl.classList.remove('arp-loading');
+    bodyEl.innerHTML = _mdToHtml(_result);
+
+    // Reposition if popover flows off-screen after content loads
+    requestAnimationFrame(() => {
+      const popRect = pop.getBoundingClientRect();
+      if (popRect.bottom > window.innerHeight - 12 && selRect) {
+        pop.style.top = Math.max(12, selRect.top - popRect.height - 8) + 'px';
+      }
+    });
+
+    actionsEl.classList.remove('hidden');
+  })
+  .catch(err => {
+    bodyEl.innerHTML = `<span class="arp-error">Error: ${escapeHtml(err.message)}</span>`;
+    actionsEl.classList.remove('hidden');
+    actionsEl.querySelector('.arp-insert').style.display = 'none';
+  });
+
+  pop.querySelector('.arp-insert').addEventListener('click', () => {
+    if (!_result) return;
+    _inlineInsert(action, selText, _result);
+    pop.remove();
+    showToast('Respuesta insertada', 'success');
+  });
+  pop.querySelector('.arp-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(_result).then(() => showToast('Copiado', 'success'));
+  });
+  pop.querySelector('.arp-discard').addEventListener('click', () => pop.remove());
+
+  // Close on outside click/tap
+  setTimeout(() => {
+    const dismiss = e => {
+      if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', dismiss); document.removeEventListener('touchstart', dismiss); }
+    };
+    document.addEventListener('mousedown', dismiss);
+    document.addEventListener('touchstart', dismiss, { passive: true });
+  }, 50);
 }
 
 // Insert AI result into the editor ──────────────────────────────────────────
