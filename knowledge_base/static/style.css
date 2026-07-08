@@ -878,6 +878,48 @@ input, textarea, select { font-family: inherit; }
 }
 .cover-photo-grid { grid-template-columns: repeat(4, 1fr); }
 .cover-photo-swatch { height: 72px; }
+.cover-photo-search-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+.cover-photo-search-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-input, var(--bg-secondary));
+  color: var(--text);
+  font-size: 0.8rem;
+  outline: none;
+}
+.cover-photo-search-input:focus { border-color: var(--accent); }
+.cover-photo-search-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cover-photo-search-btn:hover { background: var(--bg-hover); color: var(--text); }
+.cover-photo-status {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  margin-top: 8px;
+  min-height: 18px;
+}
+.cover-photo-status a { color: var(--accent); text-decoration: none; }
+.cover-photo-status a:hover { text-decoration: underline; }
+.cover-photo-loading { color: var(--text-muted); }
+.cover-photo-hint { color: var(--text-faint); }
 .cover-photo-label {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -3402,6 +3444,30 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   color: var(--text-faint);
   font-size: 0.8rem;
   padding: 10px 4px;
+}
+.icon-picker-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 16px 4px;
+}
+.icon-picker-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.icon-picker-count {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  font-weight: 400;
+  margin-left: 4px;
 }
 
 

@@ -2074,7 +2074,12 @@ function openCoverPicker(saveFn) {
         <div class="cover-picker-grid" id="coverPickerGrid"></div>
       </div>
       <div class="cover-tab-panel hidden" id="coverTabPhotos">
+        <div class="cover-photo-search-row">
+          <input type="text" class="cover-photo-search-input" id="coverPhotoSearch" placeholder="Buscar imagen (ej: Python, espacio, ciudad…)" autocomplete="off" />
+          <button class="cover-photo-search-btn" id="coverPhotoSearchBtn" title="Buscar"><iconify-icon icon="lucide:search" width="16"></iconify-icon></button>
+        </div>
         <div class="cover-picker-grid cover-photo-grid" id="coverPhotoGrid"></div>
+        <div class="cover-photo-status" id="coverPhotoStatus"></div>
       </div>
       <div class="cover-tab-panel hidden" id="coverTabImage">
         <div class="cover-url-wrap">
@@ -2122,23 +2127,66 @@ function openCoverPicker(saveFn) {
     grid.appendChild(swatch);
   });
 
-  // Photo presets
+  // Photo presets + Unsplash search
   const photoGrid = overlay.querySelector("#coverPhotoGrid");
-  COVER_IMAGE_PRESETS.forEach(photo => {
+  const photoStatus = overlay.querySelector("#coverPhotoStatus");
+  const photoSearch = overlay.querySelector("#coverPhotoSearch");
+  const photoSearchBtn = overlay.querySelector("#coverPhotoSearchBtn");
+  let _photoSearchTimer = null;
+
+  function _addPhotoSwatch(url, label, saveUrl) {
     const swatch = document.createElement("div");
     swatch.className = "cover-preset-swatch cover-photo-swatch";
-    swatch.style.cssText = `background-image:url(${photo.url});background-size:cover;background-position:center`;
-    swatch.title = photo.label;
-    const lbl = document.createElement("span");
-    lbl.className = "cover-photo-label";
-    lbl.textContent = photo.label;
-    swatch.appendChild(lbl);
+    swatch.style.cssText = `background-image:url(${url});background-size:cover;background-position:center`;
+    swatch.title = label || "";
+    if (label) {
+      const lbl = document.createElement("span");
+      lbl.className = "cover-photo-label";
+      lbl.textContent = label;
+      swatch.appendChild(lbl);
+    }
     swatch.addEventListener("click", async () => {
-      await _save(`url(${photo.url})`);
+      await _save(`url(${saveUrl || url})`);
       overlay.remove();
     });
     photoGrid.appendChild(swatch);
+  }
+
+  function showPhotoPresets() {
+    photoGrid.innerHTML = "";
+    photoStatus.textContent = "";
+    COVER_IMAGE_PRESETS.forEach(photo => _addPhotoSwatch(photo.url, photo.label, photo.url));
+  }
+
+  async function searchUnsplash(query) {
+    photoGrid.innerHTML = "";
+    photoStatus.innerHTML = '<span class="cover-photo-loading">Buscando imágenes…</span>';
+    const THUMB_W = 400, THUMB_H = 220, COVER_W = 1280, COVER_H = 480;
+    const swatches = [];
+    for (let sig = 0; sig < 12; sig++) {
+      const thumbUrl = `https://source.unsplash.com/featured/${THUMB_W}x${THUMB_H}/?${encodeURIComponent(query)}&sig=${sig}`;
+      const coverUrl = `https://source.unsplash.com/featured/${COVER_W}x${COVER_H}/?${encodeURIComponent(query)}&sig=${sig}`;
+      _addPhotoSwatch(thumbUrl, null, coverUrl);
+    }
+    photoStatus.innerHTML = `<span class="cover-photo-hint">Imágenes de <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a></span>`;
+  }
+
+  function triggerPhotoSearch() {
+    const q = photoSearch.value.trim();
+    if (!q) { showPhotoPresets(); return; }
+    searchUnsplash(q);
+  }
+
+  showPhotoPresets();
+
+  photoSearch.addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(_photoSearchTimer); triggerPhotoSearch(); } });
+  photoSearch.addEventListener("input", () => {
+    clearTimeout(_photoSearchTimer);
+    const q = photoSearch.value.trim();
+    if (!q) { showPhotoPresets(); return; }
+    if (q.length >= 2) _photoSearchTimer = setTimeout(triggerPhotoSearch, 600);
   });
+  photoSearchBtn.addEventListener("click", () => { clearTimeout(_photoSearchTimer); triggerPhotoSearch(); });
 
   // URL image tab
   const urlInput = overlay.querySelector("#coverUrlInput");
@@ -2896,62 +2944,92 @@ function openIconPicker(anchor, initialIcon, onPick) {
   pop.innerHTML = `
     <div class="icon-picker-head">
       <div class="icon-picker-title">Seleccionar icono</div>
-      <input class="icon-picker-search" type="text" placeholder="Buscar icono…" autocomplete="off" />
+      <input class="icon-picker-search" type="text" placeholder="Buscar en 200,000+ iconos…" autocomplete="off" />
     </div>
     <div class="icon-picker-body"></div>
   `;
 
   const body = pop.querySelector(".icon-picker-body");
   const search = pop.querySelector(".icon-picker-search");
+  let _debounceTimer = null;
 
-  function renderCatalog(query = "") {
-    const q = query.trim().toLowerCase();
-    const items = ICON_CATALOG.filter(item => {
-      if (!q) return true;
-      return item.label.toLowerCase().includes(q)
-        || item.icon.toLowerCase().includes(q)
-        || item.tags.some(tag => tag.includes(q));
-    });
-    const groups = [];
-    items.forEach(item => {
-      let group = groups.find(g => g.name === item.group);
-      if (!group) {
-        group = { name: item.group, items: [] };
-        groups.push(group);
-      }
-      group.items.push(item);
-    });
-
-    body.innerHTML = groups.map(group => `
-      <section class="icon-picker-group">
-        <div class="icon-picker-group-title">${escapeHtml(group.name)}</div>
-        <div class="icon-picker-grid">
-          ${group.items.map(item => `
-            <button type="button" class="icon-picker-item${item.icon === initialIcon ? " selected" : ""}" data-icon="${escapeHtml(item.icon)}" title="${escapeHtml(item.label)}"${item.color ? ` data-color="${escapeHtml(item.color)}"` : ''}>
-              ${renderIconMarkup(item.icon, "icon-picker-item-glyph", item.icon)}
-              <span>${escapeHtml(item.label)}</span>
-            </button>
-          `).join("")}
-        </div>
-      </section>
-    `).join("") || '<div class="icon-picker-empty">Sin coincidencias.</div>';
-
-    // Apply brand colors to tech icons
+  function _bindItems() {
     body.querySelectorAll(".icon-picker-item[data-color]").forEach(btn => {
       const glyph = btn.querySelector(".icon-picker-item-glyph, iconify-icon");
       if (glyph) glyph.style.color = btn.dataset.color;
     });
-
     body.querySelectorAll(".icon-picker-item").forEach(btn => {
-      btn.addEventListener("click", () => {
-        onPick(btn.dataset.icon);
-        pop.remove();
-      });
+      btn.addEventListener("click", () => { onPick(btn.dataset.icon); pop.remove(); });
     });
   }
 
-  renderCatalog("");
-  search.addEventListener("input", () => renderCatalog(search.value));
+  function _itemHtml(icon, label, color, selected) {
+    return `<button type="button" class="icon-picker-item${selected ? " selected" : ""}" data-icon="${escapeHtml(icon)}" title="${escapeHtml(label)}"${color ? ` data-color="${escapeHtml(color)}"` : ''}>
+      ${renderIconMarkup(icon, "icon-picker-item-glyph", icon)}
+      <span>${escapeHtml(label)}</span>
+    </button>`;
+  }
+
+  function showSuggested() {
+    const q = search.value.trim().toLowerCase();
+    const items = q
+      ? ICON_CATALOG.filter(item =>
+          item.label.toLowerCase().includes(q) ||
+          item.icon.toLowerCase().includes(q) ||
+          item.tags.some(t => t.includes(q)))
+      : ICON_CATALOG;
+
+    const groupMap = {};
+    items.forEach(item => {
+      (groupMap[item.group] = groupMap[item.group] || []).push(item);
+    });
+
+    body.innerHTML = Object.entries(groupMap).map(([gname, gitems]) => `
+      <section class="icon-picker-group">
+        <div class="icon-picker-group-title">${escapeHtml(gname)}</div>
+        <div class="icon-picker-grid">
+          ${gitems.map(it => _itemHtml(it.icon, it.label, it.color, it.icon === initialIcon)).join("")}
+        </div>
+      </section>
+    `).join("") || '<div class="icon-picker-empty">Sin coincidencias.</div>';
+    _bindItems();
+  }
+
+  async function searchIconify(query) {
+    body.innerHTML = '<div class="icon-picker-loading"><span class="icon-picker-spinner"></span>Buscando iconos…</div>';
+    try {
+      const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=60`);
+      if (!res.ok) throw new Error("api");
+      const data = await res.json();
+      const icons = data.icons || [];
+      if (!icons.length) {
+        body.innerHTML = `<div class="icon-picker-empty">Sin resultados para "${escapeHtml(query)}".</div>`;
+        return;
+      }
+      body.innerHTML = `
+        <section class="icon-picker-group">
+          <div class="icon-picker-group-title">Resultados <span class="icon-picker-count">${data.total > 60 ? `60 de ${data.total}` : icons.length}</span></div>
+          <div class="icon-picker-grid">
+            ${icons.map(iconId => {
+              const label = iconId.split(":")[1]?.replace(/-/g, " ") || iconId;
+              return _itemHtml(iconId, label, null, iconId === initialIcon);
+            }).join("")}
+          </div>
+        </section>`;
+      _bindItems();
+    } catch (_) {
+      showSuggested();
+    }
+  }
+
+  showSuggested();
+
+  search.addEventListener("input", () => {
+    clearTimeout(_debounceTimer);
+    const q = search.value.trim();
+    if (q.length < 2) { showSuggested(); return; }
+    _debounceTimer = setTimeout(() => searchIconify(q), 350);
+  });
 
   document.body.appendChild(pop);
   const rect = anchor.getBoundingClientRect();
