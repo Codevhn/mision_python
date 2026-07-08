@@ -1624,10 +1624,21 @@ input, textarea, select { font-family: inherit; }
 /* ---- RESPONSIVE ---- */
 @media (max-width: 768px) {
   /* TOPBAR */
-  .topbar { padding: 0 12px 0 8px; gap: 6px; }
-  .topbar-left { min-width: unset; gap: 6px; }
-  .topbar-center { display: flex; flex: 1; max-width: unset; margin-right: 10px; }
-  .topbar-right { gap: 4px; }
+  .topbar { padding: 0 10px; gap: 8px; }
+  .topbar-left { min-width: unset; flex-shrink: 0; gap: 6px; }
+  /* min-width:0 is critical — without it the flex item can't shrink below the
+     intrinsic width of the nowrap search text, causing the bar to overflow the screen.
+     Also reset margin fully (base has margin:0 auto which leaves margin-left:auto). */
+  .topbar-center {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    max-width: none;
+    position: relative;
+  }
+  .topbar-right { flex-shrink: 0; gap: 4px; }
+  /* cmd-trigger: fill center exactly, no overflow */
+  .cmd-trigger { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
   /* Hamburger: boost contrast so it's visible in both themes */
   .sidebar-toggle { color: var(--text); opacity: 0.85; font-size: 1.1rem; }
   /* Hide Ctrl+K hint — not useful on touch, wastes search bar width */
