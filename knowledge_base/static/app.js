@@ -7153,12 +7153,27 @@ function initAIPanel() {
   function _showBar(rect) {
     if (!inlineBar) return;
     const BAR_W = 192;
-    const BAR_H = 240;
-    let left = rect.left;
-    let top  = rect.bottom + 6;
-    if (left + BAR_W > window.innerWidth - 8) left = window.innerWidth - BAR_W - 8;
-    if (left < 8) left = 8;
-    if (top + BAR_H > window.innerHeight - 8) top = rect.top - BAR_H - 6;
+    const BAR_H = 260;
+    const GAP   = 8;
+
+    // Prefer right of the selection to avoid BlockNote's formatting toolbar
+    // dropdowns (which open downward from above the selection).
+    let left = rect.right + GAP;
+    let top  = rect.top;
+
+    // Not enough room to the right → try left of selection
+    if (left + BAR_W > window.innerWidth - GAP) {
+      left = rect.left - BAR_W - GAP;
+    }
+    // Still off-screen left → pin to right edge
+    if (left < GAP) {
+      left = window.innerWidth - BAR_W - GAP;
+    }
+
+    // Vertical: keep within viewport
+    if (top + BAR_H > window.innerHeight - GAP) top = window.innerHeight - BAR_H - GAP;
+    if (top < GAP) top = GAP;
+
     inlineBar.style.left      = left + 'px';
     inlineBar.style.top       = top  + 'px';
     inlineBar.style.transform = 'none';
