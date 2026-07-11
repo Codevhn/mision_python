@@ -7609,24 +7609,11 @@ body {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
-/* Subtitle hidden by default — too noisy; show on hover for key info */
-.bn-mt-suggestion-menu-item-subtitle {
-  font-size: 10.5px !important;
-  color: rgba(255,255,255,0.35) !important;
-  line-height: 1.2 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
+/* Subtitles hidden — clean like Notion */
+.bn-mt-suggestion-menu-item-subtitle { display: none !important; }
 
-/* ── Keyboard shortcut badge ── */
-.bn-mt-suggestion-menu-item-section[data-position="right"] {
-  flex-shrink: 0 !important;
-  font-size: 9.5px !important;
-  font-family: var(--font-mono, monospace) !important;
-  color: rgba(255,255,255,0.28) !important;
-  letter-spacing: -0.01em !important;
-}
+/* Keyboard shortcuts hidden — / is enough */
+.bn-mt-suggestion-menu-item-section[data-position="right"] { display: none !important; }
 
 /* ── Small items (emoji picker) ── */
 .bn-suggestion-menu-item-small {
@@ -7660,7 +7647,3 @@ body {
   color: rgba(0,0,0,0.48) !important;
 }
 [data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
-[data-theme="light"] .bn-mt-suggestion-menu-item-subtitle { color: rgba(0,0,0,0.4) !important; }
-[data-theme="light"] .bn-mt-suggestion-menu-item-section[data-position="right"] {
-  color: rgba(0,0,0,0.28) !important;
-}
