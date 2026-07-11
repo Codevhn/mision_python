@@ -7518,117 +7518,149 @@ body {
 .callout-color-swatch:hover { transform: scale(1.2); }
 .callout-color-swatch.active { border-color: var(--text); }
 
-/* ── BlockNote Slash Menu (Suggestion Menu) — Notion-style ──────────────── */
+/* ── BlockNote Slash Menu — Notion-style (compact, clean) ───────────────── */
+
+/* ── Container ── */
 .bn-suggestion-menu {
-  background: var(--bg-elevated, #1a1a2e);
-  border: 1px solid var(--border, rgba(255,255,255,0.1));
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
-  padding: 6px 4px;
-  min-width: 240px;
-  max-height: 380px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  background: var(--bg-elevated, #16162a) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3) !important;
+  padding: 4px 0 !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
 }
+.bn-suggestion-menu::-webkit-scrollbar { width: 4px; }
+.bn-suggestion-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
-/* Group labels (Headings, Basic blocks, etc.) */
+/* ── Group separator label ── */
 .bn-suggestion-menu-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted, rgba(255,255,255,0.38));
-  padding: 8px 10px 3px;
-  margin-top: 2px;
-  user-select: none;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.3) !important;
+  padding: 14px 12px 4px !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  display: block !important;
 }
-.bn-suggestion-menu-label:first-child { margin-top: 0; padding-top: 4px; }
+/* First label needs less top padding */
+.bn-suggestion-menu > *:first-child.bn-suggestion-menu-label,
+.bn-suggestion-menu-label:first-child { padding-top: 6px !important; }
 
-/* Individual item */
+/* ── Individual item row ── */
 .bn-suggestion-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.1s;
-  min-height: 38px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 3px 6px !important;
+  margin: 1px 4px !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  transition: background 0.08s !important;
+  min-height: 34px !important;
+  max-height: 44px !important;
 }
 .bn-suggestion-menu-item:hover,
 .bn-suggestion-menu-item[aria-selected="true"] {
-  background: var(--accent-soft, rgba(23,147,209,0.14));
+  background: rgba(255,255,255,0.07) !important;
 }
 
-/* Item icon */
+/* ── Icon cell — subtle dark tile ── */
 .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  background: var(--layer-3, #141426);
-  flex-shrink: 0;
-  color: var(--text-muted, rgba(255,255,255,0.55));
-  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 5px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.6) !important;
+  flex-shrink: 0 !important;
+}
+.bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.85) !important;
 }
 
-/* Item title + subtitle layout */
-.bn-mt-suggestion-menu-item-body { flex: 1; min-width: 0; }
+/* ── Text body ── */
+.bn-mt-suggestion-menu-item-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
 .bn-mt-suggestion-menu-item-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text, rgba(255,255,255,0.92));
-  line-height: 1.3;
+  font-size: 13px !important;
+  font-weight: 450 !important;
+  color: rgba(255,255,255,0.88) !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
+/* Subtitle hidden by default — too noisy; show on hover for key info */
 .bn-mt-suggestion-menu-item-subtitle {
-  font-size: 11px;
-  color: var(--text-muted, rgba(255,255,255,0.4));
-  line-height: 1.3;
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 10.5px !important;
+  color: rgba(255,255,255,0.35) !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
-/* Badge / keyboard shortcut */
+/* ── Keyboard shortcut badge ── */
 .bn-mt-suggestion-menu-item-section[data-position="right"] {
-  flex-shrink: 0;
-  color: var(--text-muted, rgba(255,255,255,0.35));
-  font-size: 10px;
-  font-family: var(--font-mono, monospace);
+  flex-shrink: 0 !important;
+  font-size: 9.5px !important;
+  font-family: var(--font-mono, monospace) !important;
+  color: rgba(255,255,255,0.28) !important;
+  letter-spacing: -0.01em !important;
 }
 
-/* Small items (emoji grid etc.) */
+/* ── Small items (emoji picker) ── */
 .bn-suggestion-menu-item-small {
-  padding: 4px 8px;
-  min-height: unset;
+  padding: 2px 4px !important;
+  min-height: unset !important;
+  max-height: unset !important;
 }
 
-/* No-results state */
+/* ── Empty state ── */
 .bn-suggestion-menu-empty-item {
-  padding: 12px 10px;
-  text-align: center;
-  color: var(--text-muted, rgba(255,255,255,0.4));
-  font-size: 12px;
+  padding: 16px 12px !important;
+  text-align: center !important;
+  color: rgba(255,255,255,0.35) !important;
+  font-size: 12px !important;
 }
 
-/* Light theme overrides */
+/* ── Light theme ── */
 [data-theme="light"] .bn-suggestion-menu {
-  background: #fff;
-  border-color: rgba(0,0,0,0.1);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07);
+  background: #fff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06) !important;
 }
-[data-theme="light"] .bn-suggestion-menu-label { color: rgba(0,0,0,0.38); }
-[data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.88); }
-[data-theme="light"] .bn-mt-suggestion-menu-item-subtitle { color: rgba(0,0,0,0.45); }
-[data-theme="light"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.5);
-}
+[data-theme="light"] .bn-suggestion-menu-label { color: rgba(0,0,0,0.32) !important; }
 [data-theme="light"] .bn-suggestion-menu-item:hover,
 [data-theme="light"] .bn-suggestion-menu-item[aria-selected="true"] {
-  background: rgba(23,147,209,0.09);
+  background: rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: rgba(0,0,0,0.04) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+  color: rgba(0,0,0,0.48) !important;
+}
+[data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
+[data-theme="light"] .bn-mt-suggestion-menu-item-subtitle { color: rgba(0,0,0,0.4) !important; }
+[data-theme="light"] .bn-mt-suggestion-menu-item-section[data-position="right"] {
+  color: rgba(0,0,0,0.28) !important;
 }
