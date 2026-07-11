@@ -7470,38 +7470,40 @@ body {
    .bn-block-content. We extend the callout's background/border to cover it.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* When a callout has child blocks, make its bottom square */
+/* When a callout has child blocks, square the bottom of the callout header */
 .bn-block:has(> .bn-block-content[data-content-type="callout"]):has(> .bn-block-group)
   > .bn-block-content[data-content-type="callout"] .bn-callout {
-  border-radius: 6px 6px 0 0;
+  border-radius: 8px 8px 0 0;
   padding-bottom: 6px;
 }
 
-/* Children group extension — shares space, looks fused with the callout header */
+/* Children group — fused below the callout header, same rounded box */
 .bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group {
-  padding: 4px 14px 10px 48px;
-  border-radius: 0 0 6px 6px;
+  padding: 6px 14px 12px 52px;
+  border-radius: 0 0 8px 8px;
   margin-top: 0;
+  background: rgba(128,128,128,0.06); /* fallback; color rules below override */
+  min-height: 8px;
 }
 
-/* Children group color — matches callout fill without border accent */
-.bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(250,204,21,0.10); }
-.bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(59,130,246,0.10); }
-.bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(34,197,94,0.10);  }
-.bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(239,68,68,0.10);  }
-.bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(168,85,247,0.10); }
-.bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(249,115,22,0.10); }
-.bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(107,114,128,0.10);}
-.bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(236,72,153,0.10); }
+/* Children group color — slightly lighter than the callout header */
+.bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(250,204,21,0.14); }
+.bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(59,130,246,0.14); }
+.bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(34,197,94,0.14);  }
+.bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(239,68,68,0.14);  }
+.bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(168,85,247,0.14); }
+.bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(249,115,22,0.14); }
+.bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(107,114,128,0.14);}
+.bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(236,72,153,0.14); }
 /* Light theme children fill */
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(254,243,199,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(219,234,254,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(220,252,231,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(254,226,226,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(243,232,255,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(255,237,213,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(243,244,246,0.80); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(252,231,243,0.80); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(254,243,199,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(219,234,254,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(220,252,231,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(254,226,226,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(243,232,255,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(255,237,213,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(243,244,246,0.90); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(252,231,243,0.90); }
 
 /* Callout color-picker toolbar — top-right corner, fades in on callout hover */
 .callout-toolbar {
