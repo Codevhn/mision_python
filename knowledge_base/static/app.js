@@ -7377,6 +7377,82 @@ function _inlineInsert(action, selText, result) {
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────
+// Callout color + emoji picker toolbar ───────────────────────────────────────
+const CALLOUT_COLORS = [
+  { id: 'yellow', hex: '#f5c518' },
+  { id: 'blue',   hex: '#3b82f6' },
+  { id: 'green',  hex: '#22c55e' },
+  { id: 'red',    hex: '#ef4444' },
+  { id: 'purple', hex: '#a855f7' },
+  { id: 'orange', hex: '#f97316' },
+  { id: 'gray',   hex: '#6b7280' },
+  { id: 'pink',   hex: '#ec4899' },
+];
+
+function _initCalloutToolbars(body) {
+  body.querySelectorAll('[data-content-type="callout"]').forEach(contentEl => {
+    if (contentEl.querySelector('.callout-toolbar')) return; // already added
+
+    const calloutDiv = contentEl.querySelector('.bn-callout');
+    if (!calloutDiv) return;
+
+    const currentColor = calloutDiv.dataset.calloutColor || 'yellow';
+    const currentEmoji = calloutDiv.dataset.calloutEmoji || '💡';
+
+    // Build toolbar
+    const toolbar = document.createElement('div');
+    toolbar.className = 'callout-toolbar';
+
+    CALLOUT_COLORS.forEach(c => {
+      const swatch = document.createElement('div');
+      swatch.className = 'callout-color-swatch' + (c.id === currentColor ? ' active' : '');
+      swatch.style.background = c.hex;
+      swatch.title = c.id;
+      swatch.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        _setCalloutColor(contentEl, calloutDiv, c.id);
+      });
+      toolbar.appendChild(swatch);
+    });
+
+    // Emoji click → simple inline prompt
+    const iconEl = calloutDiv.querySelector('.bn-callout-icon');
+    if (iconEl) {
+      iconEl.addEventListener('click', e => {
+        e.stopPropagation();
+        const next = prompt('Emoji para el callout:', currentEmoji);
+        if (next && next.trim()) _setCalloutEmoji(calloutDiv, next.trim());
+      });
+    }
+
+    contentEl.style.position = 'relative';
+    contentEl.appendChild(toolbar);
+  });
+}
+
+function _setCalloutColor(contentEl, calloutDiv, color) {
+  const md = _inlineEditor.getMarkdown();
+  const oldColor = calloutDiv.dataset.calloutColor || 'yellow';
+  const emoji    = calloutDiv.dataset.calloutEmoji  || '💡';
+  const re = new RegExp(`:::callout-${oldColor} ${_escRe(emoji)}`, 'g');
+  const updated = md.replace(re, `:::callout-${color} ${emoji}`);
+  if (updated !== md) _inlineEditor.load(updated);
+}
+
+function _setCalloutEmoji(calloutDiv, emoji) {
+  const md = _inlineEditor.getMarkdown();
+  const color    = calloutDiv.dataset.calloutColor || 'yellow';
+  const oldEmoji = calloutDiv.dataset.calloutEmoji  || '💡';
+  const re = new RegExp(`:::callout-${color} ${_escRe(oldEmoji)}`, 'g');
+  const updated = md.replace(re, `:::callout-${color} ${emoji}`);
+  if (updated !== md) _inlineEditor.load(updated);
+}
+
+function _escRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function postProcessEntry() {
   const body = $('entryBody');
   if (!body) return;
@@ -7392,6 +7468,9 @@ function postProcessEntry() {
     window.removeEventListener('resize', _codeExecResizeHandler);
     _codeExecResizeHandler = null;
   }
+
+  // Callout color-picker toolbar
+  _initCalloutToolbars(body);
 
   const pyBlocks   = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
   const mmdBlocks  = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]')];
