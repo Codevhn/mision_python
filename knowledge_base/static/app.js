@@ -3653,6 +3653,8 @@ async function confirmPageCreate() {
   const name = $("pageNameInput").value.trim();
   if (!name) return;
   const icon = getIconButtonValue("pageNameIconBtn");
+  // Save blockId before closeModal clears it
+  const savedBlockId = _pendingPageBlockId;
   closePageNameModal();
 
   // Create a new entry as sub-page of current
@@ -3672,10 +3674,14 @@ async function confirmPageCreate() {
   });
   if (res.ok) {
     const d = await res.json();
-    // Insert page link block in current entry (stays in place, no scroll)
     const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
     window._activeEditorForPageCreate = null;
-    targetEditor.addPageBlock(_pendingPageBlockId, name, d.id);
+    // If we have the placeholder block's ID, update it in place; otherwise append
+    if (savedBlockId && targetEditor.updatePageBlock) {
+      targetEditor.updatePageBlock(savedBlockId, name, d.id);
+    } else {
+      targetEditor.addPageBlock(name, d.id);
+    }
     await loadTree();
     showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
   } else {
