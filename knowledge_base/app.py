@@ -2899,7 +2899,11 @@ def ai_ask():
         )
         with urllib.request.urlopen(req, timeout=30) as r:
             result = json.loads(r.read())
-        return jsonify({"result": result["choices"][0]["message"]["content"]})
+        content = result["choices"][0]["message"]["content"]
+        # Render server-side with the same Markdown pipeline used for note content
+        # (tables, ordered/unordered lists, fenced code) instead of leaving the
+        # frontend to re-parse the reply with a much more limited hand-rolled parser.
+        return jsonify({"result": content, "html": render_markdown(content)})
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         return jsonify({"error": f"API error {e.code}: {err_body}"}), 502

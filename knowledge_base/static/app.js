@@ -7190,7 +7190,7 @@ function initAIPanel() {
           return;
         }
         lastResult = data.result || '';
-        responseBody.innerHTML = _mdToHtml(lastResult);
+        responseBody.innerHTML = data.html || _mdToHtml(lastResult);
         responseEl.classList.remove('hidden');
       })
       .catch(err => {
@@ -7363,7 +7363,7 @@ function _showAiResultPopover(selText, selRect, action) {
       <span class="arp-icon">✦</span>
       <span class="arp-label">IA · ${escapeHtml(selText.length > 60 ? selText.slice(0, 60) + '…' : selText)}</span>
     </div>
-    <div class="arp-body arp-loading">
+    <div class="arp-body ai-response-body arp-loading">
       <span class="arp-spinner"></span><span>Analizando…</span>
     </div>
     <div class="arp-actions hidden">
@@ -7402,7 +7402,7 @@ function _showAiResultPopover(selText, selRect, action) {
     }
     _result = data.result || '';
     bodyEl.classList.remove('arp-loading');
-    bodyEl.innerHTML = _mdToHtml(_result);
+    bodyEl.innerHTML = data.html || _mdToHtml(_result);
 
     // Reposition if popover flows off-screen after content loads
     requestAnimationFrame(() => {
