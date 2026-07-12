@@ -368,10 +368,25 @@ def _inject_toc(body_html):
 
 
 _PDF_FONTS_DIR = Path(__file__).parent / "static" / "fonts"
+_pdf_font_data_uri_cache = {}
+
+
+def _pdf_font_data_uri(filename):
+    """Base64-embed a font so exported files are fully self-contained. A
+    file:// path only resolves on the machine that rendered it — the
+    standalone HTML export is downloaded and opened on the user's own
+    computer, which has no access to the server's filesystem."""
+    cached = _pdf_font_data_uri_cache.get(filename)
+    if cached is not None:
+        return cached
+    data = (_PDF_FONTS_DIR / filename).read_bytes()
+    uri = "data:font/ttf;base64," + base64.b64encode(data).decode("ascii")
+    _pdf_font_data_uri_cache[filename] = uri
+    return uri
 
 
 def _pdf_font_face(family, filename, weight=400, style="normal"):
-    uri = (_PDF_FONTS_DIR / filename).as_uri()
+    uri = _pdf_font_data_uri(filename)
     return f"""@font-face {{
     font-family: "{family}";
     src: url("{uri}") format("truetype");
@@ -429,6 +444,19 @@ def _build_pdf_html(title, date, body_html, meta=None):
     color: #23262b;
     line-height: 1.7;
     margin: 0;
+  }}
+  /* This file is also served standalone (the "export to HTML" download) and
+     opened directly in a browser — WeasyPrint targets "print" media and
+     paginates via @page above, so it ignores this block; a real browser
+     defaults to "screen" media, where the page would otherwise render
+     edge-to-edge full width with no page-like boundary. Give it one. */
+  @media screen {{
+    body {{
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 56px 32px 96px;
+      background: #fff;
+    }}
   }}
   /* ── Cover ── */
   .pdf-cover {{
