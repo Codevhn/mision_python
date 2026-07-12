@@ -607,10 +607,43 @@
     </div>
   </div>
 
-  <!-- CONTEXT MENU (category right-click) -->
+  <!-- CONTEXT MENU (category/tema right-click) -->
   <div class="context-menu hidden" id="contextMenu">
-    <div class="context-menu-item" id="ctxExportMd">export .md</div>
-    <div class="context-menu-item" id="ctxExportPdf">export .pdf</div>
+    <div class="context-menu-item" id="ctxReorg">✎ renombrar / fusionar</div>
+    <div class="context-menu-item hidden" id="ctxExportMd">export .md</div>
+    <div class="context-menu-item hidden" id="ctxExportPdf">export .pdf</div>
+  </div>
+
+  <!-- MODAL: Reorganizar categoría/tema -->
+  <div class="modal-overlay hidden" id="reorgModalOverlay">
+    <div class="modal modal--sm" id="reorgModal">
+      <div class="modal-header">
+        <h2 id="reorgModalTitle">Reorganizar categoría</h2>
+        <button class="modal-close" id="reorgModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="reorg-current" id="reorgCurrent"></p>
+        <div class="form-group">
+          <label>Categoría</label>
+          <div class="smart-select" id="reorgCatSmartSelect">
+            <input type="text" id="reorgCategory" autocomplete="off" />
+            <div class="smart-select-dropdown hidden" id="reorgCatDropdown"></div>
+          </div>
+        </div>
+        <div class="form-group" id="reorgTopicGroup">
+          <label>Tema</label>
+          <div class="smart-select" id="reorgTopicSmartSelect">
+            <input type="text" id="reorgTopic" autocomplete="off" />
+            <div class="smart-select-dropdown hidden" id="reorgTopicDropdown"></div>
+          </div>
+        </div>
+        <p class="reorg-hint">Si eliges una categoría/tema que ya existe, las entradas se fusionan ahí. Si escribes un nombre nuevo, se renombra.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="reorgCancelBtn">Cancelar</button>
+        <button class="btn-primary" id="reorgApplyBtn">Aplicar</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: Nueva / Editar entrada -->
@@ -643,6 +676,7 @@
             </div>
           </div>
         </div>
+        <div class="cat-suggest hidden" id="catSuggestBox"></div>
         </div><!-- /#knowledgeFields -->
         <div id="courseFields" class="hidden">
           <div class="form-row two-col">

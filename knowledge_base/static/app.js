@@ -118,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initScratchpad();
   initStats();
   initContextMenu();
+  initReorgModal();
   initTemplates();
   initHistory();
   initDuplicate();
@@ -268,6 +269,10 @@ function bindEvents() {
   $("fieldContent").addEventListener("input", autoExtractTitle);
   $("fieldContent").addEventListener("paste", () => setTimeout(autoExtractTitle, 50));
 
+  // Suggest an existing category/tema while creating a new entry
+  $("fieldTitle").addEventListener("input", scheduleCategorySuggest);
+  $("fieldContent").addEventListener("input", scheduleCategorySuggest);
+
   // Topic custom input toggle
 
   // Kanban sidebar button
@@ -329,6 +334,67 @@ function autoExtractTitle() {
   if (match) {
     $("fieldTitle").value = match[1].trim();
   }
+}
+
+// ---- CATEGORY/TEMA SUGGESTION (new knowledge entries only) ----
+let _catSuggestTimer = null;
+
+function scheduleCategorySuggest() {
+  clearTimeout(_catSuggestTimer);
+  _catSuggestTimer = setTimeout(fetchCategorySuggestion, 600);
+}
+
+async function fetchCategorySuggestion() {
+  const box = $("catSuggestBox");
+  if (!box) return;
+
+  // Only for brand-new knowledge entries — editing hides the content field
+  // anyway, and an existing entry already has a category.
+  const activeTab = document.querySelector(".type-tab.active");
+  if ($("saveBtn").dataset.mode !== "new" || (activeTab && activeTab.dataset.mode !== "knowledge")) {
+    box.classList.add("hidden");
+    return;
+  }
+  // Don't nag once category and tema are both already filled in
+  if ($("fieldCategory").value.trim() && $("fieldTopic").value.trim()) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  const title = $("fieldTitle").value.trim();
+  const content = $("fieldContent").value.trim();
+  if (!title && !content) { box.classList.add("hidden"); return; }
+
+  let data;
+  try {
+    const res = await fetch("/api/suggest-category", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content }),
+    });
+    if (!res.ok) { box.classList.add("hidden"); return; }
+    data = await res.json();
+  } catch {
+    box.classList.add("hidden");
+    return;
+  }
+
+  const suggestions = data.suggestions || [];
+  if (!suggestions.length) { box.classList.add("hidden"); return; }
+
+  box.innerHTML = '<span class="cat-suggest-label">💡 se parece a:</span>' + suggestions.map(s => `
+    <button type="button" class="cat-suggest-chip" data-cat="${escapeHtml(s.category)}" data-topic="${escapeHtml(s.topic)}">
+      ${escapeHtml(s.category)} › ${escapeHtml(s.topic)}
+      <span class="cat-suggest-why">— por "${escapeHtml(s.example_title)}"</span>
+    </button>`).join('');
+  box.querySelectorAll(".cat-suggest-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      $("fieldCategory").value = chip.dataset.cat;
+      $("fieldTopic").value = chip.dataset.topic;
+      box.classList.add("hidden");
+    });
+  });
+  box.classList.remove("hidden");
 }
 
 // ---- THEME ----
@@ -453,6 +519,7 @@ function renderTree(tree) {
     const catEl = document.createElement("div");
     catEl.className = "tree-category" + (treeState[cat].open ? " open" : "");
     catEl.dataset.cat = cat;
+    catEl.dataset.catLabel = catLabel;
 
     catEl.innerHTML = `
       <div class="tree-category-header">
@@ -476,6 +543,8 @@ function renderTree(tree) {
       if (!treeState[cat].topics[topic]) treeState[cat].topics[topic] = { open: true };
       const topicEl = document.createElement("div");
       topicEl.className = "tree-topic" + (treeState[cat].topics[topic].open ? " open" : "");
+      topicEl.dataset.topic = topic;
+      topicEl.dataset.topicLabel = topicLabel || topic;
       topicEl.innerHTML = `
         <div class="tree-topic-header">
           <span class="arrow">▶</span>
@@ -3522,25 +3591,48 @@ async function openStats() {
 }
 
 // ============================================================
-// FEATURE 7 — CATEGORY CONTEXT MENU (right-click export)
+// FEATURE 7 — CATEGORY/TEMA CONTEXT MENU (right-click: export, rename/merge)
 // ============================================================
 let _ctxCategory = null;
+let _ctxCategoryLabel = null;
+let _ctxTopic = null;
+let _ctxTopicLabel = null;
 
 function initContextMenu() {
   document.addEventListener("contextmenu", e => {
-    const header = e.target.closest(".tree-category-header");
-    if (!header) {
-      hideContextMenu();
+    const topicHeader = e.target.closest(".tree-topic-header");
+    const catHeader    = e.target.closest(".tree-category-header");
+
+    if (topicHeader) {
+      e.preventDefault();
+      const topicEl = topicHeader.closest(".tree-topic");
+      const catEl   = topicHeader.closest(".tree-category");
+      _ctxCategory      = catEl ? catEl.dataset.cat : null;
+      _ctxCategoryLabel = catEl ? catEl.dataset.catLabel : null;
+      _ctxTopic         = topicEl ? topicEl.dataset.topic : null;
+      _ctxTopicLabel    = topicEl ? topicEl.dataset.topicLabel : null;
+      if (!_ctxCategory || !_ctxTopic) return;
+      $("ctxExportMd").classList.add("hidden");
+      $("ctxExportPdf").classList.add("hidden");
+      _showContextMenu(e);
       return;
     }
-    e.preventDefault();
-    const catEl = header.closest(".tree-category");
-    _ctxCategory = catEl ? catEl.dataset.cat : null;
-    if (!_ctxCategory) return;
-    const menu = $("contextMenu");
-    menu.style.left = e.clientX + "px";
-    menu.style.top = e.clientY + "px";
-    menu.classList.remove("hidden");
+
+    if (catHeader) {
+      e.preventDefault();
+      const catEl = catHeader.closest(".tree-category");
+      _ctxCategory      = catEl ? catEl.dataset.cat : null;
+      _ctxCategoryLabel = catEl ? catEl.dataset.catLabel : null;
+      _ctxTopic = null;
+      _ctxTopicLabel = null;
+      if (!_ctxCategory) return;
+      $("ctxExportMd").classList.remove("hidden");
+      $("ctxExportPdf").classList.remove("hidden");
+      _showContextMenu(e);
+      return;
+    }
+
+    hideContextMenu();
   });
   document.addEventListener("click", () => hideContextMenu());
   $("ctxExportMd").addEventListener("click", () => {
@@ -3551,11 +3643,117 @@ function initContextMenu() {
     if (_ctxCategory) window.open(`/api/export/category/${encodeURIComponent(_ctxCategory)}/pdf`, "_blank");
     hideContextMenu();
   });
+  $("ctxReorg").addEventListener("click", () => {
+    if (_ctxTopic) {
+      openReorgModal({
+        scope: "topic",
+        category: _ctxCategory, categoryLabel: _ctxCategoryLabel,
+        topic: _ctxTopic, topicLabel: _ctxTopicLabel,
+      });
+    } else if (_ctxCategory) {
+      openReorgModal({
+        scope: "category",
+        category: _ctxCategory, categoryLabel: _ctxCategoryLabel,
+      });
+    }
+    hideContextMenu();
+  });
+}
+
+function _showContextMenu(e) {
+  const menu = $("contextMenu");
+  menu.style.left = e.clientX + "px";
+  menu.style.top = e.clientY + "px";
+  menu.classList.remove("hidden");
 }
 
 function hideContextMenu() {
   $("contextMenu").classList.add("hidden");
   _ctxCategory = null;
+  _ctxCategoryLabel = null;
+  _ctxTopic = null;
+  _ctxTopicLabel = null;
+}
+
+// ── Reorganizar categoría/tema modal ─────────────────────────────────────────
+let _reorgScope = null;
+let _reorgSource = null;
+
+function initReorgModal() {
+  const catInput   = $("reorgCategory");
+  const catDrop    = $("reorgCatDropdown");
+  const topicInput = $("reorgTopic");
+  const topicDrop  = $("reorgTopicDropdown");
+  if (catInput && catDrop && topicInput && topicDrop) {
+    _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop);
+  }
+  $("reorgModalClose")?.addEventListener("click", closeReorgModal);
+  $("reorgCancelBtn")?.addEventListener("click", closeReorgModal);
+  $("reorgModalOverlay")?.addEventListener("click", e => {
+    if (e.target === $("reorgModalOverlay")) closeReorgModal();
+  });
+  $("reorgApplyBtn")?.addEventListener("click", applyReorg);
+}
+
+function openReorgModal({ scope, category, categoryLabel, topic, topicLabel }) {
+  _reorgScope = scope;
+  _reorgSource = { category, categoryLabel, topic, topicLabel };
+
+  const topicGroup = $("reorgTopicGroup");
+  if (scope === "category") {
+    $("reorgModalTitle").textContent = "Renombrar / fusionar categoría";
+    $("reorgCurrent").textContent = `Actualmente: ${categoryLabel}`;
+    $("reorgCategory").value = categoryLabel;
+    $("reorgTopic").value = "";
+    topicGroup.classList.add("hidden");
+  } else {
+    $("reorgModalTitle").textContent = "Renombrar / fusionar tema";
+    $("reorgCurrent").textContent = `Actualmente: ${categoryLabel} › ${topicLabel}`;
+    $("reorgCategory").value = categoryLabel;
+    $("reorgTopic").value = topicLabel;
+    topicGroup.classList.remove("hidden");
+  }
+  $("reorgModalOverlay").classList.remove("hidden");
+  setTimeout(() => $("reorgCategory").focus(), 60);
+}
+
+function closeReorgModal() {
+  $("reorgModalOverlay").classList.add("hidden");
+  _reorgScope = null;
+  _reorgSource = null;
+}
+
+async function applyReorg() {
+  if (!_reorgScope || !_reorgSource) return;
+  const newCategoryLabel = $("reorgCategory").value.trim();
+  const newTopicLabel = _reorgScope === "topic" ? $("reorgTopic").value.trim() : "";
+  if (!newCategoryLabel || (_reorgScope === "topic" && !newTopicLabel)) {
+    showToast("Completa los campos requeridos", "error");
+    return;
+  }
+
+  const body = {
+    match_category: _reorgSource.category,
+    match_topic: _reorgScope === "topic" ? _reorgSource.topic : null,
+    new_category_label: newCategoryLabel,
+    new_topic_label: _reorgScope === "topic" ? newTopicLabel : null,
+  };
+
+  const res = await fetch("/api/reorganize-category", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    showToast("Error al reorganizar", "error");
+    return;
+  }
+  const data = await res.json();
+  closeReorgModal();
+  showToast(`${data.moved} entrada(s) reorganizadas`);
+  await loadTree();
+  Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
+  if (currentEntryId) loadEntry(currentEntryId, { force: true });
 }
 
 

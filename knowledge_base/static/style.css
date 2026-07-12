@@ -1493,6 +1493,18 @@ input, textarea, select { font-family: inherit; }
   flex-direction: column;
   box-shadow: var(--glass-shadow);
 }
+.modal.modal--sm { max-width: 420px; }
+.reorg-current {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+.reorg-hint {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
 .modal-header {
   display: flex;
   align-items: center;
@@ -1610,6 +1622,38 @@ input, textarea, select { font-family: inherit; }
 .ss-item:hover, .ss-item:focus { background: var(--bg-hover); color: var(--accent); }
 .ss-item[data-value^="+ "] { color: var(--text-muted); font-style: italic; }
 .ss-item[data-value^="+ "]:hover { color: var(--accent); background: var(--bg-hover); }
+
+.cat-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 12px;
+}
+.cat-suggest.hidden { display: none; }
+.cat-suggest-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.cat-suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.74rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cat-suggest-chip:hover { background: color-mix(in srgb, var(--accent) 20%, var(--bg)); }
+.cat-suggest-why {
+  color: var(--text-faint);
+  font-weight: 400;
+}
 
 .editor-tabs { display: flex; gap: 0; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
 .tab {

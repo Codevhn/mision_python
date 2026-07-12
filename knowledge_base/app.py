@@ -1216,6 +1216,144 @@ def get_categories():
     return jsonify(cats)
 
 
+@app.route("/api/reorganize-category", methods=["POST"])
+def reorganize_category():
+    """Bulk-reassign category/tema across every matching entry — the single
+    primitive behind the sidebar's 'renombrar/fusionar' tools. Renaming a
+    category, merging two categories, renaming a tema, or moving a tema to a
+    different category are all the same operation: reassign every entry
+    matching (category[, tema]) to a new category/tema label.
+    - match_topic omitted/empty → matches (and moves) the whole category,
+      each entry keeps its own current tema.
+    - new_topic_label omitted/empty → tema is left untouched per entry.
+    """
+    data = request.json or {}
+    match_category    = (data.get("match_category") or "").strip()
+    match_topic       = (data.get("match_topic") or "").strip() or None
+    new_category_label = (data.get("new_category_label") or "").strip()
+    new_topic_label    = (data.get("new_topic_label") or "").strip() or None
+
+    if not match_category or not new_category_label:
+        return jsonify({"error": "Faltan campos"}), 400
+
+    index = load_index()
+    new_category_slug = slugify(new_category_label)
+    moved = 0
+    vacated_folders = set()
+
+    for entry_id in list(index.keys()):
+        meta = index[entry_id]
+        if meta.get("type") in ("course", "teamspace", "page"):
+            continue
+        if meta.get("category") != match_category:
+            continue
+        if match_topic is not None and meta.get("topic") != match_topic:
+            continue
+
+        old_path = _entry_path(entry_id, meta)
+        topic_label = new_topic_label or meta.get("topic_label") or meta.get("topic", "")
+        new_topic_slug = slugify(topic_label)
+        new_folder = KNOWLEDGE_DIR / new_category_slug / new_topic_slug
+        new_folder.mkdir(parents=True, exist_ok=True)
+        new_path = new_folder / f"{entry_id}.md"
+
+        target_id = entry_id
+        if old_path.exists() and old_path != new_path:
+            if new_path.exists():
+                # Merging into a category/tema that already has an entry with
+                # this same slug — keep both, disambiguate the incoming one.
+                base = entry_id
+                n = 1
+                while f"{base}-{n}" in index or (new_folder / f"{base}-{n}.md").exists():
+                    n += 1
+                target_id = f"{base}-{n}"
+                new_path = new_folder / f"{target_id}.md"
+            old_path.rename(new_path)
+            vacated_folders.add(old_path.parent)
+
+        if target_id != entry_id:
+            index[target_id] = index.pop(entry_id)
+        m = index[target_id]
+        m["category"] = new_category_slug
+        m["category_label"] = new_category_label
+        m["topic"] = new_topic_slug
+        m["topic_label"] = topic_label
+        moved += 1
+
+    save_index(index)
+
+    # Best-effort cleanup: remove tema/categoría folders left empty by the move.
+    # rmdir refuses (and we just ignore it) if anything unexpected is still there.
+    for folder in vacated_folders:
+        try:
+            folder.rmdir()
+            folder.parent.rmdir()
+        except OSError:
+            pass
+
+    return jsonify({"moved": moved})
+
+
+_ES_STOPWORDS = {
+    "el", "la", "los", "las", "de", "del", "y", "en", "un", "una", "unos", "unas",
+    "que", "con", "para", "por", "es", "al", "lo", "se", "su", "sus", "o", "a",
+    "como", "este", "esta", "estos", "estas", "ese", "esa", "esos", "esas", "mas",
+    "más", "pero", "sin", "sobre", "entre", "hay", "ser", "son", "fue", "ya", "muy",
+    "the", "and", "for", "with", "from", "this", "that",
+}
+
+
+def _keywords(text, limit=None):
+    words = re.findall(r"[a-záéíóúñü0-9_+#.\-]+", (text or "").lower())
+    kw = [w for w in words if len(w) > 2 and w not in _ES_STOPWORDS]
+    return kw[:limit] if limit else kw
+
+
+@app.route("/api/suggest-category", methods=["POST"])
+def suggest_category():
+    """Suggest an existing category/topic for a new entry by keyword overlap
+    against other knowledge entries' titles and content — a lightweight
+    stand-in for semantic search that needs no embeddings/external calls."""
+    data = request.json or {}
+    title = data.get("title", "")
+    content = data.get("content", "")
+    exclude_id = data.get("exclude_id", "")
+
+    title_kw = set(_keywords(title))
+    content_kw = set(_keywords(content, limit=400))
+    if not title_kw and not content_kw:
+        return jsonify({"suggestions": []})
+
+    index = load_index()
+    best_by_group = {}
+    for entry_id, meta in index.items():
+        if entry_id == exclude_id or meta.get("type") in ("course", "teamspace", "page"):
+            continue
+        category = meta.get("category_label") or meta.get("category")
+        topic = meta.get("topic_label") or meta.get("topic")
+        if not category or not topic:
+            continue
+        path = _entry_path(entry_id, meta)
+        entry_title_kw = set(_keywords(meta.get("title", "")))
+        entry_body_kw = set(_keywords(path.read_text(), limit=600)) if path.exists() else set()
+        score = (
+            3 * len(title_kw & entry_title_kw)
+            + 2 * len(title_kw & entry_body_kw)
+            + 1 * len(content_kw & (entry_title_kw | entry_body_kw))
+        )
+        if score <= 0:
+            continue
+        key = (category, topic)
+        if key not in best_by_group or score > best_by_group[key]["score"]:
+            best_by_group[key] = {
+                "category": category, "topic": topic, "score": score,
+                "example_title": meta.get("title", ""), "example_id": entry_id,
+            }
+
+    suggestions = sorted(best_by_group.values(), key=lambda s: -s["score"])[:3]
+    return jsonify({"suggestions": suggestions})
+
+
 # ── FEATURE 2: Star toggle ──────────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/star", methods=["POST"])
 def toggle_star(entry_id):
