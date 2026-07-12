@@ -122,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHistory();
   initDuplicate();
   initMove();
+  initSaveKnowledge();
   initPin();
   initStatus();
   initReview();
@@ -231,6 +232,7 @@ function bindEvents() {
   $("morePin").addEventListener("click",       () => $("pinBtn").click());
   $("moreDup").addEventListener("click",       () => $("dupBtn").click());
   $("moreMove").addEventListener("click",      () => $("moveBtn").click());
+  $("moreSaveKnowledge")?.addEventListener("click", openSaveKnowledgePanel);
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("moreAI").addEventListener("click",        () => $("aiBtn").click());
   $("morePasteMd").addEventListener("click",   () => $("pasteMarkdownBtn").click());
@@ -1758,6 +1760,7 @@ async function loadEntry(id, opts = {}) {
 
   // Close floating panels on new entry load
   $("movePanel").classList.add("hidden");
+  $("saveKnowledgePanel")?.classList.add("hidden");
   closeHistoryPanel();
   closeTOC();
   window._closeCtxMenu?.();
@@ -1778,6 +1781,11 @@ async function loadEntry(id, opts = {}) {
   // "Mover" (category/topic move) only applies to knowledge entries
   const moveBtnEl = $("moveBtn");
   if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
+
+  // "Guardar en Conocimiento" only applies to course lessons
+  const isCourseLesson = m.type === "course";
+  $("cmSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
+  $("moreSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
 
   // Set inline title (before editor render, so a content-load failure can't leave it blank)
   const titleEl = $("inlineTitle");
@@ -2821,7 +2829,13 @@ function initSmartSelects() {
   const topicInput  = $("fieldTopic");
   const topicDrop   = $("topicDropdown");
   if (!catInput || !catDrop) return;
+  _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop);
+}
 
+// Shared by the "Nueva entrada" modal and any other place (e.g. "Guardar en
+// Conocimiento") that needs the same category/tema autocomplete + "+ Nueva:"
+// create-on-the-fly behavior, backed by the same _allCategories/_treeCache data.
+function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop) {
   _buildSmartSelect(catInput, catDrop,
     filter => {
       const f = filter.toLowerCase();
@@ -2835,8 +2849,8 @@ function initSmartSelects() {
     },
     val => {
       catInput.value = val.startsWith('+ Nueva: "') ? val.slice(10, -1) : val;
-      // Auto-populate topics for this category
-      _refreshTopicDropdown(val);
+      // Category changed — clear the topic pick so it isn't stale
+      topicInput.value = "";
     }
   );
 
@@ -2869,12 +2883,6 @@ function initSmartSelects() {
       topicInput.value = val.startsWith('+ Nuevo: "') ? val.slice(10, -1) : val;
     }
   );
-}
-
-function _refreshTopicDropdown(catLabel) {
-  // When category changes, clear topic and hint
-  const topicInput = $("fieldTopic");
-  if (topicInput) topicInput.value = "";
 }
 
 let _coursesTree = {};
@@ -3964,6 +3972,84 @@ async function applyMove() {
 }
 
 // ============================================================
+// NEW FEATURE: SAVE COURSE LESSON AS KNOWLEDGE ENTRY
+// ============================================================
+function initSaveKnowledge() {
+  const catInput   = $("skCategory");
+  const catDrop    = $("skCatDropdown");
+  const topicInput = $("skTopic");
+  const topicDrop  = $("skTopicDropdown");
+  if (catInput && catDrop && topicInput && topicDrop) {
+    _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop);
+  }
+  $("skCancelBtn")?.addEventListener("click", closeSaveKnowledgePanel);
+  $("skApplyBtn")?.addEventListener("click", applySaveKnowledge);
+}
+
+function openSaveKnowledgePanel() {
+  if (!currentEntryId || !currentEntryMeta || currentEntryMeta.type !== "course") return;
+  closeMovePanel();
+  $("skTitle").value = currentEntryMeta.title || "";
+  $("skCategory").value = "";
+  $("skTopic").value = "";
+  $("saveKnowledgePanel")?.classList.remove("hidden");
+  $("skTitle").focus();
+}
+
+function closeSaveKnowledgePanel() {
+  $("saveKnowledgePanel")?.classList.add("hidden");
+}
+
+async function applySaveKnowledge() {
+  if (!currentEntryId || !currentEntryMeta) return;
+  const title    = $("skTitle").value.trim();
+  const category = $("skCategory").value.trim();
+  const topic    = $("skTopic").value.trim();
+  if (!title || !category || !topic) {
+    showToast("Completa título, categoría y tema", "error");
+    return;
+  }
+
+  const md = _inlineEditor ? _inlineEditor.getMarkdown() : "";
+  const sourceUid = currentEntryMeta.uid;
+
+  const res = await fetch("/api/entry", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      entry_type: "knowledge",
+      title,
+      category,
+      topic,
+      raw_text: md,
+      already_markdown: true,
+      icon: currentEntryMeta.icon || "",
+    }),
+  });
+
+  if (!res.ok) {
+    showToast("Error al guardar en Conocimiento", "error");
+    return;
+  }
+  const data = await res.json();
+
+  // Link the new knowledge entry back to the lesson it came from — best-effort,
+  // the save itself already succeeded either way.
+  if (data.uid && sourceUid) {
+    fetch("/api/relations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from_uid: data.uid, to_uid: sourceUid, rel_type: "derived_from" }),
+    }).catch(() => {});
+  }
+
+  closeSaveKnowledgePanel();
+  showToast("★ Guardada en Conocimiento");
+  await loadTree();
+  Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
+}
+
+// ============================================================
 // NEW FEATURE: PIN ENTRIES
 // ============================================================
 function initPin() {
@@ -4297,6 +4383,7 @@ function buildBreadcrumb(meta) {
   $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click();      _closeCtxMenu(); });
   $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();          _closeCtxMenu(); });
   $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();         _closeCtxMenu(); });
+  $("cmSaveKnowledge")?.addEventListener("click", () => { openSaveKnowledgePanel();   _closeCtxMenu(); });
   $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
   $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
   $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });

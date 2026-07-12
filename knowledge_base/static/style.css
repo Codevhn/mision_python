@@ -2511,6 +2511,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   transition: border-color 0.15s;
 }
 .move-panel-row input:focus { border-color: var(--accent); }
+.move-panel-row .smart-select { flex: 1; }
 .move-panel-actions {
   display: flex;
   gap: 8px;

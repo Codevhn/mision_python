@@ -259,6 +259,7 @@
               <button class="ctx-more-item" id="cmHistory">Historial</button>
               <button class="ctx-more-item" id="cmDuplicate">Duplicar</button>
               <button class="ctx-more-item" id="cmMove">Mover</button>
+              <button class="ctx-more-item hidden" id="cmSaveKnowledge">★ Guardar en Conocimiento</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmAI">✦ Ask AI</button>
               <button class="ctx-more-item" id="cmPasteMd">↓ Pegar Markdown</button>
@@ -404,6 +405,7 @@
               <button class="btn-ghost" id="morePin">⊞ pin</button>
               <button class="btn-ghost" id="moreDup">⎘ dup</button>
               <button class="btn-ghost" id="moreMove">⇄ move</button>
+              <button class="btn-ghost hidden" id="moreSaveKnowledge">★ a conocimiento</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
               <button class="btn-ghost" id="moreAI">✦ AI</button>
               <button class="btn-ghost" id="morePasteMd">↓ md</button>
@@ -427,6 +429,32 @@
           <div class="move-panel-actions">
             <button class="btn-ghost" id="moveCancelBtn">cancel</button>
             <button class="btn-primary" id="moveApplyBtn">apply</button>
+          </div>
+        </div>
+
+        <!-- SAVE LESSON AS KNOWLEDGE PANEL -->
+        <div class="move-panel hidden" id="saveKnowledgePanel">
+          <div class="move-panel-row">
+            <span class="move-label">título:</span>
+            <input type="text" id="skTitle" />
+          </div>
+          <div class="move-panel-row">
+            <span class="move-label">cat:</span>
+            <div class="smart-select" id="skCatSmartSelect">
+              <input type="text" id="skCategory" placeholder="Escribe o elige una…" autocomplete="off" />
+              <div class="smart-select-dropdown hidden" id="skCatDropdown"></div>
+            </div>
+          </div>
+          <div class="move-panel-row">
+            <span class="move-label">tema:</span>
+            <div class="smart-select" id="skTopicSmartSelect">
+              <input type="text" id="skTopic" placeholder="Escribe o elige uno…" autocomplete="off" />
+              <div class="smart-select-dropdown hidden" id="skTopicDropdown"></div>
+            </div>
+          </div>
+          <div class="move-panel-actions">
+            <button class="btn-ghost" id="skCancelBtn">cancelar</button>
+            <button class="btn-primary" id="skApplyBtn">★ guardar en conocimiento</button>
           </div>
         </div>
         <div class="entry-body" id="entryBody"></div>

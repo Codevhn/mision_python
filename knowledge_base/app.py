@@ -891,8 +891,9 @@ def create_entry():
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"{entry_id}.md").write_text(md_content)
 
+    new_uid = uuid.uuid4().hex[:8]
     index[entry_id] = {
-        "uid": uuid.uuid4().hex[:8],
+        "uid": new_uid,
         "title": title,
         "category": slugify(category),
         "category_label": category,
@@ -906,7 +907,7 @@ def create_entry():
         "icon": icon,
     }
     save_index(index)
-    return jsonify({"id": entry_id, "message": "Saved"})
+    return jsonify({"id": entry_id, "uid": new_uid, "message": "Saved"})
 
 
 def _save_history_snapshot(entry_id, meta, old_path):
