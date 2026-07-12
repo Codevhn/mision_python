@@ -7312,3 +7312,299 @@ body {
   #pasteMarkdownOverlay .modal { width: 96vw; margin: 8px; }
   #pasteMarkdownInput { height: 200px; font-size: 0.85rem; }
 }
+
+/* ── Callout block ─────────────────────────────────────────────────────────── */
+.bn-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 0;
+  margin: 0;
+  min-height: 40px;
+  position: relative;
+  background: transparent;
+}
+
+/* Callout color classes — transparent; actual color lives on .bn-block wrapper */
+.bn-callout-yellow, .bn-callout-blue, .bn-callout-green, .bn-callout-red,
+.bn-callout-purple, .bn-callout-orange, .bn-callout-gray, .bn-callout-pink { background: transparent; }
+[data-theme="light"] .bn-callout-yellow, [data-theme="light"] .bn-callout-blue,
+[data-theme="light"] .bn-callout-green,  [data-theme="light"] .bn-callout-red,
+[data-theme="light"] .bn-callout-purple, [data-theme="light"] .bn-callout-orange,
+[data-theme="light"] .bn-callout-gray,   [data-theme="light"] .bn-callout-pink { background: transparent; }
+
+/* Unified callout background — ONE colored box wrapping header AND children */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) { position: relative; border-radius: 8px; }
+.bn-block:has(.bn-callout[data-callout-color="yellow"]) { background: rgba(250,204,21,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="blue"])   { background: rgba(59,130,246,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="green"])  { background: rgba(34,197,94,0.17);  }
+.bn-block:has(.bn-callout[data-callout-color="red"])    { background: rgba(239,68,68,0.17);  }
+.bn-block:has(.bn-callout[data-callout-color="purple"]) { background: rgba(168,85,247,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="orange"]) { background: rgba(249,115,22,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="gray"])   { background: rgba(107,114,128,0.17);}
+.bn-block:has(.bn-callout[data-callout-color="pink"])   { background: rgba(236,72,153,0.17); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="yellow"]) { background: rgba(254,243,199,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="blue"])   { background: rgba(219,234,254,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="green"])  { background: rgba(220,252,231,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="red"])    { background: rgba(254,226,226,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="purple"]) { background: rgba(243,232,255,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="orange"]) { background: rgba(255,237,213,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="gray"])   { background: rgba(243,244,246,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="pink"])   { background: rgba(252,231,243,0.95); }
+
+/* Emoji button — 30×30 rounded box, hover reveals background (Notion style) */
+.bn-callout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+  padding: 0;
+  margin-top: 3px;
+}
+.bn-callout-icon:hover { background: rgba(0,0,0,0.10); }
+[data-theme="dark"] .bn-callout-icon:hover { background: rgba(255,255,255,0.12); }
+
+.bn-callout-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.6;
+  padding-top: 5px;
+}
+
+/* ── Callout: children inside the unified colored box ───────────────────── */
+
+/* Children group — transparent background (inherits .bn-block color); no indent border */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group {
+  padding: 4px 14px 12px 52px;
+  margin-top: 0;
+  background: transparent;
+  border-left: none !important;
+  min-height: 8px;
+}
+/* Remove vertical indent line from deeper nesting inside the callout */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group .bn-block-group {
+  border-left: none !important;
+}
+
+/* Callout color-picker toolbar — top-right corner, fades in on callout hover */
+.callout-toolbar {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  background: var(--bg-elevated, #1c1c2e);
+  border: 1px solid var(--border, rgba(255,255,255,0.10));
+  border-radius: 6px;
+  padding: 3px 5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.bn-callout:hover .callout-toolbar,
+.callout-toolbar:hover { opacity: 1; pointer-events: auto; }
+[data-theme="light"] .callout-toolbar {
+  background: #fff;
+  border-color: rgba(0,0,0,0.10);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+}
+
+/* Color swatches — each has its own fill */
+.callout-color-swatch {
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+  padding: 0;
+}
+.callout-color-swatch:hover { transform: scale(1.2); }
+.callout-color-swatch.active { border-color: var(--text, #fff); }
+[data-theme="light"] .callout-color-swatch.active { border-color: #333; }
+.callout-color-swatch[data-color="yellow"] { background: #f5c518; }
+.callout-color-swatch[data-color="blue"]   { background: #3b82f6; }
+.callout-color-swatch[data-color="green"]  { background: #22c55e; }
+.callout-color-swatch[data-color="red"]    { background: #ef4444; }
+.callout-color-swatch[data-color="purple"] { background: #a855f7; }
+.callout-color-swatch[data-color="orange"] { background: #f97316; }
+.callout-color-swatch[data-color="gray"]   { background: #6b7280; }
+.callout-color-swatch[data-color="pink"]   { background: #ec4899; }
+
+/* Emoji picker popup */
+.bn-callout-emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 28px);
+  gap: 2px;
+  background: var(--bg-elevated, #1c1c2e);
+  border: 1px solid var(--border, rgba(255,255,255,0.10));
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  max-width: 260px;
+}
+[data-theme="light"] .bn-callout-emoji-picker {
+  background: #fff;
+  border-color: rgba(0,0,0,0.10);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+}
+.bn-emoji-btn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.15rem;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+.bn-emoji-btn:hover { background: rgba(255,255,255,0.12); }
+[data-theme="light"] .bn-emoji-btn:hover { background: rgba(0,0,0,0.07); }
+
+/* ── BlockNote Slash Menu — Notion-style (compact, clean) ───────────────── */
+
+/* ── Container ── */
+.bn-suggestion-menu {
+  background: var(--bg-elevated, #16162a) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3) !important;
+  padding: 4px 0 !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.bn-suggestion-menu::-webkit-scrollbar { width: 4px; }
+.bn-suggestion-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+/* ── Group separator label ── */
+.bn-suggestion-menu-label {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.3) !important;
+  padding: 14px 12px 4px !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  display: block !important;
+}
+/* First label needs less top padding */
+.bn-suggestion-menu > *:first-child.bn-suggestion-menu-label,
+.bn-suggestion-menu-label:first-child { padding-top: 6px !important; }
+
+/* ── Individual item row ── */
+.bn-suggestion-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 3px 6px !important;
+  margin: 1px 4px !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  transition: background 0.08s !important;
+  min-height: 34px !important;
+  max-height: 44px !important;
+}
+.bn-suggestion-menu-item:hover,
+.bn-suggestion-menu-item[aria-selected="true"] {
+  background: rgba(255,255,255,0.07) !important;
+}
+
+/* ── Icon cell — subtle dark tile ── */
+.bn-mt-suggestion-menu-item-section[data-position="left"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 5px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.6) !important;
+  flex-shrink: 0 !important;
+}
+.bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+
+/* ── Text body ── */
+.bn-mt-suggestion-menu-item-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+.bn-mt-suggestion-menu-item-title {
+  font-size: 13px !important;
+  font-weight: 450 !important;
+  color: rgba(255,255,255,0.88) !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+/* Subtitles hidden — clean like Notion */
+.bn-mt-suggestion-menu-item-subtitle { display: none !important; }
+
+/* Keyboard shortcuts hidden — / is enough */
+.bn-mt-suggestion-menu-item-section[data-position="right"] { display: none !important; }
+
+/* ── Small items (emoji picker) ── */
+.bn-suggestion-menu-item-small {
+  padding: 2px 4px !important;
+  min-height: unset !important;
+  max-height: unset !important;
+}
+
+/* ── Empty state ── */
+.bn-suggestion-menu-empty-item {
+  padding: 16px 12px !important;
+  text-align: center !important;
+  color: rgba(255,255,255,0.35) !important;
+  font-size: 12px !important;
+}
+
+/* ── Light theme ── */
+[data-theme="light"] .bn-suggestion-menu {
+  background: #fff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06) !important;
+}
+[data-theme="light"] .bn-suggestion-menu-label { color: rgba(0,0,0,0.32) !important; }
+[data-theme="light"] .bn-suggestion-menu-item:hover,
+[data-theme="light"] .bn-suggestion-menu-item[aria-selected="true"] {
+  background: rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: rgba(0,0,0,0.04) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+  color: rgba(0,0,0,0.48) !important;
+}
+[data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
+
