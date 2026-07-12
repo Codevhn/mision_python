@@ -7578,24 +7578,33 @@ function _initCodeExecution(blocks) {
     runBtn.className = 'code-exec-btn';
     runBtn.textContent = '▶ Ejecutar';
 
-    runBar.append(langTag, runBtn);
+    // Lives in the run bar (not inside the scrollable output below) so it stays
+    // reachable no matter how far the user has scrolled through long output.
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'code-exec-close';
+    closeBtn.title = 'Limpiar salida';
+    closeBtn.textContent = '✕';
 
-    // Output zone — hidden until executed
+    const actions = document.createElement('div');
+    actions.className = 'code-exec-actions';
+    actions.append(runBtn, closeBtn);
+
+    runBar.append(langTag, actions);
+
+    // Output zone — always visible (Jupyter/W3Schools-style result box) so the
+    // space it needs is never a mystery blank gap before it's ever been run.
     const outputZone = document.createElement('div');
-    outputZone.className = 'code-exec-output hidden';
+    outputZone.className = 'code-exec-output';
 
     const stdout = document.createElement('pre');
-    stdout.className = 'code-exec-stdout';
+    stdout.className = 'code-exec-stdout placeholder';
+    stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
     const stderr = document.createElement('pre');
     stderr.className = 'code-exec-stderr hidden';
     const meta = document.createElement('div');
     meta.className = 'code-exec-meta';
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'code-exec-close';
-    closeBtn.title = 'Cerrar salida';
-    closeBtn.textContent = '✕';
 
-    outputZone.append(stdout, stderr, meta, closeBtn);
+    outputZone.append(stdout, stderr, meta);
     panel.append(runBar, outputZone);
     entryView.appendChild(panel);
     panels.push(panel);
@@ -7613,7 +7622,7 @@ function _initCodeExecution(blocks) {
       }
 
       if (!currentCode || !currentCode.trim()) {
-        outputZone.classList.remove('hidden');
+        stdout.classList.remove('placeholder');
         stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
         meta.textContent = '';
         _positionCodePanels(panels);
@@ -7622,11 +7631,11 @@ function _initCodeExecution(blocks) {
 
       runBtn.disabled = true;
       runBtn.textContent = '⏳ Ejecutando…';
+      stdout.classList.remove('placeholder');
       stdout.textContent = '';
       stderr.classList.add('hidden');
       stderr.textContent = '';
       meta.textContent = '';
-      outputZone.classList.remove('hidden');
       _positionCodePanels(panels);
 
       fetch('/api/execute', {
@@ -7658,8 +7667,8 @@ function _initCodeExecution(blocks) {
     });
 
     closeBtn.addEventListener('click', () => {
-      outputZone.classList.add('hidden');
-      stdout.textContent = '';
+      stdout.classList.add('placeholder');
+      stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
       stderr.textContent = '';
       stderr.classList.add('hidden');
       meta.textContent = '';

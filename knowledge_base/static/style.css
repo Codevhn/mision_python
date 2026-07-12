@@ -7164,10 +7164,11 @@ body {
   /* The run bar + output panel below this block (.code-exec-inline, appended in
      app.js) is position:absolute so it can't push BlockNote's own blocks down —
      writing to this element's layout directly gets silently reverted by
-     ProseMirror's DOM reconciliation. Reserve worst-case space here instead:
-     8px gap + 32px run bar + up to 240px of (capped, scrollable) output +
-     16px breathing room before the next block. */
-  margin-bottom: 300px;
+     ProseMirror's DOM reconciliation. Reserve exact space here instead: 8px gap
+     + 32px run bar + 170px fixed-height result box + 20px breathing room before
+     the next block. The result box is always visible at that same height
+     (see .code-exec-output), so this is a precise fit, not a worst-case guess. */
+  margin-bottom: 230px;
 }
 [data-content-type="codeBlock"][data-language="python"]::after {
   content: "▶ bloque " counter(py-block);
@@ -7312,18 +7313,26 @@ body {
 .code-exec-btn:hover { background: color-mix(in srgb, #10b981 25%, transparent); }
 .code-exec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.code-exec-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .code-exec-output {
   background: #0d1117;
   border-left: 3px solid #10b981;
   position: relative;
-  /* Single scroll for stdout+stderr+meta together, so the panel's total height
-     (and the space reserved for it below the code block, see the codeBlock
-     rule above) stays within a known bound regardless of output length. */
-  max-height: 260px;
+  /* Always-visible, fixed-height result box (Jupyter/W3Schools style) instead of
+     something that pops in on run: a constant height means the space reserved
+     for it below the code block (see the codeBlock rule above) is never a
+     mystery blank gap, before or after execution — it's always a real, visible
+     box, just empty until you run the code. Single scroll for stdout+stderr+meta
+     together keeps that height true regardless of how much output comes back. */
+  height: 170px;
   overflow-y: auto;
 }
 [data-theme="light"] .code-exec-output { background: #f6f8fa; border-left-color: #0d9669; }
-.code-exec-output.hidden { display: none; }
 
 .code-exec-stdout {
   font-family: var(--font-mono);
@@ -7336,6 +7345,7 @@ body {
   margin: 0;
 }
 [data-theme="light"] .code-exec-stdout { color: #0d5d3e; }
+.code-exec-stdout.placeholder { color: var(--text-faint); font-style: italic; }
 
 .code-exec-stderr {
   font-family: var(--font-mono);
@@ -7362,18 +7372,15 @@ body {
 .code-exec-meta:empty { display: none; }
 
 .code-exec-close {
-  /* sticky (not absolute) so it stays reachable while .code-exec-output scrolls */
-  position: sticky;
-  float: right;
-  top: 5px;
-  right: 8px;
+  /* Lives in the run bar (.code-exec-actions), not inside the scrollable
+     output box, so it's always reachable regardless of scroll position. */
   background: none;
   border: none;
   color: #7d8590;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border-radius: 3px;
 }
 .code-exec-close:hover { background: rgba(248,113,113,0.15); color: #f87171; }
