@@ -7488,6 +7488,16 @@ body {
   border-left: none !important;
 }
 
+/* BlockNote's native nesting indicator (a ::before pseudo-element with its own
+   border-left, defined in editor.bundle.css) draws a vertical guide line for any
+   nested .bn-block-group — including a callout's own children, since they sit one
+   level below the document root's .bn-block-group. That line collides with our
+   ⋮⋮ drag-handle / (::) menu column inside callouts, so we suppress it there only. */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) .bn-block-group .bn-block-outer:before {
+  border-left: none !important;
+  content: none !important;
+}
+
 /* Callout color-picker toolbar — top-right corner, fades in on callout hover */
 .callout-toolbar {
   position: absolute;
