@@ -7475,13 +7475,31 @@ body {
 
 /* ── Callout: children inside the unified colored box ───────────────────── */
 
-/* Children group — transparent background (inherits .bn-block color); no indent border */
+/* Children group — transparent background (inherits .bn-block color); no indent border.
+   NOTE: the left indent is intentionally NOT padding on this shared container — see below. */
 .bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group {
-  padding: 4px 14px 12px 52px;
+  /* Cancel BlockNote's native margin-left:24px nesting indent (from
+     .bn-block-group .bn-block-group) — that margin is unowned dead space
+     that belongs to no specific child, see note below. */
+  margin-left: 0 !important;
+  padding: 4px 14px 12px 0;
   margin-top: 0;
   background: transparent;
   border-left: none !important;
   min-height: 8px;
+}
+/* The visual indent lives on EACH CHILD's own .bn-block-content instead of on the
+   shared .bn-block-group above. Reason: BlockNote's hover/side-menu hit-testing
+   (posAtCoords) maps a DOM point to whatever element is actually painted there.
+   Padding (or margin) on the SHARED block-group means hovering the gutter hits
+   that shared container directly — which has no single valid cursor position —
+   so BlockNote falls back to the parent callout, making the ⋮⋮ / (+) icons jump
+   to the callout header instead of the hovered row. Putting the entire indent on
+   each child's own (per-block) content div keeps every pixel of the gutter
+   mapped to that specific child, so hovering/dragging works exactly like outside
+   the callout. */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group > .bn-block-outer > .bn-block > .bn-block-content {
+  padding-left: 52px;
 }
 /* Remove vertical indent line from deeper nesting inside the callout */
 .bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group .bn-block-group {
