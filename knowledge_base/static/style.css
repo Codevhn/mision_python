@@ -7161,6 +7161,13 @@ body {
 [data-content-type="codeBlock"][data-language="python"] {
   counter-increment: py-block;
   position: relative;
+  /* The run bar + output panel below this block (.code-exec-inline, appended in
+     app.js) is position:absolute so it can't push BlockNote's own blocks down —
+     writing to this element's layout directly gets silently reverted by
+     ProseMirror's DOM reconciliation. Reserve worst-case space here instead:
+     8px gap + 32px run bar + up to 240px of (capped, scrollable) output +
+     16px breathing room before the next block. */
+  margin-bottom: 300px;
 }
 [data-content-type="codeBlock"][data-language="python"]::after {
   content: "▶ bloque " counter(py-block);
@@ -7309,6 +7316,11 @@ body {
   background: #0d1117;
   border-left: 3px solid #10b981;
   position: relative;
+  /* Single scroll for stdout+stderr+meta together, so the panel's total height
+     (and the space reserved for it below the code block, see the codeBlock
+     rule above) stays within a known bound regardless of output length. */
+  max-height: 260px;
+  overflow-y: auto;
 }
 [data-theme="light"] .code-exec-output { background: #f6f8fa; border-left-color: #0d9669; }
 .code-exec-output.hidden { display: none; }
@@ -7320,8 +7332,6 @@ body {
   padding: 10px 14px;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 300px;
-  overflow-y: auto;
   line-height: 1.6;
   margin: 0;
 }
@@ -7334,8 +7344,6 @@ body {
   padding: 8px 14px;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 200px;
-  overflow-y: auto;
   line-height: 1.6;
   margin: 0;
   border-top: 1px solid rgba(248,113,113,0.2);
@@ -7354,7 +7362,9 @@ body {
 .code-exec-meta:empty { display: none; }
 
 .code-exec-close {
-  position: absolute;
+  /* sticky (not absolute) so it stays reachable while .code-exec-output scrolls */
+  position: sticky;
+  float: right;
   top: 5px;
   right: 8px;
   background: none;
