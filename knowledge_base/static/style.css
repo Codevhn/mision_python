@@ -7726,3 +7726,148 @@ body {
   color: rgba(0,0,0,0.48) !important;
 }
 [data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRINT — clean, ink-friendly document output (Ctrl+P / browser print)
+   Strips all app chrome (nav, sidebar, editing-only UI) and forces a
+   light, high-contrast palette regardless of the active theme, so the
+   printed page reads like a document instead of a dark-mode screenshot.
+   ══════════════════════════════════════════════════════════════════════ */
+@media print {
+  /* Force readable ink-on-paper tokens regardless of dark/light toggle */
+  :root, [data-theme="dark"], [data-theme="light"] {
+    --bg: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-hover: #ffffff;
+    --bg-code: #f4f6f8;
+    --border: rgba(0,0,0,0.15);
+    --border-light: rgba(0,0,0,0.09);
+    --text: #1a1d21;
+    --text-muted: #4b5563;
+    --text-faint: #6b7280;
+    --fg: #1a1d21;
+    --fg-muted: #4b5563;
+    --accent: #0f72a8;
+    --accent-hover: #0f72a8;
+    --accent-light: rgba(15,114,168,0.08);
+    --accent-dim: rgba(15,114,168,0.18);
+    --h1-color: #111827;
+    --h2-color: #1f2937;
+    --h3-color: #374151;
+    --code-text: #075985;
+    --code-border: rgba(0,0,0,0.12);
+    --shadow: none; --shadow-sm: none; --shadow-md: none; --shadow-lg: none;
+    --shadow-xl: none; --shadow-glow: none; --shadow-purple: none;
+    --glass-blur: none; --glass-border: transparent; --glass-shadow: none;
+  }
+
+  * { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    background-image: none !important;
+    color: #1a1d21 !important;
+  }
+
+  /* ── Hide all app chrome — nav, toolbars, panels, editing-only UI ── */
+  .topbar, .sidebar, .sidebar-overlay, .activity-bar, .ctx-bar, .nav-back-bar,
+  .entry-actions, .prop-container, .move-panel, .relations-panel,
+  .entry-add-cover, .entry-cover-btns, .cv-hero-btns, .cv-tabs-row,
+  .cv-progress-bar-wrap, .welcome, .course-empty-state, .radar-view,
+  .graph-view, .kanban-area, .modal-overlay, .toast, .ai-panel,
+  .more-actions-dropdown, #moreActionsBtn, .autosave-indicator,
+  .scratchpad-trigger,
+  .bn-side-menu, .bn-formatting-toolbar, .bn-link-toolbar,
+  .bn-suggestion-menu, .bn-table-handle, .bn-table-handle-menu,
+  .bn-drag-handle-menu, .callout-toolbar, .bn-callout-emoji-picker,
+  .code-exec-runbar, .code-exec-output,
+  #_callout_ep {
+    display: none !important;
+  }
+  /* Catch-all for any other editing-only affordance inside the content
+     itself (run/copy/close buttons, language <select>) — the callout's
+     emoji is the one button we keep, as decorative content identity. */
+  #entryBody button:not(.bn-callout-icon),
+  #entryBody select {
+    display: none !important;
+  }
+  /* "▶ bloque N" Python-block counter badge — pure CSS ::after, editing aid only */
+  [data-content-type="codeBlock"][data-language="python"]::after {
+    display: none !important;
+  }
+  [data-content-type="codeBlock"] > pre { padding-top: 14px !important; }
+
+  .content-area {
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .entry-view {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ── Title block ── */
+  .inline-title-wrap { padding: 0; margin-bottom: 6px; }
+  .inline-title {
+    font-size: 25pt !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+  }
+  .entry-page-icon-btn { cursor: default !important; pointer-events: none; }
+  .entry-page-icon-btn:hover { background: transparent !important; }
+
+  /* ── Meta line: keep category · topic only, drop the powerline chrome
+     (date / word-count / read-time / status), matching the PDF export ── */
+  .entry-header {
+    padding: 0 0 12px;
+    margin-bottom: 22px;
+    border-bottom: 1.5px solid #e2e6ec;
+  }
+  .entry-meta {
+    height: auto;
+    gap: 0;
+    font-size: 8.5pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .meta-seg {
+    clip-path: none !important;
+    background: transparent !important;
+    color: #0f72a8 !important;
+    padding: 0;
+    margin-right: 0;
+  }
+  .meta-seg-cat::after { content: " \00b7 "; opacity: 0.5; }
+  .meta-seg:not(.meta-seg-cat):not(.meta-seg-topic),
+  .meta-seg-icon, .meta-entry-icon-glyph, iconify-icon {
+    display: none !important;
+  }
+
+  .entry-body { padding: 0 !important; }
+
+  /* Callout icon/toolbar affordances read as static, not clickable */
+  .bn-callout-icon { cursor: default !important; }
+  .bn-callout-icon:hover { background: transparent !important; }
+
+  /* ── Page-break hygiene ── */
+  .entry-body h1, .entry-body h2, .entry-body h3, .entry-body h4,
+  h1, h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  pre, table, blockquote, img,
+  .bn-block:has(> .bn-block-content[data-content-type="callout"]) {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  a { color: #0f72a8 !important; text-decoration: underline; }
+
+  @page {
+    margin: 2cm 1.8cm;
+  }
+}
