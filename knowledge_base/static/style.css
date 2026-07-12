@@ -7727,15 +7727,15 @@ body {
 }
 [data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
 
-/* Side-menu (⋮⋮ drag handle / + add-block) drop position bug — only seen on
-   headings on touchscreens (no hover), where the container height computed
-   for a short single-line block ends up taller than the block itself and
-   BlockNote's default centering (align-items: center) pushes the buttons
-   down into the next block's row. Desktop's mouse-hover-driven positioning
-   doesn't hit this, and already looked correct there, so this is scoped to
-   touch-primary devices only (hover: none) rather than applied globally. */
+/* Side-menu (⋮⋮ drag handle / + add-block) is a hover-driven control with no
+   real touch equivalent — on touchscreens it's positioned from the last tap
+   coordinate rather than a live cursor, which is inherently unreliable (see
+   git history for the specific misalignment bugs this caused). Notion's own
+   mobile app doesn't show these controls at all; block reordering/insertion
+   on touch goes through the block's own selection/formatting menu instead.
+   Matching that removes the whole class of position bugs at the source. */
 @media (hover: none) and (pointer: coarse) {
-  .bn-side-menu { align-items: flex-start !important; }
+  .bn-side-menu { display: none !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
