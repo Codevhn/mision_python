@@ -7727,6 +7727,18 @@ body {
 }
 [data-theme="light"] .bn-mt-suggestion-menu-item-title { color: rgba(0,0,0,0.85) !important; }
 
+/* Side-menu (⋮⋮ drag handle / + add-block) drop position bug — mostly seen
+   on headings, mostly on mobile/touch. BlockNote positions this menu with a
+   container whose height is taken from the tapped block's own measured
+   rect, then centers the buttons inside it (align-items: center). For a
+   short single-line block like a heading, that computed height can end up
+   taller than the heading itself — the container's top still lines up with
+   the heading correctly, but centering the buttons inside the oversized box
+   pushes them visually down into the next block's row. Top-aligning instead
+   anchors the buttons to the container's (correct) top edge regardless of
+   how the height was computed, which matches the hovered/tapped block again. */
+.bn-side-menu { align-items: flex-start !important; }
+
 /* ══════════════════════════════════════════════════════════════════════
    PRINT — clean, ink-friendly document output (Ctrl+P / browser print)
    Strips all app chrome (nav, sidebar, editing-only UI) and forces a
