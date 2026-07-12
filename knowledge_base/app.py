@@ -367,33 +367,55 @@ def _inject_toc(body_html):
     return toc_html, new_body
 
 
+_PDF_FONTS_DIR = Path(__file__).parent / "static" / "fonts"
+
+
+def _pdf_font_face(family, filename, weight=400, style="normal"):
+    uri = (_PDF_FONTS_DIR / filename).as_uri()
+    return f"""@font-face {{
+    font-family: "{family}";
+    src: url("{uri}") format("truetype");
+    font-weight: {weight};
+    font-style: {style};
+  }}"""
+
+
 def _build_pdf_html(title, date, body_html, meta=None):
     category  = (meta or {}).get("category_label") or (meta or {}).get("category", "")
     topic     = (meta or {}).get("topic_label")     or (meta or {}).get("topic", "")
-    status    = (meta or {}).get("status", "")
     meta_parts = [p for p in [category, topic] if p]
     meta_line  = " · ".join(meta_parts)
 
     toc_html, body_html = _inject_toc(body_html)
+
+    font_faces = "\n  ".join([
+        _pdf_font_face("Inter", "Inter-Regular.ttf", 400),
+        _pdf_font_face("Inter", "Inter-Medium.ttf", 500),
+        _pdf_font_face("Inter", "Inter-SemiBold.ttf", 600),
+        _pdf_font_face("Inter", "Inter-Bold.ttf", 700),
+        _pdf_font_face("JetBrains Mono", "JetBrainsMono-Regular.ttf", 400),
+        _pdf_font_face("JetBrains Mono", "JetBrainsMono-SemiBold.ttf", 600),
+    ])
 
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <style>
+  {font_faces}
   @page {{
-    margin: 2.2cm 2cm 2.6cm;
+    margin: 2.4cm 2.1cm 2.6cm;
     @bottom-right {{
       content: counter(page) " / " counter(pages);
-      font-family: "DejaVu Sans", sans-serif;
+      font-family: "Inter", sans-serif;
       font-size: 7.5pt;
-      color: #bbb;
+      color: #a9afb8;
     }}
     @bottom-left {{
       content: "{title}";
-      font-family: "DejaVu Sans", sans-serif;
+      font-family: "Inter", sans-serif;
       font-size: 7.5pt;
-      color: #bbb;
+      color: #a9afb8;
     }}
   }}
   @page :first {{
@@ -401,136 +423,119 @@ def _build_pdf_html(title, date, body_html, meta=None):
     @bottom-right {{ content: ""; }}
   }}
   body {{
-    font-family: "DejaVu Sans", sans-serif;
-    font-size: 10.5pt;
-    color: #1a1a1a;
-    line-height: 1.8;
+    font-family: "Inter", sans-serif;
+    font-weight: 400;
+    font-size: 10.8pt;
+    color: #23262b;
+    line-height: 1.7;
     margin: 0;
   }}
   /* ── Cover ── */
   .pdf-cover {{
-    border-bottom: 2px solid #1793d1;
-    padding-bottom: 20px;
-    margin-bottom: 24px;
+    border-bottom: 1.5px solid #e2e6ec;
+    padding-bottom: 22px;
+    margin-bottom: 30px;
   }}
   .pdf-cover-meta {{
-    font-size: 7.5pt;
+    font-size: 8.5pt;
+    font-weight: 600;
     color: #1793d1;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    margin-bottom: 8px;
-    font-family: "DejaVu Sans Mono", monospace;
+    letter-spacing: 0.09em;
+    margin-bottom: 10px;
   }}
   .pdf-cover-title {{
-    font-size: 22pt;
-    font-weight: bold;
-    color: #050505;
-    line-height: 1.15;
-    margin: 0 0 12px;
-  }}
-  .pdf-cover-date {{
-    font-size: 8pt;
-    color: #999;
-    font-family: "DejaVu Sans Mono", monospace;
-  }}
-  .pdf-status {{
-    display: inline-block;
-    font-size: 7pt;
+    font-size: 23pt;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    background: #1793d1;
-    color: #fff;
-    padding: 1px 7px;
-    border-radius: 2px;
-    margin-left: 8px;
-    vertical-align: middle;
+    color: #16181c;
+    line-height: 1.25;
+    margin: 0;
+    letter-spacing: -0.01em;
   }}
   /* ── TOC ── */
   .pdf-toc {{
-    background: #f5f9fd;
-    border: 1px solid #d8e8f4;
-    border-radius: 4px;
-    padding: 14px 18px 12px;
-    margin-bottom: 32px;
+    background: #f6f9fc;
+    border: 1px solid #e2e9f1;
+    border-radius: 6px;
+    padding: 16px 20px 14px;
+    margin-bottom: 34px;
     page-break-inside: avoid;
   }}
   .pdf-toc-label {{
-    font-size: 7.5pt;
-    font-weight: 700;
+    font-size: 8pt;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     color: #1793d1;
-    margin-bottom: 10px;
-    font-family: "DejaVu Sans Mono", monospace;
+    margin-bottom: 11px;
   }}
-  .toc-row {{ margin: 2px 0; font-size: 9pt; }}
-  .toc-row a {{ color: #1a1a1a; text-decoration: none; }}
-  .toc-row.toc-h2 {{ font-weight: 600; margin-top: 5px; }}
-  .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.5pt; color: #444; }}
-  .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8pt;   color: #777; }}
+  .toc-row {{ margin: 3px 0; font-size: 9.3pt; }}
+  .toc-row a {{ color: #23262b; text-decoration: none; }}
+  .toc-row.toc-h2 {{ font-weight: 600; margin-top: 6px; }}
+  .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.8pt; color: #565c66; font-weight: 400; }}
+  .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8.3pt; color: #838993; font-weight: 400; }}
   /* ── Headings ── */
-  h2 {{ font-size: 13pt; color: #050505; border-bottom: 1.5px solid #1793d1; padding-bottom: 4px; margin: 1.6em 0 0.5em; page-break-after: avoid; }}
-  h3 {{ font-size: 11pt; color: #1a1a1a; border-left: 3px solid #1793d1; padding-left: 8px; margin: 1.3em 0 0.4em; page-break-after: avoid; }}
-  h4 {{ font-size: 10pt; color: #333; font-weight: 700; margin: 1.1em 0 0.3em; page-break-after: avoid; }}
-  h5 {{ font-size: 9pt;  color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0.9em 0 0.2em; }}
+  h2 {{ font-size: 14.5pt; font-weight: 700; color: #16181c; border-bottom: 1px solid #e2e6ec; padding-bottom: 6px; margin: 1.8em 0 0.6em; page-break-after: avoid; letter-spacing: -0.01em; }}
+  h3 {{ font-size: 12pt; font-weight: 600; color: #16181c; margin: 1.5em 0 0.5em; page-break-after: avoid; }}
+  h4 {{ font-size: 10.8pt; color: #2b2f36; font-weight: 600; margin: 1.2em 0 0.4em; page-break-after: avoid; }}
+  h5 {{ font-size: 9.5pt;  color: #565c66; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 1em 0 0.3em; }}
   /* ── Body ── */
-  p  {{ margin: 0 0 0.75em; }}
-  strong {{ color: #050505; }}
-  em     {{ color: #2a2a2a; }}
+  p  {{ margin: 0 0 0.85em; }}
+  strong {{ color: #16181c; font-weight: 600; }}
+  em     {{ color: #2b2f36; }}
   a {{ color: #1793d1; text-decoration: none; }}
-  hr {{ border: none; border-top: 1px solid #dde; margin: 1.6em 0; }}
+  hr {{ border: none; border-top: 1px solid #e2e6ec; margin: 1.8em 0; }}
   /* ── Lists ── */
-  ul, ol {{ margin: 0.3em 0 0.9em 1.5em; padding: 0; }}
-  li {{ margin: 3px 0; line-height: 1.7; }}
-  li > ul, li > ol {{ margin-top: 2px; margin-bottom: 2px; }}
+  ul, ol {{ margin: 0.35em 0 1em 1.5em; padding: 0; }}
+  li {{ margin: 4px 0; line-height: 1.65; }}
+  li > ul, li > ol {{ margin-top: 3px; margin-bottom: 3px; }}
   /* ── Inline code ── */
   code {{
-    font-family: "DejaVu Sans Mono", monospace;
-    font-size: 0.8em;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.82em;
     background: #f0f2f5;
-    padding: 1px 5px;
-    border: 1px solid #dde;
+    padding: 1.5px 5px;
+    border: 1px solid #e2e6ec;
     border-radius: 3px;
   }}
   /* ── Code blocks ── */
   pre {{
-    font-family: "DejaVu Sans Mono", monospace;
-    font-size: 8pt;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8.3pt;
     background: #f7f8fa;
-    border: 1px solid #dde;
+    border: 1px solid #e2e6ec;
     border-left: 3px solid #1793d1;
-    padding: 10px 14px;
-    margin: 0.9em 0;
+    padding: 12px 15px;
+    margin: 1em 0;
     white-space: pre-wrap;
     word-break: break-all;
     overflow-wrap: break-word;
     page-break-inside: avoid;
-    line-height: 1.6;
-    border-radius: 0 4px 4px 0;
+    line-height: 1.55;
+    border-radius: 0 5px 5px 0;
   }}
   pre code {{ background: none; border: none; padding: 0; font-size: inherit; }}
   /* ── Blockquote ── */
   blockquote {{
     border-left: 3px solid #1793d1;
-    padding: 6px 14px;
-    color: #444;
+    padding: 7px 15px;
+    color: #2b2f36;
     background: #f3f8fc;
-    margin: 1em 0;
-    border-radius: 0 4px 4px 0;
+    margin: 1.1em 0;
+    border-radius: 0 5px 5px 0;
     font-style: italic;
   }}
   /* ── Tables ── */
-  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 9pt; page-break-inside: avoid; }}
-  th {{ background: #1793d1; color: #fff; padding: 6px 10px; text-align: left; font-size: 9pt; font-weight: 600; }}
-  td {{ padding: 5px 10px; border: 1px solid #dde; vertical-align: top; word-break: break-word; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1.1em 0; font-size: 9.2pt; page-break-inside: avoid; }}
+  th {{ background: #1793d1; color: #fff; padding: 7px 11px; text-align: left; font-size: 9pt; font-weight: 600; }}
+  td {{ padding: 6px 11px; border: 1px solid #e2e6ec; vertical-align: top; word-break: break-word; }}
   tr:nth-child(even) td {{ background: #f8fafb; }}
   /* ── Callout / alert boxes ── */
   .alert, .note {{
-    padding: 9px 14px;
-    margin: 1em 0;
-    border-radius: 0 4px 4px 0;
-    font-size: 9.5pt;
+    padding: 10px 15px;
+    margin: 1.1em 0;
+    border-radius: 0 5px 5px 0;
+    font-size: 9.8pt;
     page-break-inside: avoid;
   }}
   .alert-info,  .note {{ background: #eef6fc; border-left: 3px solid #1793d1; }}
@@ -544,8 +549,7 @@ def _build_pdf_html(title, date, body_html, meta=None):
 <body>
 <div class="pdf-cover">
   {"<div class='pdf-cover-meta'>" + meta_line + "</div>" if meta_line else ""}
-  <div class="pdf-cover-title">{title}{"<span class='pdf-status'>" + status + "</span>" if status else ""}</div>
-  <div class="pdf-cover-date">{date}</div>
+  <div class="pdf-cover-title">{title}</div>
 </div>
 {toc_html}
 {body_html}
