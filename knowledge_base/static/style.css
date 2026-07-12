@@ -7410,31 +7410,39 @@ body {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 0;
   margin: 0;
   min-height: 40px;
   position: relative;
+  background: transparent;
 }
 
-/* Color variants — dark theme: solid fill, no border accent (Notion style) */
-.bn-callout-yellow { background: rgba(250,204,21,0.20); }
-.bn-callout-blue   { background: rgba(59,130,246,0.20); }
-.bn-callout-green  { background: rgba(34,197,94,0.20);  }
-.bn-callout-red    { background: rgba(239,68,68,0.20);  }
-.bn-callout-purple { background: rgba(168,85,247,0.20); }
-.bn-callout-orange { background: rgba(249,115,22,0.20); }
-.bn-callout-gray   { background: rgba(107,114,128,0.20);}
-.bn-callout-pink   { background: rgba(236,72,153,0.20); }
+/* Callout color classes — transparent; actual color lives on .bn-block wrapper */
+.bn-callout-yellow, .bn-callout-blue, .bn-callout-green, .bn-callout-red,
+.bn-callout-purple, .bn-callout-orange, .bn-callout-gray, .bn-callout-pink { background: transparent; }
+[data-theme="light"] .bn-callout-yellow, [data-theme="light"] .bn-callout-blue,
+[data-theme="light"] .bn-callout-green,  [data-theme="light"] .bn-callout-red,
+[data-theme="light"] .bn-callout-purple, [data-theme="light"] .bn-callout-orange,
+[data-theme="light"] .bn-callout-gray,   [data-theme="light"] .bn-callout-pink { background: transparent; }
 
-/* Light theme — Notion-style light pastels */
-[data-theme="light"] .bn-callout-yellow { background: rgba(254,243,199,0.95); }
-[data-theme="light"] .bn-callout-blue   { background: rgba(219,234,254,0.95); }
-[data-theme="light"] .bn-callout-green  { background: rgba(220,252,231,0.95); }
-[data-theme="light"] .bn-callout-red    { background: rgba(254,226,226,0.95); }
-[data-theme="light"] .bn-callout-purple { background: rgba(243,232,255,0.95); }
-[data-theme="light"] .bn-callout-orange { background: rgba(255,237,213,0.95); }
-[data-theme="light"] .bn-callout-gray   { background: rgba(243,244,246,0.95); }
-[data-theme="light"] .bn-callout-pink   { background: rgba(252,231,243,0.95); }
+/* Unified callout background — ONE colored box wrapping header AND children */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) { position: relative; border-radius: 8px; }
+.bn-block:has(.bn-callout[data-callout-color="yellow"]) { background: rgba(250,204,21,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="blue"])   { background: rgba(59,130,246,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="green"])  { background: rgba(34,197,94,0.17);  }
+.bn-block:has(.bn-callout[data-callout-color="red"])    { background: rgba(239,68,68,0.17);  }
+.bn-block:has(.bn-callout[data-callout-color="purple"]) { background: rgba(168,85,247,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="orange"]) { background: rgba(249,115,22,0.17); }
+.bn-block:has(.bn-callout[data-callout-color="gray"])   { background: rgba(107,114,128,0.17);}
+.bn-block:has(.bn-callout[data-callout-color="pink"])   { background: rgba(236,72,153,0.17); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="yellow"]) { background: rgba(254,243,199,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="blue"])   { background: rgba(219,234,254,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="green"])  { background: rgba(220,252,231,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="red"])    { background: rgba(254,226,226,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="purple"]) { background: rgba(243,232,255,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="orange"]) { background: rgba(255,237,213,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="gray"])   { background: rgba(243,244,246,0.95); }
+[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="pink"])   { background: rgba(252,231,243,0.95); }
 
 /* Emoji button — 30×30 rounded box, hover reveals background (Notion style) */
 .bn-callout-icon {
@@ -7465,45 +7473,20 @@ body {
   padding-top: 5px;
 }
 
-/* ── Callout: children appear visually INSIDE the box ──────────────────────
-   BlockNote places .bn-block-group as a direct child of .bn-block alongside
-   .bn-block-content. We extend the callout's background/border to cover it.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Callout: children inside the unified colored box ───────────────────── */
 
-/* When a callout has child blocks, square the bottom of the callout header */
-.bn-block:has(> .bn-block-content[data-content-type="callout"]):has(> .bn-block-group)
-  > .bn-block-content[data-content-type="callout"] .bn-callout {
-  border-radius: 8px 8px 0 0;
-  padding-bottom: 6px;
-}
-
-/* Children group — fused below the callout header, same rounded box */
+/* Children group — transparent background (inherits .bn-block color); no indent border */
 .bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group {
-  padding: 6px 14px 12px 52px;
-  border-radius: 0 0 8px 8px;
+  padding: 4px 14px 12px 52px;
   margin-top: 0;
-  background: rgba(128,128,128,0.06); /* fallback; color rules below override */
+  background: transparent;
+  border-left: none !important;
   min-height: 8px;
 }
-
-/* Children group color — slightly lighter than the callout header */
-.bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(250,204,21,0.14); }
-.bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(59,130,246,0.14); }
-.bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(34,197,94,0.14);  }
-.bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(239,68,68,0.14);  }
-.bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(168,85,247,0.14); }
-.bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(249,115,22,0.14); }
-.bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(107,114,128,0.14);}
-.bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(236,72,153,0.14); }
-/* Light theme children fill */
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="yellow"]) > .bn-block-group { background: rgba(254,243,199,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="blue"])   > .bn-block-group { background: rgba(219,234,254,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="green"])  > .bn-block-group { background: rgba(220,252,231,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="red"])    > .bn-block-group { background: rgba(254,226,226,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="purple"]) > .bn-block-group { background: rgba(243,232,255,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="orange"]) > .bn-block-group { background: rgba(255,237,213,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="gray"])   > .bn-block-group { background: rgba(243,244,246,0.90); }
-[data-theme="light"] .bn-block:has(.bn-callout[data-callout-color="pink"])   > .bn-block-group { background: rgba(252,231,243,0.90); }
+/* Remove vertical indent line from deeper nesting inside the callout */
+.bn-block:has(> .bn-block-content[data-content-type="callout"]) > .bn-block-group .bn-block-group {
+  border-left: none !important;
+}
 
 /* Callout color-picker toolbar — top-right corner, fades in on callout hover */
 .callout-toolbar {
