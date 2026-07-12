@@ -7550,8 +7550,9 @@ function _positionCodePanels(panels) {
     const block = freshBlocks[i];
     if (!block) return;
     const blockRect = block.getBoundingClientRect();
-    // top relative to #entryView content origin (scroll-invariant: scroll cancels out)
-    panel.style.top = (blockRect.top - evRect.top + blockRect.height) + 'px';
+    // top relative to #entryView content origin (scroll-invariant: scroll cancels out).
+    // +8px gap so the run bar doesn't sit flush against the code block above it.
+    panel.style.top = (blockRect.top - evRect.top + blockRect.height + 8) + 'px';
   });
 }
 

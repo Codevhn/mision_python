@@ -1744,6 +1744,7 @@ input, textarea, select { font-family: inherit; }
   .entry-view { padding: 4px 4px 80px; max-width: 100%; }
   /* Entry body: 40px desktop padding → 12px on mobile (was squeezing text) */
   .entry-body { padding: 0 12px !important; }
+  .code-exec-inline { left: 12px; right: 12px; }
   .code-exec-runbar { padding: 0 12px; }
 
   /* ENTRY COVER — reduce height on mobile */
@@ -6628,6 +6629,7 @@ body.focus-mode .layout { height: 100dvh; }
   /* Entry body: fill available width without huge side margins */
   .entry-view { max-width: 100%; padding: 0 0 80px; }
   .entry-body { padding: 0 20px !important; }
+  .code-exec-inline { left: 20px; right: 20px; }
 
   /* Inline title: less horizontal padding */
   .inline-title-wrap { padding: 12px 20px 0 !important; }
@@ -7249,15 +7251,18 @@ body {
    ============================================================ */
 .code-exec-inline {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Match .entry-body's own horizontal padding (40px desktop) so the run
+     bar/output box lines up with the code block above it instead of
+     stretching to the wider .entry-view container it's actually appended to. */
+  left: 40px;
+  right: 40px;
   z-index: 5;
 }
 .code-exec-runbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
+  padding: 0 14px;
   height: 32px;
   background: var(--bg-code);
   border-bottom: 2px solid color-mix(in srgb, #10b981 30%, transparent);
