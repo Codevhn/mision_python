@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script>
+    // Touch-capability detection for CSS, run before any stylesheet paints.
+    // Not the same as @media (hover:none)/(pointer:coarse): tablets with an
+    // active stylus that supports hover (Samsung S-Pen, Apple Pencil) can
+    // report hover:hover/pointer:fine at the OS level even while the user is
+    // actually touching the screen with a finger, so that media query alone
+    // under-detects touch tablets. navigator.maxTouchPoints reflects the
+    // touch hardware itself, unaffected by any paired stylus's own capabilities.
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.documentElement.classList.add('is-touch-device');
+    }
+  </script>
   <title>Knowledge Base</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231793d1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-family='sans-serif' font-weight='700'>K</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />

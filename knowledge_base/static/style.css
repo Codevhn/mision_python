@@ -7733,10 +7733,19 @@ body {
    git history for the specific misalignment bugs this caused). Notion's own
    mobile app doesn't show these controls at all; block reordering/insertion
    on touch goes through the block's own selection/formatting menu instead.
-   Matching that removes the whole class of position bugs at the source. */
+   Matching that removes the whole class of position bugs at the source.
+
+   Two detection layers, since neither alone is reliable everywhere:
+   - (hover:none)/(pointer:coarse) covers phones cleanly.
+   - .is-touch-device (set via navigator.maxTouchPoints, see index.html)
+     covers tablets with a hover-capable stylus (Samsung S-Pen, Apple
+     Pencil), where the OS reports hover:hover/pointer:fine as available
+     even while the user is actually touching with a finger, so the media
+     query alone under-detects those devices. */
 @media (hover: none) and (pointer: coarse) {
   .bn-side-menu { display: none !important; }
 }
+html.is-touch-device .bn-side-menu { display: none !important; }
 
 /* ══════════════════════════════════════════════════════════════════════
    PRINT — clean, ink-friendly document output (Ctrl+P / browser print)
