@@ -5,3 +5,9 @@
 **/.claude
 fly.toml
 
+# local virtualenvs and git metadata — never needed in the build context
+venv/
+.venv/
+env/
+.git/
+
