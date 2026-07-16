@@ -46,19 +46,95 @@
   font-size: 0.85rem;
 }
 
-/* ---- List (landing grid) ---- */
-.mm-list-header {
-  padding: 28px 32px 18px;
+/* ---- Prompt-first landing header (the "wow" entry point) ---- */
+.mm-prompt-header {
+  padding: 48px 32px 24px;
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
 }
-.mm-list-header h2 {
-  margin: 0 0 6px;
-  font-size: 1.3rem;
+.mm-prompt-title {
+  margin: 0 0 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--text);
 }
+.mm-prompt-row {
+  display: flex;
+  gap: 8px;
+}
+.mm-prompt-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.92rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.mm-prompt-input:focus { border-color: var(--accent); }
+.mm-prompt-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  width: 44px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.mm-prompt-btn:hover { background: var(--accent-hover); }
 .mm-hint {
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.mm-hint a { color: var(--accent); text-decoration: none; }
+.mm-hint a:hover { text-decoration: underline; }
+
+/* ---- Generating (AI loading) state ---- */
+.mm-generating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 80px 32px;
+  text-align: center;
+}
+.mm-generating p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+}
+.mm-generating-sub {
+  color: var(--text-faint) !important;
+  font-size: 0.8rem !important;
+  font-style: italic;
+  max-width: 480px;
+}
+.mm-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ---- Existing-maps grid (below the prompt) ---- */
+.mm-grid-label {
+  padding: 0 32px;
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 .mm-grid {
   display: grid;

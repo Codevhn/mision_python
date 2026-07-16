@@ -3020,6 +3020,98 @@ def delete_mindmap_node(map_id, node_id):
     return jsonify(mindmap)
 
 
+_MINDMAP_SYSTEM_PROMPT = (
+    "Eres un generador de mapas mentales educativos. Dado un tema o pregunta, "
+    "devuelve SOLO un JSON (sin texto adicional, sin bloques de código markdown, "
+    "sin explicaciones) con esta forma EXACTA:\n"
+    '{"title": "...", "branches": [{"text": "...", "children": [{"text": "...", '
+    '"children": [{"text": "...", "children": []}]}]}]}\n\n'
+    "Reglas estrictas:\n"
+    "- 5 a 7 ramas principales, cada una cubriendo un aspecto distinto y relevante del tema.\n"
+    "- Cada rama principal con 2 a 4 subtemas.\n"
+    "- Cada subtema con 1 a 3 puntos concretos, específicos y accionables — NUNCA "
+    "placeholders genéricos como 'Detalle 1' o 'Aspecto 2'.\n"
+    "- Texto claro, específico y en español en todos los niveles.\n"
+    "- 'title' es el tema reformulado como título corto (máximo 8 palabras)."
+)
+
+
+def _build_mindmap_node_from_ai(node_dict, depth=0):
+    text = str((node_dict or {}).get("text", "")).strip() or "Sin título"
+    node = _new_mindmap_node(text)
+    if depth < 4:  # sane depth cap regardless of what the model actually returned
+        for child in (node_dict.get("children") or [])[:8]:
+            if isinstance(child, dict):
+                node["children"].append(_build_mindmap_node_from_ai(child, depth + 1))
+    return node
+
+
+@app.route("/api/mindmaps/generate", methods=["POST"])
+def generate_mindmap():
+    data = request.json or {}
+    prompt = (data.get("prompt") or "").strip()
+    if not prompt:
+        return jsonify({"error": "prompt es requerido"}), 400
+
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
+
+    try:
+        body = json.dumps({
+            "model": "deepseek-chat",
+            "max_tokens": 4000,
+            "messages": [
+                {"role": "system", "content": _MINDMAP_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.deepseek.com/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            result = json.loads(r.read())
+        content = result["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    # Defensive: strip stray markdown fences in case the model ignores response_format
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except Exception:
+        return jsonify({"error": "La IA no devolvió un JSON válido. Intenta de nuevo."}), 502
+
+    title = (parsed.get("title") or prompt).strip()[:120]
+    branches = parsed.get("branches") or []
+    if not isinstance(branches, list):
+        return jsonify({"error": "Respuesta de la IA con formato inesperado."}), 502
+
+    root = _new_mindmap_node(title, node_id="root")
+    for b in branches[:10]:
+        if isinstance(b, dict):
+            root["children"].append(_build_mindmap_node_from_ai(b))
+
+    mindmaps_data = load_mindmaps()
+    map_id = uuid.uuid4().hex[:8]
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    mindmap = {"id": map_id, "title": title, "created": now, "updated": now, "root": root}
+    mindmaps_data["maps"][map_id] = mindmap
+    save_mindmaps(mindmaps_data)
+    return jsonify(mindmap), 201
+
+
 # ── Radar Tech ────────────────────────────────────────────────────────────────
 
 _radar_cache = {"ts": 0, "items": []}

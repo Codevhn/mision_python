@@ -92,9 +92,9 @@
           <span class="ab-icon">📄</span>
           <span class="ab-label">Páginas</span>
         </button>
-        <button class="ab-item" id="abMindmaps" data-space="mindmaps" title="Mapas">
+        <button class="ab-item" id="abMindmaps" data-space="mindmaps" title="Mapas Mentales">
           <span class="ab-icon">✺</span>
-          <span class="ab-label">Mapas</span>
+          <span class="ab-label">Mapas Mentales</span>
         </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
           <span class="ab-icon">◎</span>
@@ -138,7 +138,7 @@
         <button class="msn-item" data-space="boards"><span class="msn-icon">⊞</span><span class="msn-label">Tableros</span></button>
         <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
         <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
-        <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas</span></button>
+        <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
       </nav>
@@ -185,8 +185,8 @@
       <!-- SPACE: MINDMAPS -->
       <div class="sidebar-space" id="spaceMindmaps" style="display:none">
         <div class="sidebar-space-header">
-          <span>Mapas</span>
-          <button class="ts-new-btn" id="newMindmapBtn" title="Nuevo mapa">+</button>
+          <span>Mapas Mentales</span>
+          <button class="ts-new-btn" id="newMindmapBtn" title="Nuevo mapa mental">+</button>
         </div>
         <nav class="tree" id="mindmapTree">
           <div class="tree-empty">No hay mapas aún.</div>
@@ -277,6 +277,7 @@
               <button class="ctx-more-item" id="cmDuplicate">Duplicar</button>
               <button class="ctx-more-item" id="cmMove">Mover</button>
               <button class="ctx-more-item hidden" id="cmSaveKnowledge">★ Guardar en Conocimiento</button>
+              <button class="ctx-more-item hidden" id="cmMindmap">✺ Generar mapa mental</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmAI">✦ Ask AI</button>
               <button class="ctx-more-item" id="cmPasteMd">↓ Pegar Markdown</button>
@@ -425,6 +426,7 @@
               <button class="btn-ghost" id="moreDup">⎘ dup</button>
               <button class="btn-ghost" id="moreMove">⇄ move</button>
               <button class="btn-ghost hidden" id="moreSaveKnowledge">★ a conocimiento</button>
+              <button class="btn-ghost hidden" id="moreMindmap">✺ mapa mental</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
               <button class="btn-ghost" id="moreAI">✦ AI</button>
               <button class="btn-ghost" id="morePasteMd">↓ md</button>

@@ -235,6 +235,7 @@ function bindEvents() {
   $("moreDup").addEventListener("click",       () => $("dupBtn").click());
   $("moreMove").addEventListener("click",      () => $("moveBtn").click());
   $("moreSaveKnowledge")?.addEventListener("click", openSaveKnowledgePanel);
+  $("moreMindmap")?.addEventListener("click", () => _generateMindmapForCurrentLesson());
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("moreAI").addEventListener("click",        () => $("aiBtn").click());
   $("morePasteMd").addEventListener("click",   () => $("pasteMarkdownBtn").click());
@@ -1902,10 +1903,12 @@ async function loadEntry(id, opts = {}) {
   const moveBtnEl = $("moveBtn");
   if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
 
-  // "Guardar en Conocimiento" only applies to course lessons
+  // "Guardar en Conocimiento" / "Generar mapa mental" only apply to course lessons
   const isCourseLesson = m.type === "course";
   $("cmSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
   $("moreSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
+  $("cmMindmap")?.classList.toggle("hidden", !isCourseLesson);
+  $("moreMindmap")?.classList.toggle("hidden", !isCourseLesson);
 
   // Set inline title (before editor render, so a content-load failure can't leave it blank)
   const titleEl = $("inlineTitle");
@@ -4298,6 +4301,18 @@ async function applySaveKnowledge() {
   Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
 }
 
+// "Generar mapa mental" on a course lesson — jumps to the Mapas Mentales
+// space and immediately triggers AI generation using the lesson's own
+// title as the prompt (stripped of a leading "0.2 " style numbering, which
+// reads awkwardly as a topic for the AI).
+function _generateMindmapForCurrentLesson() {
+  if (!currentEntryMeta || currentEntryMeta.type !== "course") return;
+  const topic = (currentEntryMeta.title || "").replace(/^\s*\d+(\.\d+)*\s+/, "").trim();
+  if (!topic) return;
+  document.querySelector('.ab-item[data-space="mindmaps"]')?.click();
+  if (window.MindmapApp) window.MindmapApp.generateFromPrompt(topic);
+}
+
 // ============================================================
 // NEW FEATURE: PIN ENTRIES
 // ============================================================
@@ -4633,6 +4648,7 @@ function buildBreadcrumb(meta) {
   $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();          _closeCtxMenu(); });
   $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();         _closeCtxMenu(); });
   $("cmSaveKnowledge")?.addEventListener("click", () => { openSaveKnowledgePanel();   _closeCtxMenu(); });
+  $("cmMindmap")?.addEventListener("click",   () => { _generateMindmapForCurrentLesson(); _closeCtxMenu(); });
   $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
   $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
   $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });
@@ -4675,7 +4691,7 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.querySelector('.ab-item[data-space="courses"]')?.click(); } },
     { id: 'act:starred',     label: 'Ver Favoritos',        icon: '☆', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="knowledge"]')?.click(); document.getElementById('wsStarred')?.click(); } },
-    { id: 'act:mindmaps',    label: 'Mapas',                icon: '✺', group: 'Navegar', shortcut: null,
+    { id: 'act:mindmaps',    label: 'Mapas Mentales',       icon: '✺', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="mindmaps"]')?.click(); } },
     // Herramientas (activas al tener una entrada abierta)
     { id: 'act:ask-ai',      label: 'Consultar IA',         icon: '✦', group: 'Herramientas', shortcut: null,

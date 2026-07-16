@@ -92,25 +92,32 @@
       </div>`).join('');
 
     _area.innerHTML = `
-      <div class="mm-list-header">
-        <h2>Mapas</h2>
-        <p class="mm-hint">Genera un mapa mental a partir de un tema, o crea uno vacío y arma el árbol a mano.</p>
-      </div>
-      <div class="mm-grid">
-        <div class="mm-card mm-card--new" id="mmNewCard">
-          <div class="mm-card-icon">+</div>
-          <div class="mm-card-title">Nuevo mapa</div>
+      <div class="mm-prompt-header">
+        <h1 class="mm-prompt-title">¿Sobre qué quieres el mapa mental?</h1>
+        <div class="mm-prompt-row">
+          <input type="text" class="mm-prompt-input" id="mmPromptInput"
+                 placeholder="Ej: Quiero saber cómo estudiar SQL desde cero…" autocomplete="off" />
+          <button class="mm-prompt-btn" id="mmPromptBtn" title="Generar">→</button>
         </div>
+        <p class="mm-hint">La IA arma el árbol completo — ramas y subramas — al instante. ¿Prefieres armarlo tú? <a href="#" id="mmBlankLink">crea uno vacío</a>.</p>
+      </div>
+      ${maps.length ? '<p class="mm-grid-label">Tus mapas</p>' : ''}
+      <div class="mm-grid" id="mmGrid">
         ${cards}
       </div>`;
 
-    document.getElementById('mmNewCard').addEventListener('click', promptCreate);
+    const input = document.getElementById('mmPromptInput');
+    const submit = () => generateFromPrompt(input.value);
+    document.getElementById('mmPromptBtn').addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    document.getElementById('mmBlankLink').addEventListener('click', e => { e.preventDefault(); promptCreateBlank(); });
     _area.querySelectorAll('.mm-card[data-id]').forEach(card => {
       card.addEventListener('click', () => showMap(card.dataset.id));
     });
+    input.focus();
   }
 
-  function promptCreate() {
+  function promptCreateBlank() {
     const title = window.prompt('¿Sobre qué quieres el mapa?');
     if (!title || !title.trim()) return;
     apiCreate(title.trim())
@@ -119,6 +126,37 @@
         showMap(map.id);
       })
       .catch(() => window.showToast && showToast('Error al crear el mapa', 'error'));
+  }
+
+  // ── AI generation — the primary "wow" entry point ───────────────────────
+  async function generateFromPrompt(rawPrompt) {
+    const prompt = (rawPrompt || '').trim();
+    if (!prompt) return;
+
+    _area = document.getElementById('mindmapArea');
+    if (!_area) return;
+    if (window.showMindmapArea) window.showMindmapArea();
+    _area.innerHTML = `
+      <div class="mm-generating">
+        <span class="mm-spinner"></span>
+        <p>Generando tu mapa mental…</p>
+        <p class="mm-generating-sub">"${_esc(prompt)}"</p>
+      </div>`;
+
+    try {
+      const res = await fetch('/api/mindmaps/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al generar');
+      _currentMap = data;
+      if (window._loadMindmapSidebar) window._loadMindmapSidebar();
+      render();
+    } catch (err) {
+      _area.innerHTML = `<div class="mm-loading">No se pudo generar el mapa: ${_esc(err.message)}</div>`;
+      window.showToast && showToast('Error al generar el mapa mental', 'error');
+    }
   }
 
   // ── Map view (open a specific map) ──────────────────────────────────────
@@ -254,5 +292,5 @@
     // "+ Nuevo mapa" entry points are enough to reach showList()/showMap().
   }
 
-  window.MindmapApp = { init, showList, showMap };
+  window.MindmapApp = { init, showList, showMap, generateFromPrompt };
 })();
