@@ -2772,6 +2772,36 @@ function showConfirm(title, msg) {
   });
 }
 
+// In-app replacement for window.prompt() — same visual language as showConfirm().
+// Resolves to the trimmed input value, or null if cancelled / left empty.
+function showPrompt(title, placeholder, defaultValue) {
+  return new Promise(resolve => {
+    $("promptTitle").textContent = title;
+    const input = $("promptInput");
+    input.placeholder = placeholder || "";
+    input.value = defaultValue || "";
+    $("promptOverlay").classList.remove("hidden");
+    setTimeout(() => input.focus(), 50);
+
+    const cleanup = (result) => {
+      $("promptOverlay").classList.add("hidden");
+      $("promptOk").removeEventListener("click", onOk);
+      $("promptCancel").removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKeydown);
+      resolve(result);
+    };
+    const onOk = () => cleanup(input.value.trim() || null);
+    const onCancel = () => cleanup(null);
+    const onKeydown = e => {
+      if (e.key === "Enter") onOk();
+      if (e.key === "Escape") onCancel();
+    };
+    $("promptOk").addEventListener("click", onOk);
+    $("promptCancel").addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKeydown);
+  });
+}
+
 // ---- EXPORT ----
 function exportEntry(format) {
   if (!currentEntryId) return;

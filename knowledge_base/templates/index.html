@@ -1028,6 +1028,24 @@
     </div>
   </div>
 
+  <!-- PROMPT DIALOG (generic text input, replaces window.prompt()) -->
+  <div class="modal-overlay hidden" id="promptOverlay">
+    <div class="modal" id="promptModal" style="max-width:380px">
+      <div class="modal-header">
+        <h2 id="promptTitle">Nombre</h2>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <input type="text" id="promptInput" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="promptCancel">cancelar</button>
+        <button class="btn-primary" id="promptOk">aceptar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div class="toast hidden" id="toast"></div>
 

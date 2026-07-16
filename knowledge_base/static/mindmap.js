@@ -117,15 +117,18 @@
     input.focus();
   }
 
-  function promptCreateBlank() {
-    const title = window.prompt('¿Sobre qué quieres el mapa?');
-    if (!title || !title.trim()) return;
-    apiCreate(title.trim())
-      .then(map => {
-        if (window._loadMindmapSidebar) window._loadMindmapSidebar();
-        showMap(map.id);
-      })
-      .catch(() => window.showToast && showToast('Error al crear el mapa', 'error'));
+  async function promptCreateBlank() {
+    const title = window.showPrompt
+      ? await window.showPrompt('Nuevo mapa mental', 'Ej: Entornos virtuales en Python')
+      : window.prompt('¿Sobre qué quieres el mapa?');
+    if (!title) return;
+    try {
+      const map = await apiCreate(title);
+      if (window._loadMindmapSidebar) window._loadMindmapSidebar();
+      showMap(map.id);
+    } catch {
+      window.showToast && showToast('Error al crear el mapa', 'error');
+    }
   }
 
   // ── AI generation — the primary "wow" entry point ───────────────────────
@@ -251,12 +254,17 @@
     return li;
   }
 
-  function onAddChild(parentId) {
-    const text = window.prompt('Texto del sub-tema:');
-    if (!text || !text.trim()) return;
-    apiAddNode(_currentMap.id, parentId, text.trim())
-      .then(map => { _currentMap = map; render(); })
-      .catch(() => window.showToast && showToast('Error al agregar', 'error'));
+  async function onAddChild(parentId) {
+    const text = window.showPrompt
+      ? await window.showPrompt('Agregar sub-tema', 'Escribe el texto…')
+      : window.prompt('Texto del sub-tema:');
+    if (!text) return;
+    try {
+      _currentMap = await apiAddNode(_currentMap.id, parentId, text);
+      render();
+    } catch {
+      window.showToast && showToast('Error al agregar', 'error');
+    }
   }
 
   function onDeleteNode(nodeId) {
@@ -276,15 +284,19 @@
       .catch(() => window.showToast && showToast('Error al renombrar', 'error'));
   }
 
-  function onDeleteMap() {
+  async function onDeleteMap() {
     if (!_currentMap) return;
-    if (!window.confirm(`¿Eliminar el mapa "${_currentMap.title}"? Esta acción no se puede deshacer.`)) return;
-    apiDelete(_currentMap.id)
-      .then(() => {
-        if (window._loadMindmapSidebar) window._loadMindmapSidebar();
-        showList();
-      })
-      .catch(() => window.showToast && showToast('Error al eliminar', 'error'));
+    const ok = window.showConfirm
+      ? await window.showConfirm('eliminar mapa', `¿Eliminar el mapa "${_currentMap.title}"? Esta acción no se puede deshacer.`)
+      : window.confirm(`¿Eliminar el mapa "${_currentMap.title}"? Esta acción no se puede deshacer.`);
+    if (!ok) return;
+    try {
+      await apiDelete(_currentMap.id);
+      if (window._loadMindmapSidebar) window._loadMindmapSidebar();
+      showList();
+    } catch {
+      window.showToast && showToast('Error al eliminar', 'error');
+    }
   }
 
   function init() {
