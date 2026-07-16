@@ -2841,6 +2841,185 @@ def kanban_delete_workspace(ws_id):
     return jsonify({"ok": True})
 
 
+# ── Mindmaps ──────────────────────────────────────────────────────────────────
+MINDMAPS_FILE = DATA_DIR / "mindmaps.json"
+
+
+def load_mindmaps():
+    if MINDMAPS_FILE.exists():
+        return json.loads(MINDMAPS_FILE.read_text())
+    return {"maps": {}}
+
+
+def save_mindmaps(data):
+    tmp = MINDMAPS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, MINDMAPS_FILE)
+
+
+def _count_mindmap_nodes(node):
+    if not node:
+        return 0
+    return 1 + sum(_count_mindmap_nodes(c) for c in node.get("children", []))
+
+
+def _new_mindmap_node(text, node_id=None):
+    return {"id": node_id or uuid.uuid4().hex[:8], "text": text, "children": []}
+
+
+def _find_mindmap_node(node, node_id):
+    """DFS lookup — small trees (dozens to low hundreds of nodes), so no index needed."""
+    if node.get("id") == node_id:
+        return node
+    for child in node.get("children", []):
+        found = _find_mindmap_node(child, node_id)
+        if found:
+            return found
+    return None
+
+
+def _remove_mindmap_node(node, node_id):
+    """Remove node_id from node's subtree in place. Returns True if removed."""
+    children = node.get("children", [])
+    for i, child in enumerate(children):
+        if child.get("id") == node_id:
+            children.pop(i)
+            return True
+        if _remove_mindmap_node(child, node_id):
+            return True
+    return False
+
+
+@app.route("/api/mindmaps", methods=["GET"])
+def list_mindmaps():
+    data = load_mindmaps()
+    maps = [
+        {
+            "id": m["id"],
+            "title": m["title"],
+            "created": m.get("created", ""),
+            "updated": m.get("updated", ""),
+            "node_count": _count_mindmap_nodes(m.get("root")),
+        }
+        for m in data["maps"].values()
+    ]
+    maps.sort(key=lambda m: m["updated"], reverse=True)
+    return jsonify(maps)
+
+
+@app.route("/api/mindmaps", methods=["POST"])
+def create_mindmap():
+    body = request.json or {}
+    title = (body.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "title es requerido"}), 400
+    data = load_mindmaps()
+    map_id = uuid.uuid4().hex[:8]
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    mindmap = {
+        "id": map_id,
+        "title": title,
+        "created": now,
+        "updated": now,
+        "root": _new_mindmap_node(title, node_id="root"),
+    }
+    data["maps"][map_id] = mindmap
+    save_mindmaps(data)
+    return jsonify(mindmap), 201
+
+
+@app.route("/api/mindmaps/<map_id>", methods=["GET"])
+def get_mindmap(map_id):
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(mindmap)
+
+
+@app.route("/api/mindmaps/<map_id>", methods=["PUT"])
+def update_mindmap(map_id):
+    """Whole-tree replace, same pattern as PUT /api/kanban/boards/<id>/columns —
+    the frontend edits its in-memory tree freely and saves it back wholesale."""
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    if "title" in body and body["title"].strip():
+        mindmap["title"] = body["title"].strip()
+    if "root" in body and body["root"]:
+        mindmap["root"] = body["root"]
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_mindmaps(data)
+    return jsonify(mindmap)
+
+
+@app.route("/api/mindmaps/<map_id>", methods=["DELETE"])
+def delete_mindmap(map_id):
+    data = load_mindmaps()
+    if map_id not in data["maps"]:
+        return jsonify({"error": "Not found"}), 404
+    del data["maps"][map_id]
+    save_mindmaps(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/mindmaps/<map_id>/nodes", methods=["POST"])
+def add_mindmap_node(map_id):
+    """Add a single child node under parent_id — a lighter-weight alternative to
+    PUT-ing the whole tree, used by the manual 'add child' UI in the list view."""
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    parent_id = body.get("parent_id") or "root"
+    text = (body.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "text es requerido"}), 400
+    parent = _find_mindmap_node(mindmap["root"], parent_id)
+    if not parent:
+        return jsonify({"error": "parent_id no encontrado"}), 404
+    node = _new_mindmap_node(text)
+    parent.setdefault("children", []).append(node)
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_mindmaps(data)
+    return jsonify(mindmap), 201
+
+
+@app.route("/api/mindmaps/<map_id>/nodes/<node_id>", methods=["PATCH"])
+def edit_mindmap_node(map_id, node_id):
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    node = _find_mindmap_node(mindmap["root"], node_id)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+    body = request.json or {}
+    if "text" in body and body["text"].strip():
+        node["text"] = body["text"].strip()
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_mindmaps(data)
+    return jsonify(mindmap)
+
+
+@app.route("/api/mindmaps/<map_id>/nodes/<node_id>", methods=["DELETE"])
+def delete_mindmap_node(map_id, node_id):
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    if node_id == "root":
+        return jsonify({"error": "No se puede eliminar el nodo raíz"}), 400
+    if not _remove_mindmap_node(mindmap["root"], node_id):
+        return jsonify({"error": "Node not found"}), 404
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_mindmaps(data)
+    return jsonify(mindmap)
+
+
 # ── Radar Tech ────────────────────────────────────────────────────────────────
 
 _radar_cache = {"ts": 0, "items": []}

@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCourseSuggestions();
   bindEvents();
   loadKanbanSidebar();
+  loadMindmapSidebar();
   applyTheme();
   initFocusMode();
   initStarFeature();
@@ -280,6 +281,11 @@ function bindEvents() {
     showKanbanArea();
     if (window.KanbanApp) window.KanbanApp.showBoards();
   });
+
+  // Mindmap sidebar button
+  $("newMindmapBtn")?.addEventListener("click", () => {
+    if (window.MindmapApp) window.MindmapApp.showList();
+  });
 }
 
 // ---- KANBAN ----
@@ -325,6 +331,51 @@ async function loadKanbanSidebar() {
 
 // Expose for kanban.js to call after mutations
 window._loadKanbanSidebar = loadKanbanSidebar;
+
+// ---- MINDMAPS ----
+function showMindmapArea() {
+  $("entryView").classList.add("hidden");
+  $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
+  $("welcome").classList.add("hidden");
+  _setHomeAmbient(false);
+  if ($("ctxBar")) $("ctxBar").classList.add("hidden");
+  $("mindmapArea").classList.remove("hidden");
+  closeTOC();
+}
+window.showMindmapArea = showMindmapArea;
+
+async function loadMindmapSidebar() {
+  const tree = $("mindmapTree");
+  if (!tree) return;
+  try {
+    const res = await fetch("/api/mindmaps");
+    if (!res.ok) return;
+    const maps = await res.json();
+    if (!maps.length) {
+      tree.innerHTML = '<div class="tree-empty">No hay mapas aún.</div>';
+      return;
+    }
+    tree.innerHTML = maps.map(m => `
+      <div class="mindmap-item" data-id="${m.id}">
+        <span class="mindmap-item-dot">✺</span>
+        <span>${escapeHtml(m.title)}</span>
+      </div>`).join('');
+    tree.querySelectorAll('.mindmap-item').forEach(el => {
+      el.addEventListener('click', () => {
+        tree.querySelectorAll('.mindmap-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        showMindmapArea();
+        if (window.MindmapApp) window.MindmapApp.showMap(el.dataset.id);
+        if (isMobile()) closeSidebarMobile();
+      });
+    });
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+// Expose for mindmap.js to call after mutations
+window._loadMindmapSidebar = loadMindmapSidebar;
 
 function autoExtractTitle() {
   if ($("fieldTitle").value.trim()) return;
@@ -4613,6 +4664,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { openNewModal(); } },
     { id: 'act:new-board',   label: 'Nuevo tablero Kanban', icon: '⊞', group: 'Crear', shortcut: null,
       run: () => { document.getElementById('newKanbanBoardBtn')?.click(); } },
+    { id: 'act:new-mindmap', label: 'Nuevo mapa mental',   icon: '✺', group: 'Crear', shortcut: null,
+      run: () => { document.getElementById('newMindmapBtn')?.click(); } },
     // Navegar
     { id: 'act:home',        label: 'Inicio',               icon: '⌂', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="home"]')?.click(); } },
@@ -4622,6 +4675,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.querySelector('.ab-item[data-space="courses"]')?.click(); } },
     { id: 'act:starred',     label: 'Ver Favoritos',        icon: '☆', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="knowledge"]')?.click(); document.getElementById('wsStarred')?.click(); } },
+    { id: 'act:mindmaps',    label: 'Mapas',                icon: '✺', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="mindmaps"]')?.click(); } },
     // Herramientas (activas al tener una entrada abierta)
     { id: 'act:ask-ai',      label: 'Consultar IA',         icon: '✦', group: 'Herramientas', shortcut: null,
       run: () => { document.getElementById('cmAI')?.click(); } },
@@ -4943,7 +4998,7 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'pages', 'graph', 'radar'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar'];
 
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
@@ -4976,6 +5031,7 @@ function setSidebarVisible(visible) {
     const courseView      = document.getElementById('courseView');
     const courseEmptySt   = document.getElementById('courseEmptyState');
     const kanbanArea      = document.getElementById('kanbanArea');
+    const mindmapArea     = document.getElementById('mindmapArea');
     const entryView       = document.getElementById('entryView');
     const entryCover      = document.getElementById('entryCover');
     const entryAddCover   = document.getElementById('entryAddCover');
@@ -4990,6 +5046,7 @@ function setSidebarVisible(visible) {
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
+    if (mindmapArea)    mindmapArea.classList.add('hidden');
     if (entryView)      entryView.classList.add('hidden');
     if (entryCover)     entryCover.classList.add('hidden');
     if (entryAddCover)  entryAddCover.classList.add('hidden');
@@ -6477,6 +6534,8 @@ function handleNewEntryTopbar() {
     if (overlay) overlay.classList.remove('hidden');
   } else if (space === 'boards') {
     if (window.KanbanApp && KanbanApp.showCreateBoard) KanbanApp.showCreateBoard();
+  } else if (space === 'mindmaps') {
+    if (window.MindmapApp) window.MindmapApp.showList();
   } else if (space === 'teamspace') {
     if (window.openNewTeamspaceModal) openNewTeamspaceModal();
   } else {

@@ -22,6 +22,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/kanban.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/mindmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
@@ -91,6 +92,10 @@
           <span class="ab-icon">📄</span>
           <span class="ab-label">Páginas</span>
         </button>
+        <button class="ab-item" id="abMindmaps" data-space="mindmaps" title="Mapas">
+          <span class="ab-icon">✺</span>
+          <span class="ab-label">Mapas</span>
+        </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
           <span class="ab-icon">◎</span>
           <span class="ab-label">Grafo</span>
@@ -133,6 +138,7 @@
         <button class="msn-item" data-space="boards"><span class="msn-icon">⊞</span><span class="msn-label">Tableros</span></button>
         <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
         <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
+        <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
       </nav>
@@ -173,6 +179,17 @@
         </div>
         <nav class="tree" id="kanbanTree">
           <div class="tree-empty">No hay tableros aún.</div>
+        </nav>
+      </div>
+
+      <!-- SPACE: MINDMAPS -->
+      <div class="sidebar-space" id="spaceMindmaps" style="display:none">
+        <div class="sidebar-space-header">
+          <span>Mapas</span>
+          <button class="ts-new-btn" id="newMindmapBtn" title="Nuevo mapa">+</button>
+        </div>
+        <nav class="tree" id="mindmapTree">
+          <div class="tree-empty">No hay mapas aún.</div>
         </nav>
       </div>
 
@@ -365,6 +382,8 @@
       <!-- ENTRY VIEW -->
       <!-- KANBAN VIEW -->
       <div class="kanban-area hidden" id="kanbanArea"></div>
+      <!-- MINDMAP VIEW -->
+      <div class="mindmap-area hidden" id="mindmapArea"></div>
 
       <!-- NAV BACK BAR (shared, visible when there's history) -->
       <div class="nav-back-bar hidden" id="navBackBar">
@@ -1124,6 +1143,7 @@
   <script src="/static/properties.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
+  <script src="/static/mindmap.js?v={{ v }}"></script>
 
   <!-- Export modal -->
   <div class="modal-overlay hidden" id="exportModalOverlay">

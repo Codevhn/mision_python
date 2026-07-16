@@ -1,0 +1,209 @@
+/* =============================================
+   MINDMAP — Fase 0 styles (list/CRUD view).
+   The Fase 2 SVG tidy-tree canvas gets its own rules later;
+   these cover the sidebar tree + the plain list/tree view.
+   Uses CSS vars from style.css
+   ============================================= */
+
+.mindmap-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+}
+.mindmap-area.hidden { display: none; }
+
+/* ---- Sidebar tree items ---- */
+#mindmapTree .mindmap-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 16px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+#mindmapTree .mindmap-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+#mindmapTree .mindmap-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+#mindmapTree .mindmap-item-dot {
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+/* ---- Loading state ---- */
+.mm-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---- List (landing grid) ---- */
+.mm-list-header {
+  padding: 28px 32px 18px;
+}
+.mm-list-header h2 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+.mm-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.mm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  padding: 0 32px 32px;
+}
+.mm-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.mm-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.mm-card--new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--text-muted);
+  min-height: 88px;
+}
+.mm-card--new .mm-card-icon {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+.mm-card-icon {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+.mm-card-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.mm-card-meta {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+/* ---- Map (open) view ---- */
+.mm-map-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 32px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.mm-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+}
+.mm-back-btn:hover { color: var(--accent); }
+.mm-map-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text);
+  outline: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.mm-map-title:focus { background: var(--bg-hover); }
+.mm-delete-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mm-delete-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+.mm-tree-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 32px 40px;
+}
+.mm-tree {
+  list-style: none;
+  margin: 0;
+  padding-left: 22px;
+  border-left: 1px solid var(--border-light);
+}
+.mm-tree-wrap > .mm-tree {
+  padding-left: 0;
+  border-left: none;
+}
+.mm-node { margin: 2px 0; }
+.mm-node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+.mm-node-row:hover { background: var(--bg-hover); }
+.mm-node-row:hover .mm-node-add,
+.mm-node-row:hover .mm-node-del { opacity: 1; }
+.mm-node-text {
+  font-size: 0.85rem;
+  color: var(--text);
+  outline: none;
+  border-radius: 3px;
+  padding: 1px 4px;
+  min-width: 20px;
+}
+.mm-node-text:focus { background: var(--bg-elevated); }
+.mm-node--root > .mm-node-row .mm-node-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.mm-node-add, .mm-node-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.mm-node-add:hover { color: var(--accent); background: var(--accent-light); }
+.mm-node-del:hover { color: #ef4444; background: color-mix(in srgb, #ef4444 12%, transparent); }
