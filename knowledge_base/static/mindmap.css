@@ -239,6 +239,7 @@
   height: 100%;
   cursor: grab;
   display: block;
+  user-select: none; /* dragging to pan shouldn't text-select node labels */
 }
 .mm-svg.mm-grabbing { cursor: grabbing; }
 
@@ -280,6 +281,7 @@
   min-width: 0;
   white-space: nowrap;
   overflow: visible;
+  user-select: text; /* editing/selecting a node's own label should still work */
 }
 .mm-node-text:focus { white-space: normal; }
 
@@ -341,7 +343,7 @@
 /* ---- "⋯" dropdown menu ---- */
 .mm-node-menu {
   z-index: 1000;
-  background: var(--bg-elevated);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
@@ -368,7 +370,7 @@
 /* ---- Notes popover ---- */
 .mm-notes-popover {
   z-index: 1000;
-  background: var(--bg-elevated);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
@@ -400,7 +402,7 @@
 /* ---- Color popover ---- */
 .mm-color-popover {
   z-index: 1000;
-  background: var(--bg-elevated);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;
@@ -437,7 +439,7 @@
 }
 .mm-link-popover {
   z-index: 1000;
-  background: var(--bg-elevated);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;

@@ -448,6 +448,7 @@
 
     _svgEl.addEventListener('mousedown', e => {
       if (e.target.closest('.mm-node-box')) return;
+      e.preventDefault(); // stop the drag from starting a native text-selection instead of a pan
       panning = true; moved = false; lastX = e.clientX; lastY = e.clientY;
       _svgEl.classList.add('mm-grabbing');
     }, { signal });
