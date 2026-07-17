@@ -21,7 +21,7 @@
   let _measureCtx = null;
 
   const BRANCH_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6'];
-  const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 76; // includes room for the two hover action buttons
+  const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 108; // room for the fold pill + the two hover action buttons
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
 
   function _esc(s) {
@@ -68,10 +68,10 @@
     if (!r.ok) throw new Error('add node failed');
     return r.json();
   }
-  async function apiEditNode(mapId, nodeId, text) {
+  async function apiPatchNode(mapId, nodeId, patch) {
     const r = await fetch(`/api/mindmaps/${mapId}/nodes/${nodeId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(patch),
     });
     if (!r.ok) throw new Error('edit node failed');
     return r.json();
@@ -79,6 +79,11 @@
   async function apiDeleteNode(mapId, nodeId) {
     const r = await fetch(`/api/mindmaps/${mapId}/nodes/${nodeId}`, { method: 'DELETE' });
     if (!r.ok) throw new Error('delete node failed');
+    return r.json();
+  }
+  async function apiDetachNode(mapId, nodeId) {
+    const r = await fetch(`/api/mindmaps/${mapId}/nodes/${nodeId}/detach`, { method: 'POST' });
+    if (!r.ok) throw new Error('detach node failed');
     return r.json();
   }
 
@@ -251,10 +256,10 @@
       node._depth = depth;
       node._h = isRoot ? ROOT_H : NODE_H;
       node._w = Math.max(NODE_MIN_W, Math.ceil(measureTextWidth(node.text, isRoot)) + NODE_PAD_X);
-      node._color = isRoot ? 'var(--accent)' : BRANCH_COLORS[branchIdx % BRANCH_COLORS.length];
+      node._color = node.color || (isRoot ? 'var(--accent)' : BRANCH_COLORS[branchIdx % BRANCH_COLORS.length]);
       colWidths[depth] = Math.max(colWidths[depth] || 0, node._w);
 
-      const kids = node.children || [];
+      const kids = node.collapsed ? [] : (node.children || []);
       if (!kids.length) {
         node._y = leafCursor * (NODE_H + ROW_GAP);
         leafCursor++;
@@ -267,6 +272,7 @@
 
     function assignX(node, depth, x) {
       node._x = x;
+      if (node.collapsed) return; // hidden subtree — colWidths[depth+1] may be unset this pass, leave stale
       const nextX = x + colWidths[depth] + COL_GAP;
       (node.children || []).forEach(child => assignX(child, depth + 1, nextX));
     }
@@ -276,6 +282,7 @@
   }
 
   function renderCanvas() {
+    _closeActivePopover();
     const linksG = document.getElementById('mmLinks');
     const nodesG = document.getElementById('mmNodes');
     linksG.innerHTML = '';
@@ -283,7 +290,10 @@
     computeLayout(_currentMap.root);
 
     const flat = [];
-    (function collect(node, parent) { flat.push({ node, parent }); (node.children || []).forEach(c => collect(c, node)); })(_currentMap.root, null);
+    (function collect(node, parent) {
+      flat.push({ node, parent });
+      if (!node.collapsed) (node.children || []).forEach(c => collect(c, node));
+    })(_currentMap.root, null);
 
     // Links first (so nodes render on top)
     for (const { node, parent } of flat) {
@@ -326,7 +336,7 @@
     text.addEventListener('blur', () => {
       const val = text.textContent.trim();
       if (!val || val === node.text) { text.textContent = node.text; return; }
-      apiEditNode(_currentMap.id, node.id, val)
+      apiPatchNode(_currentMap.id, node.id, { text: val })
         .then(map => { _currentMap = map; renderCanvas(); })
         .catch(() => window.showToast && showToast('Error al editar', 'error'));
     });
@@ -334,6 +344,24 @@
       if (e.key === 'Enter') { e.preventDefault(); text.blur(); }
     });
     box.appendChild(text);
+
+    if (node.notes) {
+      const dot = document.createElement('span');
+      dot.className = 'mm-node-notes-dot';
+      dot.title = 'Tiene una nota';
+      box.appendChild(dot);
+    }
+
+    const hasChildren = (node.children || []).length > 0;
+    if (hasChildren && !isRoot) {
+      const fold = document.createElement('button');
+      fold.className = 'mm-node-fold';
+      fold.title = node.collapsed ? 'Expandir rama' : 'Colapsar rama';
+      fold.textContent = node.collapsed ? `▸ ${node.children.length}` : '▾';
+      fold.addEventListener('mousedown', e => e.stopPropagation());
+      fold.addEventListener('click', () => toggleCollapse(node));
+      box.appendChild(fold);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'mm-node-actions';
@@ -344,19 +372,24 @@
     addBtn.addEventListener('mousedown', e => e.stopPropagation());
     addBtn.addEventListener('click', () => onAddChild(node.id));
     actions.appendChild(addBtn);
-    if (!isRoot) {
-      const delBtn = document.createElement('button');
-      delBtn.className = 'mm-node-del';
-      delBtn.title = 'Eliminar';
-      delBtn.textContent = '×';
-      delBtn.addEventListener('mousedown', e => e.stopPropagation());
-      delBtn.addEventListener('click', () => onDeleteNode(node.id, (node.children || []).length));
-      actions.appendChild(delBtn);
-    }
+
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'mm-node-more';
+    moreBtn.title = 'Más acciones';
+    moreBtn.textContent = '⋯';
+    moreBtn.addEventListener('mousedown', e => e.stopPropagation());
+    moreBtn.addEventListener('click', e => { e.stopPropagation(); openNodeMenu(node, moreBtn, isRoot); });
+    actions.appendChild(moreBtn);
     box.appendChild(actions);
 
     fo.appendChild(box);
     return fo;
+  }
+
+  function toggleCollapse(node) {
+    apiPatchNode(_currentMap.id, node.id, { collapsed: !node.collapsed })
+      .then(map => { _currentMap = map; renderCanvas(); fitToScreen(); })
+      .catch(() => window.showToast && showToast('Error al colapsar', 'error'));
   }
 
   // ── Pan (drag background) + zoom (wheel / buttons) — vector, never blurs ──
@@ -375,7 +408,10 @@
   function fitToScreen() {
     if (!_currentMap || !_svgEl) return;
     const flat = [];
-    (function collect(node) { flat.push(node); (node.children || []).forEach(collect); })(_currentMap.root);
+    (function collect(node) {
+      flat.push(node);
+      if (!node.collapsed) (node.children || []).forEach(collect);
+    })(_currentMap.root);
     if (!flat.length) return;
     const minX = Math.min(...flat.map(n => n._x));
     const maxX = Math.max(...flat.map(n => n._x + n._w));
@@ -456,6 +492,154 @@
     apiDeleteNode(_currentMap.id, nodeId)
       .then(map => { _currentMap = map; renderCanvas(); fitToScreen(); })
       .catch(() => window.showToast && showToast('Error al eliminar', 'error'));
+  }
+
+  // ── Per-node "⋯" menu + notes/color popovers (Fase 3, ideamap-style toolbar) ─
+  let _activePopover = null;
+  let _popoverAbort = null;
+
+  function _closeActivePopover() {
+    if (_popoverAbort) { _popoverAbort.abort(); _popoverAbort = null; }
+    if (_activePopover) { _activePopover.remove(); _activePopover = null; }
+  }
+
+  function _openPopover(el, anchorEl, opts) {
+    _closeActivePopover();
+    document.body.appendChild(el);
+    const rect = anchorEl.getBoundingClientRect();
+    el.style.position = 'fixed';
+    el.style.top = `${rect.bottom + 6}px`;
+    let left = (opts && opts.alignRight) ? rect.right - el.offsetWidth : rect.left;
+    // Keep on-screen
+    requestAnimationFrame(() => {
+      const w = el.offsetWidth, vw = window.innerWidth;
+      if (left + w > vw - 8) left = vw - w - 8;
+      if (left < 8) left = 8;
+      el.style.left = `${left}px`;
+    });
+    el.style.left = `${left}px`;
+    _activePopover = el;
+    _popoverAbort = new AbortController();
+    const { signal } = _popoverAbort;
+    setTimeout(() => {
+      document.addEventListener('mousedown', e => {
+        if (!el.contains(e.target)) _closeActivePopover();
+      }, { signal });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') _closeActivePopover();
+      }, { signal });
+    }, 0);
+  }
+
+  function openNodeMenu(node, anchorEl, isRoot) {
+    const menu = document.createElement('div');
+    menu.className = 'mm-node-menu';
+
+    const item = (label, fn, danger) => {
+      const b = document.createElement('button');
+      b.className = 'mm-menu-item' + (danger ? ' mm-menu-item--danger' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => { _closeActivePopover(); fn(); });
+      menu.appendChild(b);
+    };
+
+    item('Editar texto', () => {
+      const fo = document.querySelector(`[data-id="${node.id}"] .mm-node-text`);
+      if (fo) { fo.focus(); document.execCommand('selectAll', false, null); }
+    });
+    item(node.notes ? 'Ver / editar nota' : 'Agregar nota', () => openNotesPopover(node, anchorEl));
+    item('Color', () => openColorPopover(node, anchorEl));
+    if ((node.children || []).length && !isRoot) {
+      item(node.collapsed ? 'Expandir rama' : 'Colapsar rama', () => toggleCollapse(node));
+    }
+    item('Copiar texto', () => copyNodeSubtree(node));
+    if (!isRoot) {
+      item('Desprender en nuevo mapa', () => onDetachNode(node));
+      item('Eliminar', () => onDeleteNode(node.id, (node.children || []).length), true);
+    }
+
+    _openPopover(menu, anchorEl, { alignRight: true });
+  }
+
+  function openNotesPopover(node, anchorEl) {
+    const pop = document.createElement('div');
+    pop.className = 'mm-notes-popover';
+    pop.innerHTML = `
+      <textarea class="mm-notes-textarea" placeholder="Escribe una nota para este nodo…"></textarea>
+      <div class="mm-popover-footer">
+        <button class="btn-ghost mm-notes-cancel">cancelar</button>
+        <button class="btn-primary mm-notes-save">guardar</button>
+      </div>`;
+    const textarea = pop.querySelector('.mm-notes-textarea');
+    textarea.value = node.notes || '';
+    pop.querySelector('.mm-notes-cancel').addEventListener('click', () => _closeActivePopover());
+    pop.querySelector('.mm-notes-save').addEventListener('click', () => {
+      const val = textarea.value.trim();
+      apiPatchNode(_currentMap.id, node.id, { notes: val })
+        .then(map => { _currentMap = map; renderCanvas(); })
+        .catch(() => window.showToast && showToast('Error al guardar la nota', 'error'));
+      _closeActivePopover();
+    });
+    _openPopover(pop, anchorEl, { alignRight: true });
+    setTimeout(() => textarea.focus(), 50);
+  }
+
+  function openColorPopover(node, anchorEl) {
+    const pop = document.createElement('div');
+    pop.className = 'mm-color-popover';
+    const autoBtn = document.createElement('button');
+    autoBtn.className = 'mm-color-swatch mm-color-swatch--auto';
+    autoBtn.title = 'Automático (por rama)';
+    autoBtn.textContent = 'auto';
+    autoBtn.addEventListener('click', () => {
+      apiPatchNode(_currentMap.id, node.id, { color: null })
+        .then(map => { _currentMap = map; renderCanvas(); })
+        .catch(() => window.showToast && showToast('Error al aplicar color', 'error'));
+      _closeActivePopover();
+    });
+    pop.appendChild(autoBtn);
+    BRANCH_COLORS.forEach(color => {
+      const b = document.createElement('button');
+      b.className = 'mm-color-swatch';
+      b.style.background = color;
+      b.addEventListener('click', () => {
+        apiPatchNode(_currentMap.id, node.id, { color })
+          .then(map => { _currentMap = map; renderCanvas(); })
+          .catch(() => window.showToast && showToast('Error al aplicar color', 'error'));
+        _closeActivePopover();
+      });
+      pop.appendChild(b);
+    });
+    _openPopover(pop, anchorEl, { alignRight: true });
+  }
+
+  function copyNodeSubtree(node) {
+    const lines = [];
+    (function walk(n, depth) {
+      lines.push('  '.repeat(depth) + '- ' + n.text);
+      (n.children || []).forEach(c => walk(c, depth + 1));
+    })(node, 0);
+    const text = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => window.showToast && showToast('Copiado al portapapeles', 'success'))
+        .catch(() => window.showToast && showToast('No se pudo copiar', 'error'));
+    }
+  }
+
+  async function onDetachNode(node) {
+    const ok = window.showConfirm
+      ? await window.showConfirm('desprender rama', `¿Desprender "${node.text}" en un mapa nuevo e independiente?`)
+      : window.confirm(`¿Desprender "${node.text}" en un mapa nuevo?`);
+    if (!ok) return;
+    try {
+      const { new_map } = await apiDetachNode(_currentMap.id, node.id);
+      if (window._loadMindmapSidebar) window._loadMindmapSidebar();
+      window.showToast && showToast(`Mapa "${new_map.title}" creado`, 'success');
+      showMap(new_map.id);
+    } catch {
+      window.showToast && showToast('Error al desprender', 'error');
+    }
   }
 
   function onRenameMap(e) {

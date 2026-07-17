@@ -2864,7 +2864,14 @@ def _count_mindmap_nodes(node):
 
 
 def _new_mindmap_node(text, node_id=None):
-    return {"id": node_id or uuid.uuid4().hex[:8], "text": text, "children": []}
+    return {
+        "id": node_id or uuid.uuid4().hex[:8],
+        "text": text,
+        "children": [],
+        "notes": "",
+        "color": None,
+        "collapsed": False,
+    }
 
 
 def _find_mindmap_node(node, node_id):
@@ -3000,9 +3007,41 @@ def edit_mindmap_node(map_id, node_id):
     body = request.json or {}
     if "text" in body and body["text"].strip():
         node["text"] = body["text"].strip()
+    if "notes" in body:
+        node["notes"] = (body["notes"] or "").strip()
+    if "color" in body:
+        node["color"] = body["color"] or None
+    if "collapsed" in body:
+        node["collapsed"] = bool(body["collapsed"])
     mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
     save_mindmaps(data)
     return jsonify(mindmap)
+
+
+@app.route("/api/mindmaps/<map_id>/nodes/<node_id>/detach", methods=["POST"])
+def detach_mindmap_node(map_id, node_id):
+    """Move a branch out into its own standalone mind map — ideamap's 'detach'."""
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    if node_id == "root":
+        return jsonify({"error": "No se puede desprender el nodo raíz"}), 400
+    node = _find_mindmap_node(mindmap["root"], node_id)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+    if not _remove_mindmap_node(mindmap["root"], node_id):
+        return jsonify({"error": "Node not found"}), 404
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+
+    new_root = dict(node)
+    new_root["id"] = "root"
+    new_id = uuid.uuid4().hex[:8]
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    new_map = {"id": new_id, "title": node["text"], "created": now, "updated": now, "root": new_root}
+    data["maps"][new_id] = new_map
+    save_mindmaps(data)
+    return jsonify({"source_map": mindmap, "new_map": new_map}), 201
 
 
 @app.route("/api/mindmaps/<map_id>/nodes/<node_id>", methods=["DELETE"])
