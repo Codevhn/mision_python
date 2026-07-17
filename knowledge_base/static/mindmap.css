@@ -296,35 +296,122 @@
 }
 .mm-node-box--root .mm-inline-code { background: rgba(0,0,0,0.25); }
 
-.mm-node-actions {
+/* ---- Floating hover toolbar + "+" — one shared instance, follows the hovered node ---- */
+.mm-hover-toolbar {
+  position: fixed;
+  z-index: 900;
   display: flex;
   gap: 2px;
-  flex: 0 0 auto;
-  opacity: 0;
-  transition: opacity 0.1s;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 3px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
 }
-.mm-node-box:hover .mm-node-actions { opacity: 1; }
-.mm-node-add, .mm-node-more {
+.mm-hover-toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
-  color: var(--text-faint);
-  width: 18px;
-  height: 18px;
-  line-height: 1;
-  border-radius: 50%;
-  flex-shrink: 0;
   padding: 0;
 }
-.mm-node-add svg, .mm-node-more svg { display: block; }
-.mm-node-box--root .mm-node-add,
-.mm-node-box--root .mm-node-more { background: rgba(255,255,255,0.25); border-color: transparent; color: #fff; }
-.mm-node-add:hover { color: var(--accent); background: var(--accent-light); }
-.mm-node-more:hover { color: var(--text); background: var(--bg-hover); }
+.mm-hover-toolbar-btn svg { display: block; }
+.mm-hover-toolbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+.mm-hover-add-btn {
+  position: fixed;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+}
+.mm-hover-add-btn svg { display: block; }
+.mm-hover-add-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---- "Transform idea with AI" popover ---- */
+.mm-ai-popover {
+  z-index: 1000;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  width: 260px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.mm-ai-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.mm-ai-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.mm-ai-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.74rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+.mm-ai-action:hover { border-color: var(--accent); color: var(--accent); }
+.mm-ai-action svg { display: block; }
+.mm-ai-prompt-row { display: flex; gap: 6px; }
+.mm-ai-prompt-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+.mm-ai-prompt-input:focus { border-color: var(--accent); }
+.mm-ai-prompt-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  width: 34px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mm-ai-status {
+  padding: 16px 4px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
 
 /* ---- Notes indicator, fold pill, collapsed style ---- */
 .mm-node-notes-dot {

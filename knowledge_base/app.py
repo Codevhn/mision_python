@@ -3062,6 +3062,111 @@ def delete_mindmap_node(map_id, node_id):
     return jsonify(mindmap)
 
 
+def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
+    """Shared DeepSeek chat-completion caller, used by whole-map generation and
+    single-node AI transforms alike. Returns (content, None) on success, or
+    (None, (response, status)) ready to `return` straight from a Flask route."""
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        return None, (jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503)
+    try:
+        payload = {
+            "model": "deepseek-chat",
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ],
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.deepseek.com/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            result = json.loads(r.read())
+        return result["choices"][0]["message"]["content"], None
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        return None, (jsonify({"error": f"API error {e.code}: {err_body}"}), 502)
+    except Exception as e:
+        return None, (jsonify({"error": str(e)}), 500)
+
+
+_MINDMAP_SHORTEN_PROMPT = (
+    "Reescribe el siguiente texto de un nodo de mapa mental de forma MÁS BREVE, "
+    "conservando el significado exacto. Devuelve SOLO el texto reescrito — sin "
+    "comillas, sin explicaciones, sin markdown."
+)
+_MINDMAP_LENGTHEN_PROMPT = (
+    "Expande el siguiente texto de un nodo de mapa mental con más detalle y "
+    "contexto útil, sin inventar información falsa. Devuelve SOLO el texto "
+    "expandido — sin comillas, sin explicaciones, sin markdown."
+)
+_MINDMAP_FIND_TITLE_PROMPT = (
+    "Dado el texto de un nodo de mapa mental (y opcionalmente sus sub-temas), "
+    "genera un título corto y claro que lo resuma, máximo 6 palabras. Devuelve "
+    "SOLO el título — sin comillas, sin explicaciones, sin markdown."
+)
+_MINDMAP_CUSTOM_PROMPT_PROMPT = (
+    "Aplica la instrucción del usuario al texto de un nodo de mapa mental y "
+    "devuelve SOLO el resultado — sin comillas, sin explicaciones, sin markdown, "
+    "sin repetir la instrucción."
+)
+
+
+@app.route("/api/mindmaps/<map_id>/nodes/<node_id>/ai-transform", methods=["POST"])
+def ai_transform_mindmap_node(map_id, node_id):
+    """Per-node AI actions — Shorten / Lengthen / Find title / Prompt — the
+    ideamap-style 'Transform idea with AI' panel. Distinct from /generate,
+    which builds a whole new map instead of editing one existing node."""
+    data = load_mindmaps()
+    mindmap = data["maps"].get(map_id)
+    if not mindmap:
+        return jsonify({"error": "Not found"}), 404
+    node = _find_mindmap_node(mindmap["root"], node_id)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+
+    body = request.json or {}
+    action = body.get("action")
+    custom_prompt = (body.get("custom_prompt") or "").strip()
+
+    if action == "shorten":
+        system, user_msg = _MINDMAP_SHORTEN_PROMPT, node["text"]
+    elif action == "lengthen":
+        system, user_msg = _MINDMAP_LENGTHEN_PROMPT, node["text"]
+    elif action == "find_title":
+        children_txt = "\n".join(f"- {c['text']}" for c in node.get("children", []))
+        context = node["text"] + (f"\n\nSub-temas:\n{children_txt}" if children_txt else "")
+        system, user_msg = _MINDMAP_FIND_TITLE_PROMPT, context
+    elif action == "prompt":
+        if not custom_prompt:
+            return jsonify({"error": "custom_prompt es requerido"}), 400
+        system = _MINDMAP_CUSTOM_PROMPT_PROMPT
+        user_msg = f"Instrucción: {custom_prompt}\n\nTexto del nodo: {node['text']}"
+    else:
+        return jsonify({"error": "action inválida"}), 400
+
+    content, err = _call_deepseek(system, user_msg, max_tokens=400)
+    if err:
+        return err
+
+    new_text = content.strip().strip('"').strip()
+    if not new_text:
+        return jsonify({"error": "La IA no devolvió texto."}), 502
+    node["text"] = new_text[:500]
+    mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_mindmaps(data)
+    return jsonify(mindmap)
+
+
 _MINDMAP_SYSTEM_PROMPT = (
     "Eres un generador de mapas mentales educativos. Dado un tema o pregunta, "
     "devuelve SOLO un JSON (sin texto adicional, sin bloques de código markdown, "
@@ -3133,10 +3238,6 @@ def generate_mindmap():
     if not prompt:
         return jsonify({"error": "prompt es requerido"}), 400
 
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
-
     # "summarize" (used by the course-lesson shortcut) needs real lesson text to
     # ground the map in — without it, fall back to "explore" so we never silently
     # invent a generic plan from the title alone and call it a lesson map.
@@ -3147,32 +3248,9 @@ def generate_mindmap():
         system = _MINDMAP_SYSTEM_PROMPT
         user_msg = prompt
 
-    try:
-        body = json.dumps({
-            "model": "deepseek-chat",
-            "max_tokens": 4000,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_msg},
-            ],
-            "response_format": {"type": "json_object"},
-        }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.deepseek.com/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            result = json.loads(r.read())
-        content = result["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="replace")
-        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    content, err = _call_deepseek(system, user_msg, max_tokens=4000, json_mode=True)
+    if err:
+        return err
 
     # Defensive: strip stray markdown fences in case the model ignores response_format
     cleaned = content.strip()

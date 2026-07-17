@@ -21,7 +21,7 @@
   let _measureCtx = null;
 
   const BRANCH_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6'];
-  const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 108; // room for the fold pill + the two hover action buttons
+  const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 64; // room for the fold pill — the toolbar/+ now float outside the box
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
 
   // Small inline SVG icons — text glyphs (+, ⋯, ▾) sit off-center within their own
@@ -33,6 +33,18 @@
   const ICON_CHEVRON_RIGHT = '<svg viewBox="0 0 6 10" width="6" height="9"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const ICON_MINUS = '<svg viewBox="0 0 12 12" width="10" height="10"><path d="M1 6h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const ICON_FIT = '<svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 4V1h3M11 4V1H8M1 8v3h3M11 8v3H8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // Floating hover-toolbar icons
+  const ICON_NOTE = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="3" y="2" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 6h5M5.5 9h5M5.5 12h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>';
+  const ICON_COLOR_SWATCH = '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="2" y="2" width="12" height="12" rx="3" fill="currentColor"/></svg>';
+  // A pinched-waist 4-point star reads as a distinct "sparkle" glyph — a straight-edged
+  // one (like the plus icon) is too easily mistaken for the "+" button right next to it.
+  const ICON_AI = '<svg viewBox="0 0 16 16" width="13" height="13"><path d="M8 1L9.4 6.6L15 8L9.4 9.4L8 15L6.6 9.4L1 8L6.6 6.6Z" fill="currentColor"/></svg>';
+  // "Transform idea with AI" grid icons
+  const ICON_SHORTEN = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M2 4h12M2 8h8M2 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  const ICON_LENGTHEN = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M2 4h4M2 8h8M2 12h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  const ICON_TITLE = '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.3h12" stroke="currentColor" stroke-width="1.3"/></svg>';
+  const ICON_SLIDERS = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="4" r="1.6" fill="currentColor"/><circle cx="11" cy="8" r="1.6" fill="currentColor"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/></svg>';
+  const ICON_ARROW_RIGHT = '<svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 6h9M6 1.5L10.5 6 6 10.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   function _esc(s) {
     return (window.escapeHtml ? escapeHtml(s) : String(s ?? ''));
@@ -302,6 +314,7 @@
 
   function renderCanvas() {
     _closeActivePopover();
+    _hideNodeHoverUI();
     const linksG = document.getElementById('mmLinks');
     const nodesG = document.getElementById('mmNodes');
     linksG.innerHTML = '';
@@ -395,27 +408,84 @@
       box.appendChild(fold);
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'mm-node-actions';
-    const addBtn = document.createElement('button');
-    addBtn.className = 'mm-node-add';
-    addBtn.title = 'Agregar sub-tema';
-    addBtn.innerHTML = ICON_PLUS;
-    addBtn.addEventListener('mousedown', e => e.stopPropagation());
-    addBtn.addEventListener('click', () => onAddChild(node.id));
-    actions.appendChild(addBtn);
-
-    const moreBtn = document.createElement('button');
-    moreBtn.className = 'mm-node-more';
-    moreBtn.title = 'Más acciones';
-    moreBtn.innerHTML = ICON_MORE;
-    moreBtn.addEventListener('mousedown', e => e.stopPropagation());
-    moreBtn.addEventListener('click', e => { e.stopPropagation(); openNodeMenu(node, moreBtn, isRoot); });
-    actions.appendChild(moreBtn);
-    box.appendChild(actions);
+    // Hover UI (toolbar + "+") is a single shared floating element, positioned over
+    // whichever node has the pointer — not baked into each box (ideamap-style).
+    box.addEventListener('mouseenter', () => _showNodeHoverUI(node, box, isRoot));
+    box.addEventListener('mouseleave', _scheduleHoverHide);
 
     fo.appendChild(box);
     return fo;
+  }
+
+  // ── Floating hover toolbar (⋯ / nota / color / IA) + "+" — ideamap-style ───
+  let _hoverToolbarEl = null, _hoverAddBtnEl = null, _hoverHideTimer = null, _hoverNode = null;
+
+  function _cancelHoverHide() {
+    if (_hoverHideTimer) { clearTimeout(_hoverHideTimer); _hoverHideTimer = null; }
+  }
+
+  function _scheduleHoverHide() {
+    _cancelHoverHide();
+    _hoverHideTimer = setTimeout(_hideNodeHoverUI, 220);
+  }
+
+  function _hideNodeHoverUI() {
+    _cancelHoverHide();
+    if (_hoverToolbarEl) { _hoverToolbarEl.remove(); _hoverToolbarEl = null; }
+    if (_hoverAddBtnEl) { _hoverAddBtnEl.remove(); _hoverAddBtnEl = null; }
+    _hoverNode = null;
+  }
+
+  function _positionNodeHoverUI(boxEl) {
+    const rect = boxEl.getBoundingClientRect();
+    if (_hoverToolbarEl) {
+      _hoverToolbarEl.style.left = `${rect.left}px`;
+      _hoverToolbarEl.style.top = `${rect.top - 38}px`;
+    }
+    if (_hoverAddBtnEl) {
+      _hoverAddBtnEl.style.left = `${rect.right + 8}px`;
+      _hoverAddBtnEl.style.top = `${rect.top + rect.height / 2 - 13}px`;
+    }
+  }
+
+  function _showNodeHoverUI(node, boxEl, isRoot) {
+    _cancelHoverHide();
+    if (_hoverNode === node) { _positionNodeHoverUI(boxEl); return; }
+    _hideNodeHoverUI();
+    _hoverNode = node;
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'mm-hover-toolbar';
+    const mkBtn = (icon, title, onClick) => {
+      const b = document.createElement('button');
+      b.className = 'mm-hover-toolbar-btn';
+      b.title = title;
+      b.innerHTML = icon;
+      b.addEventListener('mousedown', e => e.stopPropagation());
+      b.addEventListener('click', e => { e.stopPropagation(); onClick(b); });
+      toolbar.appendChild(b);
+    };
+    mkBtn(ICON_MORE, 'Más acciones', btn => openNodeMenu(node, btn, isRoot));
+    mkBtn(ICON_NOTE, node.notes ? 'Ver / editar nota' : 'Agregar nota', () => openNotesPopover(node, toolbar));
+    mkBtn(ICON_COLOR_SWATCH, 'Color', () => openColorPopover(node, toolbar));
+    mkBtn(ICON_AI, 'Transformar con IA', () => openAiTransformPopover(node, toolbar));
+    toolbar.addEventListener('mouseenter', _cancelHoverHide);
+    toolbar.addEventListener('mouseleave', _scheduleHoverHide);
+    document.body.appendChild(toolbar);
+    _hoverToolbarEl = toolbar;
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'mm-hover-add-btn';
+    addBtn.title = 'Agregar sub-tema';
+    addBtn.innerHTML = ICON_PLUS;
+    addBtn.addEventListener('mousedown', e => e.stopPropagation());
+    addBtn.addEventListener('click', e => { e.stopPropagation(); onAddChild(node.id); });
+    addBtn.addEventListener('mouseenter', _cancelHoverHide);
+    addBtn.addEventListener('mouseleave', _scheduleHoverHide);
+    document.body.appendChild(addBtn);
+    _hoverAddBtnEl = addBtn;
+
+    _positionNodeHoverUI(boxEl);
   }
 
   function toggleCollapse(node) {
@@ -708,6 +778,70 @@
       });
       pop.appendChild(b);
     });
+    _openPopover(pop, anchorEl, { alignRight: true });
+  }
+
+  async function apiAiTransform(mapId, nodeId, action, customPrompt) {
+    const r = await fetch(`/api/mindmaps/${mapId}/nodes/${nodeId}/ai-transform`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, custom_prompt: customPrompt || '' }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error al transformar');
+    return data;
+  }
+
+  function openAiTransformPopover(node, anchorEl) {
+    const pop = document.createElement('div');
+    pop.className = 'mm-ai-popover';
+    pop.innerHTML = `
+      <div class="mm-ai-title">Transformar con IA</div>
+      <div class="mm-ai-grid">
+        <button class="mm-ai-action" data-action="shorten">${ICON_SHORTEN}<span>Acortar</span></button>
+        <button class="mm-ai-action" data-action="lengthen">${ICON_LENGTHEN}<span>Expandir</span></button>
+        <button class="mm-ai-action" data-action="find_title">${ICON_TITLE}<span>Buscar título</span></button>
+        <button class="mm-ai-action" data-action="prompt">${ICON_SLIDERS}<span>Prompt</span></button>
+      </div>
+      <div class="mm-ai-prompt-row hidden">
+        <input type="text" class="mm-ai-prompt-input" placeholder="Ej: tradúcelo al inglés…" autocomplete="off" />
+        <button class="mm-ai-prompt-go" title="Aplicar">${ICON_ARROW_RIGHT}</button>
+      </div>
+      <div class="mm-ai-status hidden"></div>`;
+
+    const grid = pop.querySelector('.mm-ai-grid');
+    const promptRow = pop.querySelector('.mm-ai-prompt-row');
+    const promptInput = pop.querySelector('.mm-ai-prompt-input');
+    const status = pop.querySelector('.mm-ai-status');
+
+    const runAction = async (action, customPrompt) => {
+      grid.classList.add('hidden');
+      promptRow.classList.add('hidden');
+      status.classList.remove('hidden');
+      status.textContent = 'Pensando…';
+      try {
+        _currentMap = await apiAiTransform(_currentMap.id, node.id, action, customPrompt);
+        renderCanvas();
+        _closeActivePopover();
+        window.showToast && showToast('Nodo actualizado con IA', 'success');
+      } catch (err) {
+        status.textContent = err.message || 'Error al transformar';
+      }
+    };
+
+    grid.querySelectorAll('.mm-ai-action').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.action === 'prompt') {
+          grid.classList.add('hidden');
+          promptRow.classList.remove('hidden');
+          setTimeout(() => promptInput.focus(), 50);
+          return;
+        }
+        runAction(btn.dataset.action);
+      });
+    });
+    promptRow.querySelector('.mm-ai-prompt-go').addEventListener('click', () => runAction('prompt', promptInput.value));
+    promptInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAction('prompt', promptInput.value); });
+
     _openPopover(pop, anchorEl, { alignRight: true });
   }
 
