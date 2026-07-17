@@ -5134,6 +5134,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'courses') {
       // Courses space but no active course — show clean empty state, not the home screen
       if (courseEmptySt) courseEmptySt.classList.remove('hidden');
+    } else if (space === 'mindmaps') {
+      // Land directly on the prompt-first screen — no intermediate empty state
+      if (window.MindmapApp) window.MindmapApp.showList();
     } else {
       // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';

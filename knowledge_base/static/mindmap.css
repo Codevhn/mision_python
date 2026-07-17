@@ -1,8 +1,6 @@
 /* =============================================
-   MINDMAP — Fase 0 styles (list/CRUD view).
-   The Fase 2 SVG tidy-tree canvas gets its own rules later;
-   these cover the sidebar tree + the plain list/tree view.
-   Uses CSS vars from style.css
+   MINDMAP — sidebar tree, landing/list view, and the Fase 2
+   SVG tidy-tree canvas (map view). Uses CSS vars from style.css
    ============================================= */
 
 .mindmap-area {
@@ -228,58 +226,109 @@
 }
 .mm-delete-btn:hover { border-color: #ef4444; color: #ef4444; }
 
-.mm-tree-wrap {
+/* ---- Canvas (Fase 2: SVG tidy-tree, pan + zoom, never blurs) ---- */
+.mm-canvas-wrap {
   flex: 1;
-  overflow: auto;
-  padding: 20px 32px 40px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(var(--border-light) 1px, transparent 1px) 0 0 / 22px 22px;
 }
-.mm-tree {
-  list-style: none;
-  margin: 0;
-  padding-left: 22px;
-  border-left: 1px solid var(--border-light);
+.mm-svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  display: block;
 }
-.mm-tree-wrap > .mm-tree {
-  padding-left: 0;
-  border-left: none;
+.mm-svg.mm-grabbing { cursor: grabbing; }
+
+.mm-link {
+  fill: none;
+  stroke-width: 2;
+  stroke-opacity: 0.55;
 }
-.mm-node { margin: 2px 0; }
-.mm-node-row {
+
+.mm-node-box {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 6px;
-  border-radius: 5px;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: 9px;
+  padding: 0 10px;
+  font-family: var(--font-ui);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: box-shadow 0.12s;
 }
-.mm-node-row:hover { background: var(--bg-hover); }
-.mm-node-row:hover .mm-node-add,
-.mm-node-row:hover .mm-node-del { opacity: 1; }
+.mm-node-box:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.mm-node-box--root {
+  border-radius: 12px;
+  color: #fff;
+  justify-content: center;
+  font-weight: 700;
+}
+.mm-node-box--root .mm-node-text { color: #fff; text-align: center; }
+
 .mm-node-text {
-  font-size: 0.85rem;
+  flex: 1;
+  font-size: 0.82rem;
   color: var(--text);
   outline: none;
-  border-radius: 3px;
-  padding: 1px 4px;
-  min-width: 20px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: visible;
 }
-.mm-node-text:focus { background: var(--bg-elevated); }
-.mm-node--root > .mm-node-row .mm-node-text {
-  font-size: 1rem;
-  font-weight: 600;
-}
-.mm-node-add, .mm-node-del {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.78rem;
-  color: var(--text-faint);
+.mm-node-text:focus { white-space: normal; }
+
+.mm-node-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
   opacity: 0;
-  transition: opacity 0.1s, color 0.1s;
+  transition: opacity 0.1s;
+}
+.mm-node-box:hover .mm-node-actions { opacity: 1; }
+.mm-node-add, .mm-node-del {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-faint);
   width: 18px;
   height: 18px;
   line-height: 1;
-  border-radius: 3px;
+  border-radius: 50%;
   flex-shrink: 0;
+  padding: 0;
 }
+.mm-node-box--root .mm-node-add { background: rgba(255,255,255,0.25); border-color: transparent; color: #fff; }
 .mm-node-add:hover { color: var(--accent); background: var(--accent-light); }
 .mm-node-del:hover { color: #ef4444; background: color-mix(in srgb, #ef4444 12%, transparent); }
+
+.mm-zoom-controls {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+.mm-zoom-btn {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.mm-zoom-btn:hover { background: var(--bg-hover); color: var(--text); }
