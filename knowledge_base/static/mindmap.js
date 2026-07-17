@@ -478,15 +478,25 @@
     document.getElementById('mmZoomFit').addEventListener('click', fitToScreen, { signal });
   }
 
+  function _findNode(node, id) {
+    if (node.id === id) return node;
+    for (const c of node.children || []) {
+      const found = _findNode(c, id);
+      if (found) return found;
+    }
+    return null;
+  }
+
   async function onAddChild(parentId) {
-    const text = window.showPrompt
-      ? await window.showPrompt('Agregar sub-tema', 'Escribe el texto…')
-      : window.prompt('Texto del sub-tema:');
-    if (!text) return;
+    // Create instantly with a placeholder and drop the user straight into editing it —
+    // no modal, no interrupting the current pan/zoom.
     try {
-      _currentMap = await apiAddNode(_currentMap.id, parentId, text);
+      _currentMap = await apiAddNode(_currentMap.id, parentId, 'Nueva idea');
       renderCanvas();
-      fitToScreen();
+      const parent = _findNode(_currentMap.root, parentId);
+      const newNode = parent && parent.children[parent.children.length - 1];
+      const el = newNode && document.querySelector(`[data-id="${newNode.id}"] .mm-node-text`);
+      if (el) { el.focus(); document.execCommand('selectAll', false, null); }
     } catch {
       window.showToast && showToast('Error al agregar', 'error');
     }
