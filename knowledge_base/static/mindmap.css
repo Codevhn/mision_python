@@ -285,6 +285,15 @@
 }
 .mm-node-text:focus { white-space: normal; }
 
+.mm-inline-code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--bg-code);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+.mm-node-box--root .mm-inline-code { background: rgba(0,0,0,0.25); }
+
 .mm-node-actions {
   display: flex;
   gap: 2px;
@@ -309,6 +318,7 @@
   flex-shrink: 0;
   padding: 0;
 }
+.mm-node-add svg, .mm-node-more svg { display: block; }
 .mm-node-box--root .mm-node-add,
 .mm-node-box--root .mm-node-more { background: rgba(255,255,255,0.25); border-color: transparent; color: #fff; }
 .mm-node-add:hover { color: var(--accent); background: var(--accent-light); }
@@ -326,16 +336,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   background: none;
   border: 1px solid var(--border);
   border-radius: 9px;
   color: var(--text-faint);
   font-size: 0.68rem;
-  padding: 1px 6px;
+  padding: 3px 7px;
   cursor: pointer;
   flex-shrink: 0;
-  line-height: 1.4;
+  line-height: 1;
 }
+.mm-node-fold svg { display: block; flex-shrink: 0; }
 .mm-node-fold:hover { color: var(--accent); border-color: var(--accent); }
 .mm-node-box--root .mm-node-fold { background: rgba(255,255,255,0.2); border-color: transparent; color: #fff; }
 .mm-node-collapsed { border-style: dashed; }
@@ -507,4 +519,5 @@
   font-size: 1rem;
   cursor: pointer;
 }
+.mm-zoom-btn svg { display: block; }
 .mm-zoom-btn:hover { background: var(--bg-hover); color: var(--text); }

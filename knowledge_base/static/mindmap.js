@@ -24,8 +24,27 @@
   const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 108; // room for the fold pill + the two hover action buttons
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
 
+  // Small inline SVG icons — text glyphs (+, ⋯, ▾) sit off-center within their own
+  // line box depending on the font, so flexbox centering alone can't fix them.
+  // These are drawn on a fixed viewBox, so they land dead-center every time.
+  const ICON_PLUS = '<svg viewBox="0 0 12 12" width="10" height="10"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const ICON_MORE = '<svg viewBox="0 0 16 4" width="13" height="4"><circle cx="2" cy="2" r="1.7" fill="currentColor"/><circle cx="8" cy="2" r="1.7" fill="currentColor"/><circle cx="14" cy="2" r="1.7" fill="currentColor"/></svg>';
+  const ICON_CHEVRON_DOWN = '<svg viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_CHEVRON_RIGHT = '<svg viewBox="0 0 6 10" width="6" height="9"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_MINUS = '<svg viewBox="0 0 12 12" width="10" height="10"><path d="M1 6h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const ICON_FIT = '<svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 4V1h3M11 4V1H8M1 8v3h3M11 8v3H8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function _esc(s) {
     return (window.escapeHtml ? escapeHtml(s) : String(s ?? ''));
+  }
+
+  // `pip install x` in a node's text renders as real inline code — backticks are the
+  // marker, stripped from view (still present in the raw text shown while editing).
+  function _parseInlineCode(text) {
+    const parts = String(text ?? '').split('`');
+    return parts.map((part, i) => (
+      i % 2 === 1 ? `<code class="mm-inline-code">${_esc(part)}</code>` : _esc(part)
+    )).join('');
   }
 
   // ── API ──────────────────────────────────────────────────────────────────
@@ -218,9 +237,9 @@
           </g>
         </svg>
         <div class="mm-zoom-controls">
-          <button class="mm-zoom-btn" id="mmZoomOut" title="Alejar">−</button>
-          <button class="mm-zoom-btn" id="mmZoomFit" title="Ajustar a pantalla">⤢</button>
-          <button class="mm-zoom-btn" id="mmZoomIn" title="Acercar">+</button>
+          <button class="mm-zoom-btn" id="mmZoomOut" title="Alejar">${ICON_MINUS}</button>
+          <button class="mm-zoom-btn" id="mmZoomFit" title="Ajustar a pantalla">${ICON_FIT}</button>
+          <button class="mm-zoom-btn" id="mmZoomIn" title="Acercar">${ICON_PLUS}</button>
         </div>
       </div>`;
 
@@ -329,13 +348,16 @@
 
     const text = document.createElement('div');
     text.className = 'mm-node-text';
-    text.textContent = node.text;
+    text.innerHTML = _parseInlineCode(node.text);
     text.contentEditable = 'true';
     text.spellcheck = false;
     text.addEventListener('mousedown', e => e.stopPropagation());
+    // Show the raw text (backticks and all) only while actively editing —
+    // the rest of the time the backtick-delimited bits render as real code.
+    text.addEventListener('focus', () => { text.textContent = node.text; });
     text.addEventListener('blur', () => {
       const val = text.textContent.trim();
-      if (!val || val === node.text) { text.textContent = node.text; return; }
+      if (!val || val === node.text) { text.innerHTML = _parseInlineCode(node.text); return; }
       apiPatchNode(_currentMap.id, node.id, { text: val })
         .then(map => { _currentMap = map; renderCanvas(); })
         .catch(() => window.showToast && showToast('Error al editar', 'error'));
@@ -365,7 +387,9 @@
       const fold = document.createElement('button');
       fold.className = 'mm-node-fold';
       fold.title = node.collapsed ? 'Expandir rama' : 'Colapsar rama';
-      fold.textContent = node.collapsed ? `▸ ${node.children.length}` : '▾';
+      fold.innerHTML = node.collapsed
+        ? `${ICON_CHEVRON_RIGHT}<span>${node.children.length}</span>`
+        : ICON_CHEVRON_DOWN;
       fold.addEventListener('mousedown', e => e.stopPropagation());
       fold.addEventListener('click', () => toggleCollapse(node));
       box.appendChild(fold);
@@ -376,7 +400,7 @@
     const addBtn = document.createElement('button');
     addBtn.className = 'mm-node-add';
     addBtn.title = 'Agregar sub-tema';
-    addBtn.textContent = '+';
+    addBtn.innerHTML = ICON_PLUS;
     addBtn.addEventListener('mousedown', e => e.stopPropagation());
     addBtn.addEventListener('click', () => onAddChild(node.id));
     actions.appendChild(addBtn);
@@ -384,7 +408,7 @@
     const moreBtn = document.createElement('button');
     moreBtn.className = 'mm-node-more';
     moreBtn.title = 'Más acciones';
-    moreBtn.textContent = '⋯';
+    moreBtn.innerHTML = ICON_MORE;
     moreBtn.addEventListener('mousedown', e => e.stopPropagation());
     moreBtn.addEventListener('click', e => { e.stopPropagation(); openNodeMenu(node, moreBtn, isRoot); });
     actions.appendChild(moreBtn);
@@ -509,8 +533,9 @@
         : window.confirm('Este nodo tiene sub-temas. ¿Eliminarlo junto con toda la rama?');
       if (!ok) return;
     }
+    // Keep the user's current pan/zoom — deleting a branch shouldn't recenter the whole map.
     apiDeleteNode(_currentMap.id, nodeId)
-      .then(map => { _currentMap = map; renderCanvas(); fitToScreen(); })
+      .then(map => { _currentMap = map; renderCanvas(); })
       .catch(() => window.showToast && showToast('Error al eliminar', 'error'));
   }
 
