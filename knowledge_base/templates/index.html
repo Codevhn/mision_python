@@ -635,6 +635,41 @@
     <div class="context-menu-item hidden" id="ctxExportPdf">export .pdf</div>
   </div>
 
+  <!-- MODAL: Convertir nodo de mapa mental en entrada de Conocimiento -->
+  <div class="modal-overlay hidden" id="mmConvertOverlay">
+    <div class="modal modal--sm" id="mmConvertModal">
+      <div class="modal-header">
+        <h2>Convertir en entrada de Conocimiento</h2>
+        <button class="modal-close" id="mmConvertClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Título</label>
+          <input type="text" id="mmcTitle" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <div class="smart-select" id="mmcCatSmartSelect">
+            <input type="text" id="mmcCategory" placeholder="Escribe o elige una…" autocomplete="off" />
+            <div class="smart-select-dropdown hidden" id="mmcCatDropdown"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Tema</label>
+          <div class="smart-select" id="mmcTopicSmartSelect">
+            <input type="text" id="mmcTopic" placeholder="Escribe o elige uno…" autocomplete="off" />
+            <div class="smart-select-dropdown hidden" id="mmcTopicDropdown"></div>
+          </div>
+        </div>
+        <p class="reorg-hint">Se crea una entrada nueva con este nodo y toda su rama como contenido, y queda vinculada al nodo.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="mmConvertCancelBtn">Cancelar</button>
+        <button class="btn-primary" id="mmConvertApplyBtn">Crear y vincular</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Reorganizar categoría/tema -->
   <div class="modal-overlay hidden" id="reorgModalOverlay">
     <div class="modal modal--sm" id="reorgModal">

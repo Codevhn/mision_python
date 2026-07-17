@@ -352,6 +352,14 @@
       box.appendChild(dot);
     }
 
+    if (node.linked_entry_uid) {
+      const chip = document.createElement('span');
+      chip.className = 'mm-node-link-chip';
+      chip.title = 'Vinculado a una entrada de Conocimiento';
+      chip.textContent = '🔗';
+      box.appendChild(chip);
+    }
+
     const hasChildren = (node.children || []).length > 0;
     if (hasChildren && !isRoot) {
       const fold = document.createElement('button');
@@ -387,8 +395,9 @@
   }
 
   function toggleCollapse(node) {
+    // Keep the user's current pan/zoom — folding a branch shouldn't recenter the whole map.
     apiPatchNode(_currentMap.id, node.id, { collapsed: !node.collapsed })
-      .then(map => { _currentMap = map; renderCanvas(); fitToScreen(); })
+      .then(map => { _currentMap = map; renderCanvas(); })
       .catch(() => window.showToast && showToast('Error al colapsar', 'error'));
   }
 
@@ -553,6 +562,17 @@
       item(node.collapsed ? 'Expandir rama' : 'Colapsar rama', () => toggleCollapse(node));
     }
     item('Copiar texto', () => copyNodeSubtree(node));
+    if (node.linked_entry_uid) {
+      const linked = _resolveLinkedEntry(node);
+      item(linked ? 'Abrir entrada vinculada' : 'Entrada vinculada (eliminada)', () => {
+        if (linked && window._navigateToEntity) _navigateToEntity(linked);
+        else window.showToast && showToast('Esa entrada ya no existe', 'error');
+      });
+      item('Desvincular entrada', () => unlinkEntry(node));
+    } else {
+      item('Vincular a entrada existente', () => openLinkEntryPopover(node, anchorEl));
+      item('Convertir en entrada nueva', () => openConvertToEntryModal(node));
+    }
     if (!isRoot) {
       item('Desprender en nuevo mapa', () => onDetachNode(node));
       item('Eliminar', () => onDeleteNode(node.id, (node.children || []).length), true);
@@ -639,6 +659,131 @@
       showMap(new_map.id);
     } catch {
       window.showToast && showToast('Error al desprender', 'error');
+    }
+  }
+
+  // ── Link a node to a Knowledge entry — existing one, or a brand-new one ────
+  function _resolveLinkedEntry(node) {
+    if (!node.linked_entry_uid) return null;
+    return (typeof _index !== 'undefined' ? _index : []).find(e => e.uid === node.linked_entry_uid) || null;
+  }
+
+  function unlinkEntry(node) {
+    apiPatchNode(_currentMap.id, node.id, { linked_entry_uid: null })
+      .then(map => { _currentMap = map; renderCanvas(); })
+      .catch(() => window.showToast && showToast('Error al desvincular', 'error'));
+  }
+
+  function openLinkEntryPopover(node, anchorEl) {
+    const pop = document.createElement('div');
+    pop.className = 'mm-link-popover';
+    pop.innerHTML = `
+      <input type="text" class="mm-link-search" placeholder="Buscar entrada de Conocimiento…" autocomplete="off" />
+      <div class="mm-link-results"></div>`;
+    const input = pop.querySelector('.mm-link-search');
+    const results = pop.querySelector('.mm-link-results');
+
+    const renderResults = q => {
+      const f = q.trim().toLowerCase();
+      const pool = typeof _index !== 'undefined' ? _index : [];
+      const matches = pool.filter(e => {
+        const haystack = [(e.title || ''), (e.category || ''), (e.topic || '')].join(' ').toLowerCase();
+        return !f || haystack.includes(f);
+      }).slice(0, 20);
+      if (!matches.length) { results.innerHTML = '<div class="mm-link-empty">Sin resultados</div>'; return; }
+      results.innerHTML = matches.map(e => {
+        const meta = [e.category, e.topic].filter(Boolean).join(' › ');
+        return `<div class="mm-link-item" data-uid="${_esc(e.uid || '')}">
+          <span class="mm-link-item-title">${_esc(e.title || e.id)}</span>
+          ${meta ? `<span class="mm-link-item-meta">${_esc(meta)}</span>` : ''}
+        </div>`;
+      }).join('');
+      results.querySelectorAll('.mm-link-item').forEach(el => {
+        el.addEventListener('click', () => {
+          apiPatchNode(_currentMap.id, node.id, { linked_entry_uid: el.dataset.uid })
+            .then(map => { _currentMap = map; renderCanvas(); })
+            .catch(() => window.showToast && showToast('Error al vincular', 'error'));
+          _closeActivePopover();
+        });
+      });
+    };
+    input.addEventListener('input', () => renderResults(input.value));
+    renderResults('');
+    _openPopover(pop, anchorEl, { alignRight: true });
+    setTimeout(() => input.focus(), 50);
+  }
+
+  let _convertNode = null;
+  let _convertModalWired = false;
+
+  function _nodeSubtreeMarkdown(node) {
+    const lines = [];
+    if (node.notes) lines.push(`_${node.notes}_\n`);
+    (node.children || []).forEach(function walk(child, depth) {
+      lines.push('  '.repeat(depth) + '- ' + child.text + (child.notes ? ` — ${child.notes}` : ''));
+      (child.children || []).forEach(gc => walk(gc, depth + 1));
+    });
+    return lines.join('\n');
+  }
+
+  function openConvertToEntryModal(node) {
+    const overlay = document.getElementById('mmConvertOverlay');
+    if (!overlay) return;
+    _convertNode = node;
+
+    if (!_convertModalWired) {
+      _convertModalWired = true;
+      const catInput = document.getElementById('mmcCategory');
+      const catDrop = document.getElementById('mmcCatDropdown');
+      const topicInput = document.getElementById('mmcTopic');
+      const topicDrop = document.getElementById('mmcTopicDropdown');
+      if (catInput && catDrop && topicInput && topicDrop && typeof _wireCategoryTopicSmartSelects === 'function') {
+        _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop);
+      }
+      document.getElementById('mmConvertClose')?.addEventListener('click', closeConvertModal);
+      document.getElementById('mmConvertCancelBtn')?.addEventListener('click', closeConvertModal);
+      document.getElementById('mmConvertApplyBtn')?.addEventListener('click', applyConvertToEntry);
+    }
+
+    document.getElementById('mmcTitle').value = node.text || '';
+    document.getElementById('mmcCategory').value = '';
+    document.getElementById('mmcTopic').value = '';
+    overlay.classList.remove('hidden');
+    setTimeout(() => document.getElementById('mmcTitle').focus(), 50);
+  }
+
+  function closeConvertModal() {
+    document.getElementById('mmConvertOverlay')?.classList.add('hidden');
+    _convertNode = null;
+  }
+
+  async function applyConvertToEntry() {
+    if (!_convertNode) return;
+    const title = document.getElementById('mmcTitle').value.trim();
+    const category = document.getElementById('mmcCategory').value.trim();
+    const topic = document.getElementById('mmcTopic').value.trim();
+    if (!title || !category || !topic) {
+      window.showToast && showToast('Completa título, categoría y tema', 'error');
+      return;
+    }
+    const node = _convertNode;
+    try {
+      const res = await fetch('/api/entry', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry_type: 'knowledge', title, category, topic,
+          raw_text: _nodeSubtreeMarkdown(node), already_markdown: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear la entrada');
+      _currentMap = await apiPatchNode(_currentMap.id, node.id, { linked_entry_uid: data.uid });
+      if (typeof loadTree === 'function') loadTree(); // refresh _index so the link resolves immediately
+      renderCanvas();
+      closeConvertModal();
+      window.showToast && showToast('Entrada creada y vinculada', 'success');
+    } catch (err) {
+      window.showToast && showToast(err.message || 'Error al crear la entrada', 'error');
     }
   }
 

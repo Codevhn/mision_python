@@ -2871,6 +2871,7 @@ def _new_mindmap_node(text, node_id=None):
         "notes": "",
         "color": None,
         "collapsed": False,
+        "linked_entry_uid": None,
     }
 
 
@@ -3013,6 +3014,8 @@ def edit_mindmap_node(map_id, node_id):
         node["color"] = body["color"] or None
     if "collapsed" in body:
         node["collapsed"] = bool(body["collapsed"])
+    if "linked_entry_uid" in body:
+        node["linked_entry_uid"] = body["linked_entry_uid"] or None
     mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
     save_mindmaps(data)
     return jsonify(mindmap)
