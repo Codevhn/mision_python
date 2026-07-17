@@ -3035,6 +3035,38 @@ _MINDMAP_SYSTEM_PROMPT = (
     "- 'title' es el tema reformulado como título corto (máximo 8 palabras)."
 )
 
+# Different job from _MINDMAP_SYSTEM_PROMPT above: that one INVENTS a broad plan
+# from a bare topic (the ideamap.ai-style "brainstorm" mode). This one is the
+# classic student study-map technique — reorganize content that ALREADY EXISTS
+# (a specific lesson) into a hierarchical map, grounded in what the text
+# actually says, not a fresh curriculum about the title in the abstract.
+_MINDMAP_SUMMARIZE_SYSTEM_PROMPT = (
+    "Eres un asistente que convierte contenido educativo YA EXISTENTE en un "
+    "mapa mental de estudio — la técnica que usan los estudiantes para repasar "
+    "organizando visualmente lo que el material YA dice, no un plan nuevo "
+    "inventado a partir del título. Recibirás el título y el contenido "
+    "completo de una lección.\n\n"
+    "Devuelve SOLO un JSON (sin texto adicional, sin bloques de código "
+    "markdown, sin explicaciones) con esta forma EXACTA:\n"
+    '{"title": "...", "branches": [{"text": "...", "children": [{"text": "...", '
+    '"children": [{"text": "...", "children": []}]}]}]}\n\n'
+    "Reglas estrictas:\n"
+    "- Las ramas y subramas deben reflejar la estructura y los conceptos que "
+    "REALMENTE aparecen en el contenido — NUNCA inventes temas, herramientas "
+    "o pasos que no estén en el material, aunque sean típicos del tema en "
+    "general.\n"
+    "- Puedes reformular para que sea más claro, breve o esté mejor "
+    "organizado, pero sin agregar información externa al texto dado.\n"
+    "- Si el contenido incluye comandos, código o términos técnicos "
+    "específicos, consérvalos tal cual como nodos hoja — son justo lo que el "
+    "estudiante necesita repasar.\n"
+    "- Usa tantas ramas principales como secciones o ideas distintas tenga el "
+    "contenido (normalmente 3 a 8) — no fuerces un número fijo si el "
+    "contenido es corto.\n"
+    "- Texto claro, específico y en español en todos los niveles.\n"
+    "- 'title' es el título de la lección tal cual, o una versión muy similar."
+)
+
 
 def _build_mindmap_node_from_ai(node_dict, depth=0):
     text = str((node_dict or {}).get("text", "")).strip() or "Sin título"
@@ -3050,6 +3082,8 @@ def _build_mindmap_node_from_ai(node_dict, depth=0):
 def generate_mindmap():
     data = request.json or {}
     prompt = (data.get("prompt") or "").strip()
+    lesson_content = (data.get("content") or "").strip()
+    mode = data.get("mode") or "explore"
     if not prompt:
         return jsonify({"error": "prompt es requerido"}), 400
 
@@ -3057,13 +3091,23 @@ def generate_mindmap():
     if not api_key:
         return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
 
+    # "summarize" (used by the course-lesson shortcut) needs real lesson text to
+    # ground the map in — without it, fall back to "explore" so we never silently
+    # invent a generic plan from the title alone and call it a lesson map.
+    if mode == "summarize" and lesson_content:
+        system = _MINDMAP_SUMMARIZE_SYSTEM_PROMPT
+        user_msg = f"Título de la lección: {prompt}\n\nContenido:\n{lesson_content[:8000]}"
+    else:
+        system = _MINDMAP_SYSTEM_PROMPT
+        user_msg = prompt
+
     try:
         body = json.dumps({
             "model": "deepseek-chat",
             "max_tokens": 4000,
             "messages": [
-                {"role": "system", "content": _MINDMAP_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
             ],
             "response_format": {"type": "json_object"},
         }).encode("utf-8")

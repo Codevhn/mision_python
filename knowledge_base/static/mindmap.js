@@ -132,9 +132,15 @@
   }
 
   // ── AI generation — the primary "wow" entry point ───────────────────────
-  async function generateFromPrompt(rawPrompt) {
+  // opts.mode: 'explore' (default — brainstorm a plan from a bare topic, the
+  // ideamap.ai-style prompt-field flow) or 'summarize' (organize opts.content,
+  // real existing text, into a study map grounded in what it actually says —
+  // used by the course-lesson shortcut, which has real content to draw from).
+  async function generateFromPrompt(rawPrompt, opts) {
     const prompt = (rawPrompt || '').trim();
     if (!prompt) return;
+    opts = opts || {};
+    const isSummarize = opts.mode === 'summarize' && opts.content;
 
     _area = document.getElementById('mindmapArea');
     if (!_area) return;
@@ -142,14 +148,14 @@
     _area.innerHTML = `
       <div class="mm-generating">
         <span class="mm-spinner"></span>
-        <p>Generando tu mapa mental…</p>
+        <p>${isSummarize ? 'Organizando el contenido de la lección…' : 'Generando tu mapa mental…'}</p>
         <p class="mm-generating-sub">"${_esc(prompt)}"</p>
       </div>`;
 
     try {
       const res = await fetch('/api/mindmaps/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al generar');

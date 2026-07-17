@@ -4332,15 +4332,18 @@ async function applySaveKnowledge() {
 }
 
 // "Generar mapa mental" on a course lesson — jumps to the Mapas Mentales
-// space and immediately triggers AI generation using the lesson's own
-// title as the prompt (stripped of a leading "0.2 " style numbering, which
-// reads awkwardly as a topic for the AI).
+// space and immediately triggers AI generation using the lesson's own title
+// (stripped of a leading "0.2 " style numbering) AND its actual content, in
+// "summarize" mode — a study map of what this specific lesson says, not a
+// fresh generic plan invented from the title alone (mode "explore", used by
+// the standalone prompt field, has no lesson text to ground itself in).
 function _generateMindmapForCurrentLesson() {
   if (!currentEntryMeta || currentEntryMeta.type !== "course") return;
   const topic = (currentEntryMeta.title || "").replace(/^\s*\d+(\.\d+)*\s+/, "").trim();
   if (!topic) return;
+  const content = _inlineEditor ? _inlineEditor.getMarkdown() : "";
   document.querySelector('.ab-item[data-space="mindmaps"]')?.click();
-  if (window.MindmapApp) window.MindmapApp.generateFromPrompt(topic);
+  if (window.MindmapApp) window.MindmapApp.generateFromPrompt(topic, { content, mode: "summarize" });
 }
 
 // ============================================================
