@@ -240,7 +240,9 @@
   cursor: grab;
   display: block;
   user-select: none; /* dragging to pan shouldn't text-select node labels */
+  touch-action: none; /* pan/pinch are handled in JS — don't let the browser also scroll/zoom the page */
 }
+.mm-node-box { touch-action: manipulation; }
 .mm-svg.mm-grabbing { cursor: grabbing; }
 
 .mm-link {

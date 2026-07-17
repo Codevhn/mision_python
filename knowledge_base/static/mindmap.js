@@ -491,6 +491,48 @@
       _svgEl.classList.remove('mm-grabbing');
     }, { signal });
 
+    // Touch: one finger pans, two fingers pinch-zoom. Without this the browser falls
+    // back to its own native page pinch-zoom/scroll on mobile — touch-action:none on
+    // .mm-svg (CSS) opts out of that, this is what replaces it for the canvas itself.
+    let pinchDist = null;
+    const touchDist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const touchMid = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+
+    _svgEl.addEventListener('touchstart', e => {
+      if (e.target.closest('.mm-node-box')) return;
+      if (e.touches.length === 1) {
+        panning = true; moved = false;
+        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        panning = false;
+        pinchDist = touchDist(e.touches[0], e.touches[1]);
+      }
+    }, { signal, passive: true });
+
+    _svgEl.addEventListener('touchmove', e => {
+      if (e.touches.length === 1 && panning) {
+        e.preventDefault();
+        moved = true;
+        const t = e.touches[0];
+        _view.x += t.clientX - lastX;
+        _view.y += t.clientY - lastY;
+        lastX = t.clientX; lastY = t.clientY;
+        applyView();
+      } else if (e.touches.length === 2 && pinchDist != null) {
+        e.preventDefault();
+        const dist = touchDist(e.touches[0], e.touches[1]);
+        const mid = touchMid(e.touches[0], e.touches[1]);
+        const rect = _svgEl.getBoundingClientRect();
+        zoomAt(mid.x - rect.left, mid.y - rect.top, dist / pinchDist);
+        pinchDist = dist;
+      }
+    }, { signal, passive: false });
+
+    _svgEl.addEventListener('touchend', e => {
+      if (e.touches.length < 2) pinchDist = null;
+      if (e.touches.length === 0) panning = false;
+    }, { signal, passive: true });
+
     document.getElementById('mmZoomIn').addEventListener('click', () => {
       const rect = _svgEl.getBoundingClientRect();
       zoomAt(rect.width / 2, rect.height / 2, 1.25);
