@@ -45,6 +45,34 @@
   const ICON_TITLE = '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.3h12" stroke="currentColor" stroke-width="1.3"/></svg>';
   const ICON_SLIDERS = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="4" r="1.6" fill="currentColor"/><circle cx="11" cy="8" r="1.6" fill="currentColor"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/></svg>';
   const ICON_ARROW_RIGHT = '<svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 6h9M6 1.5L10.5 6 6 10.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_EMOJI = '<svg viewBox="0 0 16 16" width="13" height="13"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="5.8" cy="6.5" r="0.9" fill="currentColor"/><circle cx="10.2" cy="6.5" r="0.9" fill="currentColor"/><path d="M5.3 9.5c.7 1 1.7 1.5 2.7 1.5s2-.5 2.7-1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>';
+
+  // Curated set — enough range for a personal knowledge base without pulling in a
+  // full emoji-database dependency. [emoji, spanish search keywords]
+  const EMOJI_LIST = [
+    ['😀','feliz sonrisa'], ['😄','feliz risa'], ['😁','sonrisa'], ['🤣','risa lol'], ['😂','risa lagrimas'],
+    ['🙂','sonrisa leve'], ['😉','guino'], ['😊','sonrisa ojos'], ['🥰','amor corazones'], ['😍','enamorado'],
+    ['🤩','estrellas'], ['😘','beso'], ['😋','delicioso'], ['😛','lengua'], ['🤪','loco'],
+    ['🤑','dinero cara'], ['🤗','abrazo'], ['🤔','pensando duda'], ['🤨','ceja duda'], ['😐','neutral'],
+    ['😏','sonrisa picara'], ['🙄','ojos en blanco'], ['😌','alivio tranquilo'], ['😴','dormido sueño'], ['🤓','nerd estudioso'],
+    ['🧐','monoculo detective'], ['😕','confundido'], ['😮','sorpresa'], ['😳','sonrojado'], ['🥺','ojos suplicantes'],
+    ['😢','llorando triste'], ['😭','llanto fuerte'], ['😱','grito miedo'], ['😩','cansado agotado'], ['😤','enojado orgullo'],
+    ['😡','furioso enojado'], ['🤬','maldicion enojo'], ['😈','diablo travieso'], ['💀','calavera muerte'], ['🤡','payaso'],
+    ['👍','pulgar arriba bien si'], ['👎','pulgar abajo mal no'], ['👏','aplauso felicitaciones'], ['🙌','manos arriba celebracion'], ['👋','saludo hola'],
+    ['🤝','trato acuerdo'], ['🙏','gracias por favor'], ['💪','fuerza poder'], ['✍️','escribir'], ['🧠','cerebro idea mente'],
+    ['👀','ojos mirar ver'], ['🔥','fuego importante urgente'], ['⭐','estrella favorito'], ['🌟','brillante destacado'], ['✨','destello magia nuevo'],
+    ['💡','idea bombilla'], ['📌','pin importante fijar'], ['📍','ubicacion lugar'], ['🚩','bandera alerta'], ['🎯','objetivo meta'],
+    ['✅','hecho listo completado'], ['❌','error no incorrecto'], ['⚠️','advertencia cuidado'], ['❗','importante exclamacion'], ['❓','pregunta duda'],
+    ['⏰','tiempo alarma reloj'], ['⏳','esperando pendiente'], ['📅','calendario fecha'], ['📝','nota escribir apunte'], ['📚','libros estudio'],
+    ['🎓','graduacion estudio universidad'], ['💻','computadora codigo laptop'], ['🖥️','computadora escritorio'], ['⌨️','teclado'], ['🐍','python serpiente'],
+    ['☕','cafe'], ['🚀','lanzamiento proyecto cohete'], ['🛠️','herramientas'], ['🔧','llave herramienta'], ['🔨','martillo construir'],
+    ['🧩','pieza rompecabezas'], ['📊','grafico datos estadistica'], ['📈','crecimiento subida'], ['📉','caida bajada'], ['💰','dinero'],
+    ['💵','dinero billete'], ['🏆','trofeo logro premio'], ['🎉','celebracion fiesta'], ['🎁','regalo'], ['❤️','corazon amor rojo'],
+    ['💙','corazon azul'], ['💚','corazon verde'], ['💛','corazon amarillo'], ['🧡','corazon naranja'], ['💜','corazon morado'],
+    ['🌈','arcoiris'], ['☀️','sol dia'], ['🌙','luna noche'], ['⚡','rayo energia electricidad'], ['🌊','ola agua mar'],
+    ['🌱','planta crecer brote'], ['🌳','arbol naturaleza'], ['🔒','candado seguridad cerrado'], ['🔓','candado abierto'], ['🔑','llave acceso'],
+    ['📦','caja paquete entrega'], ['🗂️','carpeta organizacion'], ['🗑️','papelera eliminar borrar'], ['🔍','buscar lupa'], ['🐛','bicho error bug'],
+  ];
 
   function _esc(s) {
     return (window.escapeHtml ? escapeHtml(s) : String(s ?? ''));
@@ -239,6 +267,7 @@
       <div class="mm-map-header">
         <button class="mm-back-btn" id="mmBackBtn" title="Volver a Mapas">← Mapas</button>
         <h1 class="mm-map-title" id="mmMapTitle" contenteditable="true" spellcheck="false">${_esc(_currentMap.title)}</h1>
+        <button class="mm-export-btn" id="mmExportBtn" title="Exportar mapa">Exportar</button>
         <button class="mm-delete-btn" id="mmDeleteBtn" title="Eliminar mapa">Eliminar</button>
       </div>
       <div class="mm-canvas-wrap" id="mmCanvasWrap">
@@ -257,6 +286,10 @@
 
     document.getElementById('mmBackBtn').addEventListener('click', showList, { signal });
     document.getElementById('mmDeleteBtn').addEventListener('click', onDeleteMap, { signal });
+    document.getElementById('mmExportBtn').addEventListener('click', e => {
+      e.stopPropagation();
+      openExportMenu(document.getElementById('mmExportBtn'));
+    }, { signal });
 
     const titleEl = document.getElementById('mmMapTitle');
     titleEl.addEventListener('blur', onRenameMap, { signal });
@@ -286,7 +319,8 @@
       const isRoot = depth === 0;
       node._depth = depth;
       node._h = isRoot ? ROOT_H : NODE_H;
-      node._w = Math.max(NODE_MIN_W, Math.ceil(measureTextWidth(node.text, isRoot)) + NODE_PAD_X);
+      const measureSrc = node.emoji ? `${node.emoji} ${node.text}` : node.text;
+      node._w = Math.max(NODE_MIN_W, Math.ceil(measureTextWidth(measureSrc, isRoot)) + NODE_PAD_X);
       node._color = node.color || (isRoot ? 'var(--accent)' : BRANCH_COLORS[branchIdx % BRANCH_COLORS.length]);
       colWidths[depth] = Math.max(colWidths[depth] || 0, node._w);
 
@@ -358,6 +392,13 @@
     box.className = 'mm-node-box' + (isRoot ? ' mm-node-box--root' : '');
     box.style.borderColor = node._color;
     if (isRoot) box.style.background = node._color;
+
+    if (node.emoji) {
+      const emojiEl = document.createElement('span');
+      emojiEl.className = 'mm-node-emoji';
+      emojiEl.textContent = node.emoji;
+      box.appendChild(emojiEl);
+    }
 
     const text = document.createElement('div');
     text.className = 'mm-node-text';
@@ -469,6 +510,7 @@
     mkBtn(ICON_NOTE, node.notes ? 'Ver / editar nota' : 'Agregar nota', () => openNotesPopover(node, toolbar));
     mkBtn(ICON_COLOR_SWATCH, 'Color', () => openColorPopover(node, toolbar));
     mkBtn(ICON_AI, 'Transformar con IA', () => openAiTransformPopover(node, toolbar));
+    mkBtn(ICON_EMOJI, node.emoji ? 'Cambiar emoji' : 'Agregar emoji', () => openEmojiPicker(node, toolbar));
     toolbar.addEventListener('mouseenter', _cancelHoverHide);
     toolbar.addEventListener('mouseleave', _scheduleHoverHide);
     document.body.appendChild(toolbar);
@@ -781,6 +823,43 @@
     _openPopover(pop, anchorEl, { alignRight: true });
   }
 
+  function openEmojiPicker(node, anchorEl) {
+    const pop = document.createElement('div');
+    pop.className = 'mm-emoji-popover';
+    pop.innerHTML = `
+      <input type="text" class="mm-emoji-search" placeholder="Buscar emoji…" autocomplete="off" />
+      <div class="mm-emoji-grid"></div>
+      ${node.emoji ? '<button class="mm-emoji-remove">Quitar emoji</button>' : ''}`;
+    const search = pop.querySelector('.mm-emoji-search');
+    const grid = pop.querySelector('.mm-emoji-grid');
+
+    const setEmoji = emoji => {
+      apiPatchNode(_currentMap.id, node.id, { emoji })
+        .then(map => { _currentMap = map; renderCanvas(); })
+        .catch(() => window.showToast && showToast('Error al asignar emoji', 'error'));
+      _closeActivePopover();
+    };
+
+    const renderGrid = q => {
+      const f = q.trim().toLowerCase();
+      const matches = EMOJI_LIST.filter(([, kw]) => !f || kw.includes(f)).slice(0, 96);
+      grid.innerHTML = '';
+      matches.forEach(([emoji]) => {
+        const b = document.createElement('button');
+        b.className = 'mm-emoji-item';
+        b.textContent = emoji;
+        b.addEventListener('click', () => setEmoji(emoji));
+        grid.appendChild(b);
+      });
+    };
+    renderGrid('');
+    search.addEventListener('input', () => renderGrid(search.value));
+    pop.querySelector('.mm-emoji-remove')?.addEventListener('click', () => setEmoji(''));
+
+    _openPopover(pop, anchorEl, { alignRight: true });
+    setTimeout(() => search.focus(), 50);
+  }
+
   async function apiAiTransform(mapId, nodeId, action, customPrompt) {
     const r = await fetch(`/api/mindmaps/${mapId}/nodes/${nodeId}/ai-transform`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -857,6 +936,145 @@
         .then(() => window.showToast && showToast('Copiado al portapapeles', 'success'))
         .catch(() => window.showToast && showToast('No se pudo copiar', 'error'));
     }
+  }
+
+  // ── Export: PNG / PDF / Markdown / JSON / Freemind — all built client-side ─
+  function _slug(s) {
+    return (s || 'mapa').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mapa';
+  }
+
+  function _downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function _downloadText(text, filename, mime) {
+    _downloadBlob(new Blob([text], { type: mime }), filename);
+  }
+
+  function openExportMenu(anchorEl) {
+    const menu = document.createElement('div');
+    menu.className = 'mm-node-menu';
+    const item = (label, fn) => {
+      const b = document.createElement('button');
+      b.className = 'mm-menu-item';
+      b.textContent = label;
+      b.addEventListener('click', () => { _closeActivePopover(); fn(); });
+      menu.appendChild(b);
+    };
+    item('Exportar como PNG', exportAsPng);
+    item('Exportar como PDF', exportAsPdf);
+    item('Exportar como Markdown', exportAsMarkdown);
+    item('Exportar como JSON', exportAsJson);
+    item('Exportar como Freemind (.mm)', exportAsFreemind);
+    _openPopover(menu, anchorEl, { alignRight: true });
+  }
+
+  function exportAsMarkdown() {
+    const lines = [`# ${_currentMap.title}`, ''];
+    (function walk(node, depth) {
+      if (depth > 0) lines.push('  '.repeat(depth - 1) + '- ' + (node.emoji ? node.emoji + ' ' : '') + node.text);
+      (node.children || []).forEach(c => walk(c, depth + 1));
+    })(_currentMap.root, 0);
+    _downloadText(lines.join('\n'), `${_slug(_currentMap.title)}.md`, 'text/markdown');
+  }
+
+  function exportAsJson() {
+    _downloadText(JSON.stringify(_currentMap, null, 2), `${_slug(_currentMap.title)}.json`, 'application/json');
+  }
+
+  function exportAsFreemind() {
+    const nodeXml = node => {
+      const children = (node.children || []).map(nodeXml).join('');
+      const text = (node.emoji ? node.emoji + ' ' : '') + node.text;
+      return `<node TEXT="${_esc(text)}">${children}</node>`;
+    };
+    const xml = `<map version="1.0.1">${nodeXml(_currentMap.root)}</map>`;
+    _downloadText(xml, `${_slug(_currentMap.title)}.mm`, 'application/xml');
+  }
+
+  // A plain rect+text SVG (no foreignObject/HTML) built from the same layout data as
+  // the live canvas — foreignObject content doesn't reliably rasterize to <canvas>
+  // across browsers, so PNG/PDF export gets its own clean render path instead.
+  function _buildExportSvg() {
+    computeLayout(_currentMap.root);
+    const flat = [];
+    (function collect(node, parent) {
+      flat.push({ node, parent });
+      if (!node.collapsed) (node.children || []).forEach(c => collect(c, node));
+    })(_currentMap.root, null);
+
+    const minX = Math.min(...flat.map(f => f.node._x));
+    const maxX = Math.max(...flat.map(f => f.node._x + f.node._w));
+    const minY = Math.min(...flat.map(f => f.node._y));
+    const maxY = Math.max(...flat.map(f => f.node._y + f.node._h));
+    const pad = 30;
+    const W = Math.ceil((maxX - minX) + pad * 2);
+    const H = Math.ceil((maxY - minY) + pad * 2);
+    const ox = -minX + pad, oy = -minY + pad;
+    const resolveColor = c => (!c || c.startsWith('var')) ? '#1793d1' : c;
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+    svg += `<rect width="${W}" height="${H}" fill="#ffffff"/>`;
+
+    for (const { node, parent } of flat) {
+      if (!parent) continue;
+      const x1 = parent._x + parent._w + ox, y1 = parent._y + parent._h / 2 + oy;
+      const x2 = node._x + ox, y2 = node._y + node._h / 2 + oy;
+      const mx = x1 + (x2 - x1) / 2;
+      svg += `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" stroke="${resolveColor(node._color)}" stroke-width="2" fill="none" opacity="0.55"/>`;
+    }
+    for (const { node } of flat) {
+      const isRoot = node === _currentMap.root;
+      const x = node._x + ox, y = node._y + oy;
+      const color = resolveColor(node._color);
+      const fill = isRoot ? color : '#ffffff';
+      const textColor = isRoot ? '#ffffff' : '#111827';
+      svg += `<rect x="${x}" y="${y}" width="${node._w}" height="${node._h}" rx="10" fill="${fill}" stroke="${color}" stroke-width="2"/>`;
+      const label = (node.emoji ? node.emoji + ' ' : '') + node.text.replace(/`/g, '');
+      svg += `<text x="${x + node._w / 2}" y="${y + node._h / 2}" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, sans-serif" font-size="14" font-weight="${isRoot ? 700 : 500}" fill="${textColor}">${_esc(label)}</text>`;
+    }
+    svg += `</svg>`;
+    return { svg, width: W, height: H };
+  }
+
+  function exportAsPng() {
+    const { svg, width, height } = _buildExportSvg();
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(pngBlob => {
+        if (pngBlob) _downloadBlob(pngBlob, `${_slug(_currentMap.title)}.png`);
+        else window.showToast && showToast('Error al generar PNG', 'error');
+      }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); window.showToast && showToast('Error al generar PNG', 'error'); };
+    img.src = url;
+  }
+
+  function exportAsPdf() {
+    const { svg, width, height } = _buildExportSvg();
+    const w = window.open('', '_blank');
+    if (!w) { window.showToast && showToast('El navegador bloqueó la ventana de impresión', 'error'); return; }
+    w.document.write(`<!DOCTYPE html><html><head><title>${_esc(_currentMap.title)}</title>
+      <style>@page { size: ${width}px ${height}px; margin: 0; } html,body { margin:0; padding:0; } svg { display:block; }</style>
+      </head><body>${svg}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
   }
 
   async function onDetachNode(node) {

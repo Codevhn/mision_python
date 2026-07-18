@@ -2872,6 +2872,7 @@ def _new_mindmap_node(text, node_id=None):
         "color": None,
         "collapsed": False,
         "linked_entry_uid": None,
+        "emoji": "",
     }
 
 
@@ -3016,6 +3017,8 @@ def edit_mindmap_node(map_id, node_id):
         node["collapsed"] = bool(body["collapsed"])
     if "linked_entry_uid" in body:
         node["linked_entry_uid"] = body["linked_entry_uid"] or None
+    if "emoji" in body:
+        node["emoji"] = (body["emoji"] or "").strip()[:8]
     mindmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
     save_mindmaps(data)
     return jsonify(mindmap)

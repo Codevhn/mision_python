@@ -213,7 +213,7 @@
   padding: 2px 6px;
 }
 .mm-map-title:focus { background: var(--bg-hover); }
-.mm-delete-btn {
+.mm-export-btn, .mm-delete-btn {
   background: none;
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -224,6 +224,7 @@
   cursor: pointer;
   flex-shrink: 0;
 }
+.mm-export-btn:hover { border-color: var(--accent); color: var(--accent); }
 .mm-delete-btn:hover { border-color: #ef4444; color: #ef4444; }
 
 /* ---- Canvas (Fase 2: SVG tidy-tree, pan + zoom, never blurs) ---- */
@@ -538,6 +539,69 @@
   flex-shrink: 0;
   line-height: 1;
 }
+.mm-node-emoji {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ---- Emoji picker popover ---- */
+.mm-emoji-popover {
+  z-index: 1000;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  width: 260px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.mm-emoji-search {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+.mm-emoji-search:focus { border-color: var(--accent); }
+.mm-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.mm-emoji-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  padding: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+.mm-emoji-item:hover { background: var(--bg-hover); }
+.mm-emoji-remove {
+  width: 100%;
+  margin-top: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 0.76rem;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.mm-emoji-remove:hover { color: #ef4444; border-color: #ef4444; }
 .mm-link-popover {
   z-index: 1000;
   background: var(--bg);
