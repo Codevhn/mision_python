@@ -469,25 +469,26 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--font-ui);
 }
 
-/* Category */
+/* Category — Notion-style: generous padding, rounded hover, no ASCII tree lines */
 .tree-category-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 12px 5px;
+  padding: 7px 10px;
+  margin: 2px 6px;
+  border-radius: 6px;
   font-family: var(--font-ui);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
-  border-left: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
-.tree-category-header:hover { color: var(--text); border-left-color: var(--border); }
-.tree-category.open .tree-category-header { border-left-color: var(--accent); }
+.tree-category-header:hover { color: var(--text); background: var(--bg-hover); }
+.tree-category.open .tree-category-header { color: var(--accent); }
 .tree-category-header .arrow {
   font-size: 0.55rem;
   transition: transform 0.2s ease;
@@ -508,27 +509,24 @@ input, textarea, select { font-family: inherit; }
 .tree-topic-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 12px 3px 14px;
+  gap: 6px;
+  padding: 7px 10px 7px 22px;
+  margin: 1px 6px;
+  border-radius: 6px;
   font-family: var(--font-ui);
-  font-size: 0.74rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text);
   cursor: pointer;
   user-select: none;
-  transition: color 0.12s;
+  transition: color 0.12s, background 0.12s;
 }
-.tree-topic-header::before {
-  content: "├─";
-  color: var(--text-faint);
-  font-size: 0.65rem;
-  flex-shrink: 0;
-}
-.tree-topic.open .tree-topic-header::before { content: "└─"; }
-.tree-topic-header:hover { color: var(--text); }
+.tree-topic-header:hover { color: var(--text); background: var(--bg-hover); }
 .tree-topic-header .arrow {
   font-size: 0.5rem;
   transition: transform 0.2s ease;
   display: inline-block;
+  color: var(--text-faint);
 }
 .tree-topic.open .tree-topic-header .arrow { transform: rotate(90deg); }
 
@@ -539,44 +537,42 @@ input, textarea, select { font-family: inherit; }
 }
 .tree-topic.open .tree-entries { max-height: 600px; }
 
-/* Entry */
+/* Entry — the actual page/lesson rows; this is what should read like Notion's sidebar */
 .tree-entry {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px 2px 20px;
+  gap: 7px;
+  padding: 7px 10px 7px 34px;
+  margin: 1px 6px;
+  border-radius: 6px;
   font-family: var(--font-ui);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   cursor: pointer;
-  border-left: 1px solid var(--border-light);
-  margin-left: 8px;
-  transition: color 0.1s, background 0.1s, border-color 0.1s;
+  transition: color 0.1s, background 0.1s;
   min-width: 0;
 }
-.tree-entry::before { content: "├─"; color: var(--text-faint); font-size: 0.65rem; flex: 0 0 auto; }
-.tree-entry:hover { color: var(--text); background: var(--bg-hover); border-left-color: var(--text-faint); }
+.tree-entry:hover { color: var(--text); background: var(--bg-hover); }
 .tree-entry.active {
-  color: var(--accent);
-  border-left-color: var(--accent);
+  color: var(--text);
   background: var(--accent-light);
 }
-.tree-entry.active::before { color: var(--accent); }
 .tree-entry-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
   overflow: hidden;
 }
 .tree-entry-icon {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
+  font-size: 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  opacity: 0.82;
+  opacity: 1;
 }
 .tree-entry-icon-glyph,
 .ts-space-icon-glyph,
@@ -4598,8 +4594,8 @@ body {
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #fff)) !important;
   color: #fff !important; font-weight: 700 !important;
 }
-.tree-entry.active { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; border-left: 2px solid var(--accent) !important; }
-.tree-entry:hover { background: rgba(255,255,255,0.04) !important; }
+.tree-entry.active { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; }
+.tree-entry:hover { background: var(--bg-hover) !important; }
 .tree-starred-entry:hover { color: var(--accent-amber) !important; }
 .tree-entry.starred { color: var(--accent-amber) !important; }
 .status-dot.status-pendiente  { background: var(--text-faint) !important; }
@@ -4735,7 +4731,7 @@ body {
 [data-theme="light"] .ctx-btn:hover { background: rgba(0,0,0,0.06) !important; color: #0c0c1e !important; }
 [data-theme="light"] .ctx-divider { background: rgba(0,0,0,0.10) !important; }
 [data-theme="light"] .inline-title { color: #0c0c1e !important; }
-[data-theme="light"] .tree-entry.active { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; border-left-color: var(--accent) !important; }
+[data-theme="light"] .tree-entry.active { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
 [data-theme="light"] .workspace-avatar { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 80%, #fff)) !important; }
 [data-theme="light"] .kb-board-column { background: rgba(230,230,244,0.75) !important; border-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .kb-card { background: rgba(255,255,255,0.80) !important; border-color: rgba(0,0,0,0.07) !important; }
