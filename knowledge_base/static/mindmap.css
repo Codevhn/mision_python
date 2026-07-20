@@ -205,14 +205,22 @@
 .mm-back-btn:hover { color: var(--accent); }
 .mm-map-title {
   flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 1.15rem;
   color: var(--text);
   outline: none;
   border-radius: 4px;
   padding: 2px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.mm-map-title:focus { background: var(--bg-hover); }
+.mm-map-title:focus {
+  background: var(--bg-hover);
+  white-space: normal;
+  overflow: visible;
+}
 .mm-export-btn, .mm-delete-btn {
   background: none;
   border: 1px solid var(--border);
@@ -226,6 +234,13 @@
 }
 .mm-export-btn:hover { border-color: var(--accent); color: var(--accent); }
 .mm-delete-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+@media (max-width: 640px) {
+  .mm-map-header { padding: 12px 12px 10px; gap: 8px; }
+  .mm-back-btn { font-size: 0.72rem; }
+  .mm-map-title { font-size: 0.95rem; padding: 2px 4px; }
+  .mm-export-btn, .mm-delete-btn { padding: 5px 8px; font-size: 0.68rem; }
+}
 
 /* ---- Canvas (Fase 2: SVG tidy-tree, pan + zoom, never blurs) ---- */
 .mm-canvas-wrap {
