@@ -3862,26 +3862,14 @@ body.sidebar-expanded .activity-bar-bottom {
   align-items: flex-start;
 }
 
+/* Text color/weight for these is owned by the .ab-item !important rules further
+   down (dark baseline + [data-theme="light"] override) — this block only handles
+   the expanded-sidebar layout, so it doesn't need to touch color here at all. */
 body.sidebar-expanded .ab-item {
   width: calc(var(--activity-bar-expanded-w) - 16px);
   justify-content: flex-start;
   padding: 0 14px;
   gap: 10px;
-  color: var(--text);
-  opacity: 0.7;
-}
-
-body.sidebar-expanded .ab-item:hover {
-  opacity: 1;
-  color: var(--text);
-}
-body.sidebar-expanded .ab-item--active {
-  opacity: 1;
-  color: var(--accent);
-}
-body.sidebar-expanded .ab-item--brand {
-  opacity: 1;
-  color: var(--accent);
 }
 
 body.sidebar-expanded .ab-item--active::before {
@@ -4302,11 +4290,11 @@ body {
   -webkit-backdrop-filter: blur(20px) !important;
   border-right: 1px solid rgba(255,255,255,0.06) !important;
 }
-.ab-item { color: rgba(255,255,255,0.35) !important; border-radius: var(--radius-sm) !important; }
-.ab-item:hover { background: rgba(255,255,255,0.07) !important; color: rgba(255,255,255,0.80) !important; }
-.ab-item--active { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--accent) !important; }
+.ab-item { color: #b8bcc6 !important; border-radius: var(--radius-sm) !important; font-weight: 600 !important; }
+.ab-item:hover { background: rgba(255,255,255,0.07) !important; color: #f4f5f7 !important; }
+.ab-item--active { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--accent) !important; font-weight: 700 !important; }
 .ab-item--active::before { background: var(--accent) !important; }
-.ab-item--brand { color: var(--accent) !important; }
+.ab-item--brand { color: var(--accent) !important; font-weight: 700 !important; }
 
 /* ── HOME ── */
 .home-greeting {
@@ -4685,9 +4673,9 @@ body {
   background: rgba(230,230,244,0.88) !important; border-right-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .activity-bar {
   background: rgba(224,224,238,0.92) !important; border-right-color: rgba(0,0,0,0.07) !important; }
-[data-theme="light"] .ab-item { color: #6b7280 !important; }
+[data-theme="light"] .ab-item { color: #374151 !important; font-weight: 600 !important; }
 [data-theme="light"] .ab-item:hover { background: rgba(0,0,0,0.06) !important; color: #0c0c1e !important; }
-[data-theme="light"] .ab-item--active { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; color: var(--accent) !important; }
+[data-theme="light"] .ab-item--active { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; color: var(--accent) !important; font-weight: 700 !important; }
 [data-theme="light"] .btn-ghost { color: #6b7280 !important; border-color: rgba(0,0,0,0.12) !important; }
 [data-theme="light"] .btn-ghost:hover { background: rgba(0,0,0,0.06) !important; color: #0c0c1e !important; }
 [data-theme="light"] .modal { background: rgba(245,245,255,0.92) !important; border-color: rgba(0,0,0,0.08) !important; }
