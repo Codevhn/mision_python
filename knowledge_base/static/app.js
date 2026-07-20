@@ -6041,9 +6041,11 @@ function renderCourseTab(tab, courseSlug, stats) {
           try {
             const data = await fetch(`/api/entry/${e.id}`).then(r => r.json());
             const content = data.markdown || '';
+            // Only the main numbered subtopics (##) — deeper headings (###/####) are
+            // fine-grained detail within each one and just clutter this preview.
             const headings = content.split('\n')
-              .filter(l => /^#{1,4}\s/.test(l))
-              .map(l => { const m = l.match(/^(#{1,4})\s+(.+)/); return m ? { level: m[1].length, text: m[2].trim() } : null; })
+              .filter(l => /^##\s/.test(l))
+              .map(l => { const m = l.match(/^##\s+(.+)/); return m ? { level: 2, text: m[1].trim() } : null; })
               .filter(Boolean);
             if (!headings.length) {
               outline.innerHTML = '<span class="cv-outline-empty">Sin subtemas registrados</span>';
