@@ -611,26 +611,41 @@
     // Touch: one finger pans, two fingers pinch-zoom. Without this the browser falls
     // back to its own native page pinch-zoom/scroll on mobile — touch-action:none on
     // .mm-svg (CSS) opts out of that, this is what replaces it for the canvas itself.
+    //
+    // A finger can start ANYWHERE, including on top of a node — on a dense mobile
+    // map there's often barely any empty background to grab. We only commit to
+    // "this is a pan" once the touch has moved past a small threshold; a plain tap
+    // that never crosses it is left alone so it still reaches the node underneath
+    // (to edit text, press a button, toggle a fold pill, etc). Two-finger touches
+    // are unambiguous — always pinch-zoom, no threshold needed.
     let pinchDist = null;
+    let touchStartX = 0, touchStartY = 0, touchTentative = false;
+    const PAN_THRESHOLD = 10;
     const touchDist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
     const touchMid = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
 
     _svgEl.addEventListener('touchstart', e => {
-      if (e.target.closest('.mm-node-box')) return;
       if (e.touches.length === 1) {
-        panning = true; moved = false;
-        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchTentative = true;
+        panning = false;
       } else if (e.touches.length === 2) {
+        touchTentative = false;
         panning = false;
         pinchDist = touchDist(e.touches[0], e.touches[1]);
       }
     }, { signal, passive: true });
 
     _svgEl.addEventListener('touchmove', e => {
-      if (e.touches.length === 1 && panning) {
-        e.preventDefault();
-        moved = true;
+      if (e.touches.length === 1 && (touchTentative || panning)) {
         const t = e.touches[0];
+        if (!panning) {
+          if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) < PAN_THRESHOLD) return;
+          panning = true; touchTentative = false; moved = true;
+          lastX = touchStartX; lastY = touchStartY;
+        }
+        e.preventDefault();
         _view.x += t.clientX - lastX;
         _view.y += t.clientY - lastY;
         lastX = t.clientX; lastY = t.clientY;
@@ -647,7 +662,7 @@
 
     _svgEl.addEventListener('touchend', e => {
       if (e.touches.length < 2) pinchDist = null;
-      if (e.touches.length === 0) panning = false;
+      if (e.touches.length === 0) { panning = false; touchTentative = false; }
     }, { signal, passive: true });
 
     document.getElementById('mmZoomIn').addEventListener('click', () => {

@@ -258,7 +258,9 @@
   user-select: none; /* dragging to pan shouldn't text-select node labels */
   touch-action: none; /* pan/pinch are handled in JS — don't let the browser also scroll/zoom the page */
 }
-.mm-node-box { touch-action: manipulation; }
+/* Inherit touch-action: none from .mm-svg — our own JS now decides tap vs. drag
+   uniformly across the whole canvas (nodes included), so the browser must never
+   claim the gesture natively here either, or our threshold logic runs too late. */
 .mm-svg.mm-grabbing { cursor: grabbing; }
 
 .mm-link {
