@@ -205,7 +205,16 @@ select:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent) !important;
 }
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+  /* Without this, some mobile browsers (Samsung Internet especially) auto-boost
+     font size in narrow text columns for "readability" — harmless for normal
+     flowing text, but it silently inflates rendered text past whatever a canvas
+     measureText() calculated, which breaks any UI (like the mind map canvas)
+     that sizes boxes from a JS-measured text width. */
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
 body {
   font-family: var(--font-body);
   background: var(--bg);

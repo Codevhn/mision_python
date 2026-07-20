@@ -307,8 +307,13 @@
   // ── Layout — hand-rolled tidy tree (depth = column, siblings stacked) ──────
   function measureTextWidth(text, bold) {
     if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
-    _measureCtx.font = `${bold ? 700 : 500} 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    return _measureCtx.measureText(text || '').width;
+    // Must match .mm-node-text's real font-family (var(--font-ui)) exactly — a
+    // mismatched fallback here measures a different typeface than what actually
+    // renders, so the box comes out too narrow and the text wraps past its border.
+    _measureCtx.font = `${bold ? 700 : 500} 13px "Inter", "Segoe UI", system-ui, sans-serif`;
+    // Small safety margin: canvas measureText and real DOM text layout are never
+    // pixel-identical across browsers/devices, so pad a bit rather than risk wrap.
+    return _measureCtx.measureText(text || '').width * 1.04;
   }
 
   function computeLayout(root) {
