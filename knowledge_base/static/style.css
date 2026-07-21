@@ -5529,19 +5529,39 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   border-top: none;
   border-radius: 0 0 var(--radius-xs) var(--radius-xs);
   background: var(--bg-surface);
-  padding: 6px 12px 8px 36px;
+  padding: 6px 10px 8px 28px;
   margin-bottom: 2px;
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: 1px;
 }
 .cv-outline-item {
-  font-size: 0.74rem; color: var(--text);
-  padding: 2px 0; line-height: 1.4;
-  cursor: pointer; transition: color 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem; color: var(--text);
+  padding: 7px 10px; line-height: 1.3;
+  border-radius: 6px;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
 }
-.cv-outline-item:hover { color: var(--accent); }
-.cv-outline-h2 { font-weight: 600; color: var(--text); }
-.cv-outline-h3 { padding-left: 12px; }
-.cv-outline-h4 { padding-left: 24px; font-size: 0.7rem; }
+.cv-outline-item::before {
+  content: '→';
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  opacity: 0;
+  transition: opacity 0.12s, transform 0.12s;
+  transform: translateX(-3px);
+}
+.cv-outline-item:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.cv-outline-item:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--accent);
+}
+.cv-outline-h2 { font-weight: 600; }
+.cv-outline-h3 { padding-left: 22px; font-weight: 400; }
+.cv-outline-h4 { padding-left: 34px; font-size: 0.72rem; font-weight: 400; }
 .cv-outline-loading, .cv-outline-empty {
   font-size: 0.72rem; color: var(--text-faint); font-style: italic;
 }
