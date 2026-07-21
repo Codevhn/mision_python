@@ -6054,7 +6054,10 @@ function renderCourseTab(tab, courseSlug, stats) {
                 `<div class="cv-outline-item cv-outline-h${h.level}">${escapeHtml(h.text)}</div>`
               ).join('');
               outline.querySelectorAll('.cv-outline-item').forEach((item, idx) => {
-                item.addEventListener('click', () => openCourseLesson(e.id));
+                item.addEventListener('click', async () => {
+                  await openCourseLesson(e.id);
+                  setTimeout(() => _scrollToHeadingText(headings[idx].text), 300);
+                });
               });
             }
           } catch { outline.innerHTML = '<span class="cv-outline-empty">No disponible</span>'; }
@@ -6601,7 +6604,27 @@ function handleNewEntryTopbar() {
 function openCourseLesson(entryId) {
   const cv = $('courseView');
   if (cv) cv.classList.add('hidden');
-  loadEntry(entryId);
+  return loadEntry(entryId);
+}
+
+// Jump to a specific heading inside the lesson just opened — same lookup +
+// scroll logic as the in-page TOC panel, matched by text since the roadmap's
+// subtopic preview and the rendered content are built from the same markdown
+// but not from the same DOM pass.
+function _scrollToHeadingText(text) {
+  const norm = s => (s || '')
+    .replace(/[\u{1F000}-\u{1FAFF}]/gu, '').replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '').trim().toLowerCase();
+  const target = _tocHeadings().find(h => norm(h.textContent) === norm(text));
+  if (!target) return;
+  const container = $("contentArea");
+  if (container) {
+    const top = container.scrollTop + target.getBoundingClientRect().top
+                - container.getBoundingClientRect().top - 16;
+    container.scrollTo({ top, behavior: "smooth" });
+  } else {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 // ── Single source of truth for active course ─────────────────────────────
