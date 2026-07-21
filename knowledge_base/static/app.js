@@ -3454,6 +3454,25 @@ function _tocHeadings() {
   return Array.from($("entryBody")?.querySelectorAll("h1, h2, h3, h4") ?? []);
 }
 
+// Scrolls `target` to just below the sticky ctx-bar (breadcrumb toolbar) —
+// it lives inside #contentArea and overlays whatever scrolls to the top of
+// that container, so a plain "scroll to top + 16px" leaves headings partially
+// hidden underneath it. Shared by the TOC panel and the course subtopic jump.
+function _scrollHeadingIntoView(target) {
+  if (!target) return;
+  const container = $("contentArea");
+  if (!container) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const ctxBar = $("ctxBar");
+  const ctxBarH = (ctxBar && !ctxBar.classList.contains("hidden"))
+    ? ctxBar.getBoundingClientRect().height : 0;
+  const top = container.scrollTop + target.getBoundingClientRect().top
+              - container.getBoundingClientRect().top - ctxBarH - 16;
+  container.scrollTo({ top, behavior: "smooth" });
+}
+
 function buildTOC() {
   const body     = $("entryBody");
   const tocItems = $("tocItems");
@@ -3490,15 +3509,7 @@ function buildTOC() {
       // Re-query at click time — avoids stale refs from React re-renders
       const idx    = parseInt(item.dataset.idx, 10);
       const target = _tocHeadings()[idx];
-      if (!target) return;
-      const container = $("contentArea");
-      if (container) {
-        const top = container.scrollTop + target.getBoundingClientRect().top
-                    - container.getBoundingClientRect().top - 16;
-        container.scrollTo({ top, behavior: "smooth" });
-      } else {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      _scrollHeadingIntoView(target);
     });
   });
 
@@ -6616,15 +6627,7 @@ function _scrollToHeadingText(text) {
     .replace(/[\u{1F000}-\u{1FAFF}]/gu, '').replace(/[\u{2600}-\u{27BF}]/gu, '')
     .replace(/[\u{FE00}-\u{FE0F}]/gu, '').trim().toLowerCase();
   const target = _tocHeadings().find(h => norm(h.textContent) === norm(text));
-  if (!target) return;
-  const container = $("contentArea");
-  if (container) {
-    const top = container.scrollTop + target.getBoundingClientRect().top
-                - container.getBoundingClientRect().top - 16;
-    container.scrollTo({ top, behavior: "smooth" });
-  } else {
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  _scrollHeadingIntoView(target);
 }
 
 // ── Single source of truth for active course ─────────────────────────────
