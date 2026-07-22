@@ -3454,11 +3454,10 @@ def ai_ask():
         "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
         "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
         "continue":  "Continúa escribiendo de forma natural a partir del siguiente fragmento, manteniendo el estilo, tono y tema. Devuelve solo la continuación.",
-        "quiz":      "Genera 3-5 preguntas de comprensión con sus respuestas sobre el siguiente contenido. Formato: **Pregunta:** ... / **Respuesta:** ... Responde en español.",
         "translate_en": "Traduce el siguiente texto al inglés de forma natural y precisa. Devuelve solo la traducción.",
     }
     system = systems.get(action, systems["ask"])
-    user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","quiz","translate_en","improve")) else (context or prompt)
+    user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
 
     try:
         body = json.dumps({
@@ -3487,6 +3486,88 @@ def ai_ask():
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Quiz generation (structured, multiple-choice) ──────────────────────────────
+
+@app.route("/api/quiz", methods=["POST"])
+def generate_quiz():
+    data    = request.json or {}
+    context = (data.get("context") or "").strip()
+    title   = (data.get("title") or "").strip()
+    if not context:
+        return jsonify({"error": "Sin contenido para generar el quiz"}), 400
+
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
+
+    system = (
+        "Eres un diseñador experto de evaluaciones educativas técnicas. A partir del contenido de una "
+        "lección, genera un quiz RIGUROSO de opción múltiple que verifique si el estudiante realmente "
+        "comprendió el tema, no solo si memorizó frases sueltas.\n\n"
+        "Reglas estrictas:\n"
+        "- Genera exactamente 8 preguntas.\n"
+        "- Combina niveles de dificultad: recordar datos concretos, comprender conceptos, y aplicar/analizar "
+        "en un escenario práctico o un fragmento de código si el contenido lo permite.\n"
+        "- Cada pregunta tiene EXACTAMENTE 4 opciones y solo una es correcta.\n"
+        "- Los 3 distractores deben ser específicos y plausibles (errores o confusiones reales sobre el tema), "
+        "nunca absurdos ni obviamente falsos.\n"
+        "- No repitas la misma idea en varias preguntas; cubre distintas partes del contenido.\n"
+        "- Incluye una explicación breve (1-2 frases) de por qué la respuesta correcta lo es.\n"
+        "- Responde en español.\n\n"
+        "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
+        "con este esquema exacto:\n"
+        '{"questions":[{"question":"...","options":["...","...","...","..."],"correct":0,"explanation":"..."}]}'
+    )
+    user_msg = f"Lección: {title}\n\nContenido:\n```\n{context[:8000]}\n```"
+
+    try:
+        body = json.dumps({
+            "model": "deepseek-chat",
+            "max_tokens": 3500,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user_msg},
+            ],
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.deepseek.com/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=45) as r:
+            result = json.loads(r.read())
+        content = result["choices"][0]["message"]["content"]
+        quiz = json.loads(content)
+
+        # Validate shape — drop malformed questions rather than failing the whole quiz
+        clean = []
+        for q in quiz.get("questions", []):
+            opts    = q.get("options")
+            correct = q.get("correct")
+            if (isinstance(q.get("question"), str) and isinstance(opts, list) and len(opts) == 4
+                    and isinstance(correct, int) and 0 <= correct < 4):
+                clean.append({
+                    "question":    q["question"],
+                    "options":     [str(o) for o in opts],
+                    "correct":     correct,
+                    "explanation": str(q.get("explanation") or ""),
+                })
+        if not clean:
+            return jsonify({"error": "La IA no devolvió preguntas válidas. Intenta de nuevo."}), 502
+        return jsonify({"questions": clean})
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

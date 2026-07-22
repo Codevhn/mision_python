@@ -132,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initRelationsPanel();
   initAIPanel();
   initPasteMarkdown();
+  initQuizModal();
   initBlockTypeIndicator();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
@@ -7672,6 +7673,12 @@ function initAIPanel() {
           return;
         }
 
+        if (action === 'quiz') {
+          _hideBar();
+          _openQuizModal(selText);
+          return;
+        }
+
         _hideBar();
         // Show Notion-style inline result popover below the selection
         _showAiResultPopover(selText, selRect, action);
@@ -7769,6 +7776,14 @@ function _showAiResultPopover(selText, selRect, action) {
   }, 50);
 }
 
+function initQuizModal() {
+  const overlay = $('quizOverlay');
+  const closeBtn = $('quizClose');
+  if (!overlay || !closeBtn) return;
+  closeBtn.addEventListener('click', _closeQuizModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _closeQuizModal(); });
+}
+
 // Insert AI result into the editor ──────────────────────────────────────────
 function _inlineInsert(action, selText, result) {
   if (!currentEntryId || !_inlineEditor) return;
@@ -7799,17 +7814,254 @@ function _inlineInsert(action, selText, result) {
     insertAt = nextPara !== -1 ? nextPara : md.length;
   }
 
-  // Format the inserted block based on action
-  let block = '';
-  if (action === 'quiz') {
-    block = '\n\n---\n\n' + result + '\n\n---';
-  } else if (action === 'explain' || action === 'expand') {
-    block = '\n\n' + result;
-  } else {
-    block = '\n\n' + result;
+  _inlineEditor.load(md.slice(0, insertAt) + '\n\n' + result + md.slice(insertAt));
+}
+
+// ── Interactive quiz modal ────────────────────────────────────────────────
+// Generates a structured multiple-choice quiz (via /api/quiz) instead of the
+// old "3 Q&A pairs as a wall of markdown text" — real questions, one at a
+// time, with immediate right/wrong feedback and a scored results screen.
+let _quizState = null; // { questions, current, answers[], contextText }
+
+function _openQuizModal(selText) {
+  const overlay = $('quizOverlay');
+  const body    = $('quizBody');
+  const footer  = $('quizFooter');
+  const titleEl = $('quizModalTitle');
+  if (!overlay || !body || !footer) return;
+
+  // Clear the text selection that triggered this — otherwise the inline AI
+  // toolbar's own mouseup/selectionchange listeners see it's still active
+  // and pop themselves back up on top of the modal.
+  window.getSelection()?.removeAllRanges();
+
+  const lessonTitle = currentEntryMeta?.title || 'esta lección';
+  titleEl.textContent = `✦ Quiz — ${lessonTitle}`;
+  footer.innerHTML = '';
+  body.innerHTML = `
+    <div class="quiz-loading">
+      <span class="arp-spinner"></span>
+      <span>Generando un quiz a partir del contenido…</span>
+    </div>`;
+  overlay.classList.remove('hidden');
+
+  _quizState = { questions: [], current: 0, answers: [], contextText: selText };
+  _fetchQuiz(selText, lessonTitle);
+}
+
+function _closeQuizModal() {
+  $('quizOverlay')?.classList.add('hidden');
+  _quizState = null;
+}
+
+async function _fetchQuiz(context, title) {
+  const body = $('quizBody');
+  const footer = $('quizFooter');
+  try {
+    const res = await fetch('/api/quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context, title }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      body.innerHTML = `<div class="quiz-error">${escapeHtml(data.error || 'No se pudo generar el quiz.')}</div>`;
+      footer.innerHTML = `<button class="btn-ghost" id="quizRetryErrBtn">Reintentar</button>`;
+      $('quizRetryErrBtn')?.addEventListener('click', () => _openQuizModal(context));
+      return;
+    }
+    _quizState.questions = data.questions;
+    _quizState.answers   = new Array(data.questions.length).fill(null);
+    _renderQuizQuestion(0);
+  } catch (err) {
+    body.innerHTML = `<div class="quiz-error">Error de red: ${escapeHtml(err.message)}</div>`;
+    footer.innerHTML = `<button class="btn-ghost" id="quizRetryErrBtn">Reintentar</button>`;
+    $('quizRetryErrBtn')?.addEventListener('click', () => _openQuizModal(context));
+  }
+}
+
+function _renderQuizQuestion(i) {
+  const st = _quizState;
+  if (!st) return;
+  st.current = i;
+  const q = st.questions[i];
+  const total = st.questions.length;
+  const answered = st.answers[i];
+
+  const dots = st.questions.map((_, idx) => {
+    const cls = idx === i ? 'current' : (st.answers[idx] != null ? 'done' : '');
+    return `<span class="quiz-dot ${cls}"></span>`;
+  }).join('');
+
+  const body = $('quizBody');
+  body.innerHTML = `
+    <div class="quiz-progress">
+      <div class="quiz-dots">${dots}</div>
+      <span class="quiz-progress-label">Pregunta ${i + 1} de ${total}</span>
+    </div>
+    <div class="quiz-question">${escapeHtml(q.question)}</div>
+    <div class="quiz-options" id="quizOptions"></div>
+    <div class="quiz-explanation hidden" id="quizExplanation"></div>`;
+
+  const optsEl = $('quizOptions');
+  q.options.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-option';
+    btn.innerHTML = `<span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span><span>${escapeHtml(opt)}</span>`;
+    if (answered != null) {
+      btn.disabled = true;
+      if (idx === q.correct) btn.classList.add('correct');
+      else if (idx === answered) btn.classList.add('incorrect');
+    }
+    btn.addEventListener('click', () => _answerQuiz(idx));
+    optsEl.appendChild(btn);
+  });
+
+  if (answered != null) _showQuizExplanation(q, answered);
+  _renderQuizFooter();
+}
+
+function _answerQuiz(idx) {
+  const st = _quizState;
+  if (!st || st.answers[st.current] != null) return;
+  st.answers[st.current] = idx;
+  _renderQuizQuestion(st.current);
+}
+
+function _showQuizExplanation(q, answered) {
+  const el = $('quizExplanation');
+  if (!el) return;
+  const ok = answered === q.correct;
+  el.classList.remove('hidden');
+  el.classList.toggle('quiz-explanation--ok', ok);
+  el.classList.toggle('quiz-explanation--bad', !ok);
+  el.innerHTML = `
+    <span class="quiz-explanation-badge">${ok ? '✓ Correcto' : '✕ Incorrecto'}</span>
+    ${q.explanation ? `<span>${escapeHtml(q.explanation)}</span>` : ''}`;
+}
+
+function _renderQuizFooter() {
+  const st = _quizState;
+  const footer = $('quizFooter');
+  const isLast = st.current === st.questions.length - 1;
+  const answered = st.answers[st.current] != null;
+
+  footer.innerHTML = '';
+  if (st.current > 0) {
+    const prev = document.createElement('button');
+    prev.className = 'btn-ghost';
+    prev.textContent = '← Anterior';
+    prev.addEventListener('click', () => _renderQuizQuestion(st.current - 1));
+    footer.appendChild(prev);
+  }
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  footer.appendChild(spacer);
+
+  const next = document.createElement('button');
+  next.className = 'btn-primary';
+  next.disabled = !answered;
+  next.textContent = isLast ? 'Ver resultados →' : 'Siguiente →';
+  next.addEventListener('click', () => {
+    if (isLast) _renderQuizResults();
+    else _renderQuizQuestion(st.current + 1);
+  });
+  footer.appendChild(next);
+}
+
+function _renderQuizResults() {
+  const st = _quizState;
+  if (!st) return;
+  const total   = st.questions.length;
+  const correct = st.answers.filter((a, i) => a === st.questions[i].correct).length;
+  const pct     = Math.round((correct / total) * 100);
+  const grade   = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
+  const gradeMsg = pct >= 80 ? '¡Excelente dominio del tema!'
+                 : pct >= 50 ? 'Vas bien, pero repasa lo que fallaste.'
+                 : 'Conviene repasar la lección antes de seguir.';
+
+  const body = $('quizBody');
+  body.innerHTML = `
+    <div class="quiz-results">
+      <div class="quiz-score quiz-score--${grade}">
+        <span class="quiz-score-pct">${pct}%</span>
+        <span class="quiz-score-frac">${correct}/${total} correctas</span>
+      </div>
+      <div class="quiz-score-msg">${gradeMsg}</div>
+      <div class="quiz-review" id="quizReview"></div>
+    </div>`;
+
+  const review = $('quizReview');
+  st.questions.forEach((q, i) => {
+    const userAns = st.answers[i];
+    const ok = userAns === q.correct;
+    const row = document.createElement('div');
+    row.className = 'quiz-review-item' + (ok ? ' ok' : ' bad');
+    row.innerHTML = `
+      <div class="quiz-review-head">
+        <span class="quiz-review-icon">${ok ? '✓' : '✕'}</span>
+        <span class="quiz-review-q">${i + 1}. ${escapeHtml(q.question)}</span>
+      </div>
+      <div class="quiz-review-detail">
+        ${!ok ? `<div class="quiz-review-wrong">Tu respuesta: ${escapeHtml(q.options[userAns])}</div>` : ''}
+        <div class="quiz-review-correct">Correcta: ${escapeHtml(q.options[q.correct])}</div>
+        ${q.explanation ? `<div class="quiz-review-exp">${escapeHtml(q.explanation)}</div>` : ''}
+      </div>`;
+    review.appendChild(row);
+  });
+
+  const footer = $('quizFooter');
+  footer.innerHTML = '';
+
+  const retryBtn = document.createElement('button');
+  retryBtn.className = 'btn-ghost';
+  retryBtn.textContent = '↻ Reintentar (nuevas preguntas)';
+  retryBtn.addEventListener('click', () => _openQuizModal(st.contextText));
+  footer.appendChild(retryBtn);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-ghost';
+  copyBtn.textContent = '⎘ Copiar resultado';
+  copyBtn.addEventListener('click', () => {
+    const lines = [`Quiz — ${currentEntryMeta?.title || ''} — ${correct}/${total} (${pct}%)`, ''];
+    st.questions.forEach((q, i) => {
+      const ok = st.answers[i] === q.correct;
+      lines.push(`${i + 1}. [${ok ? 'OK' : 'X'}] ${q.question}`);
+      lines.push(`   Correcta: ${q.options[q.correct]}`);
+      if (q.explanation) lines.push(`   ${q.explanation}`);
+    });
+    navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Resultado copiado', 'success'));
+  });
+  footer.appendChild(copyBtn);
+
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  footer.appendChild(spacer);
+
+  // Only meaningful inside a course lesson — offer to mark it complete on a good score
+  if (currentEntryMeta?.type === 'course' && currentEntryId) {
+    const markBtn = document.createElement('button');
+    markBtn.className = 'btn-primary';
+    markBtn.textContent = pct >= 80 ? '✓ Marcar lección completada' : '✓ Marcar en progreso';
+    markBtn.addEventListener('click', async () => {
+      const status = pct >= 80 ? 'completado' : 'en_progreso';
+      await fetch(`/api/entry/${currentEntryId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      updateStatusBtn($('statusBtn'), status);
+      showToast(status === 'completado' ? 'Lección marcada como completada' : 'Lección marcada en progreso', 'success');
+      _closeQuizModal();
+    });
+    footer.appendChild(markBtn);
   }
 
-  _inlineEditor.load(md.slice(0, insertAt) + block + md.slice(insertAt));
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-ghost';
+  closeBtn.textContent = 'Cerrar';
+  closeBtn.addEventListener('click', _closeQuizModal);
+  footer.appendChild(closeBtn);
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────
