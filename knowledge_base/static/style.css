@@ -3355,7 +3355,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
    such wrapper — its rows sit directly under the panel title — so reuse
    just enough of that padding to look like a flat top-level list. */
 .tree-page-node { min-width: 0; }
-.tree-page-row { position: relative; padding-left: 8px; }
+.tree-page-row { position: relative; padding-left: 4px; }
 .tree-page-toggle {
   width: 12px;
   flex: 0 0 auto;

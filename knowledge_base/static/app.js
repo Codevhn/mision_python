@@ -891,6 +891,10 @@ function renderPagesTree(tree) {
     const toggle = document.createElement("span");
     toggle.className = "tree-page-toggle";
     toggle.textContent = hasChildren ? "▾" : "";
+    // Leaf pages (the vast majority) don't need the toggle's reserved width —
+    // dropping it from the flex flow entirely (not just emptying its text)
+    // keeps their icon flush instead of leaving a blank arrow-sized gap.
+    if (!hasChildren) toggle.style.display = "none";
     row.appendChild(toggle);
 
     const label = document.createElement("span");
