@@ -3868,13 +3868,17 @@ def get_course_concepts(course):
     return jsonify({"course": course, "generated_at": entry.get("generated_at"), "concepts": entry.get("concepts", [])})
 
 
-@app.route("/api/courses/<course>/concepts/generate", methods=["POST"])
-def generate_course_concepts(course):
+def _generate_concepts_for_course(course):
+    """Core concept-map extraction, shared by the manual regenerate endpoint
+    and the lazy auto-generate-on-first-domain-fetch path. Returns
+    (concepts_list, None) on success or (None, error_message) on failure —
+    plain strings for errors since callers may not always want to `return`
+    a Flask response straight from a background/loop context."""
     index = load_index()
     titles = [meta["title"] for meta in index.values()
               if meta.get("type") == "course" and meta.get("course") == course]
     if not titles:
-        return jsonify({"error": "Este curso no tiene lecciones todavía"}), 400
+        return None, "Este curso no tiene lecciones todavía"
 
     courses_master = load_courses()["courses"]
     course_label = courses_master.get(course, {}).get("label", course)
@@ -3895,12 +3899,17 @@ def generate_course_concepts(course):
 
     content, err = _call_deepseek(system, user_msg, max_tokens=2000, json_mode=True)
     if err:
-        return err
+        # err is a (jsonify(...), status) tuple meant for a route; unwrap its message for callers that just want text
+        try:
+            message = err[0].get_json().get("error", "Error al llamar a la IA")
+        except Exception:
+            message = "Error al llamar a la IA"
+        return None, message
 
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError:
-        return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
+        return None, "La IA devolvió una respuesta con formato inválido"
 
     seen_names = set()
     clean_concepts = []
@@ -3920,7 +3929,7 @@ def generate_course_concepts(course):
         })
 
     if not clean_concepts:
-        return jsonify({"error": "La IA no devolvió conceptos válidos. Intenta de nuevo."}), 502
+        return None, "La IA no devolvió conceptos válidos"
 
     data = load_concepts()
     data["courses"][course] = {
@@ -3928,7 +3937,16 @@ def generate_course_concepts(course):
         "concepts": clean_concepts,
     }
     save_concepts(data)
-    return jsonify({"course": course, "generated_at": data["courses"][course]["generated_at"], "concepts": clean_concepts})
+    return clean_concepts, None
+
+
+@app.route("/api/courses/<course>/concepts/generate", methods=["POST"])
+def generate_course_concepts(course):
+    concepts, error = _generate_concepts_for_course(course)
+    if error:
+        return jsonify({"error": error}), 502
+    data = load_concepts()
+    return jsonify({"course": course, "generated_at": data["courses"][course]["generated_at"], "concepts": concepts})
 
 
 @app.route("/api/concepts/review", methods=["POST"])
@@ -3979,8 +3997,24 @@ def _concept_mastery(progress_state):
     return min(100, round(progress_state.get("interval", 0) / 30 * 100))
 
 
+def _ensure_concepts_for_all_courses():
+    """Lazily generate a concept map for any course that has lessons but no
+    map yet, so domain tracking works out of the box with no separate "analyze
+    this course" step in the UI. Silently skipped without an API key (e.g. in
+    local dev) or if a course's generation fails — domain just omits it."""
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        return
+    index = load_index()
+    known_courses = {meta["course"] for meta in index.values()
+                      if meta.get("type") == "course" and meta.get("course")}
+    concepts_data = load_concepts()["courses"]
+    for course in known_courses - concepts_data.keys():
+        _generate_concepts_for_course(course)
+
+
 @app.route("/api/domain", methods=["GET"])
 def get_domain():
+    _ensure_concepts_for_all_courses()
     concepts_data = load_concepts()["courses"]
     progress = load_concept_progress()
     courses_master = load_courses()["courses"]
