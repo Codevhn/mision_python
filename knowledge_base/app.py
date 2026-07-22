@@ -3679,12 +3679,13 @@ _PRACTICE_SYSTEM_PROMPT = (
 
 @app.route("/api/practice/generate", methods=["POST"])
 def generate_practice_challenge():
-    data       = request.json or {}
-    mode       = data.get("mode", "topic")
-    topic      = (data.get("topic") or "").strip()
-    context    = (data.get("context") or "").strip()
-    course     = (data.get("course") or "").strip()
-    difficulty = data.get("difficulty", "medio")
+    data             = request.json or {}
+    mode             = data.get("mode", "topic")
+    topic            = (data.get("topic") or "").strip()
+    context          = (data.get("context") or "").strip()
+    course           = (data.get("course") or "").strip()
+    force_concept_id = (data.get("concept_id") or "").strip()
+    difficulty       = data.get("difficulty", "medio")
     if difficulty not in ("facil", "medio", "dificil"):
         difficulty = "medio"
     if not topic:
@@ -3734,7 +3735,7 @@ def generate_practice_challenge():
             "instruction": instruction,
             "hints": hints,
             "solution": str(step.get("solution") or ""),
-            "concept_id": _match_concept_id(concepts, step.get("concept")),
+            "concept_id": force_concept_id or _match_concept_id(concepts, step.get("concept")),
         }
         if step_type == "python":
             asserts = step.get("asserts")
@@ -4083,6 +4084,43 @@ def get_domain_reminder():
         "course_label": course_label,
         "pareto": bool(concept.get("pareto")),
         "message": message,
+    }})
+
+
+@app.route("/api/domain/weakest", methods=["GET"])
+def get_domain_weakest():
+    """The single weakest, highest-leverage concept across every analyzed
+    course — unlike /api/domain/reminder this doesn't require it to be
+    "due" for review; a concept never practiced (mastery 0) is the weakest
+    possible and a perfectly valid pick. Powers "reto sorpresa" in Fase 3:
+    instead of a random lesson, it targets your actual weakest Pareto spot."""
+    _ensure_concepts_for_all_courses()
+    concepts_data = load_concepts()["courses"]
+    progress = load_concept_progress()
+    courses_master = load_courses()["courses"]
+
+    best = None
+    best_priority = -1
+    for course, entry in concepts_data.items():
+        for c in entry.get("concepts", []):
+            mastery = _concept_mastery(progress.get(c["id"]))
+            weight = 2 if c.get("pareto") else 1
+            priority = weight * (100 - mastery)
+            if priority > best_priority:
+                best_priority = priority
+                best = (course, c, mastery)
+
+    if not best:
+        return jsonify({"weakest": None})
+
+    course, concept, mastery = best
+    return jsonify({"weakest": {
+        "concept_id": concept["id"],
+        "concept_name": concept["name"],
+        "course": course,
+        "course_label": courses_master.get(course, {}).get("label", course),
+        "pareto": bool(concept.get("pareto")),
+        "mastery": mastery,
     }})
 
 

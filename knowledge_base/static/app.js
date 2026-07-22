@@ -8202,7 +8202,7 @@ function _flattenPracticeEntries(tree) {
     for (const modSlug in course.modules) {
       const mod = course.modules[modSlug];
       for (const entry of mod.entries) {
-        out.push({ id: entry.id, title: entry.title, label: `${course.label} › ${mod.label} › ${entry.title}` });
+        out.push({ id: entry.id, title: entry.title, course: courseSlug, label: `${course.label} › ${mod.label} › ${entry.title}` });
       }
     }
   }
@@ -8283,7 +8283,7 @@ async function _renderPracticeModeBody() {
 
 async function _startPracticeGeneration() {
   const st = _practiceState;
-  let topic = '', context = '', entryId = '', course = '';
+  let topic = '', context = '', entryId = '', course = '', forceConceptId = '', weakestPick = null;
 
   if (st.mode === 'topic') {
     topic = (st.topic || '').trim();
@@ -8298,17 +8298,34 @@ async function _startPracticeGeneration() {
     entryId = st.entryId;
     course = data.meta.type === 'course' ? (data.meta.course || '') : '';
   } else {
+    // "Reto sorpresa": target the real weakest high-leverage concept instead of a
+    // random lesson, when domain data exists — falls back to random otherwise.
     const tree = await _getPracticeTree();
     const entries = _flattenPracticeEntries(tree);
     if (!entries.length) { showToast('Todavía no tienes lecciones de cursos guardadas', 'error'); return; }
-    const pick = entries[Math.floor(Math.random() * entries.length)];
+
+    let weakest = null;
+    try { weakest = (await fetch('/api/domain/weakest').then(r => r.json())).weakest; } catch {}
+
+    const courseEntries = weakest ? entries.filter(e => e.course === weakest.course) : [];
+    const pick = courseEntries.length
+      ? courseEntries[Math.floor(Math.random() * courseEntries.length)]
+      : entries[Math.floor(Math.random() * entries.length)];
+
     const res = await fetch(`/api/entry/${pick.id}`);
     if (!res.ok) { showToast('No se pudo cargar la lección', 'error'); return; }
     const data = await res.json();
-    topic = data.meta.title;
-    context = (data.markdown || '').slice(0, 6000);
     entryId = pick.id;
+    context = (data.markdown || '').slice(0, 6000);
     course = data.meta.type === 'course' ? (data.meta.course || '') : '';
+
+    if (weakest && courseEntries.length) {
+      topic = weakest.concept_name;
+      forceConceptId = weakest.concept_id;
+      weakestPick = weakest;
+    } else {
+      topic = data.meta.title;
+    }
   }
 
   st.topic = topic;
@@ -8322,7 +8339,7 @@ async function _startPracticeGeneration() {
     const res = await fetch('/api/practice/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty }),
+      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty, concept_id: forceConceptId }),
     });
     const data = await res.json();
     if (_practiceState !== st) return;
@@ -8335,6 +8352,9 @@ async function _startPracticeGeneration() {
     st.stepResults = data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
     st.screen = 'challenge';
     _renderPracticeChallenge();
+    if (weakestPick) {
+      showToast(`Reto sobre tu punto más débil: "${weakestPick.concept_name}" (${weakestPick.course_label})`, 'success');
+    }
   } catch (err) {
     if (_practiceState !== st) return;
     _renderPracticeError('Error de red: ' + err.message);
@@ -8564,6 +8584,12 @@ function _finishPractice() {
   retryBtn.addEventListener('click', () => { st.screen = 'setup'; _renderPracticeSetup(); });
   footer.appendChild(retryBtn);
 
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-ghost';
+  saveBtn.textContent = '💾 Guardar en Conocimiento';
+  saveBtn.addEventListener('click', () => _savePracticeToKnowledge(st, saveBtn));
+  footer.appendChild(saveBtn);
+
   const spacer = document.createElement('div');
   spacer.style.flex = '1';
   footer.appendChild(spacer);
@@ -8583,6 +8609,61 @@ function _finishPractice() {
       topic: st.topic, score: passed, total,
     }),
   }).catch(() => {});
+}
+
+function _practiceKnowledgeTopic(st) {
+  const label = st.course && _practiceTreeCache?.[st.course]?.label;
+  return label || 'Temas libres';
+}
+
+function _buildPracticeMarkdown(st) {
+  const ch = st.challenge;
+  const lines = [`**Escenario:** ${ch.scenario}`, ''];
+  ch.steps.forEach((step, i) => {
+    const r = st.stepResults[i];
+    const lang = step.type === 'python' ? 'python' : '';
+    lines.push(`## Paso ${i + 1}: ${step.instruction}`, '');
+    const userAnswer = step.type === 'python' ? (r.userCode || '') : (r.userAnswer || '');
+    if (userAnswer) {
+      lines.push('**Tu respuesta:**', '```' + lang, userAnswer, '```', '');
+    }
+    lines.push(r.passed ? '✅ Resuelto correctamente' : (r.revealed ? '🔓 Solución revelada' : '❌ No resuelto'), '');
+    lines.push('**Solución de referencia:**', '```' + lang, step.solution, '```', '');
+  });
+  return lines.join('\n');
+}
+
+async function _savePracticeToKnowledge(st, btn) {
+  const ch = st.challenge;
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+  try {
+    const res = await fetch('/api/entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: ch.title,
+        entry_type: 'knowledge',
+        category: 'Práctica',
+        topic: _practiceKnowledgeTopic(st),
+        raw_text: _buildPracticeMarkdown(st),
+        already_markdown: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      showToast(data.error || 'No se pudo guardar el reto', 'error');
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar en Conocimiento';
+      return;
+    }
+    btn.textContent = '✓ Guardado';
+    showToast('Reto guardado en Conocimiento', 'success');
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '💾 Guardar en Conocimiento';
+  }
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────
