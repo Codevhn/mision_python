@@ -7475,7 +7475,7 @@ body {
 .practice-mode-tab:hover { border-color: var(--accent); color: var(--text); }
 .practice-mode-tab.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
-.practice-text-input, .practice-select, .practice-code-input, .practice-text-answer {
+.practice-text-input, .practice-code-input, .practice-text-answer {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--border);
@@ -7486,7 +7486,7 @@ body {
   font-size: 0.85rem;
   outline: none;
 }
-.practice-text-input:focus, .practice-select:focus, .practice-code-input:focus, .practice-text-answer:focus {
+.practice-text-input:focus, .practice-code-input:focus, .practice-text-answer:focus {
   border-color: var(--accent);
 }
 .practice-code-input, .practice-text-answer {
@@ -7497,6 +7497,31 @@ body {
   min-height: 110px;
 }
 .practice-text-answer { min-height: 70px; font-family: var(--font-mono); }
+
+/* Custom select (course/lesson pickers) — replaces native <select> so the
+   dropdown panel can be themed instead of using the OS/browser's own popup. */
+.practice-cselect { position: relative; }
+.practice-cselect-btn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.practice-cselect-btn:hover:not(:disabled) { border-color: var(--accent); }
+.practice-cselect-btn:disabled { opacity: 0.55; cursor: default; }
+.practice-cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.practice-cselect-value.placeholder { color: var(--text-faint); }
+.practice-cselect-chevron { color: var(--text-faint); font-size: 0.7rem; flex-shrink: 0; }
+.practice-cselect-portal { position: fixed; max-height: 260px; }
 
 .practice-loading-inline { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.82rem; padding: 8px 2px; }
 .practice-empty-note { color: var(--text-faint); font-size: 0.82rem; padding: 8px 2px; }

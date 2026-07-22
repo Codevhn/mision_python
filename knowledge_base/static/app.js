@@ -8207,6 +8207,7 @@ function _openPracticeModal(presetTopic) {
 function _closePracticeModal() {
   $('practiceOverlay')?.classList.add('hidden');
   _practiceState = null;
+  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 }
 
 function _practiceSlug(text) {
@@ -8257,6 +8258,9 @@ function _renderPracticeSetup() {
   const st = _practiceState;
   if (!st) return;
   $('practiceModalTitle').textContent = '🎯 Práctica';
+  // Rebuilding #practiceModeBody below detaches any custom-select containers
+  // without running their own cleanup, so sweep their body-level portals here.
+  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 
   const nudgeHtml = st.startNudge ? `
     <div class="practice-nudge">
@@ -8302,10 +8306,81 @@ function _renderPracticeSetup() {
   _renderPracticeModeBody();
 }
 
+// Native <select> popups are painted by the OS/browser chrome and can't be
+// themed — they showed up as a stark light-mode list inside this otherwise
+// dark modal. This renders a themed stand-in instead: a button plus a
+// floating panel *portaled onto document.body* (position: fixed, coordinates
+// from the button's own bounding rect) — appended outside the modal so the
+// modal's own overflow/height never clips it, the same way a native select's
+// popup escapes its container. The portal is tracked on the container element
+// so a re-mount (or _closePracticeModal) can find and remove the old one.
+function _mountPracticeCustomSelect(container, { options, value, placeholder, disabled, onChange }) {
+  if (!container) return;
+  container._cselectPortal?.remove();
+  const selected = options.find(o => o.value === value);
+
+  container.innerHTML = `
+    <button type="button" class="practice-cselect-btn" ${disabled ? 'disabled' : ''}>
+      <span class="practice-cselect-value${selected ? '' : ' placeholder'}">${escapeHtml(selected ? selected.label : placeholder)}</span>
+      <span class="practice-cselect-chevron">▾</span>
+    </button>`;
+
+  const btn = container.querySelector('.practice-cselect-btn');
+  const dropdown = document.createElement('div');
+  dropdown.className = 'smart-select-dropdown practice-cselect-portal hidden';
+  document.body.appendChild(dropdown);
+  container._cselectPortal = dropdown;
+
+  const reposition = () => {
+    const r = btn.getBoundingClientRect();
+    dropdown.style.left = `${r.left}px`;
+    dropdown.style.top = `${r.bottom + 4}px`;
+    dropdown.style.width = `${r.width}px`;
+  };
+  const close = () => {
+    dropdown.classList.add('hidden');
+    document.removeEventListener('click', onOutsideClick);
+    document.removeEventListener('keydown', onEscape);
+    window.removeEventListener('resize', reposition);
+  };
+  const onOutsideClick = e => { if (!container.contains(e.target) && !dropdown.contains(e.target)) close(); };
+  const onEscape = e => { if (e.key === 'Escape') close(); };
+
+  if (!disabled) {
+    btn.addEventListener('click', () => {
+      const isOpen = !dropdown.classList.contains('hidden');
+      if (isOpen) { close(); return; }
+      dropdown.innerHTML = options.length
+        ? options.map(o => `<div class="ss-item" data-value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</div>`).join('')
+        : `<div class="ss-item" style="color:var(--text-faint);cursor:default">Sin opciones</div>`;
+      const valueEl = btn.querySelector('.practice-cselect-value');
+      dropdown.querySelectorAll('.ss-item[data-value]').forEach(item => {
+        item.addEventListener('click', () => {
+          close();
+          if (valueEl) {
+            valueEl.textContent = item.textContent;
+            valueEl.classList.remove('placeholder');
+          }
+          onChange(item.dataset.value);
+        });
+      });
+      reposition();
+      dropdown.classList.remove('hidden');
+      document.addEventListener('click', onOutsideClick);
+      document.addEventListener('keydown', onEscape);
+      window.addEventListener('resize', reposition);
+    });
+  }
+}
+
 async function _renderPracticeModeBody() {
   const st = _practiceState;
   const container = $('practiceModeBody');
   if (!container) return;
+  // Rebuilding this container's contents (below) detaches any custom-select
+  // wrapper divs without running their own cleanup, orphaning their
+  // body-level portals — sweep them here too, not just in _renderPracticeSetup.
+  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 
   if (st.mode === 'topic') {
     container.innerHTML = `
@@ -8327,20 +8402,22 @@ async function _renderPracticeModeBody() {
     }
     const lessons = st.reviewCourse ? _courseModuleEntries(tree, st.reviewCourse) : [];
     container.innerHTML = `
-      <select id="practiceCourseSelect" class="practice-select">
-        <option value="">Elige un curso…</option>
-        ${courseSlugs.map(slug => `<option value="${escapeHtml(slug)}" ${slug === st.reviewCourse ? 'selected' : ''}>${escapeHtml(tree[slug].label)}</option>`).join('')}
-      </select>
-      <select id="practiceEntrySelect" class="practice-select" style="margin-top:8px" ${st.reviewCourse ? '' : 'disabled'}>
-        <option value="">${st.reviewCourse ? 'Elige una lección…' : 'Primero elige un curso'}</option>
-        ${lessons.map(l => `<option value="${escapeHtml(l.id)}" ${l.id === st.entryId ? 'selected' : ''}>${escapeHtml(l.label)}</option>`).join('')}
-      </select>`;
-    $('practiceCourseSelect').addEventListener('change', e => {
-      st.reviewCourse = e.target.value;
-      st.entryId = '';
-      _renderPracticeModeBody();
+      <div class="practice-cselect" id="practiceCourseCSelect"></div>
+      <div class="practice-cselect" id="practiceEntryCSelect" style="margin-top:8px"></div>`;
+
+    _mountPracticeCustomSelect($('practiceCourseCSelect'), {
+      options: courseSlugs.map(slug => ({ value: slug, label: tree[slug].label })),
+      value: st.reviewCourse,
+      placeholder: 'Elige un curso…',
+      onChange: value => { st.reviewCourse = value; st.entryId = ''; _renderPracticeModeBody(); },
     });
-    $('practiceEntrySelect').addEventListener('change', e => { st.entryId = e.target.value; });
+    _mountPracticeCustomSelect($('practiceEntryCSelect'), {
+      options: lessons.map(l => ({ value: l.id, label: l.label })),
+      value: st.entryId,
+      placeholder: st.reviewCourse ? 'Elige una lección…' : 'Primero elige un curso',
+      disabled: !st.reviewCourse,
+      onChange: value => { st.entryId = value; },
+    });
     return;
   }
 
