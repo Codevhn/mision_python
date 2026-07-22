@@ -4043,8 +4043,50 @@ def get_domain():
     return jsonify({"courses": result})
 
 
+def _find_unstarted_course():
+    """The earliest-added course the user hasn't opened a single lesson of yet.
+    This is a stronger signal than any concept decaying — there's nothing to
+    decay if nothing was studied — so it outranks spaced-repetition reminders."""
+    index = load_index()
+    courses_master = load_courses()["courses"]
+    lessons_by_course = {}
+    for meta in index.values():
+        if meta.get("type") == "course" and meta.get("course"):
+            lessons_by_course.setdefault(meta["course"], []).append(meta)
+
+    candidates = []
+    for slug, info in courses_master.items():
+        lessons = lessons_by_course.get(slug, [])
+        touched = any(l.get("last_viewed_at") for l in lessons)
+        if not touched:
+            candidates.append((info.get("created_at", ""), slug, info, len(lessons)))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: c[0])
+    _, slug, info, lesson_count = candidates[0]
+    return {"course": slug, "course_label": info.get("label", slug), "lesson_count": lesson_count}
+
+
 @app.route("/api/domain/reminder", methods=["GET"])
 def get_domain_reminder():
+    unstarted = _find_unstarted_course()
+    if unstarted:
+        if unstarted["lesson_count"] > 0:
+            plural = "es" if unstarted["lesson_count"] != 1 else ""
+            message = (f"Todavía no empezaste \"{unstarted['course_label']}\" — tiene "
+                       f"{unstarted['lesson_count']} lección{plural} esperando. Es hora de dar el primer paso.")
+        else:
+            message = f"\"{unstarted['course_label']}\" está en tu lista pero todavía no tiene lecciones cargadas."
+        return jsonify({"reminder": {
+            "kind": "start",
+            "course": unstarted["course"],
+            "course_label": unstarted["course_label"],
+            "has_lessons": unstarted["lesson_count"] > 0,
+            "lesson_count": unstarted["lesson_count"],
+            "message": message,
+        }})
+
     concepts_data = load_concepts()["courses"]
     progress = load_concept_progress()
     courses_master = load_courses()["courses"]
@@ -4078,6 +4120,7 @@ def get_domain_reminder():
         message = f"Repasa \"{concept['name']}\" — se te empieza a olvidar."
 
     return jsonify({"reminder": {
+        "kind": "review",
         "concept_id": concept["id"],
         "concept_name": concept["name"],
         "course": course,

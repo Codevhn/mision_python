@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initPasteMarkdown();
   initQuizModal();
   initPracticeModal();
-  _refreshPracticeBadge();
+  _refreshReminderBadges();
   initBlockTypeIndicator();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
@@ -171,7 +171,7 @@ function bindEvents() {
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
-  $("abPractice")?.addEventListener("click", _openPracticeModal);
+  $("abPractice")?.addEventListener("click", () => _openPracticeModal());
   $("msnPractice")?.addEventListener("click", () => { closeSidebarMobile(); _openPracticeModal(); });
 
   // Clicking in the wrap padding area (outside the block-editor div) triggers same behavior
@@ -1758,23 +1758,38 @@ async function _renderHomeDomain() {
       fetch('/api/domain').then(r => r.json()),
       fetch('/api/domain/reminder').then(r => r.json()),
     ]);
-    _refreshPracticeBadge(reminderData.reminder);
+    const reminder = reminderData.reminder;
+    _refreshReminderBadges(reminder);
 
     const courses = Object.entries(domainData.courses || {});
-    if (!courses.length) { container.innerHTML = ''; return; }
+    // A "start" reminder (a course with zero lessons ever opened) must show even
+    // before any course has a concept map / domain bars — that's the whole point:
+    // nudge before there's anything to measure, not only once data exists.
+    if (!courses.length && !reminder) { container.innerHTML = ''; return; }
 
-    const reminder = reminderData.reminder;
-    const reminderHtml = reminder ? `
-      <div class="home-reminder-card${reminder.pareto ? ' home-reminder-card--pareto' : ''}">
-        <span class="hrc-icon">${reminder.pareto ? '⚡' : '🔁'}</span>
-        <div class="hrc-body">
-          <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
-          <div class="hrc-course">${escapeHtml(reminder.course_label)}</div>
-        </div>
-        <button class="hrc-btn" id="homeReminderPracticeBtn">Practicar ahora →</button>
-      </div>` : '';
+    let reminderHtml = '';
+    if (reminder && reminder.kind === 'start') {
+      reminderHtml = `
+        <div class="home-reminder-card home-reminder-card--start">
+          <span class="hrc-icon">📚</span>
+          <div class="hrc-body">
+            <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
+          </div>
+          <button class="hrc-btn" id="homeReminderGoBtn">Ir a Cursos →</button>
+        </div>`;
+    } else if (reminder) {
+      reminderHtml = `
+        <div class="home-reminder-card${reminder.pareto ? ' home-reminder-card--pareto' : ''}">
+          <span class="hrc-icon">${reminder.pareto ? '⚡' : '🔁'}</span>
+          <div class="hrc-body">
+            <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
+            <div class="hrc-course">${escapeHtml(reminder.course_label)}</div>
+          </div>
+          <button class="hrc-btn" id="homeReminderPracticeBtn">Practicar ahora →</button>
+        </div>`;
+    }
 
-    const barsHtml = courses
+    const barsHtml = courses.length ? courses
       .sort((a, b) => a[1].domain - b[1].domain)
       .slice(0, 5)
       .map(([slug, c]) => `
@@ -1782,28 +1797,30 @@ async function _renderHomeDomain() {
           <span class="hdr-label">${escapeHtml(c.label)}</span>
           <div class="hdr-bar"><div class="hdr-bar-fill" style="width:${c.domain}%"></div></div>
           <span class="hdr-pct">${c.domain}%</span>
-        </div>`).join('');
+        </div>`).join('') : '';
 
     container.innerHTML = `
       <div class="home-section-header">
         <div class="home-section-label">🎯 Tu dominio</div>
       </div>
       ${reminderHtml}
-      <div class="home-domain-bars">${barsHtml}</div>`;
+      ${barsHtml ? `<div class="home-domain-bars">${barsHtml}</div>` : ''}`;
 
+    $('homeReminderGoBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
     $('homeReminderPracticeBtn')?.addEventListener('click', () => _openPracticeModal(reminder.concept_name));
   } catch {
     container.innerHTML = '';
   }
 }
 
-async function _refreshPracticeBadge(reminder) {
-  const badge = $('abPracticeBadge');
-  if (!badge) return;
+async function _refreshReminderBadges(reminder) {
   if (reminder === undefined) {
     try { reminder = (await fetch('/api/domain/reminder').then(r => r.json())).reminder; } catch { reminder = null; }
   }
-  badge.classList.toggle('hidden', !reminder);
+  const practiceBadge = $('abPracticeBadge');
+  const coursesBadge = $('abCoursesBadge');
+  practiceBadge?.classList.toggle('hidden', !(reminder && reminder.kind === 'review'));
+  coursesBadge?.classList.toggle('hidden', !(reminder && reminder.kind === 'start'));
 }
 
 // The block editor's "code" mark is exclusive — a text run can't carry both
@@ -8171,8 +8188,20 @@ function _openPracticeModal(presetTopic) {
   const overlay = $('practiceOverlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
-  _practiceState = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: presetTopic || '', entryId: '', contextText: '' };
+  const st = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: typeof presetTopic === 'string' ? presetTopic : '', entryId: '', contextText: '', startNudge: null };
+  _practiceState = st;
   _renderPracticeSetup();
+
+  // Soft nudge: Práctica leans on Cursos, so if there's an unstarted course we
+  // say so — without blocking anything, per the user's explicit "soft, not
+  // hard gate" call. Fetched async so it never delays opening the modal.
+  fetch('/api/domain/reminder').then(r => r.json()).then(data => {
+    if (_practiceState !== st || st.screen !== 'setup') return;
+    if (data.reminder && data.reminder.kind === 'start') {
+      st.startNudge = data.reminder;
+      _renderPracticeSetup();
+    }
+  }).catch(() => {});
 }
 
 function _closePracticeModal() {
@@ -8214,8 +8243,16 @@ function _renderPracticeSetup() {
   if (!st) return;
   $('practiceModalTitle').textContent = '🎯 Práctica';
 
+  const nudgeHtml = st.startNudge ? `
+    <div class="practice-nudge">
+      <span class="practice-nudge-icon">📚</span>
+      <div class="practice-nudge-msg">${escapeHtml(st.startNudge.message)}</div>
+      <button class="practice-nudge-btn" id="practiceNudgeGoBtn">Ir a Cursos →</button>
+    </div>` : '';
+
   $('practiceBody').innerHTML = `
     <div class="practice-setup">
+      ${nudgeHtml}
       <div class="practice-mode-tabs">
         <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
         <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
@@ -8233,6 +8270,11 @@ function _renderPracticeSetup() {
     </div>`;
 
   $('practiceFooter').innerHTML = `<button class="btn-primary" id="practiceGenerateBtn">✦ Generar reto</button>`;
+
+  $('practiceNudgeGoBtn')?.addEventListener('click', () => {
+    _closePracticeModal();
+    window.switchSpace?.('courses');
+  });
 
   document.querySelectorAll('.practice-mode-tab').forEach(btn => {
     btn.addEventListener('click', () => { st.mode = btn.dataset.mode; _renderPracticeSetup(); });

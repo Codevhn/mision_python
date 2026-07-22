@@ -6317,7 +6317,8 @@ body.home-ambient .home-hero { overflow: visible; }
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.home-reminder-card--pareto {
+.home-reminder-card--pareto,
+.home-reminder-card--start {
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
   border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
   border-left-color: var(--accent);
@@ -7434,6 +7435,28 @@ body {
 
 /* ── PRACTICE MODAL ──────────────────────────────────────── */
 .practice-modal .modal-footer { flex-wrap: wrap; }
+
+.practice-nudge {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.practice-nudge-icon { font-size: 1.1rem; flex-shrink: 0; }
+.practice-nudge-msg { flex: 1; min-width: 160px; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+.practice-nudge-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid var(--accent); color: var(--accent);
+  font-size: 0.75rem; font-weight: 600; font-family: var(--font-ui);
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.12s;
+}
+.practice-nudge-btn:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
 
 .practice-mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
 .practice-mode-tab {
