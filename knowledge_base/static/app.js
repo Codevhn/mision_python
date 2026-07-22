@@ -134,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initPasteMarkdown();
   initQuizModal();
   initPracticeModal();
+  _refreshPracticeBadge();
   initBlockTypeIndicator();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
@@ -1664,6 +1665,8 @@ function renderHome() {
         ${studying.length > 1 ? `<div class="home-study-grid">${studying.slice(1, 4).map(studyCompactHtml).join('')}</div>` : ''}
       </section>` : ''}
 
+      <section class="home-section home-section--domain" id="homeDomainSection"></section>
+
       ${pinned.length ? `
       <section class="home-section">
         <div class="home-section-label">⊞ Fijadas</div>
@@ -1739,6 +1742,68 @@ function renderHome() {
     _startAmbientCanvas(initCond);     // full-viewport canvas
     _fetchWeather();
   }
+
+  _renderHomeDomain();
+}
+
+// ── Domain tracking: mastery bars + spaced-repetition reminder (Fase 2) ──────
+// Fetched separately from renderHome()'s synchronous local-storage data since
+// this needs a round trip to /api/domain + /api/domain/reminder; the section
+// starts empty and fills in once the response lands, instead of blocking Home.
+async function _renderHomeDomain() {
+  const container = $('homeDomainSection');
+  if (!container) return;
+  try {
+    const [domainData, reminderData] = await Promise.all([
+      fetch('/api/domain').then(r => r.json()),
+      fetch('/api/domain/reminder').then(r => r.json()),
+    ]);
+    _refreshPracticeBadge(reminderData.reminder);
+
+    const courses = Object.entries(domainData.courses || {});
+    if (!courses.length) { container.innerHTML = ''; return; }
+
+    const reminder = reminderData.reminder;
+    const reminderHtml = reminder ? `
+      <div class="home-reminder-card${reminder.pareto ? ' home-reminder-card--pareto' : ''}">
+        <span class="hrc-icon">${reminder.pareto ? '⚡' : '🔁'}</span>
+        <div class="hrc-body">
+          <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
+          <div class="hrc-course">${escapeHtml(reminder.course_label)}</div>
+        </div>
+        <button class="hrc-btn" id="homeReminderPracticeBtn">Practicar ahora →</button>
+      </div>` : '';
+
+    const barsHtml = courses
+      .sort((a, b) => a[1].domain - b[1].domain)
+      .slice(0, 5)
+      .map(([slug, c]) => `
+        <div class="home-domain-row">
+          <span class="hdr-label">${escapeHtml(c.label)}</span>
+          <div class="hdr-bar"><div class="hdr-bar-fill" style="width:${c.domain}%"></div></div>
+          <span class="hdr-pct">${c.domain}%</span>
+        </div>`).join('');
+
+    container.innerHTML = `
+      <div class="home-section-header">
+        <div class="home-section-label">🎯 Tu dominio</div>
+      </div>
+      ${reminderHtml}
+      <div class="home-domain-bars">${barsHtml}</div>`;
+
+    $('homeReminderPracticeBtn')?.addEventListener('click', () => _openPracticeModal(reminder.concept_name));
+  } catch {
+    container.innerHTML = '';
+  }
+}
+
+async function _refreshPracticeBadge(reminder) {
+  const badge = $('abPracticeBadge');
+  if (!badge) return;
+  if (reminder === undefined) {
+    try { reminder = (await fetch('/api/domain/reminder').then(r => r.json())).reminder; } catch { reminder = null; }
+  }
+  badge.classList.toggle('hidden', !reminder);
 }
 
 // The block editor's "code" mark is exclusive — a text run can't carry both
@@ -7848,8 +7913,9 @@ function _openQuizModal(selText) {
     </div>`;
   overlay.classList.remove('hidden');
 
-  _quizState = { questions: [], current: 0, answers: [], contextText: selText };
-  _fetchQuiz(selText, lessonTitle);
+  const course = currentEntryMeta?.type === 'course' ? (currentEntryMeta.course || '') : '';
+  _quizState = { questions: [], current: 0, answers: [], contextText: selText, course };
+  _fetchQuiz(selText, lessonTitle, course);
 }
 
 function _closeQuizModal() {
@@ -7857,14 +7923,14 @@ function _closeQuizModal() {
   _quizState = null;
 }
 
-async function _fetchQuiz(context, title) {
+async function _fetchQuiz(context, title, course) {
   const body = $('quizBody');
   const footer = $('quizFooter');
   try {
     const res = await fetch('/api/quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context, title }),
+      body: JSON.stringify({ context, title, course }),
     });
     const data = await res.json();
     if (!res.ok || data.error) {
@@ -7929,6 +7995,16 @@ function _answerQuiz(idx) {
   if (!st || st.answers[st.current] != null) return;
   st.answers[st.current] = idx;
   _renderQuizQuestion(st.current);
+
+  // Feed the spaced-repetition tracker per question, not just the final score
+  const q = st.questions[st.current];
+  if (q.concept_id) {
+    fetch('/api/concepts/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concept_id: q.concept_id, course: st.course, correct: idx === q.correct }),
+    }).catch(() => {});
+  }
 }
 
 function _showQuizExplanation(q, answered) {
@@ -8091,11 +8167,11 @@ function initPracticeModal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) _closePracticeModal(); });
 }
 
-function _openPracticeModal() {
+function _openPracticeModal(presetTopic) {
   const overlay = $('practiceOverlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
-  _practiceState = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: '', entryId: '', contextText: '' };
+  _practiceState = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: presetTopic || '', entryId: '', contextText: '' };
   _renderPracticeSetup();
 }
 
@@ -8207,7 +8283,7 @@ async function _renderPracticeModeBody() {
 
 async function _startPracticeGeneration() {
   const st = _practiceState;
-  let topic = '', context = '', entryId = '';
+  let topic = '', context = '', entryId = '', course = '';
 
   if (st.mode === 'topic') {
     topic = (st.topic || '').trim();
@@ -8220,6 +8296,7 @@ async function _startPracticeGeneration() {
     topic = data.meta.title;
     context = (data.markdown || '').slice(0, 6000);
     entryId = st.entryId;
+    course = data.meta.type === 'course' ? (data.meta.course || '') : '';
   } else {
     const tree = await _getPracticeTree();
     const entries = _flattenPracticeEntries(tree);
@@ -8231,11 +8308,13 @@ async function _startPracticeGeneration() {
     topic = data.meta.title;
     context = (data.markdown || '').slice(0, 6000);
     entryId = pick.id;
+    course = data.meta.type === 'course' ? (data.meta.course || '') : '';
   }
 
   st.topic = topic;
   st.entryId = entryId;
   st.contextText = context;
+  st.course = course;
   st.screen = 'loading';
   _renderPracticeLoading();
 
@@ -8243,7 +8322,7 @@ async function _startPracticeGeneration() {
     const res = await fetch('/api/practice/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: st.mode, topic, context, difficulty: st.difficulty }),
+      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty }),
     });
     const data = await res.json();
     if (_practiceState !== st) return;
@@ -8422,6 +8501,14 @@ async function _checkPracticeStep() {
       if (data.error) { showToast(data.error, 'error'); return; }
       stepState.passed = !!data.passed;
       stepState.lastFeedback = data.feedback || '';
+    }
+
+    if (step.concept_id) {
+      fetch('/api/concepts/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concept_id: step.concept_id, course: st.course, correct: stepState.passed }),
+      }).catch(() => {});
     }
   } catch (err) {
     showToast('Error de red: ' + err.message, 'error');

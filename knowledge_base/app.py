@@ -8,7 +8,7 @@ import base64
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
 import mistune
@@ -3499,12 +3499,22 @@ def generate_quiz():
     data    = request.json or {}
     context = (data.get("context") or "").strip()
     title   = (data.get("title") or "").strip()
+    course  = (data.get("course") or "").strip()
     if not context:
         return jsonify({"error": "Sin contenido para generar el quiz"}), 400
 
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not api_key:
         return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
+
+    concepts = _load_course_concepts(course) if course else []
+    concept_instructions = ""
+    if concepts:
+        names = "\n".join(f"- {c['name']}" for c in concepts)
+        concept_instructions = (
+            "\n- Cada pregunta incluye \"concept\": el nombre EXACTO del concepto de esta lista al que pertenece "
+            f"(o cadena vacía si ninguno aplica bien):\n{names}\n"
+        )
 
     system = (
         "Eres un diseñador experto de evaluaciones educativas técnicas. A partir del contenido de una "
@@ -3518,11 +3528,12 @@ def generate_quiz():
         "- Los 3 distractores deben ser específicos y plausibles (errores o confusiones reales sobre el tema), "
         "nunca absurdos ni obviamente falsos.\n"
         "- No repitas la misma idea en varias preguntas; cubre distintas partes del contenido.\n"
-        "- Incluye una explicación breve (1-2 frases) de por qué la respuesta correcta lo es.\n"
-        "- Responde en español.\n\n"
+        "- Incluye una explicación breve (1-2 frases) de por qué la respuesta correcta lo es."
+        f"{concept_instructions}"
+        "\n- Responde en español.\n\n"
         "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
         "con este esquema exacto:\n"
-        '{"questions":[{"question":"...","options":["...","...","...","..."],"correct":0,"explanation":"..."}]}'
+        '{"questions":[{"question":"...","options":["...","...","...","..."],"correct":0,"explanation":"...","concept":"..."}]}'
     )
     user_msg = f"Lección: {title}\n\nContenido:\n```\n{context[:8000]}\n```"
 
@@ -3561,10 +3572,11 @@ def generate_quiz():
                     "options":     [str(o) for o in opts],
                     "correct":     correct,
                     "explanation": str(q.get("explanation") or ""),
+                    "concept_id":  _match_concept_id(concepts, q.get("concept")),
                 })
         if not clean:
             return jsonify({"error": "La IA no devolvió preguntas válidas. Intenta de nuevo."}), 502
-        return jsonify({"questions": clean})
+        return jsonify({"questions": clean, "course": course})
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
@@ -3661,7 +3673,7 @@ _PRACTICE_SYSTEM_PROMPT = (
     "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
     "con este esquema exacto:\n"
     '{"title":"...","scenario":"...","steps":[{"type":"python|text","instruction":"...",'
-    '"starter_code":"...","asserts":["..."],"rubric":"...","hints":["...","...","..."],"solution":"..."}]}'
+    '"starter_code":"...","asserts":["..."],"rubric":"...","hints":["...","...","..."],"solution":"...","concept":"..."}]}'
 )
 
 
@@ -3671,22 +3683,33 @@ def generate_practice_challenge():
     mode       = data.get("mode", "topic")
     topic      = (data.get("topic") or "").strip()
     context    = (data.get("context") or "").strip()
+    course     = (data.get("course") or "").strip()
     difficulty = data.get("difficulty", "medio")
     if difficulty not in ("facil", "medio", "dificil"):
         difficulty = "medio"
     if not topic:
         return jsonify({"error": "Falta el tema del reto"}), 400
 
+    concepts = _load_course_concepts(course) if course else []
+    concept_note = ""
+    if concepts:
+        names = "\n".join(f"- {c['name']}" for c in concepts)
+        concept_note = (
+            f"\n\nConceptos clave del curso (etiqueta cada paso con \"concept\": el nombre EXACTO del que "
+            f"más aplique, o cadena vacía si ninguno aplica bien):\n{names}"
+        )
+
     if context:
         user_msg = (
             f"Lección de referencia: {topic}\nDificultad: {difficulty}\n\n"
             f"Contenido de la lección (el reto debe reforzar exactamente estos conceptos):\n"
-            f"```\n{context[:6000]}\n```"
+            f"```\n{context[:6000]}\n```{concept_note}"
         )
     else:
         user_msg = (
             f"Tema: {topic}\nDificultad: {difficulty}\n"
             "Genera un reto de tema libre sobre este tema, sin atarlo a ninguna lección específica."
+            f"{concept_note}"
         )
 
     content, err = _call_deepseek(_PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True)
@@ -3711,6 +3734,7 @@ def generate_practice_challenge():
             "instruction": instruction,
             "hints": hints,
             "solution": str(step.get("solution") or ""),
+            "concept_id": _match_concept_id(concepts, step.get("concept")),
         }
         if step_type == "python":
             asserts = step.get("asserts")
@@ -3733,6 +3757,7 @@ def generate_practice_challenge():
         "title": str(challenge.get("title") or topic),
         "scenario": str(challenge.get("scenario") or ""),
         "difficulty": difficulty,
+        "course": course,
         "steps": clean_steps,
     })
 
@@ -3783,6 +3808,248 @@ def check_practice_text():
         return jsonify({"passed": bool(result.get("correct")), "feedback": str(result.get("feedback") or "")})
     except json.JSONDecodeError:
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
+
+
+# ── FEATURE: Dominio — mapa de conceptos, repetición espaciada y Pareto (Fase 2) ──
+CONCEPTS_FILE = DATA_DIR / "concepts.json"
+CONCEPT_PROGRESS_FILE = DATA_DIR / "concept_progress.json"
+
+
+def load_concepts():
+    if CONCEPTS_FILE.exists():
+        return json.loads(CONCEPTS_FILE.read_text())
+    return {"courses": {}}
+
+
+def save_concepts(data):
+    tmp = CONCEPTS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, CONCEPTS_FILE)
+
+
+def load_concept_progress():
+    if CONCEPT_PROGRESS_FILE.exists():
+        return json.loads(CONCEPT_PROGRESS_FILE.read_text())
+    return {}
+
+
+def save_concept_progress(data):
+    tmp = CONCEPT_PROGRESS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, CONCEPT_PROGRESS_FILE)
+
+
+def _load_course_concepts(course):
+    """Concept list for a course, or [] if none generated yet. Used to tag
+    quiz questions and practice steps with a concept_id."""
+    if not course:
+        return []
+    return load_concepts()["courses"].get(course, {}).get("concepts", [])
+
+
+def _match_concept_id(concepts, name):
+    """Map the free-text concept name an AI call returned back to our canonical
+    concept id, by case-insensitive exact match. Empty/unmatched -> ''."""
+    if not concepts or not isinstance(name, str) or not name.strip():
+        return ""
+    name_norm = name.strip().lower()
+    for c in concepts:
+        if c["name"].strip().lower() == name_norm:
+            return c["id"]
+    return ""
+
+
+@app.route("/api/courses/<course>/concepts", methods=["GET"])
+def get_course_concepts(course):
+    data = load_concepts()
+    entry = data["courses"].get(course)
+    if not entry:
+        return jsonify({"course": course, "generated_at": None, "concepts": []})
+    return jsonify({"course": course, "generated_at": entry.get("generated_at"), "concepts": entry.get("concepts", [])})
+
+
+@app.route("/api/courses/<course>/concepts/generate", methods=["POST"])
+def generate_course_concepts(course):
+    index = load_index()
+    titles = [meta["title"] for meta in index.values()
+              if meta.get("type") == "course" and meta.get("course") == course]
+    if not titles:
+        return jsonify({"error": "Este curso no tiene lecciones todavía"}), 400
+
+    courses_master = load_courses()["courses"]
+    course_label = courses_master.get(course, {}).get("label", course)
+
+    system = (
+        "Eres un experto en diseño curricular técnico. A partir de la lista de lecciones de un curso, "
+        "extrae el mapa de conceptos clave que un estudiante debe dominar.\n\n"
+        "Reglas estrictas:\n"
+        "- Identifica entre 6 y 15 conceptos concretos y accionables (habilidades o temas puntuales, no lecciones completas).\n"
+        "- Aplica el principio de Pareto: marca con \"pareto\": true solo el ~20% de los conceptos de mayor "
+        "apalancamiento práctico (los que más impactan el dominio real del curso si se aprenden bien); el resto \"pareto\": false.\n"
+        "- Cada concepto incluye una descripción breve (1 frase) de qué implica dominarlo.\n"
+        "- No dupliques conceptos ni los hagas demasiado genéricos ni demasiado específicos.\n"
+        "- Responde en español.\n\n"
+        "Responde ÚNICAMENTE con JSON: {\"concepts\":[{\"name\":\"...\",\"description\":\"...\",\"pareto\":true|false}]}"
+    )
+    user_msg = f"Curso: {course_label}\n\nLecciones:\n" + "\n".join(f"- {t}" for t in titles[:120])
+
+    content, err = _call_deepseek(system, user_msg, max_tokens=2000, json_mode=True)
+    if err:
+        return err
+
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
+
+    seen_names = set()
+    clean_concepts = []
+    for c in parsed.get("concepts", []):
+        name = c.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        key = name.strip().lower()
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+        clean_concepts.append({
+            "id": uuid.uuid4().hex[:8],
+            "name": name.strip(),
+            "description": str(c.get("description") or ""),
+            "pareto": bool(c.get("pareto")),
+        })
+
+    if not clean_concepts:
+        return jsonify({"error": "La IA no devolvió conceptos válidos. Intenta de nuevo."}), 502
+
+    data = load_concepts()
+    data["courses"][course] = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "concepts": clean_concepts,
+    }
+    save_concepts(data)
+    return jsonify({"course": course, "generated_at": data["courses"][course]["generated_at"], "concepts": clean_concepts})
+
+
+@app.route("/api/concepts/review", methods=["POST"])
+def review_concept():
+    """Record a single concept-level result (one quiz question or one practice
+    step) and update its simplified SM-2 spaced-repetition state: a correct
+    answer grows the review interval, a miss resets it — same idea as full
+    SM-2 without the 0-5 quality scale, just a correct/incorrect signal."""
+    data = request.json or {}
+    concept_id = (data.get("concept_id") or "").strip()
+    course = (data.get("course") or "").strip()
+    correct = bool(data.get("correct"))
+    if not concept_id:
+        return jsonify({"error": "Missing concept_id"}), 400
+
+    progress = load_concept_progress()
+    state = progress.get(concept_id, {"ease": 2.5, "interval": 0, "reps": 0, "course": course})
+
+    if correct:
+        state["reps"] += 1
+        if state["reps"] == 1:
+            state["interval"] = 1
+        elif state["reps"] == 2:
+            state["interval"] = 3
+        else:
+            state["interval"] = max(1, round(state["interval"] * state["ease"]))
+        state["ease"] = min(2.8, state["ease"] + 0.1)
+    else:
+        state["reps"] = 0
+        state["interval"] = 1
+        state["ease"] = max(1.3, state["ease"] - 0.2)
+
+    state["course"] = course or state.get("course", "")
+    state["last_result"] = correct
+    state["last_reviewed_at"] = datetime.now().isoformat(timespec="seconds")
+    state["next_review_at"] = (datetime.now() + timedelta(days=state["interval"])).isoformat(timespec="seconds")
+
+    progress[concept_id] = state
+    save_concept_progress(progress)
+    return jsonify({"concept_id": concept_id, **state})
+
+
+def _concept_mastery(progress_state):
+    """0-100 mastery proxy: how many days the concept can go before its next
+    review is due, capped at a month (interval 0 = never practiced = 0)."""
+    if not progress_state:
+        return 0
+    return min(100, round(progress_state.get("interval", 0) / 30 * 100))
+
+
+@app.route("/api/domain", methods=["GET"])
+def get_domain():
+    concepts_data = load_concepts()["courses"]
+    progress = load_concept_progress()
+    courses_master = load_courses()["courses"]
+
+    result = {}
+    for course, entry in concepts_data.items():
+        concepts = entry.get("concepts", [])
+        if not concepts:
+            continue
+        weighted_sum = 0
+        weight_total = 0
+        concept_out = []
+        for c in concepts:
+            weight = 2 if c.get("pareto") else 1
+            score = _concept_mastery(progress.get(c["id"]))
+            weighted_sum += score * weight
+            weight_total += weight
+            concept_out.append({**c, "mastery": score})
+        domain = round(weighted_sum / weight_total) if weight_total else 0
+        result[course] = {
+            "label": courses_master.get(course, {}).get("label", course),
+            "domain": domain,
+            "concepts": concept_out,
+        }
+    return jsonify({"courses": result})
+
+
+@app.route("/api/domain/reminder", methods=["GET"])
+def get_domain_reminder():
+    concepts_data = load_concepts()["courses"]
+    progress = load_concept_progress()
+    courses_master = load_courses()["courses"]
+    now = datetime.now()
+
+    best = None
+    best_priority = -1
+    for course, entry in concepts_data.items():
+        for c in entry.get("concepts", []):
+            state = progress.get(c["id"])
+            if not state or state.get("reps", 0) == 0 or not state.get("next_review_at"):
+                continue
+            next_review = datetime.fromisoformat(state["next_review_at"])
+            if next_review > now:
+                continue
+            overdue_days = max(0, (now - next_review).days)
+            weight = 2 if c.get("pareto") else 1
+            priority = (overdue_days + 1) * weight
+            if priority > best_priority:
+                best_priority = priority
+                best = (course, c)
+
+    if not best:
+        return jsonify({"reminder": None})
+
+    course, concept = best
+    course_label = courses_master.get(course, {}).get("label", course)
+    if concept.get("pareto"):
+        message = f"Practica \"{concept['name']}\" ahora — es de tus conceptos de mayor peso y ya casi se te olvida."
+    else:
+        message = f"Repasa \"{concept['name']}\" — se te empieza a olvidar."
+
+    return jsonify({"reminder": {
+        "concept_id": concept["id"],
+        "concept_name": concept["name"],
+        "course": course,
+        "course_label": course_label,
+        "pareto": bool(concept.get("pareto")),
+        "message": message,
+    }})
 
 
 # ── Code execution ────────────────────────────────────────────────────────────

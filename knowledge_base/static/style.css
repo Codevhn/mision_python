@@ -6304,6 +6304,72 @@ body.home-ambient .home-hero { overflow: visible; }
   margin-top: auto; font-family: var(--font-ui);
 }
 
+/* ── Home: domain / spaced-repetition reminder (Fase 2) ───────────────── */
+.home-section--domain:empty { display: none; }
+
+.home-reminder-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--accent-amber) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 24%, var(--border));
+  border-left: 3px solid var(--accent-amber);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.home-reminder-card--pareto {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-left-color: var(--accent);
+}
+.hrc-icon { font-size: 1.3rem; flex-shrink: 0; }
+.hrc-body { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.hrc-msg { font-size: 0.85rem; font-weight: 600; color: var(--text); line-height: 1.4; }
+.hrc-course { font-size: 0.72rem; color: var(--text-muted); }
+.hrc-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid var(--accent); color: var(--accent);
+  font-size: 0.78rem; font-weight: 600; font-family: var(--font-ui);
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.12s;
+}
+.hrc-btn:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+
+.home-domain-bars { display: flex; flex-direction: column; gap: 10px; }
+.home-domain-row { display: flex; align-items: center; gap: 10px; }
+.hdr-label {
+  font-size: 0.78rem; color: var(--text-muted); font-weight: 600;
+  width: 140px; flex-shrink: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hdr-bar {
+  flex: 1; height: 6px; border-radius: 999px;
+  background: var(--bg-hover); overflow: hidden;
+}
+.hdr-bar-fill {
+  height: 100%; border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+.hdr-pct { font-size: 0.74rem; color: var(--text-faint); width: 34px; text-align: right; flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .hdr-label { width: 96px; font-size: 0.72rem; }
+  .home-reminder-card { padding: 12px 14px; }
+}
+
+/* ── Sidebar: notification dot (Práctica reminder) ──────────────────── */
+.ab-badge-dot {
+  position: absolute;
+  top: 4px; right: 6px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 0 2px var(--bg-sidebar, var(--bg-elevated));
+}
+.ab-badge-dot.hidden { display: none; }
+
 /* ── Home: stats semantic colors ─────────────────────────────────────── */
 .home-stat { cursor: pointer; }
 .home-stat[data-stat="entries"]    .home-stat-num { color: #3b82f6; }
