@@ -4008,6 +4008,8 @@ def _ensure_concepts_for_all_courses():
     index = load_index()
     known_courses = {meta["course"] for meta in index.values()
                       if meta.get("type") == "course" and meta.get("course")}
+    courses_master = load_courses()["courses"]
+    known_courses = {c for c in known_courses if not courses_master.get(c, {}).get("archived")}
     concepts_data = load_concepts()["courses"]
     for course in known_courses - concepts_data.keys():
         _generate_concepts_for_course(course)
@@ -4022,6 +4024,8 @@ def get_domain():
 
     result = {}
     for course, entry in concepts_data.items():
+        if courses_master.get(course, {}).get("archived"):
+            continue
         concepts = entry.get("concepts", [])
         if not concepts:
             continue
@@ -4056,6 +4060,8 @@ def _find_unstarted_course():
 
     candidates = []
     for slug, info in courses_master.items():
+        if info.get("archived"):
+            continue
         lessons = lessons_by_course.get(slug, [])
         touched = any(l.get("last_viewed_at") for l in lessons)
         if not touched:
@@ -4095,6 +4101,8 @@ def get_domain_reminder():
     best = None
     best_priority = -1
     for course, entry in concepts_data.items():
+        if courses_master.get(course, {}).get("archived"):
+            continue
         for c in entry.get("concepts", []):
             state = progress.get(c["id"])
             if not state or state.get("reps", 0) == 0 or not state.get("next_review_at"):
@@ -4145,6 +4153,8 @@ def get_domain_weakest():
     best = None
     best_priority = -1
     for course, entry in concepts_data.items():
+        if courses_master.get(course, {}).get("archived"):
+            continue
         for c in entry.get("concepts", []):
             mastery = _concept_mastery(progress.get(c["id"]))
             weight = 2 if c.get("pareto") else 1
