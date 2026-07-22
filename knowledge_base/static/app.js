@@ -453,18 +453,12 @@ async function fetchCategorySuggestion() {
 function applyTheme() {
   const saved = localStorage.getItem("kb_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
-  const t = $("themeToggle"); if (t) t.textContent = "◐";
-  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
-  if (abIcon) abIcon.textContent = "◐";
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme");
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
-  const t = $("themeToggle"); if (t) t.textContent = "◐";
-  const abIcon = document.querySelector('#themeToggleSidebar .ab-icon') || $("themeToggleSidebar");
-  if (abIcon) abIcon.textContent = "◐";
 }
 
 // ---- SIDEBAR ----
@@ -5186,13 +5180,6 @@ function setSidebarVisible(visible) {
       abSearch.addEventListener('click', () => {
         if (window.CommandPalette) window.CommandPalette.open();
       });
-    }
-
-    // Theme toggle in sidebar
-    const themeSidebar = document.getElementById('themeToggleSidebar');
-    const themeMain = document.getElementById('themeToggle');
-    if (themeSidebar && themeMain) {
-      themeSidebar.addEventListener('click', () => themeMain.click());
     }
 
     // Courses space
