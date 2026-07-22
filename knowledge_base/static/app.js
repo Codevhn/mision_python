@@ -8188,7 +8188,7 @@ function _openPracticeModal(presetTopic) {
   const overlay = $('practiceOverlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
-  const st = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: typeof presetTopic === 'string' ? presetTopic : '', entryId: '', contextText: '', startNudge: null };
+  const st = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: typeof presetTopic === 'string' ? presetTopic : '', entryId: '', reviewCourse: '', contextText: '', startNudge: null };
   _practiceState = st;
   _renderPracticeSetup();
 
@@ -8233,6 +8233,21 @@ function _flattenPracticeEntries(tree) {
       for (const entry of mod.entries) {
         out.push({ id: entry.id, title: entry.title, course: courseSlug, label: `${course.label} › ${mod.label} › ${entry.title}` });
       }
+    }
+  }
+  return out;
+}
+
+// Same shape, scoped to a single course and without repeating its name in the
+// label — used once the "Repasar lección" picker has already filtered by course.
+function _courseModuleEntries(tree, courseSlug) {
+  const course = tree[courseSlug];
+  if (!course) return [];
+  const out = [];
+  for (const modSlug in course.modules) {
+    const mod = course.modules[modSlug];
+    for (const entry of mod.entries) {
+      out.push({ id: entry.id, title: entry.title, label: `${mod.label} › ${entry.title}` });
     }
   }
   return out;
@@ -8302,19 +8317,29 @@ async function _renderPracticeModeBody() {
   }
 
   if (st.mode === 'review') {
-    container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando lecciones…</div>`;
+    container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando cursos…</div>`;
     const tree = await _getPracticeTree();
     if (_practiceState !== st || st.mode !== 'review') return;
-    const entries = _flattenPracticeEntries(tree);
-    if (!entries.length) {
+    const courseSlugs = Object.keys(tree);
+    if (!courseSlugs.length) {
       container.innerHTML = `<div class="practice-empty-note">Todavía no tienes lecciones de cursos guardadas.</div>`;
       return;
     }
+    const lessons = st.reviewCourse ? _courseModuleEntries(tree, st.reviewCourse) : [];
     container.innerHTML = `
-      <select id="practiceEntrySelect" class="practice-select">
-        <option value="">Elige una lección…</option>
-        ${entries.map(e => `<option value="${escapeHtml(e.id)}" ${e.id === st.entryId ? 'selected' : ''}>${escapeHtml(e.label)}</option>`).join('')}
+      <select id="practiceCourseSelect" class="practice-select">
+        <option value="">Elige un curso…</option>
+        ${courseSlugs.map(slug => `<option value="${escapeHtml(slug)}" ${slug === st.reviewCourse ? 'selected' : ''}>${escapeHtml(tree[slug].label)}</option>`).join('')}
+      </select>
+      <select id="practiceEntrySelect" class="practice-select" style="margin-top:8px" ${st.reviewCourse ? '' : 'disabled'}>
+        <option value="">${st.reviewCourse ? 'Elige una lección…' : 'Primero elige un curso'}</option>
+        ${lessons.map(l => `<option value="${escapeHtml(l.id)}" ${l.id === st.entryId ? 'selected' : ''}>${escapeHtml(l.label)}</option>`).join('')}
       </select>`;
+    $('practiceCourseSelect').addEventListener('change', e => {
+      st.reviewCourse = e.target.value;
+      st.entryId = '';
+      _renderPracticeModeBody();
+    });
     $('practiceEntrySelect').addEventListener('change', e => { st.entryId = e.target.value; });
     return;
   }
