@@ -3608,9 +3608,11 @@ def create_attempt():
     record = {
         "id": uuid.uuid4().hex[:8],
         "entry_id": entry_id,
-        "entry_title": meta.get("title", ""),
+        "entry_title": meta.get("title", "") or (data.get("topic") or "").strip(),
         "course": meta.get("course", ""),
         "type": attempt_type,
+        "mode": (data.get("mode") or "").strip(),
+        "difficulty": (data.get("difficulty") or "").strip(),
         "score": score,
         "total": total,
         "percentage": round(score / total * 100),
@@ -3637,7 +3639,171 @@ def list_attempts():
     return jsonify({"attempts": attempts})
 
 
+# ── FEATURE: Práctica — retos generados por IA, sin sandbox real ────────────
+_PRACTICE_SYSTEM_PROMPT = (
+    "Eres un instructor técnico senior que diseña retos prácticos realistas de una empresa de software, "
+    "para que un estudiante aplique lo aprendido en vez de solo leer.\n\n"
+    "Reglas estrictas:\n"
+    "- Genera un escenario breve y creíble de un caso real de industria relacionado con el tema.\n"
+    "- Divide el reto en 3 a 5 pasos verificables, en orden creciente de dificultad.\n"
+    "- Cada paso es de tipo \"python\" (código Python real y ejecutable) o \"text\" (un comando de git/shell/SQL, "
+    "o una respuesta conceptual corta que el estudiante escribe pero NO se ejecuta, solo se evalúa como texto).\n"
+    "- Usa pasos \"python\" solo si el tema es de programación en Python. Para git, shell, SQL, CSS o conceptos, usa \"text\".\n"
+    "- Para pasos \"python\": incluye \"starter_code\" (una plantilla mínima con comentarios guía; puede ser cadena vacía) "
+    "y \"asserts\" (una lista de 1 a 4 líneas `assert ...` en Python que validan la solución correcta al ejecutarse "
+    "justo después del código del estudiante; deben poder fallar si la solución es incorrecta).\n"
+    "- Para pasos \"text\": incluye \"rubric\" (qué debe contener una respuesta correcta, para que otra IA la evalúe).\n"
+    "- Cada paso incluye \"hints\": una lista de EXACTAMENTE 3 pistas progresivas (de sutil a casi explícita, "
+    "sin revelar la solución completa en las dos primeras).\n"
+    "- Cada paso incluye \"solution\": la solución de referencia completa (código o comando/respuesta).\n"
+    "- Ajusta la dificultad real del reto al nivel pedido: facil, medio o dificil.\n"
+    "- Responde en español.\n\n"
+    "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
+    "con este esquema exacto:\n"
+    '{"title":"...","scenario":"...","steps":[{"type":"python|text","instruction":"...",'
+    '"starter_code":"...","asserts":["..."],"rubric":"...","hints":["...","...","..."],"solution":"..."}]}'
+)
+
+
+@app.route("/api/practice/generate", methods=["POST"])
+def generate_practice_challenge():
+    data       = request.json or {}
+    mode       = data.get("mode", "topic")
+    topic      = (data.get("topic") or "").strip()
+    context    = (data.get("context") or "").strip()
+    difficulty = data.get("difficulty", "medio")
+    if difficulty not in ("facil", "medio", "dificil"):
+        difficulty = "medio"
+    if not topic:
+        return jsonify({"error": "Falta el tema del reto"}), 400
+
+    if context:
+        user_msg = (
+            f"Lección de referencia: {topic}\nDificultad: {difficulty}\n\n"
+            f"Contenido de la lección (el reto debe reforzar exactamente estos conceptos):\n"
+            f"```\n{context[:6000]}\n```"
+        )
+    else:
+        user_msg = (
+            f"Tema: {topic}\nDificultad: {difficulty}\n"
+            "Genera un reto de tema libre sobre este tema, sin atarlo a ninguna lección específica."
+        )
+
+    content, err = _call_deepseek(_PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True)
+    if err:
+        return err
+
+    try:
+        challenge = json.loads(content)
+    except json.JSONDecodeError:
+        return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
+
+    clean_steps = []
+    for step in challenge.get("steps", []):
+        step_type = step.get("type")
+        instruction = step.get("instruction")
+        if step_type not in ("python", "text") or not isinstance(instruction, str) or not instruction.strip():
+            continue
+        hints = step.get("hints")
+        hints = [str(h) for h in hints][:3] if isinstance(hints, list) else []
+        clean = {
+            "type": step_type,
+            "instruction": instruction,
+            "hints": hints,
+            "solution": str(step.get("solution") or ""),
+        }
+        if step_type == "python":
+            asserts = step.get("asserts")
+            asserts = [str(a) for a in asserts if isinstance(a, str) and a.strip()] if isinstance(asserts, list) else []
+            if not asserts:
+                continue
+            clean["starter_code"] = str(step.get("starter_code") or "")
+            clean["asserts"] = asserts
+        else:
+            rubric = step.get("rubric")
+            if not isinstance(rubric, str) or not rubric.strip():
+                continue
+            clean["rubric"] = rubric
+        clean_steps.append(clean)
+
+    if not clean_steps:
+        return jsonify({"error": "La IA no devolvió pasos válidos. Intenta de nuevo."}), 502
+
+    return jsonify({
+        "title": str(challenge.get("title") or topic),
+        "scenario": str(challenge.get("scenario") or ""),
+        "difficulty": difficulty,
+        "steps": clean_steps,
+    })
+
+
+@app.route("/api/practice/check-python", methods=["POST"])
+def check_practice_python():
+    data    = request.json or {}
+    code    = data.get("code", "")
+    asserts = data.get("asserts")
+    if not isinstance(asserts, list) or not asserts:
+        return jsonify({"error": "Missing asserts"}), 400
+
+    full_code = code + "\n\n" + "\n".join(str(a) for a in asserts)
+    result = _run_python(full_code)
+    if "error" in result:
+        return jsonify({"passed": False, "output": "", "stderr": result["error"]})
+
+    passed = result["returncode"] == 0 and not result["stderr"]
+    return jsonify({"passed": passed, "output": result["output"], "stderr": result["stderr"]})
+
+
+@app.route("/api/practice/check-text", methods=["POST"])
+def check_practice_text():
+    data        = request.json or {}
+    instruction = (data.get("instruction") or "").strip()
+    rubric      = (data.get("rubric") or "").strip()
+    answer      = (data.get("answer") or "").strip()
+    if not instruction or not rubric:
+        return jsonify({"error": "Missing instruction or rubric"}), 400
+    if not answer:
+        return jsonify({"passed": False, "feedback": "No escribiste ninguna respuesta."})
+
+    system = (
+        "Eres un evaluador técnico estricto pero justo. Un estudiante escribió un comando (git/shell/SQL) o una "
+        "respuesta conceptual corta para un paso de un reto práctico; el comando NO se ejecuta, solo evalúas el texto.\n\n"
+        "Evalúa si la respuesta cumple la rúbrica. Sé tolerante con variantes válidas (flags en distinto orden, "
+        "sinónimos técnicos correctos), pero estricto con errores reales.\n\n"
+        "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"feedback\": \"...\"} — feedback en español, "
+        "1-2 frases, explicando qué está bien o qué falta/está mal."
+    )
+    user_msg = f"Instrucción del paso:\n{instruction}\n\nRúbrica esperada:\n{rubric}\n\nRespuesta del estudiante:\n{answer}"
+
+    content, err = _call_deepseek(system, user_msg, max_tokens=300, json_mode=True)
+    if err:
+        return err
+    try:
+        result = json.loads(content)
+        return jsonify({"passed": bool(result.get("correct")), "feedback": str(result.get("feedback") or "")})
+    except json.JSONDecodeError:
+        return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
+
+
 # ── Code execution ────────────────────────────────────────────────────────────
+
+def _run_python(code):
+    """Run Python source in a bare subprocess. Returns a dict with output/stderr/
+    returncode, or an {"error": ...} dict on timeout. Shared by /api/execute and
+    the Práctica python-step checker so grading matches manual execution exactly."""
+    try:
+        result = subprocess.run(
+            ["python3", "-c", code],
+            capture_output=True, text=True, timeout=10, cwd="/tmp",
+        )
+        return {
+            "output":     result.stdout,
+            "stderr":     result.stderr,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"error": "⏱ Timeout: el código superó 10 segundos."}
+
 
 @app.route("/api/execute", methods=["POST"])
 def execute_code():
@@ -3651,17 +3817,10 @@ def execute_code():
         return jsonify({"error": f"Lenguaje '{language}' no soportado. Solo Python disponible."}), 400
 
     try:
-        result = subprocess.run(
-            ["python3", "-c", code],
-            capture_output=True, text=True, timeout=10, cwd="/tmp",
-        )
-        return jsonify({
-            "output":     result.stdout,
-            "stderr":     result.stderr,
-            "returncode": result.returncode,
-        })
-    except subprocess.TimeoutExpired:
-        return jsonify({"error": "⏱ Timeout: el código superó 10 segundos."}), 408
+        result = _run_python(code)
+        if "error" in result:
+            return jsonify(result), 408
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

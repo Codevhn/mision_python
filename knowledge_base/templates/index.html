@@ -104,6 +104,10 @@
           <span class="ab-icon">⦿</span>
           <span class="ab-label">Radar</span>
         </button>
+        <button class="ab-item" id="abPractice" title="Práctica">
+          <span class="ab-icon">🎯</span>
+          <span class="ab-label">Práctica</span>
+        </button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -141,6 +145,7 @@
         <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
+        <button class="msn-item" id="msnPractice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
       </nav>
 
       <!-- SPACE: KNOWLEDGE -->
@@ -1263,6 +1268,18 @@
       </div>
       <div class="modal-body" id="quizBody"></div>
       <div class="modal-footer" id="quizFooter"></div>
+    </div>
+  </div>
+
+  <!-- PRACTICE MODAL -->
+  <div class="modal-overlay hidden" id="practiceOverlay">
+    <div class="modal practice-modal" style="max-width:720px">
+      <div class="modal-header">
+        <span id="practiceModalTitle">🎯 Práctica</span>
+        <button class="modal-close" id="practiceClose">×</button>
+      </div>
+      <div class="modal-body" id="practiceBody"></div>
+      <div class="modal-footer" id="practiceFooter"></div>
     </div>
   </div>
 </body>

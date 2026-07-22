@@ -133,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initAIPanel();
   initPasteMarkdown();
   initQuizModal();
+  initPracticeModal();
   initBlockTypeIndicator();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
@@ -169,6 +170,8 @@ function bindEvents() {
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
+  $("abPractice")?.addEventListener("click", _openPracticeModal);
+  $("msnPractice")?.addEventListener("click", () => { closeSidebarMobile(); _openPracticeModal(); });
 
   // Clicking in the wrap padding area (outside the block-editor div) triggers same behavior
   $("blockEditorWrap").addEventListener("click", e => {
@@ -8071,6 +8074,428 @@ function _renderQuizResults() {
   closeBtn.textContent = 'Cerrar';
   closeBtn.addEventListener('click', _closeQuizModal);
   footer.appendChild(closeBtn);
+}
+
+// ── Práctica: retos generados por IA, sin sandbox real ────────────────────────
+// Python steps run for real via /api/execute-style checking (/api/practice/check-python);
+// git/shell/text steps are evaluated by the AI as text (/api/practice/check-text) — never
+// executed. See handoff Fase 1: no real terminal/sandbox by explicit user decision.
+let _practiceState = null;
+let _practiceTreeCache = null;
+
+function initPracticeModal() {
+  const overlay = $('practiceOverlay');
+  const closeBtn = $('practiceClose');
+  if (!overlay || !closeBtn) return;
+  closeBtn.addEventListener('click', _closePracticeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _closePracticeModal(); });
+}
+
+function _openPracticeModal() {
+  const overlay = $('practiceOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  _practiceState = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: '', entryId: '', contextText: '' };
+  _renderPracticeSetup();
+}
+
+function _closePracticeModal() {
+  $('practiceOverlay')?.classList.add('hidden');
+  _practiceState = null;
+}
+
+function _practiceSlug(text) {
+  return (text || '').toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'tema';
+}
+
+async function _getPracticeTree() {
+  if (_practiceTreeCache) return _practiceTreeCache;
+  try {
+    const res = await fetch('/api/courses/tree');
+    _practiceTreeCache = await res.json();
+  } catch { _practiceTreeCache = {}; }
+  return _practiceTreeCache;
+}
+
+function _flattenPracticeEntries(tree) {
+  const out = [];
+  for (const courseSlug in tree) {
+    const course = tree[courseSlug];
+    for (const modSlug in course.modules) {
+      const mod = course.modules[modSlug];
+      for (const entry of mod.entries) {
+        out.push({ id: entry.id, title: entry.title, label: `${course.label} › ${mod.label} › ${entry.title}` });
+      }
+    }
+  }
+  return out;
+}
+
+function _renderPracticeSetup() {
+  const st = _practiceState;
+  if (!st) return;
+  $('practiceModalTitle').textContent = '🎯 Práctica';
+
+  $('practiceBody').innerHTML = `
+    <div class="practice-setup">
+      <div class="practice-mode-tabs">
+        <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
+        <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
+        <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise">🎲 Reto sorpresa</button>
+      </div>
+      <div id="practiceModeBody"></div>
+      <div class="practice-diff-row">
+        <span class="practice-diff-label">Dificultad</span>
+        <div class="practice-diff-options">
+          <button class="practice-diff-btn ${st.difficulty === 'facil' ? 'active' : ''}" data-diff="facil">Fácil</button>
+          <button class="practice-diff-btn ${st.difficulty === 'medio' ? 'active' : ''}" data-diff="medio">Medio</button>
+          <button class="practice-diff-btn ${st.difficulty === 'dificil' ? 'active' : ''}" data-diff="dificil">Difícil</button>
+        </div>
+      </div>
+    </div>`;
+
+  $('practiceFooter').innerHTML = `<button class="btn-primary" id="practiceGenerateBtn">✦ Generar reto</button>`;
+
+  document.querySelectorAll('.practice-mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => { st.mode = btn.dataset.mode; _renderPracticeSetup(); });
+  });
+  document.querySelectorAll('.practice-diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderPracticeSetup(); });
+  });
+  $('practiceGenerateBtn').addEventListener('click', _startPracticeGeneration);
+
+  _renderPracticeModeBody();
+}
+
+async function _renderPracticeModeBody() {
+  const st = _practiceState;
+  const container = $('practiceModeBody');
+  if (!container) return;
+
+  if (st.mode === 'topic') {
+    container.innerHTML = `
+      <input type="text" id="practiceTopicInput" class="practice-text-input"
+             placeholder="Ej: manejo de excepciones en Python, subconsultas en SQL…"
+             value="${escapeHtml(st.topic)}">`;
+    $('practiceTopicInput').addEventListener('input', e => { st.topic = e.target.value; });
+    return;
+  }
+
+  if (st.mode === 'review') {
+    container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando lecciones…</div>`;
+    const tree = await _getPracticeTree();
+    if (_practiceState !== st || st.mode !== 'review') return;
+    const entries = _flattenPracticeEntries(tree);
+    if (!entries.length) {
+      container.innerHTML = `<div class="practice-empty-note">Todavía no tienes lecciones de cursos guardadas.</div>`;
+      return;
+    }
+    container.innerHTML = `
+      <select id="practiceEntrySelect" class="practice-select">
+        <option value="">Elige una lección…</option>
+        ${entries.map(e => `<option value="${escapeHtml(e.id)}" ${e.id === st.entryId ? 'selected' : ''}>${escapeHtml(e.label)}</option>`).join('')}
+      </select>`;
+    $('practiceEntrySelect').addEventListener('change', e => { st.entryId = e.target.value; });
+    return;
+  }
+
+  // surprise
+  container.innerHTML = `<div class="practice-empty-note">Elegiremos una lección al azar de tus cursos para retarte.</div>`;
+}
+
+async function _startPracticeGeneration() {
+  const st = _practiceState;
+  let topic = '', context = '', entryId = '';
+
+  if (st.mode === 'topic') {
+    topic = (st.topic || '').trim();
+    if (!topic) { showToast('Escribe un tema para el reto', 'error'); return; }
+  } else if (st.mode === 'review') {
+    if (!st.entryId) { showToast('Elige una lección para repasar', 'error'); return; }
+    const res = await fetch(`/api/entry/${st.entryId}`);
+    if (!res.ok) { showToast('No se pudo cargar la lección', 'error'); return; }
+    const data = await res.json();
+    topic = data.meta.title;
+    context = (data.markdown || '').slice(0, 6000);
+    entryId = st.entryId;
+  } else {
+    const tree = await _getPracticeTree();
+    const entries = _flattenPracticeEntries(tree);
+    if (!entries.length) { showToast('Todavía no tienes lecciones de cursos guardadas', 'error'); return; }
+    const pick = entries[Math.floor(Math.random() * entries.length)];
+    const res = await fetch(`/api/entry/${pick.id}`);
+    if (!res.ok) { showToast('No se pudo cargar la lección', 'error'); return; }
+    const data = await res.json();
+    topic = data.meta.title;
+    context = (data.markdown || '').slice(0, 6000);
+    entryId = pick.id;
+  }
+
+  st.topic = topic;
+  st.entryId = entryId;
+  st.contextText = context;
+  st.screen = 'loading';
+  _renderPracticeLoading();
+
+  try {
+    const res = await fetch('/api/practice/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: st.mode, topic, context, difficulty: st.difficulty }),
+    });
+    const data = await res.json();
+    if (_practiceState !== st) return;
+    if (!res.ok || data.error) {
+      _renderPracticeError(data.error || 'No se pudo generar el reto.');
+      return;
+    }
+    st.challenge = data;
+    st.current = 0;
+    st.stepResults = data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
+    st.screen = 'challenge';
+    _renderPracticeChallenge();
+  } catch (err) {
+    if (_practiceState !== st) return;
+    _renderPracticeError('Error de red: ' + err.message);
+  }
+}
+
+function _renderPracticeLoading() {
+  $('practiceModalTitle').textContent = '🎯 Práctica';
+  $('practiceBody').innerHTML = `
+    <div class="quiz-loading">
+      <span class="arp-spinner"></span>
+      <span>Generando un reto realista…</span>
+    </div>`;
+  $('practiceFooter').innerHTML = '';
+}
+
+function _renderPracticeError(msg) {
+  $('practiceBody').innerHTML = `<div class="quiz-error">${escapeHtml(msg)}</div>`;
+  $('practiceFooter').innerHTML = `<button class="btn-ghost" id="practiceRetryErrBtn">← Volver</button>`;
+  $('practiceRetryErrBtn').addEventListener('click', () => { _practiceState.screen = 'setup'; _renderPracticeSetup(); });
+}
+
+function _renderPracticeChallenge() {
+  const st = _practiceState;
+  const ch = st.challenge;
+  const idx = st.current;
+  const step = ch.steps[idx];
+  const stepState = st.stepResults[idx];
+
+  $('practiceModalTitle').textContent = `🎯 ${ch.title}`;
+
+  const pills = ch.steps.map((s, i) => {
+    const res = st.stepResults[i];
+    let cls = 'practice-pill';
+    if (i === idx) cls += ' current';
+    else if (res.passed) cls += ' passed';
+    else if (res.revealed) cls += ' revealed';
+    return `<span class="${cls}">${i + 1}</span>`;
+  }).join('');
+
+  let stepBodyHtml;
+  if (step.type === 'python') {
+    stepBodyHtml = `
+      <textarea id="practiceCodeInput" class="practice-code-input" spellcheck="false"
+                placeholder="Escribe tu código aquí…">${escapeHtml(stepState.userCode ?? step.starter_code ?? '')}</textarea>
+      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">▶ Ejecutar y verificar</button></div>
+      <div class="code-exec-output" id="practiceOutput" style="${stepState.lastOutput !== undefined ? '' : 'display:none'}">
+        <pre class="code-exec-stdout" id="practiceStdout"></pre>
+        <pre class="code-exec-stderr hidden" id="practiceStderr"></pre>
+      </div>`;
+  } else {
+    stepBodyHtml = `
+      <textarea id="practiceTextInput" class="practice-text-answer" spellcheck="false"
+                placeholder="Escribe tu comando o respuesta…">${escapeHtml(stepState.userAnswer ?? '')}</textarea>
+      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">✓ Verificar</button></div>
+      <div class="practice-feedback hidden" id="practiceFeedback"></div>`;
+  }
+
+  const hintsShown = stepState.hintsShown || 0;
+  const hintsHtml = step.hints.slice(0, hintsShown)
+    .map((h, i) => `<div class="practice-hint">💡 Pista ${i + 1}: ${escapeHtml(h)}</div>`).join('');
+
+  $('practiceBody').innerHTML = `
+    <div class="practice-pills">${pills}</div>
+    <div class="practice-scenario">${escapeHtml(ch.scenario)}</div>
+    <div class="practice-step">
+      <div class="practice-step-instruction">${escapeHtml(step.instruction)}</div>
+      ${stepBodyHtml}
+      ${hintsHtml}
+      ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
+    </div>`;
+
+  if (step.type === 'python' && stepState.lastOutput !== undefined) {
+    $('practiceStdout').textContent = stepState.lastOutput || '';
+    const stderrEl = $('practiceStderr');
+    stderrEl.textContent = stepState.lastStderr || '';
+    stderrEl.classList.toggle('hidden', !stepState.lastStderr);
+  }
+  if (step.type === 'text' && stepState.lastFeedback) {
+    const fb = $('practiceFeedback');
+    fb.textContent = stepState.lastFeedback;
+    fb.classList.remove('hidden');
+    fb.classList.toggle('practice-feedback--ok', stepState.passed);
+    fb.classList.toggle('practice-feedback--bad', !stepState.passed);
+  }
+
+  $('practiceCheckBtn').addEventListener('click', _checkPracticeStep);
+
+  const footer = $('practiceFooter');
+  footer.innerHTML = '';
+
+  if (hintsShown < step.hints.length) {
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'btn-ghost';
+    hintBtn.textContent = `💡 Pista (${hintsShown}/${step.hints.length})`;
+    hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _renderPracticeChallenge(); });
+    footer.appendChild(hintBtn);
+  } else if (!stepState.revealed && !stepState.passed) {
+    const solBtn = document.createElement('button');
+    solBtn.className = 'btn-ghost';
+    solBtn.textContent = '🔓 Ver solución';
+    solBtn.addEventListener('click', () => {
+      if (confirm('Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
+        stepState.revealed = true;
+        _renderPracticeChallenge();
+      }
+    });
+    footer.appendChild(solBtn);
+  }
+
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  footer.appendChild(spacer);
+
+  if (stepState.passed || stepState.revealed) {
+    const isLast = idx === ch.steps.length - 1;
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn-primary';
+    nextBtn.textContent = isLast ? 'Ver resultados →' : 'Siguiente paso →';
+    nextBtn.addEventListener('click', () => {
+      if (isLast) { _finishPractice(); } else { st.current++; _renderPracticeChallenge(); }
+    });
+    footer.appendChild(nextBtn);
+  }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-ghost';
+  closeBtn.textContent = 'Cerrar';
+  closeBtn.addEventListener('click', _closePracticeModal);
+  footer.appendChild(closeBtn);
+}
+
+async function _checkPracticeStep() {
+  const st = _practiceState;
+  const step = st.challenge.steps[st.current];
+  const stepState = st.stepResults[st.current];
+  const btn = $('practiceCheckBtn');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    if (step.type === 'python') {
+      const code = $('practiceCodeInput').value;
+      stepState.userCode = code;
+      const res = await fetch('/api/practice/check-python', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, asserts: step.asserts }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, 'error'); return; }
+      stepState.passed = !!data.passed;
+      stepState.lastOutput = data.output || '';
+      stepState.lastStderr = data.stderr || '';
+    } else {
+      const answer = $('practiceTextInput').value;
+      stepState.userAnswer = answer;
+      const res = await fetch('/api/practice/check-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric, answer }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, 'error'); return; }
+      stepState.passed = !!data.passed;
+      stepState.lastFeedback = data.feedback || '';
+    }
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+  } finally {
+    _renderPracticeChallenge();
+  }
+}
+
+function _finishPractice() {
+  const st = _practiceState;
+  const ch = st.challenge;
+  const total = ch.steps.length;
+  const passed = st.stepResults.filter(r => r.passed).length;
+  const pct = Math.round((passed / total) * 100);
+  const grade = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
+  const gradeMsg = pct >= 80 ? '¡Excelente! Dominas bien este reto.'
+                 : pct >= 50 ? 'Vas bien, pero repasa los pasos que fallaste o revelaste.'
+                 : 'Conviene practicar más este tema antes de seguir.';
+
+  $('practiceModalTitle').textContent = `🎯 ${ch.title} — Resultados`;
+  $('practiceBody').innerHTML = `
+    <div class="quiz-results">
+      <div class="quiz-score quiz-score--${grade}">
+        <span class="quiz-score-pct">${pct}%</span>
+        <span class="quiz-score-frac">${passed}/${total} pasos resueltos</span>
+      </div>
+      <div class="quiz-score-msg">${gradeMsg}</div>
+      <div class="quiz-review" id="practiceReview"></div>
+    </div>`;
+
+  const review = $('practiceReview');
+  ch.steps.forEach((step, i) => {
+    const ok = st.stepResults[i].passed;
+    const row = document.createElement('div');
+    row.className = 'quiz-review-item' + (ok ? ' ok' : ' bad');
+    row.innerHTML = `
+      <div class="quiz-review-head">
+        <span class="quiz-review-icon">${ok ? '✓' : '✕'}</span>
+        <span class="quiz-review-q">${i + 1}. ${escapeHtml(step.instruction)}</span>
+      </div>
+      <div class="quiz-review-detail">
+        ${!ok ? `<div class="quiz-review-wrong">Solución de referencia:</div><pre class="practice-solution-pre">${escapeHtml(step.solution)}</pre>` : ''}
+      </div>`;
+    review.appendChild(row);
+  });
+
+  const footer = $('practiceFooter');
+  footer.innerHTML = '';
+
+  const retryBtn = document.createElement('button');
+  retryBtn.className = 'btn-ghost';
+  retryBtn.textContent = '↻ Nuevo reto';
+  retryBtn.addEventListener('click', () => { st.screen = 'setup'; _renderPracticeSetup(); });
+  footer.appendChild(retryBtn);
+
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  footer.appendChild(spacer);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-primary';
+  closeBtn.textContent = 'Cerrar';
+  closeBtn.addEventListener('click', _closePracticeModal);
+  footer.appendChild(closeBtn);
+
+  const entryId = st.entryId || `practice-${_practiceSlug(st.topic)}`;
+  fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      entry_id: entryId, type: 'practice', mode: st.mode, difficulty: st.difficulty,
+      topic: st.topic, score: passed, total,
+    }),
+  }).catch(() => {});
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────

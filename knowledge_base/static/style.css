@@ -7366,6 +7366,139 @@ body {
   .quiz-score-pct { font-size: 1.7rem; }
 }
 
+/* ── PRACTICE MODAL ──────────────────────────────────────── */
+.practice-modal .modal-footer { flex-wrap: wrap; }
+
+.practice-mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.practice-mode-tab {
+  flex: 1;
+  min-width: 120px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.practice-mode-tab:hover { border-color: var(--accent); color: var(--text); }
+.practice-mode-tab.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+
+.practice-text-input, .practice-select, .practice-code-input, .practice-text-answer {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  outline: none;
+}
+.practice-text-input:focus, .practice-select:focus, .practice-code-input:focus, .practice-text-answer:focus {
+  border-color: var(--accent);
+}
+.practice-code-input, .practice-text-answer {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 110px;
+}
+.practice-text-answer { min-height: 70px; font-family: var(--font-mono); }
+
+.practice-loading-inline { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.82rem; padding: 8px 2px; }
+.practice-empty-note { color: var(--text-faint); font-size: 0.82rem; padding: 8px 2px; }
+
+.practice-diff-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.practice-diff-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.practice-diff-options { display: flex; gap: 6px; }
+.practice-diff-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.practice-diff-btn:hover { border-color: var(--accent); color: var(--text); }
+.practice-diff-btn.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+.practice-pills { display: flex; gap: 6px; margin-bottom: 12px; }
+.practice-pill {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--bg-hover);
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.practice-pill.current { background: var(--accent); color: #fff; }
+.practice-pill.passed  { background: var(--success); color: #fff; }
+.practice-pill.revealed { background: var(--accent-amber); color: #fff; }
+
+.practice-scenario {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 0 8px 8px 0;
+}
+
+.practice-step-instruction { font-size: 0.95rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+.practice-step-actions { margin-top: 10px; }
+
+.practice-feedback {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.practice-feedback.hidden { display: none; }
+.practice-feedback--ok  { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); }
+.practice-feedback--bad { background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger); }
+
+.practice-hint {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-amber) 10%, transparent);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.practice-solution {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  background: var(--bg-hover);
+  font-size: 0.8rem;
+}
+.practice-solution pre, .practice-solution-pre {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  margin: 6px 0 0;
+}
+
+@media (max-width: 600px) {
+  .practice-mode-tab { min-width: 100px; font-size: 0.75rem; }
+  .practice-step-instruction { font-size: 0.88rem; }
+}
+
 /* ── AI selection context strip (inside panel) ── */
 .ai-sel-ctx {
   margin: 8px 12px 4px;
