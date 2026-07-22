@@ -6341,7 +6341,7 @@ body.home-ambient .home-hero { overflow: visible; }
 .home-domain-row { display: flex; align-items: center; gap: 10px; }
 .hdr-label {
   font-size: 0.78rem; color: var(--text-muted); font-weight: 600;
-  width: 140px; flex-shrink: 0;
+  width: 220px; flex-shrink: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hdr-bar {
@@ -6356,7 +6356,7 @@ body.home-ambient .home-hero { overflow: visible; }
 .hdr-pct { font-size: 0.74rem; color: var(--text-faint); width: 34px; text-align: right; flex-shrink: 0; }
 
 @media (max-width: 600px) {
-  .hdr-label { width: 96px; font-size: 0.72rem; }
+  .hdr-label { width: 140px; font-size: 0.72rem; }
   .home-reminder-card { padding: 12px 14px; }
 }
 
