@@ -810,6 +810,8 @@ def get_entry(entry_id):
         return jsonify({"error": "File not found"}), 404
     raw = path.read_text()
     html = render_markdown(raw)
+    meta["last_viewed_at"] = datetime.now().isoformat(timespec="seconds")
+    save_index(index)
     return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": raw, "html": html})
 
 
@@ -3570,6 +3572,69 @@ def generate_quiz():
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── FEATURE: Practice/Quiz attempt history (Fase 0 — fundación de dominio) ──
+ATTEMPTS_FILE = DATA_DIR / "attempts.json"
+
+
+def load_attempts():
+    if ATTEMPTS_FILE.exists():
+        return json.loads(ATTEMPTS_FILE.read_text())
+    return {"attempts": []}
+
+
+def save_attempts(data):
+    tmp = ATTEMPTS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, ATTEMPTS_FILE)
+
+
+@app.route("/api/attempts", methods=["POST"])
+def create_attempt():
+    data = request.json or {}
+    entry_id = (data.get("entry_id") or "").strip()
+    attempt_type = data.get("type", "quiz")
+    score = data.get("score")
+    total = data.get("total")
+    if not entry_id or not isinstance(score, int) or not isinstance(total, int) or total <= 0:
+        return jsonify({"error": "Missing or invalid fields"}), 400
+    if attempt_type not in ("quiz", "practice"):
+        return jsonify({"error": "Invalid type"}), 400
+
+    index = load_index()
+    meta = index.get(entry_id, {})
+
+    record = {
+        "id": uuid.uuid4().hex[:8],
+        "entry_id": entry_id,
+        "entry_title": meta.get("title", ""),
+        "course": meta.get("course", ""),
+        "type": attempt_type,
+        "score": score,
+        "total": total,
+        "percentage": round(score / total * 100),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    store = load_attempts()
+    store["attempts"].append(record)
+    save_attempts(store)
+    return jsonify(record)
+
+
+@app.route("/api/attempts", methods=["GET"])
+def list_attempts():
+    store = load_attempts()
+    attempts = store["attempts"]
+    entry_id = request.args.get("entry_id")
+    if entry_id:
+        attempts = [a for a in attempts if a["entry_id"] == entry_id]
+    attempts = sorted(attempts, key=lambda a: a["created_at"], reverse=True)
+    limit = request.args.get("limit", type=int)
+    if limit:
+        attempts = attempts[:limit]
+    return jsonify({"attempts": attempts})
 
 
 # ── Code execution ────────────────────────────────────────────────────────────

@@ -7991,6 +7991,15 @@ function _renderQuizResults() {
       <div class="quiz-review" id="quizReview"></div>
     </div>`;
 
+  // Persist this attempt server-side (foundation for domain tracking across devices)
+  if (currentEntryId) {
+    fetch('/api/attempts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry_id: currentEntryId, type: 'quiz', score: correct, total }),
+    }).catch(() => {});
+  }
+
   const review = $('quizReview');
   st.questions.forEach((q, i) => {
     const userAns = st.answers[i];
