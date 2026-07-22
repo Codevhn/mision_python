@@ -3350,8 +3350,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ts-empty-hint { padding-left: 30px !important; font-style: italic; }
 
 /* ── PAGES TREE (recursive) ─────────────────────────────── */
+/* .tree-entry's default 34px left padding is meant for leaf entries nested
+   under a category/topic header elsewhere in the app. The pages tree has no
+   such wrapper — its rows sit directly under the panel title — so reuse
+   just enough of that padding to look like a flat top-level list. */
 .tree-page-node { min-width: 0; }
-.tree-page-row { position: relative; }
+.tree-page-row { position: relative; padding-left: 8px; }
 .tree-page-toggle {
   width: 12px;
   flex: 0 0 auto;
