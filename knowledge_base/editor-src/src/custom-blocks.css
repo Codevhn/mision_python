@@ -473,6 +473,28 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
 .bn-db-group-toggle { font-size: 0.8em; width: 10px; flex-shrink: 0; }
 .bn-db-group-count { color: var(--text-faint); font-weight: 400; }
 
+/* "Calcular" footer row (audit item #8) — one summary cell per column,
+   computed over the currently visible (filtered) rows. */
+.bn-db-grid-footer .bn-db-cell {
+  background: var(--bg-hover);
+  color: var(--text-faint);
+}
+.bn-db-calc-cell { position: relative; }
+.bn-db-calc-btn {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 0.85em;
+}
+.bn-db-calc-btn:hover { color: var(--text); background: var(--bg-elevated); }
+.bn-db-calc-btn.active { color: var(--text); font-weight: 600; }
+
 .bn-database-addcol { position: relative; }
 .bn-database-addcol button,
 .bn-database-addrow {

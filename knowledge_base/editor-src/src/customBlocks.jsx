@@ -213,6 +213,85 @@ function groupRows(displayRows, groupCol) {
   return keys.map((key) => ({ key, rows: groups.get(key) }));
 }
 
+// "Calcular" — a per-column summary shown in a footer row under the table,
+// same idea as Notion's own bottom-of-column calculate row. Table-wide
+// (schema.calc: { [colId or "__title"]: calcTypeId }), computed live over
+// `displayRows` so it reflects the current filter, same as Notion's own
+// calc row does. Deliberately a single table-wide footer, not one row per
+// group — per-group subtotals would need real per-group state and this
+// audit item's own sizing note calls it "mediano", not the largest item.
+const CALC_LABELS = {
+  count_all: "Contar todos",
+  count_empty: "Contar vacíos",
+  count_not_empty: "Contar no vacíos",
+  sum: "Suma",
+  average: "Promedio",
+  min: "Mín",
+  max: "Máx",
+  checked: "Marcadas",
+  unchecked: "No marcadas",
+  percent_checked: "% marcadas",
+};
+
+function calcOptionsForType(type) {
+  const common = [
+    { id: "count_all", label: "Contar todos" },
+    { id: "count_empty", label: "Contar vacíos" },
+    { id: "count_not_empty", label: "Contar no vacíos" },
+  ];
+  if (type === "number") {
+    return [...common,
+      { id: "sum", label: "Suma" },
+      { id: "average", label: "Promedio" },
+      { id: "min", label: "Mín" },
+      { id: "max", label: "Máx" },
+    ];
+  }
+  if (type === "checkbox") {
+    return [...common,
+      { id: "checked", label: "Marcadas" },
+      { id: "unchecked", label: "No marcadas" },
+      { id: "percent_checked", label: "% marcadas" },
+    ];
+  }
+  return common;
+}
+
+function calcIsEmpty(row, col) {
+  if (col.type === "title") return !row.title || !row.title.trim();
+  const prop = (row.properties || []).find((p) => p.id === col.id);
+  if (!prop || prop.value == null || prop.value === "") return true;
+  if (col.type === "multi_select") return !Array.isArray(prop.value) || prop.value.length === 0;
+  return false;
+}
+
+function computeCalc(displayRows, col, calcType) {
+  const n = displayRows.length;
+  if (calcType === "count_all") return String(n);
+  if (calcType === "count_empty") return String(displayRows.filter((r) => calcIsEmpty(r, col)).length);
+  if (calcType === "count_not_empty") return String(displayRows.filter((r) => !calcIsEmpty(r, col)).length);
+  if (col.type === "number" && (calcType === "sum" || calcType === "average" || calcType === "min" || calcType === "max")) {
+    const nums = displayRows
+      .map((r) => (r.properties || []).find((p) => p.id === col.id))
+      .map((p) => (p && typeof p.value === "number" ? p.value : null))
+      .filter((v) => v != null);
+    if (calcType === "sum") return String(nums.reduce((a, b) => a + b, 0));
+    if (calcType === "average") return nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "0";
+    if (calcType === "min") return nums.length ? String(Math.min(...nums)) : "—";
+    if (calcType === "max") return nums.length ? String(Math.max(...nums)) : "—";
+  }
+  if (col.type === "checkbox" && (calcType === "checked" || calcType === "unchecked" || calcType === "percent_checked")) {
+    const checkedCount = displayRows.filter((r) => {
+      const p = (r.properties || []).find((pp) => pp.id === col.id);
+      return !!(p && p.value);
+    }).length;
+    if (calcType === "checked") return String(checkedCount);
+    if (calcType === "unchecked") return String(n - checkedCount);
+    if (calcType === "percent_checked") return n ? `${Math.round((checkedCount / n) * 100)}%` : "0%";
+  }
+  return "0";
+}
+
 // Mounts a live, click-to-edit colored tag (window.Properties.renderCell)
 // into a plain DOM container. Select/multi_select options are owned by the
 // COLUMN (schema.columns[i].options), not by each row — exactly like a
@@ -324,6 +403,27 @@ export const database = createReactBlockSpec(
           else next.add(key);
           return next;
         });
+      };
+
+      // "Calcular" footer popover — one open at a time, same shared-ref
+      // outside-click pattern as the column-header "⋮" menu (colMenuOpen).
+      // Keyed by column id, or "__title" for the title column's own cell.
+      const [calcMenuOpen, setCalcMenuOpen] = useState(null);
+      const calcMenuRef = useRef(null);
+
+      useEffect(() => {
+        if (!calcMenuOpen) return;
+        const h = (e) => { if (calcMenuRef.current && !calcMenuRef.current.contains(e.target)) setCalcMenuOpen(null); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [calcMenuOpen]);
+
+      const setColCalc = (colId, calcType) => {
+        const nextCalc = { ...(schema.calc || {}) };
+        if (!calcType) delete nextCalc[colId];
+        else nextCalc[colId] = calcType;
+        saveSchema({ ...schema, calc: nextCalc });
+        setCalcMenuOpen(null);
       };
 
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
@@ -1027,6 +1127,73 @@ export const database = createReactBlockSpec(
                 </div>
               </div>
             )}
+
+            {/* "Calcular" footer — one cell per column (plus the title
+                column and the checkbox/trailing filler cells) so the grid's
+                column-track count matches every other row exactly. Skipping
+                any of these cells here would reproduce the same
+                auto-placement misalignment bug fixed above for data rows. */}
+            <div className="bn-db-grid-row bn-db-grid-footer">
+              <div className="bn-db-cell bn-db-checkbox-cell" />
+              <div
+                className="bn-db-title-col bn-db-cell bn-db-calc-cell"
+                ref={calcMenuOpen === "__title" ? calcMenuRef : null}
+              >
+                <button
+                  className={"bn-db-calc-btn" + (schema.calc?.__title ? " active" : "")}
+                  onClick={() => setCalcMenuOpen((v) => (v === "__title" ? null : "__title"))}
+                >
+                  {schema.calc?.__title
+                    ? `${CALC_LABELS[schema.calc.__title]} ${computeCalc(displayRows, { id: "__title", type: "title" }, schema.calc.__title)}`
+                    : "Calcular"}
+                </button>
+                {calcMenuOpen === "__title" && (
+                  <div className="bn-db-colmenu-pop" contentEditable={false}>
+                    <button className={"bn-db-colmenu-item" + (!schema.calc?.__title ? " active" : "")} onClick={() => setColCalc("__title", null)}>Ninguno</button>
+                    {calcOptionsForType("title").map((opt) => (
+                      <button
+                        key={opt.id}
+                        className={"bn-db-colmenu-item" + (schema.calc?.__title === opt.id ? " active" : "")}
+                        onClick={() => setColCalc("__title", opt.id)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {schema.columns.map((c) => (
+                <div
+                  className="bn-db-cell bn-db-calc-cell"
+                  key={c.id}
+                  ref={calcMenuOpen === c.id ? calcMenuRef : null}
+                >
+                  <button
+                    className={"bn-db-calc-btn" + (schema.calc?.[c.id] ? " active" : "")}
+                    onClick={() => setCalcMenuOpen((v) => (v === c.id ? null : c.id))}
+                  >
+                    {schema.calc?.[c.id]
+                      ? `${CALC_LABELS[schema.calc[c.id]]} ${computeCalc(displayRows, c, schema.calc[c.id])}`
+                      : "Calcular"}
+                  </button>
+                  {calcMenuOpen === c.id && (
+                    <div className="bn-db-colmenu-pop" contentEditable={false}>
+                      <button className={"bn-db-colmenu-item" + (!schema.calc?.[c.id] ? " active" : "")} onClick={() => setColCalc(c.id, null)}>Ninguno</button>
+                      {calcOptionsForType(c.type).map((opt) => (
+                        <button
+                          key={opt.id}
+                          className={"bn-db-colmenu-item" + (schema.calc?.[c.id] === opt.id ? " active" : "")}
+                          onClick={() => setColCalc(c.id, opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="bn-db-cell bn-db-row-actions" />
+            </div>
           </div>
           {selectedIds.size > 0 ? (
             <div className="bn-db-selection-bar" contentEditable={false}>
