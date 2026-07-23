@@ -1,5 +1,5 @@
 import { createReactBlockSpec } from "@blocknote/react";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 
 // ── Page link block ───────────────────────────────────────────────
 // Mirrors the legacy "page" block: a clickable chip that navigates to
@@ -162,6 +162,57 @@ function rowSortValue(row, col) {
   return prop && prop.value != null ? String(prop.value).toLowerCase() : "";
 }
 
+const NO_GROUP_KEY = "Sin valor";
+
+// A multi_select row technically belongs under EVERY one of its values in
+// real Notion (grouping by "Tags" with a row tagged [A, B] shows that row
+// under both the A and B sections). Reproducing that means a row can
+// render more than once, which complicates row-level state (selection,
+// drag) elsewhere in this file — kept simple here instead: multi_select
+// groups by the whole joined set as one key, same as sorting already does.
+function rowGroupKey(row, col) {
+  if (col.type === "title") return row.title || NO_GROUP_KEY;
+  const prop = (row.properties || []).find((p) => p.id === col.id);
+  if (col.type === "checkbox") return prop && prop.value ? "Marcada" : "No marcada";
+  if (col.type === "multi_select") {
+    return prop && Array.isArray(prop.value) && prop.value.length ? prop.value.join(", ") : NO_GROUP_KEY;
+  }
+  return prop && prop.value != null && prop.value !== "" ? String(prop.value) : NO_GROUP_KEY;
+}
+
+function groupRows(displayRows, groupCol) {
+  const groups = new Map();
+  for (const row of displayRows) {
+    const key = rowGroupKey(row, groupCol);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  let keys = Array.from(groups.keys());
+  if (groupCol.type === "status") {
+    keys = STATUS_OPTIONS.filter((k) => groups.has(k)).concat(keys.filter((k) => !STATUS_OPTIONS.includes(k)));
+  } else if (groupCol.type === "select" || groupCol.type === "multi_select") {
+    const optionOrder = (groupCol.options || []).map((o) => o.label);
+    keys.sort((a, b) => {
+      const ia = optionOrder.indexOf(a), ib = optionOrder.indexOf(b);
+      if (a === NO_GROUP_KEY) return 1;
+      if (b === NO_GROUP_KEY) return -1;
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  } else if (groupCol.type === "checkbox") {
+    keys = ["No marcada", "Marcada"].filter((k) => groups.has(k));
+  } else {
+    keys.sort((a, b) => {
+      if (a === NO_GROUP_KEY) return 1;
+      if (b === NO_GROUP_KEY) return -1;
+      return a.localeCompare(b);
+    });
+  }
+  return keys.map((key) => ({ key, rows: groups.get(key) }));
+}
+
 // Mounts a live, click-to-edit colored tag (window.Properties.renderCell)
 // into a plain DOM container. Select/multi_select options are owned by the
 // COLUMN (schema.columns[i].options), not by each row — exactly like a
@@ -252,6 +303,28 @@ export const database = createReactBlockSpec(
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
       }, [sortOpen]);
+
+      const [groupOpen, setGroupOpen] = useState(false);
+      const groupRef = useRef(null);
+      // Which groups are collapsed — session-only UI state, not persisted
+      // to the schema (unlike Notion, which does remember this per view).
+      const [collapsedGroups, setCollapsedGroups] = useState(() => new Set());
+
+      useEffect(() => {
+        if (!groupOpen) return;
+        const h = (e) => { if (groupRef.current && !groupRef.current.contains(e.target)) setGroupOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [groupOpen]);
+
+      const toggleGroupCollapsed = (key) => {
+        setCollapsedGroups((prev) => {
+          const next = new Set(prev);
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+          return next;
+        });
+      };
 
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
       // holds only the column(s) currently mid-drag, for immediate visual
@@ -560,7 +633,133 @@ export const database = createReactBlockSpec(
         });
       }
 
+      const renderRow = (row) => (
+        <div className="bn-db-grid-row" key={row.id}>
+          <div className="bn-db-cell bn-db-checkbox-cell">
+            <input
+              type="checkbox"
+              checked={selectedIds.has(row.id)}
+              onChange={() => toggleRowSelected(row.id)}
+            />
+          </div>
+          <div
+            className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
+            onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
+            onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
+            onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
+            ref={rowMenuOpen === row.id ? rowMenuRef : null}
+          >
+            <span
+              className="bn-db-row-handle"
+              title={dragDisabledReason ? `Clic para más opciones (arrastrar deshabilitado: ${dragDisabledReason})` : "Arrastrar para reordenar, clic para más opciones"}
+              draggable={!dragDisabledReason}
+              onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
+              onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
+              onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
+            >⠿</span>
+            <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
+              <span className="bn-db-row-icon">{row.icon || "📄"}</span>
+              <span className="bn-db-row-title">{row.title || "Sin título"}</span>
+            </button>
+            {rowMenuOpen === row.id && (
+              <div className="bn-db-colmenu-pop" contentEditable={false}>
+                <button className="bn-db-colmenu-item" onClick={() => { setRowMenuOpen(null); openRow(row.id); }}>Abrir</button>
+                <button className="bn-db-colmenu-item" onClick={() => duplicateRow(row.id)}>Duplicar</button>
+                <button className="bn-db-colmenu-item" onClick={() => copyRowLink(row.id)}>Copiar enlace</button>
+                <button
+                  className="bn-db-colmenu-item bn-db-colmenu-danger"
+                  onClick={() => { setRowMenuOpen(null); deleteRow(row.id); }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            )}
+          </div>
+          {schema.columns.map((c) => {
+            const prop = (row.properties || []).find((p) => p.id === c.id);
+            const editable = isInlineEditable(c.type);
+            if (c.type === "checkbox") {
+              return (
+                <div className="bn-db-cell" key={c.id}>
+                  <input
+                    type="checkbox"
+                    checked={!!(prop && prop.value)}
+                    onChange={(e) => setCellValue(row.id, c, e.target.checked)}
+                  />
+                </div>
+              );
+            }
+            if (isTagType(c.type)) {
+              const effectiveProp = {
+                id: c.id, name: c.name, type: c.type,
+                value: prop ? prop.value : PROP_DEFAULTS[c.type],
+                options: c.options || [],
+              };
+              return (
+                <PropCell
+                  key={c.id}
+                  prop={effectiveProp}
+                  onChange={(updated) => {
+                    if (c.type !== "status" && JSON.stringify(updated.options || []) !== JSON.stringify(c.options || [])) {
+                      setColumnOptions(c, updated.options || []);
+                    }
+                    setCellValue(row.id, c, updated.value);
+                  }}
+                />
+              );
+            }
+            if (c.type === "text") {
+              return (
+                <div className="bn-db-cell" key={c.id}>
+                  <TextCell
+                    value={propValueDisplay(prop)}
+                    onCommit={(v) => setCellValue(row.id, c, v)}
+                  />
+                </div>
+              );
+            }
+            return (
+              <div
+                className={"bn-db-cell" + (editable ? "" : " bn-db-cell-ro")}
+                key={c.id}
+                onClick={() => { if (!editable) openRow(row.id); }}
+              >
+                {editable ? (
+                  <input
+                    className="bn-db-cell-input"
+                    value={propValueDisplay(prop)}
+                    onChange={(e) => setCellValue(row.id, c, c.type === "number" ? (parseFloat(e.target.value) || "") : e.target.value)}
+                  />
+                ) : (
+                  <span className="bn-db-cell-val">{propValueDisplay(prop) || "—"}</span>
+                )}
+              </div>
+            );
+          })}
+          {/* Structural filler for the trailing 32px track the header's "+"
+              add-column button occupies. Without a matching item here, a
+              data row only fills 3+N of the grid's 4+N column tracks, and
+              CSS grid's sparse auto-placement fills that leftover slot
+              with the FOLLOWING row's first cell instead of leaving it
+              blank — corrupting every row from the second one on. Empty
+              (the old per-row "×" delete button lived here; removed as
+              redundant with the "⋮⋮" menu's own Eliminar, but the slot
+              itself still has to be filled by something). */}
+          <div className="bn-db-cell bn-db-row-actions" />
+        </div>
+      );
+
       const filterSortColumns = [{ id: "__title", name: "Nombre" }, ...schema.columns];
+      const groupColResolved = schema.groupBy ? resolveFilterSortCol(schema.groupBy, schema.columns) : null;
+      const groups = groupColResolved ? groupRows(displayRows, groupColResolved) : null;
+      // Manual drag-reorder is disabled whenever a sort OR a grouping is
+      // active — both compete with a freely-dragged manual order the same
+      // way (grouping additionally has no defined cross-group semantics).
+      const dragDisabledReason = schema.sort
+        ? "hay un orden activo"
+        : schema.groupBy
+        ? "las filas están agrupadas"
+        : null;
 
       return (
         <div className="bn-database" contentEditable={false}>
@@ -652,6 +851,32 @@ export const database = createReactBlockSpec(
                           Descendente
                         </button>
                       </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="bn-db-group-wrap" ref={groupRef}>
+                <button className={"bn-db-toolbar-btn" + (schema.groupBy ? " active" : "")} onClick={() => setGroupOpen((v) => !v)}>
+                  Agrupar{groupColResolved ? `: ${groupColResolved.name}` : ""}
+                </button>
+                {groupOpen && (
+                  <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
+                    <select
+                      className="bn-db-pop-select"
+                      value={schema.groupBy || ""}
+                      onChange={(e) => {
+                        const colId = e.target.value;
+                        saveSchema({ ...schema, groupBy: colId || null });
+                        setCollapsedGroups(new Set());
+                      }}
+                    >
+                      <option value="">Sin agrupar</option>
+                      {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {schema.groupBy && (
+                      <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { saveSchema({ ...schema, groupBy: null }); setCollapsedGroups(new Set()); }}>
+                        Quitar agrupación
+                      </button>
                     )}
                   </div>
                 )}
@@ -773,111 +998,28 @@ export const database = createReactBlockSpec(
               </div>
             </div>
 
-            {displayRows.map((row) => (
-              <div className="bn-db-grid-row" key={row.id}>
-                <div className="bn-db-cell bn-db-checkbox-cell">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.id)}
-                    onChange={() => toggleRowSelected(row.id)}
-                  />
-                </div>
-                <div
-                  className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
-                  onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
-                  onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
-                  onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
-                  ref={rowMenuOpen === row.id ? rowMenuRef : null}
-                >
-                  <span
-                    className="bn-db-row-handle"
-                    title={schema.sort ? "Clic para más opciones (arrastrar deshabilitado: hay un orden activo)" : "Arrastrar para reordenar, clic para más opciones"}
-                    draggable={!schema.sort}
-                    onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
-                    onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
-                    onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
-                  >⠿</span>
-                  <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
-                    <span className="bn-db-row-icon">{row.icon || "📄"}</span>
-                    <span className="bn-db-row-title">{row.title || "Sin título"}</span>
-                  </button>
-                  {rowMenuOpen === row.id && (
-                    <div className="bn-db-colmenu-pop" contentEditable={false}>
-                      <button className="bn-db-colmenu-item" onClick={() => { setRowMenuOpen(null); openRow(row.id); }}>Abrir</button>
-                      <button className="bn-db-colmenu-item" onClick={() => duplicateRow(row.id)}>Duplicar</button>
-                      <button className="bn-db-colmenu-item" onClick={() => copyRowLink(row.id)}>Copiar enlace</button>
+            {groups ? (
+              groups.map(({ key, rows: groupedRows }) => {
+                const collapsed = collapsedGroups.has(key);
+                return (
+                  <Fragment key={key}>
+                    <div className="bn-db-grid-row">
                       <button
-                        className="bn-db-colmenu-item bn-db-colmenu-danger"
-                        onClick={() => { setRowMenuOpen(null); deleteRow(row.id); }}
+                        className="bn-db-group-header"
+                        onClick={() => toggleGroupCollapsed(key)}
                       >
-                        Eliminar
+                        <span className="bn-db-group-toggle">{collapsed ? "▸" : "▾"}</span>
+                        <span className="bn-db-group-label">{key}</span>
+                        <span className="bn-db-group-count">{groupedRows.length}</span>
                       </button>
                     </div>
-                  )}
-                </div>
-                {schema.columns.map((c) => {
-                  const prop = (row.properties || []).find((p) => p.id === c.id);
-                  const editable = isInlineEditable(c.type);
-                  if (c.type === "checkbox") {
-                    return (
-                      <div className="bn-db-cell" key={c.id}>
-                        <input
-                          type="checkbox"
-                          checked={!!(prop && prop.value)}
-                          onChange={(e) => setCellValue(row.id, c, e.target.checked)}
-                        />
-                      </div>
-                    );
-                  }
-                  if (isTagType(c.type)) {
-                    const effectiveProp = {
-                      id: c.id, name: c.name, type: c.type,
-                      value: prop ? prop.value : PROP_DEFAULTS[c.type],
-                      options: c.options || [],
-                    };
-                    return (
-                      <PropCell
-                        key={c.id}
-                        prop={effectiveProp}
-                        onChange={(updated) => {
-                          if (c.type !== "status" && JSON.stringify(updated.options || []) !== JSON.stringify(c.options || [])) {
-                            setColumnOptions(c, updated.options || []);
-                          }
-                          setCellValue(row.id, c, updated.value);
-                        }}
-                      />
-                    );
-                  }
-                  if (c.type === "text") {
-                    return (
-                      <div className="bn-db-cell" key={c.id}>
-                        <TextCell
-                          value={propValueDisplay(prop)}
-                          onCommit={(v) => setCellValue(row.id, c, v)}
-                        />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div
-                      className={"bn-db-cell" + (editable ? "" : " bn-db-cell-ro")}
-                      key={c.id}
-                      onClick={() => { if (!editable) openRow(row.id); }}
-                    >
-                      {editable ? (
-                        <input
-                          className="bn-db-cell-input"
-                          value={propValueDisplay(prop)}
-                          onChange={(e) => setCellValue(row.id, c, c.type === "number" ? (parseFloat(e.target.value) || "") : e.target.value)}
-                        />
-                      ) : (
-                        <span className="bn-db-cell-val">{propValueDisplay(prop) || "—"}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                    {!collapsed && groupedRows.map((row) => renderRow(row))}
+                  </Fragment>
+                );
+              })
+            ) : (
+              displayRows.map((row) => renderRow(row))
+            )}
             {!loading && displayRows.length === 0 && (
               <div className="bn-db-grid-row">
                 <div className="bn-db-empty">

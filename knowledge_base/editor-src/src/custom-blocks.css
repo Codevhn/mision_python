@@ -450,6 +450,29 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
   border-top: 1px solid var(--border);
 }
 
+/* Group section header (audit item #7 — "agrupar"). Spans the full grid
+   width like .bn-db-empty; click toggles that group's collapsed state
+   (session-only UI state, not persisted). */
+.bn-db-group-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+.bn-db-group-header:hover { color: var(--text); }
+.bn-db-group-toggle { font-size: 0.8em; width: 10px; flex-shrink: 0; }
+.bn-db-group-count { color: var(--text-faint); font-weight: 400; }
+
 .bn-database-addcol { position: relative; }
 .bn-database-addcol button,
 .bn-database-addrow {
