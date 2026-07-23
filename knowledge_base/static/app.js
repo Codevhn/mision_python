@@ -135,6 +135,11 @@ document.addEventListener("DOMContentLoaded", () => {
   initQuizModal();
   initPracticeModal();
   initPagePeek();
+  // Deep link: ?open=<entryId> — the target of "Copiar enlace" (database
+  // row menu, customBlocks.jsx). No other feature reads location.search
+  // yet, so this is the app's first/only URL-driven navigation.
+  const _openParam = new URLSearchParams(window.location.search).get('open');
+  if (_openParam) loadEntry(_openParam);
   _refreshReminderBadges();
   initBlockTypeIndicator();
   // Back navigation button

@@ -152,6 +152,41 @@
 }
 .bn-db-col-name { margin-right: 6px; }
 
+/* Bulk-selection checkboxes — header checkbox stays visible as a discovery
+   affordance; row checkboxes are hover-reveal like the resize/drag handles,
+   except once anything is checked (bn-db-has-selection on the grid, or the
+   row itself already checked), so a mid-selection table doesn't hide its
+   own state the moment the mouse leaves. */
+.bn-db-checkbox-cell { justify-content: center; }
+.bn-db-checkbox-cell input[type="checkbox"] { cursor: pointer; opacity: 0; transition: opacity 0.12s; }
+.bn-db-grid-header .bn-db-checkbox-cell input[type="checkbox"] { opacity: 1; }
+.bn-db-grid-row:hover .bn-db-checkbox-cell input[type="checkbox"],
+.bn-db-checkbox-cell input[type="checkbox"]:checked,
+.bn-database-grid.bn-db-has-selection .bn-db-checkbox-cell input[type="checkbox"] { opacity: 1; }
+
+.bn-db-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  margin-top: 2px;
+  font-size: 0.82em;
+  color: var(--text-muted);
+}
+.bn-db-selection-clear,
+.bn-db-selection-delete {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95em;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.bn-db-selection-clear { color: var(--text-faint); }
+.bn-db-selection-clear:hover { background: var(--bg-hover); color: var(--text); }
+.bn-db-selection-delete { color: var(--danger); }
+.bn-db-selection-delete:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
+
 .bn-db-col-name-btn {
   display: flex; align-items: center; width: 100%;
   border: none; background: none; cursor: pointer;
@@ -228,6 +263,11 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
   padding: 4px 8px 8px;
 }
 .bn-db-colmenu-back:hover { color: var(--text); }
+
+/* position:relative so the "⋮⋮" row menu (reuses .bn-db-colmenu-pop) can
+   anchor to this cell — header cells already get it from the header-scoped
+   rule above, data rows need their own since that rule is header-only. */
+.bn-db-title-col { position: relative; }
 
 .bn-db-open-row {
   display: flex; align-items: center; gap: 6px;

@@ -131,6 +131,21 @@ export const database = createReactBlockSpec(
       const dragRowIdRef = useRef(null);
       const pageId = window._currentEntryId;
 
+      // Row "⋮⋮" menu (Abrir/Duplicar/Copiar enlace/Eliminar) and bulk
+      // selection checkboxes — the same handle serves both drag-to-reorder
+      // (see startResize-adjacent handlers below) and, on a plain click
+      // (no movement, so no dragstart ever fires), this menu.
+      const [rowMenuOpen, setRowMenuOpen] = useState(null);
+      const rowMenuRef = useRef(null);
+      const [selectedIds, setSelectedIds] = useState(() => new Set());
+
+      useEffect(() => {
+        if (!rowMenuOpen) return;
+        const h = (e) => { if (rowMenuRef.current && !rowMenuRef.current.contains(e.target)) setRowMenuOpen(null); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [rowMenuOpen]);
+
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
       // holds only the column(s) currently mid-drag, for immediate visual
       // feedback without spamming editor.updateBlock (and its undo history)
@@ -346,6 +361,51 @@ export const database = createReactBlockSpec(
         });
       };
 
+      // "⋮⋮" row menu actions. Duplicate reuses the app's existing generic
+      // POST /api/entry/<id>/duplicate (same one behind the page-level
+      // "Más ⋯ → Duplicar" button) — it already copies content+properties
+      // and keeps parent_id, so no database-specific backend work needed.
+      const duplicateRow = async (rowId) => {
+        setRowMenuOpen(null);
+        await fetch(`/api/entry/${rowId}/duplicate`, { method: "POST" });
+        reload();
+      };
+
+      const copyRowLink = (rowId) => {
+        setRowMenuOpen(null);
+        const url = `${window.location.origin}${window.location.pathname}?open=${encodeURIComponent(rowId)}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(() => window.showToast && window.showToast("Enlace copiado"));
+        }
+      };
+
+      // Bulk selection — a real Notion table shows a checkbox per row (and
+      // one in the header to select all) once you hover, with a small
+      // "N selected" bar for bulk actions. Bulk property-editing is a much
+      // bigger feature (out of scope here); bulk delete is the one that
+      // actually saves time day-to-day, so that's what's wired up.
+      const toggleRowSelected = (rowId) => {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(rowId)) next.delete(rowId);
+          else next.add(rowId);
+          return next;
+        });
+      };
+
+      const toggleSelectAll = () => {
+        setSelectedIds((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
+      };
+
+      const deleteSelected = async () => {
+        const ids = Array.from(selectedIds);
+        if (!ids.length) return;
+        if (!window.confirm(`¿Eliminar ${ids.length} página(s)? No se puede deshacer.`)) return;
+        await Promise.all(ids.map((id) => fetch(`/api/entry/${id}`, { method: "DELETE" })));
+        setSelectedIds(new Set());
+        reload();
+      };
+
       // Deliberately NOT a real <table>: BlockNote's own native-table
       // extension attaches a document-wide mousemove listener that assumes
       // any <table> element in the DOM carries its internal column-resize
@@ -366,12 +426,21 @@ export const database = createReactBlockSpec(
           return c.width ? `${c.width}px` : "minmax(120px, 1fr)";
         })
         .join(" ");
-      const gridTemplateColumns = `${titleWidth}px ${colTemplate} 32px`;
+      const gridTemplateColumns = `28px ${titleWidth}px ${colTemplate} 32px`;
 
       return (
         <div className="bn-database" contentEditable={false}>
-          <div className="bn-database-grid" style={{ gridTemplateColumns }}>
+          <div className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")} style={{ gridTemplateColumns }}>
             <div className="bn-db-grid-row bn-db-grid-header">
+              <div className="bn-db-cell bn-db-checkbox-cell">
+                <input
+                  type="checkbox"
+                  checked={rows.length > 0 && selectedIds.size === rows.length}
+                  ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < rows.length; }}
+                  onChange={toggleSelectAll}
+                  title="Seleccionar todo"
+                />
+              </div>
               <div className="bn-db-title-col bn-db-cell">
                 Nombre
                 <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, "__title")} />
@@ -456,23 +525,45 @@ export const database = createReactBlockSpec(
 
             {rows.map((row) => (
               <div className="bn-db-grid-row" key={row.id}>
+                <div className="bn-db-cell bn-db-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(row.id)}
+                    onChange={() => toggleRowSelected(row.id)}
+                  />
+                </div>
                 <div
                   className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
                   onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
                   onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
                   onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
+                  ref={rowMenuOpen === row.id ? rowMenuRef : null}
                 >
                   <span
                     className="bn-db-row-handle"
-                    title="Arrastrar para reordenar"
+                    title="Arrastrar para reordenar, clic para más opciones"
                     draggable
                     onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
                     onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
+                    onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
                   >⠿</span>
                   <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
                     <span className="bn-db-row-icon">{row.icon || "📄"}</span>
                     <span className="bn-db-row-title">{row.title || "Sin título"}</span>
                   </button>
+                  {rowMenuOpen === row.id && (
+                    <div className="bn-db-colmenu-pop" contentEditable={false}>
+                      <button className="bn-db-colmenu-item" onClick={() => { setRowMenuOpen(null); openRow(row.id); }}>Abrir</button>
+                      <button className="bn-db-colmenu-item" onClick={() => duplicateRow(row.id)}>Duplicar</button>
+                      <button className="bn-db-colmenu-item" onClick={() => copyRowLink(row.id)}>Copiar enlace</button>
+                      <button
+                        className="bn-db-colmenu-item bn-db-colmenu-danger"
+                        onClick={() => { setRowMenuOpen(null); deleteRow(row.id); }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {schema.columns.map((c) => {
                   const prop = (row.properties || []).find((p) => p.id === c.id);
@@ -536,7 +627,15 @@ export const database = createReactBlockSpec(
               </div>
             )}
           </div>
-          <button className="bn-database-addrow" onClick={addRow}>+ Nueva página</button>
+          {selectedIds.size > 0 ? (
+            <div className="bn-db-selection-bar" contentEditable={false}>
+              <span>{selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}</span>
+              <button className="bn-db-selection-clear" onClick={() => setSelectedIds(new Set())}>Cancelar</button>
+              <button className="bn-db-selection-delete" onClick={deleteSelected}>Eliminar</button>
+            </div>
+          ) : (
+            <button className="bn-database-addrow" onClick={addRow}>+ Nueva página</button>
+          )}
         </div>
       );
     },
