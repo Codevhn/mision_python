@@ -128,6 +128,7 @@ export const database = createReactBlockSpec(
       const [renameDraft, setRenameDraft] = useState("");
       const addColRef = useRef(null);
       const colMenuRef = useRef(null);
+      const dragRowIdRef = useRef(null);
       const pageId = window._currentEntryId;
 
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
@@ -317,6 +318,34 @@ export const database = createReactBlockSpec(
         if (window._openPagePeek) window._openPagePeek(rowId, { onClose: reload });
       };
 
+      // Row drag-to-reorder, via the "⋮⋮" handle. Reuses the app's existing
+      // generic /api/entry/reorder endpoint (sets `order` on a list of ids,
+      // in the order given) — no dedicated backend endpoint needed. It's
+      // fine that this only ever sees THIS table's own row ids: order is
+      // only ever compared among children of the same parent, so reusing
+      // 0..N-1 across unrelated parents elsewhere never collides.
+      const [dragOverRowId, setDragOverRowId] = useState(null);
+
+      const handleRowDrop = async (targetRowId) => {
+        setDragOverRowId(null);
+        const draggedId = dragRowIdRef.current;
+        dragRowIdRef.current = null;
+        if (!draggedId || draggedId === targetRowId) return;
+        const current = rowsRef.current;
+        const draggedIdx = current.findIndex((r) => r.id === draggedId);
+        const targetIdx = current.findIndex((r) => r.id === targetRowId);
+        if (draggedIdx < 0 || targetIdx < 0) return;
+        const next = [...current];
+        const [moved] = next.splice(draggedIdx, 1);
+        next.splice(targetIdx, 0, moved);
+        setRows(next);
+        await fetch("/api/entry/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: next.map((r) => r.id) }),
+        });
+      };
+
       // Deliberately NOT a real <table>: BlockNote's own native-table
       // extension attaches a document-wide mousemove listener that assumes
       // any <table> element in the DOM carries its internal column-resize
@@ -427,7 +456,19 @@ export const database = createReactBlockSpec(
 
             {rows.map((row) => (
               <div className="bn-db-grid-row" key={row.id}>
-                <div className="bn-db-title-col bn-db-cell">
+                <div
+                  className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
+                  onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
+                  onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
+                  onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
+                >
+                  <span
+                    className="bn-db-row-handle"
+                    title="Arrastrar para reordenar"
+                    draggable
+                    onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
+                    onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
+                  >⠿</span>
                   <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
                     <span className="bn-db-row-icon">{row.icon || "📄"}</span>
                     <span className="bn-db-row-title">{row.title || "Sin título"}</span>

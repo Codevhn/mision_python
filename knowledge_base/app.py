@@ -869,13 +869,22 @@ def create_entry():
         folder = KNOWLEDGE_DIR / "pages"
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{entry_id}.md").write_text(md_content)
+        # A new row must always land at the END of its parent's children,
+        # even after a manual drag-reorder has already assigned explicit
+        # order values — defaulting to 0 would tie it with (and sort it
+        # right after, by created_at) whatever row is currently first.
+        next_order = 0
+        if parent_id:
+            sibling_orders = [m.get("order", 0) for m in index.values() if m.get("parent_id") == parent_id]
+            if sibling_orders:
+                next_order = max(sibling_orders) + 1
         index[entry_id] = {
             "uid": uuid.uuid4().hex[:8],
             "title": title,
             "type": "page",
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "status": "pendiente",
-            "order": 0,
+            "order": next_order,
             "tags": tags,
             "parent_id": parent_id,
             "icon": icon,
@@ -1718,11 +1727,17 @@ def get_children(entry_id):
             "type": m.get("type", "knowledge"),
             "status": m.get("status", "pendiente"),
             "properties": m.get("properties", []),
+            "order": m.get("order", 0),
+            "created_at": m.get("created_at", ""),
         }
         for eid, m in index.items()
         if m.get("parent_id") == entry_id
     ]
-    children.sort(key=lambda c: c["title"])
+    # Same (order, created_at) convention used for every other sibling list in
+    # the app (teamspaces/categories/topics) — manually reordered rows (via
+    # the shared /api/entry/reorder endpoint) win; untouched siblings fall
+    # back to creation order, not alphabetical.
+    children.sort(key=lambda c: (c["order"], c["created_at"]))
     return jsonify(children)
 
 

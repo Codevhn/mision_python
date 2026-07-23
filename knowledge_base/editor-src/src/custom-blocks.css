@@ -231,12 +231,32 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
 
 .bn-db-open-row {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; border: none; background: none; cursor: pointer;
+  flex: 1; min-width: 0; border: none; background: none; cursor: pointer;
   padding: 6px 10px; font: inherit; color: var(--text); text-align: left;
   border-radius: 4px;
 }
 .bn-db-open-row:hover { background: var(--bg-hover); text-decoration: underline; }
 .bn-db-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Row drag handle — appears on row hover, like Notion's own "⠿". Dragging
+   it reorders rows via the app's generic /api/entry/reorder endpoint. */
+.bn-db-row-handle {
+  flex-shrink: 0;
+  width: 14px;
+  margin-left: 4px;
+  text-align: center;
+  cursor: grab;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.12s;
+  font-size: 0.95em;
+  line-height: 1;
+  user-select: none;
+}
+.bn-db-grid-row:hover .bn-db-row-handle { opacity: 1; }
+.bn-db-row-handle:hover { color: var(--text); }
+.bn-db-row-handle:active { cursor: grabbing; }
+.bn-db-row-dragover { box-shadow: inset 0 2px 0 var(--accent); }
 
 .bn-db-cell input.bn-db-cell-input {
   width: 100%;
