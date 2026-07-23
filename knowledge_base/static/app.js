@@ -134,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initPasteMarkdown();
   initQuizModal();
   initPracticeModal();
+  initPagePeek();
   _refreshReminderBadges();
   initBlockTypeIndicator();
   // Back navigation button
@@ -1941,6 +1942,7 @@ async function loadEntry(id, opts = {}) {
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
   currentEntryId = id;
+  window._currentEntryId = id; // read by the database block to know whose children to list
   if (isMobile() || isCompact()) closeSidebarMobile();
   document.querySelectorAll(".tree-entry").forEach(el => {
     el.classList.toggle("active", el.dataset.id === id);
@@ -8808,6 +8810,110 @@ async function _savePracticeToKnowledge(st, btn) {
     btn.disabled = false;
     btn.textContent = '💾 Guardar en Conocimiento';
   }
+}
+
+// ── Page Peek — Notion-style floating page preview ────────────────────────
+// Opened from a database-block row (window._openPagePeek). Runs a fully
+// independent BlockEditor instance (see editor-src/src/main.jsx —
+// BlockEditor.create() was already proven multi-instance-safe by the modal
+// "new entry" editor + the main inline editor coexisting), so the page's
+// properties AND body content are genuinely editable without leaving the
+// table, not just a read-only preview.
+let _peekEntryId = null;
+let _peekEditor = null;
+let _peekOnClose = null;
+let _peekAutoSaveTimer = null;
+
+window._openPagePeek = async function (id, opts) {
+  const overlay = $('pagePeekOverlay');
+  if (!overlay || !id) return;
+
+  // Reopening while already open (e.g. clicking a different row) — tear down
+  // the previous instance cleanly first, same discipline as _closePagePeek.
+  if (_peekEntryId) _teardownPeekEditor();
+
+  _peekEntryId = id;
+  _peekOnClose = (opts && opts.onClose) || null;
+  window._currentEntryId = id; // so a database block *inside* this peeked page resolves correctly
+
+  overlay.classList.remove('hidden');
+  $('pagePeekTitle').value = '';
+  $('pagePeekIcon').textContent = '📄';
+  $('pagePeekProps').innerHTML = '';
+
+  const res = await fetch(`/api/entry/${id}`);
+  if (!res.ok || _peekEntryId !== id) return; // closed or swapped while loading
+  const data = await res.json();
+  const meta = data.meta || {};
+
+  $('pagePeekTitle').value = meta.title || '';
+  $('pagePeekIcon').textContent = meta.icon || '📄';
+
+  if (window.Properties) {
+    Properties.render(id, meta.properties || [], $('pagePeekProps'), false);
+  }
+
+  _peekEditor = BlockEditor.create({
+    container: $('pagePeekEditor'),
+    onChange: (md) => _peekScheduleAutoSave(md),
+  });
+  _peekEditor.load(data.markdown || '');
+};
+
+function _closePagePeek() {
+  if (!_peekEntryId) return;
+  const onClose = _peekOnClose;
+  _teardownPeekEditor();
+  $('pagePeekOverlay')?.classList.add('hidden');
+  window._currentEntryId = currentEntryId; // restore the outer page's context
+  if (onClose) onClose();
+}
+
+function _teardownPeekEditor() {
+  clearTimeout(_peekAutoSaveTimer);
+  _peekAutoSaveTimer = null;
+  if (_peekEditor && _peekEditor.destroy) _peekEditor.destroy();
+  _peekEditor = null;
+  _peekEntryId = null;
+  _peekOnClose = null;
+}
+
+function _peekScheduleAutoSave(md) {
+  clearTimeout(_peekAutoSaveTimer);
+  const savedId = _peekEntryId;
+  _peekAutoSaveTimer = setTimeout(() => {
+    if (!_peekEntryId || _peekEntryId !== savedId) return;
+    fetch(`/api/entry/${savedId}/content`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw_text: md, already_markdown: true }),
+    }).catch(() => {});
+  }, 1200);
+}
+
+function initPagePeek() {
+  const overlay = $('pagePeekOverlay');
+  if (!overlay) return;
+  $('pagePeekClose')?.addEventListener('click', _closePagePeek);
+  overlay.addEventListener('click', e => { if (e.target === overlay) _closePagePeek(); });
+
+  const titleInput = $('pagePeekTitle');
+  titleInput?.addEventListener('blur', () => {
+    const newTitle = titleInput.value.trim();
+    if (!_peekEntryId || !newTitle) return;
+    fetch(`/api/entry/${_peekEntryId}/content`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle }),
+    }).catch(() => {});
+  });
+  titleInput?.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
+
+  $('pagePeekOpenFull')?.addEventListener('click', () => {
+    const id = _peekEntryId;
+    _closePagePeek();
+    if (id && window._loadEntryById) window._loadEntryById(id);
+  });
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────

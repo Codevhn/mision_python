@@ -1284,5 +1284,25 @@
       <div class="modal-footer" id="practiceFooter"></div>
     </div>
   </div>
+
+  <!-- PAGE PEEK — floating Notion-style page preview, opened from a database row -->
+  <div class="modal-overlay hidden" id="pagePeekOverlay">
+    <div class="modal page-peek-modal">
+      <div class="page-peek-header">
+        <div class="page-peek-titlewrap">
+          <span class="page-peek-icon" id="pagePeekIcon">📄</span>
+          <input type="text" class="page-peek-title" id="pagePeekTitle" placeholder="Sin título">
+        </div>
+        <div class="page-peek-actions">
+          <button class="btn-ghost" id="pagePeekOpenFull">Abrir página completa →</button>
+          <button class="modal-close" id="pagePeekClose">×</button>
+        </div>
+      </div>
+      <div class="page-peek-body">
+        <div class="page-peek-props" id="pagePeekProps"></div>
+        <div class="page-peek-editor" id="pagePeekEditor"></div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

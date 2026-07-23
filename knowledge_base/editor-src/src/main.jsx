@@ -1,11 +1,33 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
+import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import "@blocknote/mantine/style.css";
 import "./custom-blocks.css";
 import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
+
+// The "database" block type is registered in schema.js (so old content still
+// renders), but BlockNote's built-in slash menu only auto-lists its own
+// default block types — a custom block needs an explicit entry to ever be
+// insertable from the UI. Without this, there was no way to create a new
+// database block at all (confirmed empirically: typing "/" only showed
+// Heading/Quote/Table/etc., never "Base de datos").
+function getCustomSlashMenuItems(editor) {
+  return [
+    {
+      title: "Base de datos",
+      subtext: "Tabla en vivo de sub-páginas, con propiedades por fila",
+      aliases: ["database", "db", "tabla", "base de datos"],
+      group: "Avanzado",
+      icon: <span style={{ fontSize: "18px" }}>🗃️</span>,
+      onItemClick: () => {
+        insertOrUpdateBlockForSlashMenu(editor, { type: "database", props: { data: "{}" } });
+      },
+    },
+  ];
+}
 
 function currentAppTheme() {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
@@ -51,11 +73,22 @@ function EditorView({ instanceRef, onChange, onReady }) {
     <BlockNoteView
       editor={editor}
       theme={theme}
+      slashMenu={false}
       onChange={() => {
         if (instanceRef.suppressChange) return;
         if (onChange) onChange(blocksToMd(editor.document));
       }}
-    />
+    >
+      <SuggestionMenuController
+        triggerCharacter="/"
+        getItems={async (query) =>
+          filterSuggestionItems(
+            [...getDefaultReactSlashMenuItems(editor), ...getCustomSlashMenuItems(editor)],
+            query,
+          )
+        }
+      />
+    </BlockNoteView>
   );
 }
 

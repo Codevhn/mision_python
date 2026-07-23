@@ -1711,7 +1711,14 @@ def restore_entry_history_snapshot(entry_id, timestamp):
 def get_children(entry_id):
     index = load_index()
     children = [
-        {"id": eid, "title": m.get("title", eid), "icon": m.get("icon", "")}
+        {
+            "id": eid,
+            "title": m.get("title", eid),
+            "icon": m.get("icon", ""),
+            "type": m.get("type", "knowledge"),
+            "status": m.get("status", "pendiente"),
+            "properties": m.get("properties", []),
+        }
         for eid, m in index.items()
         if m.get("parent_id") == entry_id
     ]
