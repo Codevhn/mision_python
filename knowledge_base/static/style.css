@@ -3140,7 +3140,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .prop-popover {
   position: fixed;
   z-index: 9000;
-  background: var(--bg-elevated);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);

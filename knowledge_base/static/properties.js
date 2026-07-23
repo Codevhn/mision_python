@@ -251,7 +251,7 @@ window.Properties = (() => {
     chip.textContent = prop.value || cur.label;
 
     if (!_readonly) {
-      chip.addEventListener("click", e => { e.stopPropagation(); _showStatusPopover(chip, prop); });
+      chip.addEventListener("click", e => { e.stopPropagation(); _showStatusPopover(chip, prop, _save, _draw); });
     }
     wrap.appendChild(chip);
     return wrap;
@@ -292,7 +292,7 @@ window.Properties = (() => {
         const addChip = document.createElement("span");
         addChip.className = "prop-chip-add";
         addChip.textContent = "+";
-        addChip.addEventListener("click", e => { e.stopPropagation(); _showSelectPopover(addChip, prop, multi, repaint); });
+        addChip.addEventListener("click", e => { e.stopPropagation(); _showSelectPopover(addChip, prop, multi, repaint, _save); });
         wrap.appendChild(addChip);
       } else if (!vals.length) {
         const empty = document.createElement("span");
@@ -303,6 +303,75 @@ window.Properties = (() => {
     };
 
     repaint();
+    return wrap;
+  }
+
+  // ── Standalone cell renderers ────────────────────────────────────
+  // Same colored-tag look as the props panel above, but fully decoupled
+  // from the module's _entryId/_props/_save state so callers that manage
+  // their own data (e.g. the database table block, one prop object per
+  // row) can mount a live, click-to-edit tag directly in a table cell
+  // instead of forcing a trip through the full properties panel.
+  // `onChange(updatedProp)` fires after every edit — the caller owns
+  // persistence and any option-list propagation (e.g. to a shared column
+  // schema).
+  function renderCell(prop, onChange) {
+    const commit = () => onChange({ ...prop });
+    if (prop.type === "status") return _cellStatus(prop, commit);
+    if (prop.type === "select") return _cellSelect(prop, false, commit);
+    if (prop.type === "multi_select") return _cellSelect(prop, true, commit);
+    return null;
+  }
+
+  function _cellStatus(prop, commit) {
+    const chip = document.createElement("span");
+    chip.className = "prop-status-chip";
+    const paint = () => {
+      const cur = ALL_STATUS.find(o => o.label === prop.value) || ALL_STATUS[0];
+      chip.style.setProperty("--sc", cur.color);
+      chip.textContent = prop.value || cur.label;
+    };
+    paint();
+    chip.addEventListener("click", e => {
+      e.stopPropagation();
+      _showStatusPopover(chip, prop, commit, paint);
+    });
+    return chip;
+  }
+
+  function _cellSelect(prop, multi, commit) {
+    const wrap = document.createElement("div");
+    wrap.className = "prop-val prop-val-select";
+
+    const repaint = () => {
+      wrap.innerHTML = "";
+      const vals = multi
+        ? (Array.isArray(prop.value) ? prop.value : [])
+        : (prop.value ? [prop.value] : []);
+      const opts = prop.options || [];
+
+      vals.forEach(v => {
+        const o = opts.find(x => x.label === v);
+        const chip = document.createElement("span");
+        chip.className = "prop-chip";
+        if (o?.color) chip.style.setProperty("--cc", o.color);
+        chip.textContent = v;
+        wrap.appendChild(chip);
+      });
+
+      if (!vals.length) {
+        const empty = document.createElement("span");
+        empty.className = "prop-val-ro";
+        empty.textContent = "Vacío";
+        wrap.appendChild(empty);
+      }
+    };
+
+    repaint();
+    wrap.addEventListener("click", e => {
+      e.stopPropagation();
+      _showSelectPopover(wrap, prop, multi, () => { repaint(); commit(); }, commit);
+    });
     return wrap;
   }
 
@@ -325,7 +394,9 @@ window.Properties = (() => {
     pop.style.left = left + "px";
   }
 
-  function _showStatusPopover(anchor, prop) {
+  function _showStatusPopover(anchor, prop, onCommit, onRefresh) {
+    onCommit = onCommit || _save;
+    onRefresh = onRefresh || _draw;
     _clearPopovers();
     const pop = document.createElement("div");
     pop.className = "prop-popover";
@@ -342,7 +413,7 @@ window.Properties = (() => {
         item.innerHTML = `<span class="prop-status-dot" style="background:${opt.color}"></span>${opt.label}`;
         item.addEventListener("click", () => {
           prop.value = opt.label;
-          _save(); _draw(); _clearPopovers();
+          onCommit(); onRefresh(); _clearPopovers();
         });
         pop.appendChild(item);
       });
@@ -355,7 +426,8 @@ window.Properties = (() => {
     }, 0);
   }
 
-  function _showSelectPopover(anchor, prop, multi, onDone) {
+  function _showSelectPopover(anchor, prop, multi, onDone, onCommit) {
+    onCommit = onCommit || _save;
     _clearPopovers();
     const pop = document.createElement("div");
     pop.className = "prop-popover";
@@ -389,7 +461,7 @@ window.Properties = (() => {
             prop.value = selected ? null : opt.label;
             _clearPopovers();
           }
-          _save(); onDone();
+          onCommit(); onDone();
         });
         listEl.appendChild(item);
       });
@@ -407,7 +479,7 @@ window.Properties = (() => {
           prop.options.push({ label: filter, color });
           if (multi) { if (!prop.value) prop.value = []; prop.value.push(filter); }
           else prop.value = filter;
-          _save(); onDone(); _clearPopovers();
+          onCommit(); onDone(); _clearPopovers();
         });
         listEl.appendChild(createItem);
       }
@@ -500,5 +572,5 @@ window.Properties = (() => {
     }, { once: true });
   }
 
-  return { render };
+  return { render, renderCell };
 })();

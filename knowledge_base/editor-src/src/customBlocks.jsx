@@ -1,5 +1,5 @@
 import { createReactBlockSpec } from "@blocknote/react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 // ── Page link block ───────────────────────────────────────────────
 // Mirrors the legacy "page" block: a clickable chip that navigates to
@@ -67,16 +67,43 @@ const PROP_DEFAULTS = {
 };
 
 // Types simple enough to edit with a plain input right in the table cell.
-// select/multi_select/status/date need the real popovers from properties.js,
-// so those cells are read-only here — click opens the peek to edit them.
+// select/multi_select/status get their own colored-tag cell (PropCell,
+// below) that reuses properties.js's real popovers instead of a plain
+// input. date stays a click-through to the peek for now (needs the same
+// date-picker treatment as the props panel).
 function isInlineEditable(type) {
   return type === "text" || type === "number" || type === "url" || type === "checkbox";
+}
+
+function isTagType(type) {
+  return type === "status" || type === "select" || type === "multi_select";
 }
 
 function propValueDisplay(prop) {
   if (!prop) return "";
   if (prop.type === "multi_select") return Array.isArray(prop.value) ? prop.value.join(", ") : "";
   return prop.value != null ? String(prop.value) : "";
+}
+
+// Mounts a live, click-to-edit colored tag (window.Properties.renderCell)
+// into a plain DOM container. Select/multi_select options are owned by the
+// COLUMN (schema.columns[i].options), not by each row — exactly like a
+// real Notion database property, where creating a new tag on one row makes
+// it selectable on every other row of that column immediately. Remounts
+// whenever the resolved value/options actually change, not on every parent
+// re-render (typing elsewhere in the table shouldn't blow away an open
+// popover).
+function PropCell({ prop, onChange }) {
+  const ref = useRef(null);
+  const depKey = JSON.stringify([prop.value, prop.options]);
+  useEffect(() => {
+    if (!ref.current || !window.Properties) return;
+    ref.current.innerHTML = "";
+    const el = window.Properties.renderCell(prop, onChange);
+    if (el) ref.current.appendChild(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depKey]);
+  return <div className="bn-db-cell bn-db-cell-tag" ref={ref} />;
 }
 
 export const database = createReactBlockSpec(
@@ -96,7 +123,36 @@ export const database = createReactBlockSpec(
       const [addColOpen, setAddColOpen] = useState(false);
       const [newColName, setNewColName] = useState("");
       const [newColType, setNewColType] = useState("text");
+      const [colMenuOpen, setColMenuOpen] = useState(null);
+      const [colMenuView, setColMenuView] = useState("main");
+      const [renameDraft, setRenameDraft] = useState("");
+      const addColRef = useRef(null);
+      const colMenuRef = useRef(null);
       const pageId = window._currentEntryId;
+
+      // Read at click-time via this ref, never via a value captured in a
+      // handler closure: two different PropCell instances (e.g. Estado and
+      // Nivel on the same row) each hold their own onChange closure that
+      // only refreshes when THEIR OWN cell's value/options change. Editing
+      // cell A then cell B in quick succession, before A's edit causes a
+      // re-render that A's own cell picks up, must not let B's still-stale
+      // closure PATCH a properties array that's missing A's edit.
+      const rowsRef = useRef(rows);
+      useEffect(() => { rowsRef.current = rows; }, [rows]);
+
+      useEffect(() => {
+        if (!addColOpen) return;
+        const h = (e) => { if (addColRef.current && !addColRef.current.contains(e.target)) setAddColOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [addColOpen]);
+
+      useEffect(() => {
+        if (!colMenuOpen) return;
+        const h = (e) => { if (colMenuRef.current && !colMenuRef.current.contains(e.target)) setColMenuOpen(null); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [colMenuOpen]);
 
       const reload = useCallback(() => {
         if (!pageId) { setLoading(false); return; }
@@ -120,7 +176,9 @@ export const database = createReactBlockSpec(
         const name = newColName.trim();
         if (!name) return;
         const id = "col_" + Math.random().toString(36).slice(2, 9);
-        saveSchema({ ...schema, columns: [...schema.columns, { id, name, type: newColType }] });
+        const col = { id, name, type: newColType };
+        if (newColType === "select" || newColType === "multi_select") col.options = [];
+        saveSchema({ ...schema, columns: [...schema.columns, col] });
         setNewColName("");
         setNewColType("text");
         setAddColOpen(false);
@@ -128,6 +186,48 @@ export const database = createReactBlockSpec(
 
       const removeColumn = (colId) => {
         saveSchema({ ...schema, columns: schema.columns.filter((c) => c.id !== colId) });
+      };
+
+      // Select/multi_select options live on the column itself, not on each
+      // row's copy of the property — this is what makes creating a new tag
+      // on one row instantly selectable on every other row, matching how a
+      // real Notion database property works.
+      const setColumnOptions = (col, options) => {
+        saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === col.id ? { ...c, options } : c)) });
+      };
+
+      const openColMenu = (col) => {
+        setColMenuOpen(col.id);
+        setColMenuView("main");
+        setRenameDraft(col.name);
+      };
+
+      const renameColumn = (col) => {
+        const name = renameDraft.trim();
+        if (!name) return;
+        saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === col.id ? { ...c, name } : c)) });
+        setColMenuOpen(null);
+        // Keep each row's own stored property name in sync — the page
+        // peek's properties panel lists a row's properties independently
+        // by name, so without this it would keep showing the old name.
+        const affected = rowsRef.current.filter((r) => (r.properties || []).some((p) => p.id === col.id));
+        affected.forEach((r) => {
+          const rowProps = r.properties.map((p) => (p.id === col.id ? { ...p, name } : p));
+          setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, properties: rowProps } : x)));
+          fetch(`/api/entry/${r.id}/properties`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ properties: rowProps }),
+          });
+        });
+      };
+
+      const changeColumnType = (col, type) => {
+        const next = { ...col, type };
+        if (type === "select" || type === "multi_select") { if (!Array.isArray(next.options)) next.options = []; }
+        else delete next.options;
+        saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === col.id ? next : c)) });
+        setColMenuOpen(null);
       };
 
       const addRow = async () => {
@@ -141,7 +241,7 @@ export const database = createReactBlockSpec(
         if (!data.id) return;
         const seeded = schema.columns.map((c) => ({
           id: c.id, name: c.name, type: c.type,
-          value: PROP_DEFAULTS[c.type] ?? "", options: c.options,
+          value: PROP_DEFAULTS[c.type] ?? "",
         }));
         await fetch(`/api/entry/${data.id}/properties`, {
           method: "PATCH",
@@ -158,13 +258,14 @@ export const database = createReactBlockSpec(
         reload();
       };
 
-      const setCellValue = async (row, col, value) => {
-        const rowProps = Array.isArray(row.properties) ? [...row.properties] : [];
-        const idx = rowProps.findIndex((p) => p.name === col.name);
+      const setCellValue = async (rowId, col, value) => {
+        const row = rowsRef.current.find((r) => r.id === rowId);
+        const rowProps = row && Array.isArray(row.properties) ? [...row.properties] : [];
+        const idx = rowProps.findIndex((p) => p.id === col.id);
         if (idx >= 0) rowProps[idx] = { ...rowProps[idx], value };
-        else rowProps.push({ id: col.id, name: col.name, type: col.type, value, options: col.options });
-        setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, properties: rowProps } : r)));
-        await fetch(`/api/entry/${row.id}/properties`, {
+        else rowProps.push({ id: col.id, name: col.name, type: col.type, value });
+        setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, properties: rowProps } : r)));
+        await fetch(`/api/entry/${rowId}/properties`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ properties: rowProps }),
@@ -189,12 +290,54 @@ export const database = createReactBlockSpec(
             <div className="bn-db-grid-row bn-db-grid-header">
               <div className="bn-db-title-col bn-db-cell">Nombre</div>
               {schema.columns.map((c) => (
-                <div className="bn-db-cell" key={c.id}>
-                  <span className="bn-db-col-name">{c.name}</span>
-                  <button className="bn-db-col-del" title="Quitar columna" onClick={() => removeColumn(c.id)}>×</button>
+                <div
+                  className="bn-db-cell"
+                  key={c.id}
+                  ref={colMenuOpen === c.id ? colMenuRef : null}
+                >
+                  <button className="bn-db-col-name-btn" onClick={() => openColMenu(c)}>
+                    <span className="bn-db-col-name">{c.name}</span>
+                  </button>
+                  {colMenuOpen === c.id && (
+                    <div className="bn-db-colmenu-pop" contentEditable={false}>
+                      {colMenuView === "main" ? (
+                        <>
+                          <input
+                            className="bn-db-colmenu-rename"
+                            value={renameDraft}
+                            autoFocus
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") renameColumn(c); if (e.key === "Escape") setColMenuOpen(null); }}
+                          />
+                          <button className="bn-db-colmenu-item" onClick={() => setColMenuView("type")}>
+                            Cambiar tipo <span className="bn-db-colmenu-current">{(PROP_TYPES.find((t) => t.id === c.type) || {}).label}</span>
+                          </button>
+                          <button
+                            className="bn-db-colmenu-item bn-db-colmenu-danger"
+                            onClick={() => { removeColumn(c.id); setColMenuOpen(null); }}
+                          >
+                            Eliminar propiedad
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="bn-db-colmenu-back" onClick={() => setColMenuView("main")}>← Atrás</button>
+                          {PROP_TYPES.map((t) => (
+                            <button
+                              key={t.id}
+                              className={"bn-db-colmenu-item" + (c.type === t.id ? " active" : "")}
+                              onClick={() => changeColumnType(c, t.id)}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
-              <div className="bn-database-addcol bn-db-cell">
+              <div className="bn-database-addcol bn-db-cell" ref={addColRef}>
                 <button onClick={() => setAddColOpen((v) => !v)} title="Agregar columna">+</button>
                 {addColOpen && (
                   <div className="bn-db-addcol-pop" contentEditable={false}>
@@ -232,7 +375,7 @@ export const database = createReactBlockSpec(
                   </button>
                 </div>
                 {schema.columns.map((c) => {
-                  const prop = (row.properties || []).find((p) => p.name === c.name);
+                  const prop = (row.properties || []).find((p) => p.id === c.id);
                   const editable = isInlineEditable(c.type);
                   if (c.type === "checkbox") {
                     return (
@@ -240,9 +383,28 @@ export const database = createReactBlockSpec(
                         <input
                           type="checkbox"
                           checked={!!(prop && prop.value)}
-                          onChange={(e) => setCellValue(row, c, e.target.checked)}
+                          onChange={(e) => setCellValue(row.id, c, e.target.checked)}
                         />
                       </div>
+                    );
+                  }
+                  if (isTagType(c.type)) {
+                    const effectiveProp = {
+                      id: c.id, name: c.name, type: c.type,
+                      value: prop ? prop.value : PROP_DEFAULTS[c.type],
+                      options: c.options || [],
+                    };
+                    return (
+                      <PropCell
+                        key={c.id}
+                        prop={effectiveProp}
+                        onChange={(updated) => {
+                          if (c.type !== "status" && JSON.stringify(updated.options || []) !== JSON.stringify(c.options || [])) {
+                            setColumnOptions(c, updated.options || []);
+                          }
+                          setCellValue(row.id, c, updated.value);
+                        }}
+                      />
                     );
                   }
                   return (
@@ -255,7 +417,7 @@ export const database = createReactBlockSpec(
                         <input
                           className="bn-db-cell-input"
                           value={propValueDisplay(prop)}
-                          onChange={(e) => setCellValue(row, c, c.type === "number" ? (parseFloat(e.target.value) || "") : e.target.value)}
+                          onChange={(e) => setCellValue(row.id, c, c.type === "number" ? (parseFloat(e.target.value) || "") : e.target.value)}
                         />
                       ) : (
                         <span className="bn-db-cell-val">{propValueDisplay(prop) || "—"}</span>
