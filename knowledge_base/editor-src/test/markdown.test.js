@@ -25,6 +25,24 @@ check("divider", "---");
 check("code", "```js\nconsole.log(1)\n```");
 check("pagelink", "[[Other Page|abc123]]");
 check("color", "<!-- color:red bgColor:blue -->\n# Colored");
+
+// A browser HTML paste can leave textColor/backgroundColor as a raw CSS
+// value (e.g. "rgb(31, 31, 31)") instead of one of BlockNote's 9 named
+// tokens. BlockNote has no CSS rule for anything but those tokens, so such
+// a value never renders any color anyway — but the old color-comment regex
+// only matched \w+, so re-parsing it back out failed silently and the
+// whole "<!-- color:... -->" line fell through as literal paragraph text.
+// Must now be dropped cleanly instead of leaking into the document.
+check(
+  "pasted raw-rgb color is dropped, not leaked as text",
+  "<!-- color:rgb(31, 31, 31) bgColor:rgba(0, 0, 0, 0) -->\n# Hola",
+  "# Hola",
+);
+check(
+  "pasted raw-rgb color on a paragraph is dropped, not leaked as text",
+  "<!-- color:rgb(31, 31, 31) bgColor:rgba(0, 0, 0, 0) -->\nHola mundo",
+  "Hola mundo",
+);
 check("toggle", ":::toggle Header\ninner text\n:::");
 check("toggle-h2", ":::toggle-h2 Header2\ninner text\n:::");
 check("database", ':::database\n{"cols":[{"id":"c0","name":"Nombre"}],"rows":[{"id":"r0","cells":{"c0":"x"}}]}\n:::');

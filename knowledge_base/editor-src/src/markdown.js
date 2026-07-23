@@ -110,10 +110,20 @@ function inlineToMd(content) {
   }).join("");
 }
 
+// BlockNote only ever renders a color for these 9 named tokens (see its
+// shipped CSS: `[data-text-color=X]`/`[data-background-color=X]` rules,
+// each hardcoded to one literal hex value — anything else, like a raw
+// `rgb(31, 31, 31)` a browser paste can leave on textColor/backgroundColor,
+// has no matching selector and paints nothing). Anything outside this set
+// is dropped rather than round-tripped, so a paste never bakes in a color
+// that only ever shows up as dead metadata (or, before the regex fix below
+// existed, as literal garbage text once re-parsed).
+const VALID_COLORS = new Set(["gray", "brown", "red", "orange", "yellow", "green", "blue", "purple", "pink"]);
+
 function colorProps(block) {
   const props = {};
-  if (block.color && block.color !== "default") props.textColor = block.color;
-  if (block.bgColor && block.bgColor !== "default") props.backgroundColor = block.bgColor;
+  if (block.color && VALID_COLORS.has(block.color)) props.textColor = block.color;
+  if (block.bgColor && VALID_COLORS.has(block.bgColor)) props.backgroundColor = block.bgColor;
   return props;
 }
 
@@ -150,7 +160,14 @@ function mdToFlat(md) {
     let l = lines[i];
 
     let blockColor = "", blockBgColor = "";
-    const colorMatch = l.match(/^<!--\s*color:(\w+)(?:\s+bgColor:(\w+))?\s*-->$/);
+    // Match ANY color value here, not just \w+ (bare tokens like "red") —
+    // a stray `rgb(31, 31, 31)`/hex/etc left over from a browser paste (or
+    // from content saved before colorComment() started sanitizing on write)
+    // must still be swallowed as a comment line. colorProps() below is what
+    // decides whether the captured value is one BlockNote can actually
+    // render; anything it rejects is simply dropped, never leaked back out
+    // as literal "<!-- color:... -->" paragraph text.
+    const colorMatch = l.match(/^<!--\s*color:(.+?)(?:\s+bgColor:(.+?))?\s*-->$/);
     if (colorMatch) {
       blockColor = colorMatch[1]; blockBgColor = colorMatch[2] || "";
       i++; if (i >= lines.length) break; l = lines[i];
@@ -321,8 +338,15 @@ export function mdToBlocks(md) {
 const LIST_TYPES = new Set(["bulletListItem", "numberedListItem", "checkListItem"]);
 
 function colorComment(props) {
-  const tc = props.textColor && props.textColor !== "default" ? props.textColor : "";
-  const bg = props.backgroundColor && props.backgroundColor !== "default" ? props.backgroundColor : "";
+  // A rich-HTML paste (BlockNote's own native paste importer, independent
+  // of anything in this file) can leave textColor/backgroundColor as a raw
+  // CSS value straight from the source page — e.g. "rgb(31, 31, 31)" or
+  // "white" — instead of one of BlockNote's 9 named tokens. Only ever
+  // persist a token we (and BlockNote) actually know how to render; drop
+  // anything else here rather than write a comment whose color can never
+  // show up as anything but dead metadata on the next load.
+  const tc = props.textColor && VALID_COLORS.has(props.textColor) ? props.textColor : "";
+  const bg = props.backgroundColor && VALID_COLORS.has(props.backgroundColor) ? props.backgroundColor : "";
   if (!tc && !bg) return "";
   return `<!-- color:${tc || "default"}${bg ? " bgColor:" + bg : ""} -->\n`;
 }

@@ -1547,7 +1547,9 @@ input, textarea, select { font-family: inherit; }
 .page-peek-body {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 24px 40px;
+  /* Match .entry-body's 40px horizontal padding (the main editor view) so
+     the peek doesn't look comparatively cramped next to it. */
+  padding: 16px 40px 48px;
 }
 .page-peek-props {
   padding: 10px 0 14px;
