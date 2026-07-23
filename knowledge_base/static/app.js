@@ -8828,14 +8828,19 @@ let _peekEntryId = null;
 let _peekEditor = null;
 let _peekOnClose = null;
 let _peekAutoSaveTimer = null;
+let _peekPendingMd = null;
 
 window._openPagePeek = async function (id, opts) {
   const overlay = $('pagePeekOverlay');
   if (!overlay || !id) return;
 
-  // Reopening while already open (e.g. clicking a different row) — tear down
-  // the previous instance cleanly first, same discipline as _closePagePeek.
-  if (_peekEntryId) _teardownPeekEditor();
+  // Reopening while already open (e.g. clicking a different row) — flush
+  // any pending debounced saves for the row being left, THEN tear down,
+  // same discipline as _closePagePeek (see the comment there for why).
+  if (_peekEntryId) {
+    await _flushPeekPendingSaves();
+    _teardownPeekEditor();
+  }
 
   _peekEntryId = id;
   _peekOnClose = (opts && opts.onClose) || null;
@@ -8868,15 +8873,23 @@ window._openPagePeek = async function (id, opts) {
 function _closePagePeek() {
   if (!_peekEntryId) return;
   const onClose = _peekOnClose;
+  // Flush BEFORE tearing down (both flush fns need _peekEntryId / the
+  // captured markdown, which teardown nulls out) — but hide the overlay
+  // and reset state right away regardless, so closing still feels instant;
+  // only onClose() (the database table's reload(), typically) waits for
+  // the flush to actually land, so it doesn't race the debounce and
+  // re-render the row with stale data (see _flushPeekPendingSaves).
+  const flushed = _flushPeekPendingSaves();
   _teardownPeekEditor();
   $('pagePeekOverlay')?.classList.add('hidden');
   window._currentEntryId = currentEntryId; // restore the outer page's context
-  if (onClose) onClose();
+  flushed.finally(() => { if (onClose) onClose(); });
 }
 
 function _teardownPeekEditor() {
   clearTimeout(_peekAutoSaveTimer);
   _peekAutoSaveTimer = null;
+  _peekPendingMd = null;
   if (_peekEditor && _peekEditor.destroy) _peekEditor.destroy();
   _peekEditor = null;
   _peekEntryId = null;
@@ -8885,8 +8898,11 @@ function _teardownPeekEditor() {
 
 function _peekScheduleAutoSave(md) {
   clearTimeout(_peekAutoSaveTimer);
+  _peekPendingMd = md;
   const savedId = _peekEntryId;
   _peekAutoSaveTimer = setTimeout(() => {
+    _peekAutoSaveTimer = null;
+    _peekPendingMd = null;
     if (!_peekEntryId || _peekEntryId !== savedId) return;
     fetch(`/api/entry/${savedId}/content`, {
       method: 'PATCH',
@@ -8894,6 +8910,35 @@ function _peekScheduleAutoSave(md) {
       body: JSON.stringify({ raw_text: md, already_markdown: true }),
     }).catch(() => {});
   }, 1200);
+}
+
+// Runs the peek's own pending body-content autosave (if any) and
+// properties.js's pending property save (if any) immediately instead of
+// waiting out their debounce windows. Called whenever the peek is about to
+// close or swap to a different row — without this, a quick
+// edit-then-close could either lose the edit (content autosave) or leave
+// the reopening table showing stale data for a beat (properties save
+// racing the table's reload()). No-op (resolves immediately) when nothing
+// is actually pending.
+function _flushPeekAutoSave() {
+  if (!_peekAutoSaveTimer || !_peekEntryId) return Promise.resolve();
+  clearTimeout(_peekAutoSaveTimer);
+  _peekAutoSaveTimer = null;
+  const savedId = _peekEntryId;
+  const md = _peekPendingMd;
+  _peekPendingMd = null;
+  if (md == null) return Promise.resolve();
+  return fetch(`/api/entry/${savedId}/content`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw_text: md, already_markdown: true }),
+  }).catch(() => {});
+}
+
+function _flushPeekPendingSaves() {
+  const flushes = [_flushPeekAutoSave()];
+  if (window.Properties && typeof window.Properties.flush === 'function') flushes.push(window.Properties.flush());
+  return Promise.all(flushes);
 }
 
 function initPagePeek() {

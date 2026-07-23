@@ -114,6 +114,54 @@ function propValueDisplay(prop) {
   return prop.value != null ? String(prop.value) : "";
 }
 
+// Same 5 status labels properties.js's STATUS_GROUPS defines (that module
+// doesn't export them) — kept in sync here the same way PROP_DEFAULTS.status
+// already duplicates properties.js's own default.
+const STATUS_OPTIONS = ["No iniciado", "En proceso", "Revisión", "Terminado", "Cancelado"];
+
+// "__title" is the synthetic column id for the (always-present, not a real
+// schema.columns entry) title/name field, both here and in the filter/sort
+// popovers below.
+function resolveFilterSortCol(colId, columns) {
+  if (colId === "__title") return { id: "__title", type: "title", name: "Nombre" };
+  return columns.find((c) => c.id === colId) || null;
+}
+
+function rowMatchesFilter(row, filter, columns) {
+  if (!filter || !filter.colId) return true;
+  const col = resolveFilterSortCol(filter.colId, columns);
+  if (!col) return true;
+  if (col.type === "title") {
+    if (!filter.value) return true;
+    return (row.title || "").toLowerCase().includes(filter.value.toLowerCase());
+  }
+  const prop = (row.properties || []).find((p) => p.id === col.id);
+  if (col.type === "checkbox") {
+    const checked = !!(prop && prop.value);
+    return filter.value === "unchecked" ? !checked : checked;
+  }
+  if (col.type === "status" || col.type === "select") {
+    if (!filter.value) return true;
+    return !!prop && prop.value === filter.value;
+  }
+  if (col.type === "multi_select") {
+    if (!filter.value) return true;
+    return !!prop && Array.isArray(prop.value) && prop.value.includes(filter.value);
+  }
+  if (!filter.value) return true;
+  const v = prop && prop.value != null ? String(prop.value) : "";
+  return v.toLowerCase().includes(filter.value.toLowerCase());
+}
+
+function rowSortValue(row, col) {
+  if (col.type === "title") return (row.title || "").toLowerCase();
+  const prop = (row.properties || []).find((p) => p.id === col.id);
+  if (col.type === "checkbox") return prop && prop.value ? 1 : 0;
+  if (col.type === "number") return typeof prop?.value === "number" ? prop.value : -Infinity;
+  if (col.type === "multi_select") return Array.isArray(prop?.value) ? prop.value.join(",").toLowerCase() : "";
+  return prop && prop.value != null ? String(prop.value).toLowerCase() : "";
+}
+
 // Mounts a live, click-to-edit colored tag (window.Properties.renderCell)
 // into a plain DOM container. Select/multi_select options are owned by the
 // COLUMN (schema.columns[i].options), not by each row — exactly like a
@@ -184,6 +232,26 @@ export const database = createReactBlockSpec(
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
       }, [rowHeightOpen]);
+
+      const [filterOpen, setFilterOpen] = useState(false);
+      const filterRef = useRef(null);
+
+      useEffect(() => {
+        if (!filterOpen) return;
+        const h = (e) => { if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [filterOpen]);
+
+      const [sortOpen, setSortOpen] = useState(false);
+      const sortRef = useRef(null);
+
+      useEffect(() => {
+        if (!sortOpen) return;
+        const h = (e) => { if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [sortOpen]);
 
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
       // holds only the column(s) currently mid-drag, for immediate visual
@@ -433,7 +501,9 @@ export const database = createReactBlockSpec(
       };
 
       const toggleSelectAll = () => {
-        setSelectedIds((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
+        // Selects only the currently VISIBLE (filtered) rows, matching
+        // Notion's own "select all" behavior under an active filter.
+        setSelectedIds((prev) => (prev.size === displayRows.length ? new Set() : new Set(displayRows.map((r) => r.id))));
       };
 
       const deleteSelected = async () => {
@@ -469,9 +539,124 @@ export const database = createReactBlockSpec(
 
       const rowHeight = schema.rowHeight || "small";
 
+      // Filter/sort are derived views over `rows`, never mutate the
+      // underlying data or its stored order. A row's real position (used
+      // by drag-to-reorder and by the server's own default ordering) is
+      // untouched by either — sort only changes DISPLAY order, and only
+      // while a sort is actually configured.
+      const filterColResolved = schema.filter ? resolveFilterSortCol(schema.filter.colId, schema.columns) : null;
+      const sortColResolved = schema.sort ? resolveFilterSortCol(schema.sort.colId, schema.columns) : null;
+      let displayRows = schema.filter && filterColResolved
+        ? rows.filter((r) => rowMatchesFilter(r, schema.filter, schema.columns))
+        : rows;
+      if (schema.sort && sortColResolved) {
+        const dir = schema.sort.dir === "desc" ? -1 : 1;
+        displayRows = [...displayRows].sort((a, b) => {
+          const av = rowSortValue(a, sortColResolved);
+          const bv = rowSortValue(b, sortColResolved);
+          if (av < bv) return -1 * dir;
+          if (av > bv) return 1 * dir;
+          return 0;
+        });
+      }
+
+      const filterSortColumns = [{ id: "__title", name: "Nombre" }, ...schema.columns];
+
       return (
         <div className="bn-database" contentEditable={false}>
           <div className="bn-db-toolbar">
+            <div className="bn-db-toolbar-left">
+              <div className="bn-db-filter-wrap" ref={filterRef}>
+                <button className={"bn-db-toolbar-btn" + (schema.filter ? " active" : "")} onClick={() => setFilterOpen((v) => !v)}>
+                  Filtro{schema.filter && filterColResolved ? `: ${filterColResolved.name}` : ""}
+                </button>
+                {filterOpen && (
+                  <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
+                    <select
+                      className="bn-db-pop-select"
+                      value={schema.filter?.colId || ""}
+                      onChange={(e) => {
+                        const colId = e.target.value;
+                        saveSchema({ ...schema, filter: colId ? { colId, value: "" } : null });
+                      }}
+                    >
+                      <option value="">Sin filtro</option>
+                      {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {schema.filter && filterColResolved && (
+                      <>
+                        {filterColResolved.type === "checkbox" ? (
+                          <select
+                            className="bn-db-pop-select"
+                            value={schema.filter.value || "checked"}
+                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                          >
+                            <option value="checked">Marcada</option>
+                            <option value="unchecked">No marcada</option>
+                          </select>
+                        ) : (filterColResolved.type === "status" || filterColResolved.type === "select" || filterColResolved.type === "multi_select") ? (
+                          <select
+                            className="bn-db-pop-select"
+                            value={schema.filter.value || ""}
+                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                          >
+                            <option value="">Cualquiera</option>
+                            {(filterColResolved.type === "status" ? STATUS_OPTIONS : (filterColResolved.options || []).map((o) => o.label)).map((label) => (
+                              <option key={label} value={label}>{label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            className="bn-db-pop-input"
+                            placeholder="Contiene…"
+                            autoFocus
+                            value={schema.filter.value || ""}
+                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                          />
+                        )}
+                        <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => saveSchema({ ...schema, filter: null })}>Quitar filtro</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="bn-db-sort-wrap" ref={sortRef}>
+                <button className={"bn-db-toolbar-btn" + (schema.sort ? " active" : "")} onClick={() => setSortOpen((v) => !v)}>
+                  Orden{schema.sort && sortColResolved ? `: ${sortColResolved.name}` : ""}
+                </button>
+                {sortOpen && (
+                  <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
+                    <select
+                      className="bn-db-pop-select"
+                      value={schema.sort?.colId || ""}
+                      onChange={(e) => {
+                        const colId = e.target.value;
+                        saveSchema({ ...schema, sort: colId ? { colId, dir: schema.sort?.dir || "asc" } : null });
+                      }}
+                    >
+                      <option value="">Sin orden (manual)</option>
+                      {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {schema.sort && (
+                      <>
+                        <button
+                          className={"bn-db-colmenu-item" + (schema.sort.dir !== "desc" ? " active" : "")}
+                          onClick={() => saveSchema({ ...schema, sort: { ...schema.sort, dir: "asc" } })}
+                        >
+                          Ascendente
+                        </button>
+                        <button
+                          className={"bn-db-colmenu-item" + (schema.sort.dir === "desc" ? " active" : "")}
+                          onClick={() => saveSchema({ ...schema, sort: { ...schema.sort, dir: "desc" } })}
+                        >
+                          Descendente
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="bn-db-rowheight-wrap" ref={rowHeightRef}>
               <button className="bn-db-toolbar-btn" onClick={() => setRowHeightOpen((v) => !v)}>
                 ≡ {(ROW_HEIGHTS.find((r) => r.id === rowHeight) || ROW_HEIGHTS[0]).label}
@@ -500,8 +685,8 @@ export const database = createReactBlockSpec(
               <div className="bn-db-cell bn-db-checkbox-cell">
                 <input
                   type="checkbox"
-                  checked={rows.length > 0 && selectedIds.size === rows.length}
-                  ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < rows.length; }}
+                  checked={displayRows.length > 0 && selectedIds.size === displayRows.length}
+                  ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < displayRows.length; }}
                   onChange={toggleSelectAll}
                   title="Seleccionar todo"
                 />
@@ -588,7 +773,7 @@ export const database = createReactBlockSpec(
               </div>
             </div>
 
-            {rows.map((row) => (
+            {displayRows.map((row) => (
               <div className="bn-db-grid-row" key={row.id}>
                 <div className="bn-db-cell bn-db-checkbox-cell">
                   <input
@@ -606,8 +791,8 @@ export const database = createReactBlockSpec(
                 >
                   <span
                     className="bn-db-row-handle"
-                    title="Arrastrar para reordenar, clic para más opciones"
-                    draggable
+                    title={schema.sort ? "Clic para más opciones (arrastrar deshabilitado: hay un orden activo)" : "Arrastrar para reordenar, clic para más opciones"}
+                    draggable={!schema.sort}
                     onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
                     onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
                     onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
@@ -691,14 +876,13 @@ export const database = createReactBlockSpec(
                     </div>
                   );
                 })}
-                <div className="bn-db-row-actions bn-db-cell">
-                  <button className="bn-db-row-del" title="Eliminar página" onClick={() => deleteRow(row.id)}>×</button>
-                </div>
               </div>
             ))}
-            {!loading && rows.length === 0 && (
+            {!loading && displayRows.length === 0 && (
               <div className="bn-db-grid-row">
-                <div className="bn-db-empty">Sin páginas todavía</div>
+                <div className="bn-db-empty">
+                  {rows.length === 0 ? "Sin páginas todavía" : "Ninguna página coincide con el filtro"}
+                </div>
               </div>
             )}
           </div>

@@ -127,13 +127,15 @@
    hovers a plain HTML table that isn't one of its own blocks. */
 .bn-database { width: 100%; margin: 4px 0; }
 
-/* Toolbar above the grid — currently just the row-height picker, but this
-   is also where a future filter/sort control (audit item #6) would live. */
+/* Toolbar above the grid — filter/sort on the left, row-height on the
+   right (matches where Notion's own equivalent controls sit). */
 .bn-db-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 4px;
 }
+.bn-db-toolbar-left { display: flex; gap: 2px; }
 .bn-db-toolbar-btn {
   border: none;
   background: none;
@@ -144,8 +146,24 @@
   border-radius: 4px;
 }
 .bn-db-toolbar-btn:hover { background: var(--bg-hover); color: var(--text); }
-.bn-db-rowheight-wrap { position: relative; }
+.bn-db-toolbar-btn.active { color: var(--accent); background: var(--accent-light); }
+.bn-db-rowheight-wrap,
+.bn-db-filter-wrap,
+.bn-db-sort-wrap { position: relative; }
 .bn-db-rowheight-pop { right: 0; left: auto; width: 130px; }
+.bn-db-filter-pop { width: 200px; }
+.bn-db-pop-select,
+.bn-db-pop-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 0.85em;
+  margin-bottom: 6px;
+}
 
 .bn-database-grid {
   display: grid;
@@ -425,15 +443,6 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
 }
 .bn-db-cell-tag:hover { background: var(--bg-hover); }
 .bn-db-cell-tag .prop-val-select { padding: 0; }
-
-.bn-db-row-actions { justify-content: center; }
-.bn-db-row-del {
-  border: none; background: none; cursor: pointer;
-  color: var(--text-faint); font-size: 1em; line-height: 1;
-  opacity: 0; transition: opacity 0.12s;
-}
-.bn-db-grid-row:hover .bn-db-row-del { opacity: 1; }
-.bn-db-row-del:hover { color: var(--danger); }
 
 .bn-db-empty {
   grid-column: 1 / -1;

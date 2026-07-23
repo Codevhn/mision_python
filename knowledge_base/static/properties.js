@@ -49,12 +49,30 @@ window.Properties = (() => {
   function _save() {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(async () => {
+      _saveTimer = null;
       await fetch(`/api/entry/${_entryId}/properties`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ properties: _props }),
       });
     }, 500);
+  }
+
+  // Runs a pending debounced save immediately instead of waiting out the
+  // 500ms — the page peek calls this before closing (see app.js's
+  // _closePagePeek), so anything you just picked/typed and closed right
+  // away lands server-side BEFORE reload() re-fetches the row, instead of
+  // reload() racing the debounce and rendering stale data. A no-op when
+  // there's nothing pending.
+  function flush() {
+    if (!_saveTimer || !_entryId) return Promise.resolve();
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    return fetch(`/api/entry/${_entryId}/properties`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ properties: _props }),
+    }).catch(() => {});
   }
 
   function _uid() {
@@ -572,5 +590,5 @@ window.Properties = (() => {
     }, { once: true });
   }
 
-  return { render, renderCell };
+  return { render, renderCell, flush };
 })();
