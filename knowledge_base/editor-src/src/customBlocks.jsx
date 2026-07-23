@@ -130,6 +130,47 @@ export const database = createReactBlockSpec(
       const colMenuRef = useRef(null);
       const pageId = window._currentEntryId;
 
+      // Column widths, drag-to-resize (like Notion's own table). `colWidths`
+      // holds only the column(s) currently mid-drag, for immediate visual
+      // feedback without spamming editor.updateBlock (and its undo history)
+      // on every mousemove tick. "__title" is the special key for the fixed
+      // title column, since it isn't a real entry in schema.columns.
+      const [colWidths, setColWidths] = useState({});
+      const liveWidthRef = useRef(null);
+
+      const startResize = (e, key) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cell = e.currentTarget.parentElement;
+        const startWidth = cell.getBoundingClientRect().width;
+        const startX = e.clientX;
+        liveWidthRef.current = startWidth;
+        document.body.classList.add("bn-db-resizing-cursor");
+        const onMove = (ev) => {
+          const next = Math.max(80, Math.round(startWidth + (ev.clientX - startX)));
+          liveWidthRef.current = next;
+          setColWidths((prev) => ({ ...prev, [key]: next }));
+        };
+        const onUp = () => {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          document.body.classList.remove("bn-db-resizing-cursor");
+          const finalWidth = liveWidthRef.current;
+          if (key === "__title") {
+            saveSchema({ ...schema, titleWidth: finalWidth });
+          } else {
+            saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === key ? { ...c, width: finalWidth } : c)) });
+          }
+          setColWidths((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      };
+
       // Read at click-time via this ref, never via a value captured in a
       // handler closure: two different PropCell instances (e.g. Estado and
       // Nivel on the same row) each hold their own onChange closure that
@@ -282,13 +323,30 @@ export const database = createReactBlockSpec(
       // state, and throws ("Cannot read properties of undefined (reading
       // 'rows')") when it hovers a plain HTML table that isn't one of its
       // own blocks. A CSS-grid layout sidesteps that entirely.
-      const gridTemplateColumns = `220px repeat(${schema.columns.length}, minmax(120px, 1fr)) 32px`;
+      //
+      // Columns only get a fixed pixel width once a user actually drags
+      // their resize handle (persisted as column.width / schema.titleWidth);
+      // an untouched column stays flexible (minmax(...,1fr)) so tables that
+      // have never been resized keep filling the block's width, matching
+      // the look every table had before this feature existed.
+      const titleWidth = colWidths.__title ?? schema.titleWidth ?? 220;
+      const colTemplate = schema.columns
+        .map((c) => {
+          const live = colWidths[c.id];
+          if (live != null) return `${live}px`;
+          return c.width ? `${c.width}px` : "minmax(120px, 1fr)";
+        })
+        .join(" ");
+      const gridTemplateColumns = `${titleWidth}px ${colTemplate} 32px`;
 
       return (
         <div className="bn-database" contentEditable={false}>
           <div className="bn-database-grid" style={{ gridTemplateColumns }}>
             <div className="bn-db-grid-row bn-db-grid-header">
-              <div className="bn-db-title-col bn-db-cell">Nombre</div>
+              <div className="bn-db-title-col bn-db-cell">
+                Nombre
+                <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, "__title")} />
+              </div>
               {schema.columns.map((c) => (
                 <div
                   className="bn-db-cell"
@@ -298,6 +356,7 @@ export const database = createReactBlockSpec(
                   <button className="bn-db-col-name-btn" onClick={() => openColMenu(c)}>
                     <span className="bn-db-col-name">{c.name}</span>
                   </button>
+                  <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, c.id)} />
                   {colMenuOpen === c.id && (
                     <div className="bn-db-colmenu-pop" contentEditable={false}>
                       {colMenuView === "main" ? (
