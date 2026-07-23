@@ -126,6 +126,27 @@
    the DOM carries its internal column-resize state, and throws when it
    hovers a plain HTML table that isn't one of its own blocks. */
 .bn-database { width: 100%; margin: 4px 0; }
+
+/* Toolbar above the grid — currently just the row-height picker, but this
+   is also where a future filter/sort control (audit item #6) would live. */
+.bn-db-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.bn-db-toolbar-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.78em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.bn-db-toolbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+.bn-db-rowheight-wrap { position: relative; }
+.bn-db-rowheight-pop { right: 0; left: auto; width: 130px; }
+
 .bn-database-grid {
   display: grid;
   width: 100%;
@@ -278,6 +299,32 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
 .bn-db-open-row:hover { background: var(--bg-hover); text-decoration: underline; }
 .bn-db-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Row height (table-wide, like Notion's own "..." menu — not per row):
+   small keeps every row exactly as tight/truncated as before this feature
+   existed; medium/large let the title wrap up to a line-clamp instead of
+   always ellipsizing after one line. */
+.bn-database-grid[data-row-height="medium"] .bn-db-row-title,
+.bn-database-grid[data-row-height="large"] .bn-db-row-title {
+  white-space: normal;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.bn-database-grid[data-row-height="medium"] .bn-db-row-title { -webkit-line-clamp: 2; }
+.bn-database-grid[data-row-height="large"] .bn-db-row-title { -webkit-line-clamp: 4; }
+.bn-database-grid[data-row-height="medium"] .bn-db-open-row,
+.bn-database-grid[data-row-height="large"] .bn-db-open-row {
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.bn-database-grid[data-row-height="medium"] .bn-db-row-icon,
+.bn-database-grid[data-row-height="large"] .bn-db-row-icon {
+  margin-top: 1px;
+}
+
 /* Row drag handle — appears on row hover, like Notion's own "⠿". Dragging
    it reorders rows via the app's generic /api/entry/reorder endpoint. */
 .bn-db-row-handle {
@@ -309,6 +356,59 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
 }
 .bn-db-cell input.bn-db-cell-input:focus { background: var(--bg-hover); outline: none; }
 .bn-db-cell input[type="checkbox"] { margin: 0 10px; cursor: pointer; }
+
+/* Text-type property cells (TextCell in customBlocks.jsx) — a contentEditable
+   div, not an <input>, since row-height needs it to actually wrap/grow with
+   content; a native <input> can never do that. Small clips to one line
+   exactly like the old <input> did; medium/large line-clamp instead. While
+   actively focused, ALWAYS expands to show the full text regardless of the
+   row-height setting (clamping mid-edit would hide the cursor past the
+   limit) — clips back down again the moment you click away.
+
+   BlockNote/ProseMirror itself injects a dynamic internal stylesheet rule,
+   `.ProseMirror [contenteditable="false"] [contenteditable="true"]{white-
+   space:pre-wrap}`, for its own nested-editable regions (captions, etc.) —
+   this block's `contentEditable={false}` wrapper around this cell's
+   `contentEditable={true}` div matches that pattern exactly. Its selector
+   specificity (1 class + 2 attribute selectors) beats a plain
+   `div.a.b` selector, so `white-space:nowrap` needs `!important` here to
+   actually win for the "small" (default) case. */
+div.bn-db-cell-input.bn-db-cell-text-wrap {
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  outline: none;
+}
+.bn-database-grid[data-row-height="medium"] div.bn-db-cell-input.bn-db-cell-text-wrap,
+.bn-database-grid[data-row-height="large"] div.bn-db-cell-input.bn-db-cell-text-wrap {
+  white-space: normal !important;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.bn-database-grid[data-row-height="medium"] div.bn-db-cell-input.bn-db-cell-text-wrap { -webkit-line-clamp: 2; }
+.bn-database-grid[data-row-height="large"] div.bn-db-cell-input.bn-db-cell-text-wrap { -webkit-line-clamp: 4; }
+.bn-database-grid[data-row-height="medium"] .bn-db-cell:has(.bn-db-cell-text-wrap),
+.bn-database-grid[data-row-height="large"] .bn-db-cell:has(.bn-db-cell-text-wrap) {
+  align-items: flex-start;
+}
+/* Must outrank the row-height-scoped rules above regardless of which mode
+   is active — `[data-row-height]` (presence-only, any value) keeps this
+   selector's specificity higher than theirs without hardcoding "small". */
+.bn-database-grid[data-row-height] div.bn-db-cell-input.bn-db-cell-text-wrap:focus {
+  background: var(--bg-hover);
+  white-space: pre-wrap !important;
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  word-break: break-word;
+}
 .bn-db-cell-ro { cursor: pointer; color: var(--text-muted); }
 .bn-db-cell-ro:hover { background: var(--bg-hover); }
 .bn-db-cell-val { display: block; padding: 6px 10px; }

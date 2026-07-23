@@ -69,10 +69,39 @@ const PROP_DEFAULTS = {
 // Types simple enough to edit with a plain input right in the table cell.
 // select/multi_select/status get their own colored-tag cell (PropCell,
 // below) that reuses properties.js's real popovers instead of a plain
-// input. date stays a click-through to the peek for now (needs the same
-// date-picker treatment as the props panel).
+// input. text gets its own wrap-capable contentEditable cell (TextCell,
+// below), since row-height needs it to actually grow with content — a
+// plain <input> can never wrap. date stays a click-through to the peek
+// for now (needs the same date-picker treatment as the props panel).
 function isInlineEditable(type) {
-  return type === "text" || type === "number" || type === "url" || type === "checkbox";
+  return type === "number" || type === "url" || type === "checkbox";
+}
+
+const ROW_HEIGHTS = [
+  { id: "small", label: "Pequeña" },
+  { id: "medium", label: "Mediana" },
+  { id: "large", label: "Grande" },
+];
+
+// A row's height is table-wide, not per-row — matches real Notion (its
+// "..." menu sets one row-height preset for the whole database, it isn't
+// configurable per individual row either). Small keeps the original
+// always-truncated look untouched; medium/large let the title and text
+// cells wrap up to a line-clamp instead of always ellipsizing.
+function TextCell({ value, onCommit }) {
+  return (
+    <div
+      key={value}
+      className="bn-db-cell-input bn-db-cell-text-wrap"
+      contentEditable
+      suppressContentEditableWarning
+      ref={(el) => { if (el && el.textContent !== value) el.textContent = value; }}
+      onBlur={(e) => {
+        const v = e.currentTarget.textContent || "";
+        if (v !== value) onCommit(v);
+      }}
+    />
+  );
 }
 
 function isTagType(type) {
@@ -145,6 +174,16 @@ export const database = createReactBlockSpec(
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
       }, [rowMenuOpen]);
+
+      const [rowHeightOpen, setRowHeightOpen] = useState(false);
+      const rowHeightRef = useRef(null);
+
+      useEffect(() => {
+        if (!rowHeightOpen) return;
+        const h = (e) => { if (rowHeightRef.current && !rowHeightRef.current.contains(e.target)) setRowHeightOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [rowHeightOpen]);
 
       // Column widths, drag-to-resize (like Notion's own table). `colWidths`
       // holds only the column(s) currently mid-drag, for immediate visual
@@ -428,9 +467,35 @@ export const database = createReactBlockSpec(
         .join(" ");
       const gridTemplateColumns = `28px ${titleWidth}px ${colTemplate} 32px`;
 
+      const rowHeight = schema.rowHeight || "small";
+
       return (
         <div className="bn-database" contentEditable={false}>
-          <div className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")} style={{ gridTemplateColumns }}>
+          <div className="bn-db-toolbar">
+            <div className="bn-db-rowheight-wrap" ref={rowHeightRef}>
+              <button className="bn-db-toolbar-btn" onClick={() => setRowHeightOpen((v) => !v)}>
+                ≡ {(ROW_HEIGHTS.find((r) => r.id === rowHeight) || ROW_HEIGHTS[0]).label}
+              </button>
+              {rowHeightOpen && (
+                <div className="bn-db-colmenu-pop bn-db-rowheight-pop" contentEditable={false}>
+                  {ROW_HEIGHTS.map((rh) => (
+                    <button
+                      key={rh.id}
+                      className={"bn-db-colmenu-item" + (rowHeight === rh.id ? " active" : "")}
+                      onClick={() => { saveSchema({ ...schema, rowHeight: rh.id }); setRowHeightOpen(false); }}
+                    >
+                      {rh.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div
+            className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")}
+            style={{ gridTemplateColumns }}
+            data-row-height={rowHeight}
+          >
             <div className="bn-db-grid-row bn-db-grid-header">
               <div className="bn-db-cell bn-db-checkbox-cell">
                 <input
@@ -596,6 +661,16 @@ export const database = createReactBlockSpec(
                           setCellValue(row.id, c, updated.value);
                         }}
                       />
+                    );
+                  }
+                  if (c.type === "text") {
+                    return (
+                      <div className="bn-db-cell" key={c.id}>
+                        <TextCell
+                          value={propValueDisplay(prop)}
+                          onCommit={(v) => setCellValue(row.id, c, v)}
+                        />
+                      </div>
                     );
                   }
                   return (
