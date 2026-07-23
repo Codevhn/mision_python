@@ -7521,7 +7521,14 @@ body {
 .practice-cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .practice-cselect-value.placeholder { color: var(--text-faint); }
 .practice-cselect-chevron { color: var(--text-faint); font-size: 0.7rem; flex-shrink: 0; }
-.practice-cselect-portal { position: fixed; max-height: 260px; }
+.practice-cselect-portal {
+  position: fixed;
+  max-height: 260px;
+  /* Solid, not the translucent --bg-elevated glass token: this panel floats
+     over arbitrary page content (not just inside a blurred modal), so without
+     backdrop-filter that transparency just showed underlying text through it. */
+  background: var(--bg-overlay);
+}
 
 .practice-loading-inline { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.82rem; padding: 8px 2px; }
 .practice-empty-note { color: var(--text-faint); font-size: 0.82rem; padding: 8px 2px; }
