@@ -165,9 +165,20 @@
   margin-bottom: 6px;
 }
 
+/* Wide tables scroll horizontally inside this container instead of
+   squeezing every column below its own minmax() floor (audit item #9).
+   The grid itself is width:max-content so unresized columns keep their
+   natural/minimum size and the grid only grows past 100% — triggering
+   this container's own scrollbar — once there's genuinely not enough
+   room, exactly like Notion's own wide-table behavior. */
+.bn-db-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
 .bn-database-grid {
   display: grid;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   font-size: 0.85em;
   border: 1px solid var(--border);
   border-top: none;
@@ -307,6 +318,35 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
    anchor to this cell — header cells already get it from the header-scoped
    rule above, data rows need their own since that rule is header-only. */
 .bn-db-title-col { position: relative; }
+
+/* Fijar columnas (audit item #9) — the checkbox + "Nombre" columns stay
+   pinned to the left edge while the rest of a wide table scrolls
+   horizontally inside .bn-db-scroll, matching Notion's own frozen name
+   column. Two-class selectors (.bn-db-cell.bn-db-checkbox-cell /
+   .bn-db-cell.bn-db-title-col) so this ties in specificity with, and
+   (being later in the file) wins over, the ".bn-db-grid-header .bn-db-cell"
+   rule above that would otherwise force position:relative back on the
+   header's own title cell. An explicit solid background is required on
+   sticky cells or the scrolled-under columns show through as they pass
+   beneath. checkbox-cell's left offset is always 0; title-col's is always
+   28px (the checkbox column's own fixed width) regardless of the title
+   column's own (resizable) width, since that offset is measured from the
+   scroll container's edge, not from the title cell's own box. */
+.bn-db-cell.bn-db-checkbox-cell,
+.bn-db-cell.bn-db-title-col {
+  position: sticky;
+  z-index: 2;
+  background: var(--bg);
+}
+.bn-db-cell.bn-db-checkbox-cell { left: 0; }
+.bn-db-cell.bn-db-title-col {
+  left: 28px;
+  box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.35);
+}
+.bn-db-grid-header .bn-db-cell.bn-db-checkbox-cell,
+.bn-db-grid-header .bn-db-cell.bn-db-title-col {
+  background: var(--bg-hover);
+}
 
 .bn-db-open-row {
   display: flex; align-items: center; gap: 6px;

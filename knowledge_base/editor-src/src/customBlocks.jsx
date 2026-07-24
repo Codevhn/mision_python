@@ -744,6 +744,13 @@ export const database = createReactBlockSpec(
           </div>
           <div
             className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
+            // Sticky title cells (item #9) each create their own stacking
+            // context (position:sticky + z-index), so with every row tied
+            // at the same z-index a LATER row's cell paints over an
+            // EARLIER row's open "⋮⋮" popover once it visually overflows
+            // downward — bump only the row whose menu is actually open
+            // above its siblings so its popover stays on top.
+            style={rowMenuOpen === row.id ? { zIndex: 20 } : undefined}
             onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
             onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
             onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
@@ -1001,11 +1008,12 @@ export const database = createReactBlockSpec(
               )}
             </div>
           </div>
-          <div
-            className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")}
-            style={{ gridTemplateColumns }}
-            data-row-height={rowHeight}
-          >
+          <div className="bn-db-scroll">
+            <div
+              className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")}
+              style={{ gridTemplateColumns }}
+              data-row-height={rowHeight}
+            >
             <div className="bn-db-grid-row bn-db-grid-header">
               <div className="bn-db-cell bn-db-checkbox-cell">
                 <input
@@ -1194,6 +1202,7 @@ export const database = createReactBlockSpec(
               ))}
               <div className="bn-db-cell bn-db-row-actions" />
             </div>
+          </div>
           </div>
           {selectedIds.size > 0 ? (
             <div className="bn-db-selection-bar" contentEditable={false}>
