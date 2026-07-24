@@ -42,12 +42,55 @@ export const pageLink = createReactBlockSpec(
 // the full page — properties AND body — without leaving the table, exactly
 // like a Notion database. window._currentEntryId (kept in sync by app.js /
 // the peek panel) tells this block which page's children to list.
+// ── Múltiples vistas (audit item #10) ───────────────────────────────────
+// `columns` (the property definitions themselves — name/type/options/width)
+// stay GLOBAL to the database, exactly like Notion: every view shows the
+// same underlying properties, just laid out differently. Everything that
+// used to live flat on the schema (filter/sort/groupBy/calc/rowHeight/
+// titleWidth) is now per-VIEW instead — the same rows, filtered/sorted/
+// grouped differently per tab, no data duplicated.
+function makeDefaultView(name, overrides) {
+  return {
+    id: "view_" + Math.random().toString(36).slice(2, 9),
+    name,
+    type: "table",
+    filter: null,
+    sort: null,
+    groupBy: null,
+    calc: {},
+    rowHeight: "small",
+    titleWidth: 220,
+    ...overrides,
+  };
+}
+
 function parseSchema(raw) {
+  let d;
   try {
-    const d = JSON.parse(raw || "{}");
-    if (d && Array.isArray(d.columns)) return d;
-  } catch (_) {}
-  return { columns: [{ id: "col_status", name: "Estado", type: "status" }] };
+    d = JSON.parse(raw || "{}");
+  } catch (_) {
+    d = null;
+  }
+  if (!d || typeof d !== "object") d = {};
+  const columns = Array.isArray(d.columns) ? d.columns : [{ id: "col_status", name: "Estado", type: "status" }];
+
+  // Migrate the old flat single-view schema into one "Tabla" view the first
+  // time this loads under the new format — every database already in the
+  // wild keeps looking and behaving exactly the same, nothing for the user
+  // to do. Only written back to disk once the user actually changes
+  // something (saveSchema/saveView), never forced on a bare read.
+  const views = Array.isArray(d.views) && d.views.length
+    ? d.views
+    : [makeDefaultView("Tabla", {
+        filter: d.filter ?? null,
+        sort: d.sort ?? null,
+        groupBy: d.groupBy ?? null,
+        calc: d.calc ?? {},
+        rowHeight: d.rowHeight || "small",
+        titleWidth: d.titleWidth ?? 220,
+      })];
+  const activeView = views.some((v) => v.id === d.activeView) ? d.activeView : views[0].id;
+  return { columns, views, activeView };
 }
 
 const PROP_TYPES = [
@@ -215,7 +258,7 @@ function groupRows(displayRows, groupCol) {
 
 // "Calcular" — a per-column summary shown in a footer row under the table,
 // same idea as Notion's own bottom-of-column calculate row. Table-wide
-// (schema.calc: { [colId or "__title"]: calcTypeId }), computed live over
+// (activeView.calc: { [colId or "__title"]: calcTypeId }), computed live over
 // `displayRows` so it reflects the current filter, same as Notion's own
 // calc row does. Deliberately a single table-wide footer, not one row per
 // group — per-group subtotals would need real per-group state and this
@@ -325,6 +368,10 @@ export const database = createReactBlockSpec(
     render: (props) => {
       const { block, editor } = props;
       const schema = parseSchema(block.props.data);
+      const activeView = schema.views.find((v) => v.id === schema.activeView) || schema.views[0];
+      const [viewMenuOpen, setViewMenuOpen] = useState(null);
+      const [viewRenameDraft, setViewRenameDraft] = useState("");
+      const viewMenuRef = useRef(null);
       const [rows, setRows] = useState([]);
       const [loading, setLoading] = useState(true);
       const [colMenuOpen, setColMenuOpen] = useState(null);
@@ -415,10 +462,10 @@ export const database = createReactBlockSpec(
       }, [calcMenuOpen]);
 
       const setColCalc = (colId, calcType) => {
-        const nextCalc = { ...(schema.calc || {}) };
+        const nextCalc = { ...(activeView.calc || {}) };
         if (!calcType) delete nextCalc[colId];
         else nextCalc[colId] = calcType;
-        saveSchema({ ...schema, calc: nextCalc });
+        saveView({ calc: nextCalc });
         setCalcMenuOpen(null);
       };
 
@@ -449,7 +496,7 @@ export const database = createReactBlockSpec(
           document.body.classList.remove("bn-db-resizing-cursor");
           const finalWidth = liveWidthRef.current;
           if (key === "__title") {
-            saveSchema({ ...schema, titleWidth: finalWidth });
+            saveView({ titleWidth: finalWidth });
           } else {
             saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === key ? { ...c, width: finalWidth } : c)) });
           }
@@ -480,6 +527,13 @@ export const database = createReactBlockSpec(
         return () => document.removeEventListener("mousedown", h);
       }, [colMenuOpen]);
 
+      useEffect(() => {
+        if (!viewMenuOpen) return;
+        const h = (e) => { if (viewMenuRef.current && !viewMenuRef.current.contains(e.target)) setViewMenuOpen(null); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [viewMenuOpen]);
+
       const reload = useCallback(() => {
         if (!pageId) { setLoading(false); return; }
         setLoading(true);
@@ -496,6 +550,57 @@ export const database = createReactBlockSpec(
 
       const saveSchema = (next) => {
         editor.updateBlock(block, { props: { data: JSON.stringify(next) } });
+      };
+
+      // Everything view-specific (filter/sort/groupBy/calc/rowHeight/
+      // titleWidth) patches the CURRENTLY ACTIVE view only — every other
+      // view, and the rows/columns themselves, are untouched.
+      const saveView = (patch) => {
+        saveSchema({ ...schema, views: schema.views.map((v) => (v.id === activeView.id ? { ...v, ...patch } : v)) });
+      };
+
+      const switchView = (viewId) => {
+        saveSchema({ ...schema, activeView: viewId });
+        // Ephemeral per-view display state — none of this is meaningful
+        // once you're looking at a different view's own filter/group/etc.
+        setCollapsedGroups(new Set());
+        setSelectedIds(new Set());
+        setFilterOpen(false);
+        setSortOpen(false);
+        setGroupOpen(false);
+        setCalcMenuOpen(null);
+        setColMenuOpen(null);
+      };
+
+      // Same "create with a sensible default, then immediately open its own
+      // rename popover" pattern addColumn already uses below — no jarring
+      // native prompt() for something this central to the feature.
+      const addView = () => {
+        const view = makeDefaultView(`Vista ${schema.views.length + 1}`);
+        saveSchema({ ...schema, views: [...schema.views, view], activeView: view.id });
+        setViewMenuOpen(view.id);
+        setViewRenameDraft(view.name);
+      };
+
+      const openViewMenu = (v) => {
+        setViewMenuOpen(v.id);
+        setViewRenameDraft(v.name);
+      };
+
+      const commitViewRename = (v) => {
+        const name = viewRenameDraft.trim();
+        if (!name) return;
+        saveSchema({ ...schema, views: schema.views.map((x) => (x.id === v.id ? { ...x, name } : x)) });
+        setViewMenuOpen(null);
+      };
+
+      const deleteView = (v) => {
+        if (schema.views.length <= 1) return; // always at least one view — the "+" is the only way to get a second
+        if (!window.confirm(`¿Eliminar la vista "${v.name}"? No se puede deshacer.`)) return;
+        const remaining = schema.views.filter((x) => x.id !== v.id);
+        const nextActive = activeView.id === v.id ? remaining[0].id : schema.activeView;
+        saveSchema({ ...schema, views: remaining, activeView: nextActive });
+        setViewMenuOpen(null);
       };
 
       // Matches Notion's own "+" behavior: the column exists in the grid
@@ -708,7 +813,7 @@ export const database = createReactBlockSpec(
       // own blocks. A CSS-grid layout sidesteps that entirely.
       //
       // Columns only get a fixed pixel width once a user actually drags
-      // their resize handle (persisted as column.width / schema.titleWidth);
+      // their resize handle (persisted as column.width / activeView.titleWidth);
       // an untouched column defaults to a fixed, content-sized 180px —
       // NOT a flexible 1fr track. 1fr used to fill 100% of the block's
       // width, which meant a table's only unresized column started out
@@ -718,7 +823,7 @@ export const database = createReactBlockSpec(
       // gap between its actual content and the true column edge. A fixed
       // default also matches Notion's own tables, which size to their
       // content and don't force-stretch to fill the page.
-      const titleWidth = colWidths.__title ?? schema.titleWidth ?? 220;
+      const titleWidth = colWidths.__title ?? activeView.titleWidth ?? 220;
       const colTemplate = schema.columns
         .map((c) => {
           const live = colWidths[c.id];
@@ -730,20 +835,20 @@ export const database = createReactBlockSpec(
       // per-row "+"), sticky-pinned same as checkbox/title — see renderRow.
       const gridTemplateColumns = `32px 28px ${titleWidth}px ${colTemplate} 32px`;
 
-      const rowHeight = schema.rowHeight || "small";
+      const rowHeight = activeView.rowHeight || "small";
 
       // Filter/sort are derived views over `rows`, never mutate the
       // underlying data or its stored order. A row's real position (used
       // by drag-to-reorder and by the server's own default ordering) is
       // untouched by either — sort only changes DISPLAY order, and only
       // while a sort is actually configured.
-      const filterColResolved = schema.filter ? resolveFilterSortCol(schema.filter.colId, schema.columns) : null;
-      const sortColResolved = schema.sort ? resolveFilterSortCol(schema.sort.colId, schema.columns) : null;
-      let displayRows = schema.filter && filterColResolved
-        ? rows.filter((r) => rowMatchesFilter(r, schema.filter, schema.columns))
+      const filterColResolved = activeView.filter ? resolveFilterSortCol(activeView.filter.colId, schema.columns) : null;
+      const sortColResolved = activeView.sort ? resolveFilterSortCol(activeView.sort.colId, schema.columns) : null;
+      let displayRows = activeView.filter && filterColResolved
+        ? rows.filter((r) => rowMatchesFilter(r, activeView.filter, schema.columns))
         : rows;
-      if (schema.sort && sortColResolved) {
-        const dir = schema.sort.dir === "desc" ? -1 : 1;
+      if (activeView.sort && sortColResolved) {
+        const dir = activeView.sort.dir === "desc" ? -1 : 1;
         displayRows = [...displayRows].sort((a, b) => {
           const av = rowSortValue(a, sortColResolved);
           const bv = rowSortValue(b, sortColResolved);
@@ -885,45 +990,87 @@ export const database = createReactBlockSpec(
       );
 
       const filterSortColumns = [{ id: "__title", name: "Nombre" }, ...schema.columns];
-      const groupColResolved = schema.groupBy ? resolveFilterSortCol(schema.groupBy, schema.columns) : null;
+      const groupColResolved = activeView.groupBy ? resolveFilterSortCol(activeView.groupBy, schema.columns) : null;
       const groups = groupColResolved ? groupRows(displayRows, groupColResolved) : null;
       // Manual drag-reorder is disabled whenever a sort OR a grouping is
       // active — both compete with a freely-dragged manual order the same
       // way (grouping additionally has no defined cross-group semantics).
-      const dragDisabledReason = schema.sort
+      const dragDisabledReason = activeView.sort
         ? "hay un orden activo"
-        : schema.groupBy
+        : activeView.groupBy
         ? "las filas están agrupadas"
         : null;
 
       return (
         <div className="bn-database" contentEditable={false}>
+          {/* Vistas (audit item #10): tabs over the SAME rows/columns, each
+              with its own filter/sort/groupBy/calc/rowHeight/titleWidth.
+              Single-tab databases (the common case, and every database
+              migrated from the old flat format) render one plain "Tabla"
+              tab — no visual clutter until a second view actually exists. */}
+          <div className="bn-db-view-tabs">
+            {schema.views.map((v) => (
+              <div
+                className={"bn-db-view-tab" + (v.id === activeView.id ? " active" : "")}
+                key={v.id}
+                ref={viewMenuOpen === v.id ? viewMenuRef : null}
+              >
+                <button className="bn-db-view-tab-btn" onClick={() => switchView(v.id)}>
+                  <span className="bn-db-view-tab-icon">▤</span>
+                  <span className="bn-db-view-tab-name">{v.name}</span>
+                </button>
+                {v.id === activeView.id && (
+                  <button className="bn-db-view-tab-menu-btn" onClick={() => openViewMenu(v)} title="Opciones de la vista">⋮</button>
+                )}
+                {viewMenuOpen === v.id && (
+                  <div className="bn-db-colmenu-pop" contentEditable={false}>
+                    <input
+                      className="bn-db-colmenu-rename"
+                      value={viewRenameDraft}
+                      autoFocus
+                      placeholder="Nombre de la vista"
+                      onChange={(e) => setViewRenameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitViewRename(v);
+                        if (e.key === "Escape") setViewMenuOpen(null);
+                      }}
+                    />
+                    <button className="bn-db-colmenu-item" onClick={() => commitViewRename(v)}>Guardar nombre</button>
+                    {schema.views.length > 1 && (
+                      <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => deleteView(v)}>Eliminar vista</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            <button className="bn-db-view-tab-add" onClick={addView} title="Nueva vista">+</button>
+          </div>
           <div className="bn-db-toolbar">
             <div className="bn-db-toolbar-left">
               <div className="bn-db-filter-wrap" ref={filterRef}>
-                <button className={"bn-db-toolbar-btn" + (schema.filter ? " active" : "")} onClick={() => setFilterOpen((v) => !v)}>
-                  Filtro{schema.filter && filterColResolved ? `: ${filterColResolved.name}` : ""}
+                <button className={"bn-db-toolbar-btn" + (activeView.filter ? " active" : "")} onClick={() => setFilterOpen((v) => !v)}>
+                  Filtro{activeView.filter && filterColResolved ? `: ${filterColResolved.name}` : ""}
                 </button>
                 {filterOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
                     <select
                       className="bn-db-pop-select"
-                      value={schema.filter?.colId || ""}
+                      value={activeView.filter?.colId || ""}
                       onChange={(e) => {
                         const colId = e.target.value;
-                        saveSchema({ ...schema, filter: colId ? { colId, value: "" } : null });
+                        saveView({ filter: colId ? { colId, value: "" } : null });
                       }}
                     >
                       <option value="">Sin filtro</option>
                       {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    {schema.filter && filterColResolved && (
+                    {activeView.filter && filterColResolved && (
                       <>
                         {filterColResolved.type === "checkbox" ? (
                           <select
                             className="bn-db-pop-select"
-                            value={schema.filter.value || "checked"}
-                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                            value={activeView.filter.value || "checked"}
+                            onChange={(e) => saveView({ filter: { ...activeView.filter, value: e.target.value } })}
                           >
                             <option value="checked">Marcada</option>
                             <option value="unchecked">No marcada</option>
@@ -931,8 +1078,8 @@ export const database = createReactBlockSpec(
                         ) : (filterColResolved.type === "status" || filterColResolved.type === "select" || filterColResolved.type === "multi_select") ? (
                           <select
                             className="bn-db-pop-select"
-                            value={schema.filter.value || ""}
-                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                            value={activeView.filter.value || ""}
+                            onChange={(e) => saveView({ filter: { ...activeView.filter, value: e.target.value } })}
                           >
                             <option value="">Cualquiera</option>
                             {(filterColResolved.type === "status" ? STATUS_OPTIONS : (filterColResolved.options || []).map((o) => o.label)).map((label) => (
@@ -944,44 +1091,44 @@ export const database = createReactBlockSpec(
                             className="bn-db-pop-input"
                             placeholder="Contiene…"
                             autoFocus
-                            value={schema.filter.value || ""}
-                            onChange={(e) => saveSchema({ ...schema, filter: { ...schema.filter, value: e.target.value } })}
+                            value={activeView.filter.value || ""}
+                            onChange={(e) => saveView({ filter: { ...activeView.filter, value: e.target.value } })}
                           />
                         )}
-                        <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => saveSchema({ ...schema, filter: null })}>Quitar filtro</button>
+                        <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => saveView({ filter: null })}>Quitar filtro</button>
                       </>
                     )}
                   </div>
                 )}
               </div>
               <div className="bn-db-sort-wrap" ref={sortRef}>
-                <button className={"bn-db-toolbar-btn" + (schema.sort ? " active" : "")} onClick={() => setSortOpen((v) => !v)}>
-                  Orden{schema.sort && sortColResolved ? `: ${sortColResolved.name}` : ""}
+                <button className={"bn-db-toolbar-btn" + (activeView.sort ? " active" : "")} onClick={() => setSortOpen((v) => !v)}>
+                  Orden{activeView.sort && sortColResolved ? `: ${sortColResolved.name}` : ""}
                 </button>
                 {sortOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
                     <select
                       className="bn-db-pop-select"
-                      value={schema.sort?.colId || ""}
+                      value={activeView.sort?.colId || ""}
                       onChange={(e) => {
                         const colId = e.target.value;
-                        saveSchema({ ...schema, sort: colId ? { colId, dir: schema.sort?.dir || "asc" } : null });
+                        saveView({ sort: colId ? { colId, dir: activeView.sort?.dir || "asc" } : null });
                       }}
                     >
                       <option value="">Sin orden (manual)</option>
                       {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    {schema.sort && (
+                    {activeView.sort && (
                       <>
                         <button
-                          className={"bn-db-colmenu-item" + (schema.sort.dir !== "desc" ? " active" : "")}
-                          onClick={() => saveSchema({ ...schema, sort: { ...schema.sort, dir: "asc" } })}
+                          className={"bn-db-colmenu-item" + (activeView.sort.dir !== "desc" ? " active" : "")}
+                          onClick={() => saveView({ sort: { ...activeView.sort, dir: "asc" } })}
                         >
                           Ascendente
                         </button>
                         <button
-                          className={"bn-db-colmenu-item" + (schema.sort.dir === "desc" ? " active" : "")}
-                          onClick={() => saveSchema({ ...schema, sort: { ...schema.sort, dir: "desc" } })}
+                          className={"bn-db-colmenu-item" + (activeView.sort.dir === "desc" ? " active" : "")}
+                          onClick={() => saveView({ sort: { ...activeView.sort, dir: "desc" } })}
                         >
                           Descendente
                         </button>
@@ -991,25 +1138,25 @@ export const database = createReactBlockSpec(
                 )}
               </div>
               <div className="bn-db-group-wrap" ref={groupRef}>
-                <button className={"bn-db-toolbar-btn" + (schema.groupBy ? " active" : "")} onClick={() => setGroupOpen((v) => !v)}>
+                <button className={"bn-db-toolbar-btn" + (activeView.groupBy ? " active" : "")} onClick={() => setGroupOpen((v) => !v)}>
                   Agrupar{groupColResolved ? `: ${groupColResolved.name}` : ""}
                 </button>
                 {groupOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
                     <select
                       className="bn-db-pop-select"
-                      value={schema.groupBy || ""}
+                      value={activeView.groupBy || ""}
                       onChange={(e) => {
                         const colId = e.target.value;
-                        saveSchema({ ...schema, groupBy: colId || null });
+                        saveView({ groupBy: colId || null });
                         setCollapsedGroups(new Set());
                       }}
                     >
                       <option value="">Sin agrupar</option>
                       {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    {schema.groupBy && (
-                      <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { saveSchema({ ...schema, groupBy: null }); setCollapsedGroups(new Set()); }}>
+                    {activeView.groupBy && (
+                      <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { saveView({ groupBy: null }); setCollapsedGroups(new Set()); }}>
                         Quitar agrupación
                       </button>
                     )}
@@ -1027,7 +1174,7 @@ export const database = createReactBlockSpec(
                     <button
                       key={rh.id}
                       className={"bn-db-colmenu-item" + (rowHeight === rh.id ? " active" : "")}
-                      onClick={() => { saveSchema({ ...schema, rowHeight: rh.id }); setRowHeightOpen(false); }}
+                      onClick={() => { saveView({ rowHeight: rh.id }); setRowHeightOpen(false); }}
                     >
                       {rh.label}
                     </button>
@@ -1162,20 +1309,20 @@ export const database = createReactBlockSpec(
                 ref={calcMenuOpen === "__title" ? calcMenuRef : null}
               >
                 <button
-                  className={"bn-db-calc-btn" + (schema.calc?.__title ? " active" : "")}
+                  className={"bn-db-calc-btn" + (activeView.calc?.__title ? " active" : "")}
                   onClick={() => setCalcMenuOpen((v) => (v === "__title" ? null : "__title"))}
                 >
-                  {schema.calc?.__title
-                    ? `${CALC_LABELS[schema.calc.__title]} ${computeCalc(displayRows, { id: "__title", type: "title" }, schema.calc.__title)}`
+                  {activeView.calc?.__title
+                    ? `${CALC_LABELS[activeView.calc.__title]} ${computeCalc(displayRows, { id: "__title", type: "title" }, activeView.calc.__title)}`
                     : "Calcular"}
                 </button>
                 {calcMenuOpen === "__title" && (
                   <div className="bn-db-colmenu-pop" contentEditable={false}>
-                    <button className={"bn-db-colmenu-item" + (!schema.calc?.__title ? " active" : "")} onClick={() => setColCalc("__title", null)}>Ninguno</button>
+                    <button className={"bn-db-colmenu-item" + (!activeView.calc?.__title ? " active" : "")} onClick={() => setColCalc("__title", null)}>Ninguno</button>
                     {calcOptionsForType("title").map((opt) => (
                       <button
                         key={opt.id}
-                        className={"bn-db-colmenu-item" + (schema.calc?.__title === opt.id ? " active" : "")}
+                        className={"bn-db-colmenu-item" + (activeView.calc?.__title === opt.id ? " active" : "")}
                         onClick={() => setColCalc("__title", opt.id)}
                       >
                         {opt.label}
@@ -1191,20 +1338,20 @@ export const database = createReactBlockSpec(
                   ref={calcMenuOpen === c.id ? calcMenuRef : null}
                 >
                   <button
-                    className={"bn-db-calc-btn" + (schema.calc?.[c.id] ? " active" : "")}
+                    className={"bn-db-calc-btn" + (activeView.calc?.[c.id] ? " active" : "")}
                     onClick={() => setCalcMenuOpen((v) => (v === c.id ? null : c.id))}
                   >
-                    {schema.calc?.[c.id]
-                      ? `${CALC_LABELS[schema.calc[c.id]]} ${computeCalc(displayRows, c, schema.calc[c.id])}`
+                    {activeView.calc?.[c.id]
+                      ? `${CALC_LABELS[activeView.calc[c.id]]} ${computeCalc(displayRows, c, activeView.calc[c.id])}`
                       : "Calcular"}
                   </button>
                   {calcMenuOpen === c.id && (
                     <div className="bn-db-colmenu-pop" contentEditable={false}>
-                      <button className={"bn-db-colmenu-item" + (!schema.calc?.[c.id] ? " active" : "")} onClick={() => setColCalc(c.id, null)}>Ninguno</button>
+                      <button className={"bn-db-colmenu-item" + (!activeView.calc?.[c.id] ? " active" : "")} onClick={() => setColCalc(c.id, null)}>Ninguno</button>
                       {calcOptionsForType(c.type).map((opt) => (
                         <button
                           key={opt.id}
-                          className={"bn-db-colmenu-item" + (schema.calc?.[c.id] === opt.id ? " active" : "")}
+                          className={"bn-db-colmenu-item" + (activeView.calc?.[c.id] === opt.id ? " active" : "")}
                           onClick={() => setColCalc(c.id, opt.id)}
                         >
                           {opt.label}

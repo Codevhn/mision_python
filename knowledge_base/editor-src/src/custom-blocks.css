@@ -127,6 +127,63 @@
    hovers a plain HTML table that isn't one of its own blocks. */
 .bn-database { width: 100%; margin: 4px 0; }
 
+/* Vistas (audit item #10) — tabs over the same rows/columns, each with its
+   own filter/sort/groupBy/calc/rowHeight/titleWidth. A single-tab database
+   (every migrated one, and the common case) still shows one plain "Tabla"
+   tab, matching Notion's own always-visible view strip. */
+.bn-db-view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.bn-db-view-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.bn-db-view-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.8em;
+  font-weight: 500;
+  padding: 6px 4px;
+  border-bottom: 2px solid transparent;
+}
+.bn-db-view-tab:hover .bn-db-view-tab-btn { color: var(--text); }
+.bn-db-view-tab.active .bn-db-view-tab-btn { color: var(--text); border-bottom-color: var(--accent); }
+.bn-db-view-tab-icon { font-size: 0.9em; opacity: 0.75; }
+.bn-db-view-tab-menu-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.85em;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+}
+.bn-db-view-tab:hover .bn-db-view-tab-menu-btn,
+.bn-db-view-tab.active .bn-db-view-tab-menu-btn { opacity: 1; }
+.bn-db-view-tab-menu-btn:hover { background: var(--bg-hover); color: var(--text); }
+.bn-db-view-tab-add {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.9em;
+  padding: 4px 7px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+.bn-db-view-tab-add:hover { background: var(--bg-hover); color: var(--text); }
+
 /* Toolbar above the grid — filter/sort on the left, row-height on the
    right (matches where Notion's own equivalent controls sit). */
 .bn-db-toolbar {
