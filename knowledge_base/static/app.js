@@ -8615,7 +8615,7 @@ function _renderPracticeEmptyMain() {
   $('practiceMain').innerHTML = `
     <div class="practice-empty-main">
       <span class="practice-empty-main-icon">🎯</span>
-      <p class="practice-empty-main-title">Configura tu reto en el panel de la izquierda</p>
+      <p class="practice-empty-main-title">Configura tu reto</p>
       <p class="practice-empty-main-sub">Elegí un modo, la dificultad y el modelo que quieras que lo genere — después tocá "Generar reto".</p>
     </div>`;
 }

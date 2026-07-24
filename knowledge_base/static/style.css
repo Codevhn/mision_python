@@ -7529,6 +7529,26 @@ body {
   padding: 28px 32px 60px;
 }
 
+/* Small screens: the rail was eating ~80% of the viewport width at a fixed
+   300px, squeezing the actual working area (the reto, historial…) into a
+   sliver bleeding off the right edge — stack rail-then-main instead, each
+   full width, matching the isMobile() breakpoint used everywhere else. */
+@media (max-width: 768px) {
+  .practice-view-header { padding: 14px 16px 10px; }
+  .practice-view-body { flex-direction: column; overflow-y: auto; }
+  .practice-rail {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-y: visible;
+    padding: 16px;
+  }
+  .practice-main {
+    overflow-y: visible;
+    padding: 20px 16px 40px;
+  }
+}
+
 .practice-rail-nav { display: flex; flex-direction: column; gap: 4px; }
 .practice-rail-nav-btn {
   display: flex; align-items: center; gap: 8px;
