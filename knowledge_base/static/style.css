@@ -7948,6 +7948,24 @@ body {
 .practice-feedback--ok  { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); }
 .practice-feedback--bad { background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger); }
 
+/* Corrección/Profundidad/Claridad breakdown for AI-judged text steps — shows
+   the student what to improve, not just pass/fail; also what's quietly
+   driving how fast "dominio" grows for that concept now. */
+.practice-quality-scores { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.practice-quality-scores.hidden { display: none; }
+.practice-quality-row { display: flex; align-items: center; gap: 10px; }
+.practice-quality-label { width: 84px; flex-shrink: 0; font-size: 0.76rem; color: var(--text-faint); }
+.practice-quality-bar {
+  flex: 1;
+  max-width: 200px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.practice-quality-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+.practice-quality-val { width: 36px; flex-shrink: 0; font-size: 0.72rem; color: var(--text-faint); font-weight: 600; text-align: right; }
+
 .practice-hint {
   margin-top: 8px;
   padding: 10px 14px;

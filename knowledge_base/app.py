@@ -4064,30 +4064,55 @@ def check_practice_text():
     if not instruction or not rubric:
         return jsonify({"error": "Missing instruction or rubric"}), 400
     if not answer:
-        return jsonify({"passed": False, "feedback": "No escribiste ninguna respuesta.", "feedback_html": ""})
+        return jsonify({"passed": False, "feedback": "No escribiste ninguna respuesta.", "feedback_html": "", "scores": {}, "quality": None})
 
     system = (
         "Eres un evaluador técnico estricto pero justo. Un estudiante escribió un comando (git/shell/SQL) o una "
         "respuesta conceptual corta para un paso de un reto práctico; el comando NO se ejecuta, solo evalúas el texto.\n\n"
         "Evalúa si la respuesta cumple la rúbrica. Sé tolerante con variantes válidas (flags en distinto orden, "
         "sinónimos técnicos correctos), pero estricto con errores reales.\n\n"
+        "Además de correct/incorrect, calificá la CALIDAD de la respuesta en tres ejes, cada uno 0-100:\n"
+        "- \"correctness\": qué tan técnicamente precisa es (100 = sin errores).\n"
+        "- \"depth\": si demuestra comprender el PORQUÉ, no solo repetir el comando/término correcto de memoria "
+        "(100 = explica o aplica el concepto con criterio; bajo = acertó pero de forma superficial o mecánica).\n"
+        "- \"clarity\": qué tan clara y bien comunicada está (100 = inequívoca).\n"
+        "Una respuesta puede ser \"correct\": true con \"depth\" bajo — pasó la rúbrica mínima pero sin mostrar "
+        "comprensión real; calificá depth con honestidad, no lo infles solo porque acertó.\n\n"
         "Si tu feedback cita código, un comando o el comando correcto, usa Markdown: backtick simple para un "
         "token suelto, o un bloque con triple backtick (con el lenguaje si aplica) si es más de una línea.\n\n"
-        "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"feedback\": \"...\"} — feedback en español, "
-        "1-2 frases, explicando qué está bien o qué falta/está mal."
+        "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"scores\": {\"correctness\":0-100,"
+        "\"depth\":0-100,\"clarity\":0-100}, \"feedback\": \"...\"} — feedback en español, 1-2 frases, explicando "
+        "qué está bien o qué falta/está mal (y si la profundidad fue baja, decilo)."
     )
     user_msg = f"Instrucción del paso:\n{instruction}\n\nRúbrica esperada:\n{rubric}\n\nRespuesta del estudiante:\n{answer}"
 
-    content, err = _call_ai(system, user_msg, max_tokens=300, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    content, err = _call_ai(system, user_msg, max_tokens=350, json_mode=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
     try:
         result = json.loads(content)
         feedback = str(result.get("feedback") or "")
+        scores_raw = result.get("scores") if isinstance(result.get("scores"), dict) else {}
+
+        def _clamp_score(v):
+            try:
+                return max(0, min(100, round(float(v))))
+            except (TypeError, ValueError):
+                return None
+
+        scores = {}
+        for axis in ("correctness", "depth", "clarity"):
+            v = _clamp_score(scores_raw.get(axis))
+            if v is not None:
+                scores[axis] = v
+        quality = round(sum(scores.values()) / len(scores)) if scores else None
+
         return jsonify({
             "passed": bool(result.get("correct")),
             "feedback": feedback,
             "feedback_html": render_markdown(feedback),
+            "scores": scores,
+            "quality": quality,
         })
     except json.JSONDecodeError:
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
@@ -4315,7 +4340,15 @@ def review_concept():
     """Record a single concept-level result (one quiz question or one practice
     step) and update its simplified SM-2 spaced-repetition state: a correct
     answer grows the review interval, a miss resets it — same idea as full
-    SM-2 without the 0-5 quality scale, just a correct/incorrect signal."""
+    SM-2 without the 0-5 quality scale, just a correct/incorrect signal.
+
+    `quality` (0-100, optional) is the richer signal: how deep/precise the
+    answer actually was, not just whether it cleared the rubric's minimum
+    bar. Quiz answers and Python/CSS steps are graded by hard fact (picked
+    the right option / the assertions passed) and don't send it — this only
+    comes from Práctica's AI-judged "text" steps, where "technically correct
+    but shallow" is a real, distinct case worth weighing differently from a
+    strong, well-reasoned pass. Omitted -> behaves exactly as before."""
     data = request.json or {}
     concept_id = (data.get("concept_id") or "").strip()
     course = (data.get("course") or "").strip()
@@ -4323,18 +4356,34 @@ def review_concept():
     if not concept_id:
         return jsonify({"error": "Missing concept_id"}), 400
 
+    quality = data.get("quality")
+    try:
+        quality = max(0.0, min(1.0, float(quality) / 100)) if quality is not None else None
+    except (TypeError, ValueError):
+        quality = None
+
     progress = load_concept_progress()
     state = progress.get(concept_id, {"ease": 2.5, "interval": 0, "reps": 0, "course": course})
 
     if correct:
         state["reps"] += 1
         if state["reps"] == 1:
-            state["interval"] = 1
+            base_interval = 1
         elif state["reps"] == 2:
-            state["interval"] = 3
+            base_interval = 3
         else:
-            state["interval"] = max(1, round(state["interval"] * state["ease"]))
-        state["ease"] = min(2.8, state["ease"] + 0.1)
+            base_interval = max(1, round(state["interval"] * state["ease"]))
+        if quality is not None:
+            # A shallow-but-passing answer still grows the interval — it DID
+            # pass — but noticeably less than a strong one (50%-100% of the
+            # normal growth), so "dominio" can't be gamed by scraping past a
+            # rubric on autopilot without ever showing real understanding.
+            growth = 0.5 + 0.5 * quality
+            state["interval"] = max(1, round(base_interval * growth))
+            state["ease"] = min(2.8, state["ease"] + 0.1 * quality)
+        else:
+            state["interval"] = base_interval
+            state["ease"] = min(2.8, state["ease"] + 0.1)
     else:
         state["reps"] = 0
         state["interval"] = 1
@@ -4342,6 +4391,7 @@ def review_concept():
 
     state["course"] = course or state.get("course", "")
     state["last_result"] = correct
+    state["last_quality"] = round(quality * 100) if quality is not None else None
     state["last_reviewed_at"] = datetime.now().isoformat(timespec="seconds")
     state["next_review_at"] = (datetime.now() + timedelta(days=state["interval"])).isoformat(timespec="seconds")
 

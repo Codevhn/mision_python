@@ -8845,7 +8845,8 @@ function _renderPracticeChallenge() {
       <textarea id="practiceTextInput" class="practice-text-answer" spellcheck="false"
                 placeholder="Escribe tu comando o respuesta…">${escapeHtml(stepState.userAnswer ?? '')}</textarea>
       <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">✓ Verificar</button></div>
-      <div class="practice-feedback hidden" id="practiceFeedback"></div>`;
+      <div class="practice-feedback hidden" id="practiceFeedback"></div>
+      <div class="practice-quality-scores hidden" id="practiceQualityScores"></div>`;
   }
 
   const hintsShown = stepState.hintsShown || 0;
@@ -8886,6 +8887,21 @@ function _renderPracticeChallenge() {
     fb.classList.remove('hidden');
     fb.classList.toggle('practice-feedback--ok', stepState.passed);
     fb.classList.toggle('practice-feedback--bad', !stepState.passed);
+  }
+  if (step.type === 'text' && stepState.scores && Object.keys(stepState.scores).length) {
+    // Not just pass/fail — shows WHAT to improve, not only whether you
+    // cleared the bar. Also what quietly drives the mastery number now:
+    // a technically-correct-but-shallow answer grows "dominio" slower than
+    // a strong one (see review_concept's quality-weighted interval growth).
+    const qsEl = $('practiceQualityScores');
+    const axisLabels = { correctness: 'Corrección', depth: 'Profundidad', clarity: 'Claridad' };
+    qsEl.innerHTML = Object.entries(stepState.scores).map(([axis, val]) => `
+      <div class="practice-quality-row">
+        <span class="practice-quality-label">${escapeHtml(axisLabels[axis] || axis)}</span>
+        <div class="practice-quality-bar"><div class="practice-quality-fill" style="width:${val}%"></div></div>
+        <span class="practice-quality-val">${val}%</span>
+      </div>`).join('');
+    qsEl.classList.remove('hidden');
   }
   if (step.type === 'css') {
     const cssInput = $('practiceCssInput');
@@ -9066,13 +9082,21 @@ async function _checkPracticeStep() {
       stepState.passed = !!data.passed;
       stepState.lastFeedback = data.feedback || '';
       stepState.lastFeedbackHtml = data.feedback_html || '';
+      stepState.scores = data.scores || null;
+      stepState.quality = (typeof data.quality === 'number') ? data.quality : null;
     }
 
     if (step.concept_id) {
       fetch('/api/concepts/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concept_id: step.concept_id, course: st.course, correct: stepState.passed }),
+        // quality (0-100, only present for AI-judged "text" steps) tells the
+        // mastery calc how deep the answer actually was, not just pass/fail —
+        // a shallow-but-correct answer grows dominio slower than a strong one.
+        body: JSON.stringify({
+          concept_id: step.concept_id, course: st.course, correct: stepState.passed,
+          ...(stepState.quality != null ? { quality: stepState.quality } : {}),
+        }),
       }).catch(() => {});
     }
   } catch (err) {
