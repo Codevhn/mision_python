@@ -327,13 +327,9 @@ export const database = createReactBlockSpec(
       const schema = parseSchema(block.props.data);
       const [rows, setRows] = useState([]);
       const [loading, setLoading] = useState(true);
-      const [addColOpen, setAddColOpen] = useState(false);
-      const [newColName, setNewColName] = useState("");
-      const [newColType, setNewColType] = useState("text");
       const [colMenuOpen, setColMenuOpen] = useState(null);
       const [colMenuView, setColMenuView] = useState("main");
       const [renameDraft, setRenameDraft] = useState("");
-      const addColRef = useRef(null);
       const colMenuRef = useRef(null);
       const dragRowIdRef = useRef(null);
       const pageId = window._currentEntryId;
@@ -478,13 +474,6 @@ export const database = createReactBlockSpec(
       useEffect(() => { rowsRef.current = rows; }, [rows]);
 
       useEffect(() => {
-        if (!addColOpen) return;
-        const h = (e) => { if (addColRef.current && !addColRef.current.contains(e.target)) setAddColOpen(false); };
-        document.addEventListener("mousedown", h);
-        return () => document.removeEventListener("mousedown", h);
-      }, [addColOpen]);
-
-      useEffect(() => {
         if (!colMenuOpen) return;
         const h = (e) => { if (colMenuRef.current && !colMenuRef.current.contains(e.target)) setColMenuOpen(null); };
         document.addEventListener("mousedown", h);
@@ -509,16 +498,19 @@ export const database = createReactBlockSpec(
         editor.updateBlock(block, { props: { data: JSON.stringify(next) } });
       };
 
-      const confirmAddColumn = () => {
-        const name = newColName.trim();
-        if (!name) return;
+      // Matches Notion's own "+" behavior: the column exists in the grid
+      // immediately (default type "text", unnamed) — no modal blocks on
+      // typing a name first. The same popover used to rename/retype an
+      // EXISTING column just opens straight to its "type" pane so the new
+      // column's type is one click away, with the rename input still
+      // visible above it the whole time.
+      const addColumn = () => {
         const id = "col_" + Math.random().toString(36).slice(2, 9);
-        const col = { id, name, type: newColType };
-        if (newColType === "select" || newColType === "multi_select") col.options = [];
+        const col = { id, name: "", type: "text" };
         saveSchema({ ...schema, columns: [...schema.columns, col] });
-        setNewColName("");
-        setNewColType("text");
-        setAddColOpen(false);
+        setColMenuOpen(id);
+        setColMenuView("type");
+        setRenameDraft("");
       };
 
       const removeColumn = (colId) => {
@@ -560,7 +552,13 @@ export const database = createReactBlockSpec(
       };
 
       const changeColumnType = (col, type) => {
-        const next = { ...col, type };
+        // Also applies whatever's currently in the rename input — lets a
+        // user type a name for a brand-new column and click a type right
+        // after, without needing to press Enter first to commit the name.
+        // A no-op for the ordinary "change type of an existing, already-
+        // named column" flow, since renameDraft is seeded from col.name.
+        const name = renameDraft.trim() || col.name;
+        const next = { ...col, name, type };
         if (type === "select" || type === "multi_select") { if (!Array.isArray(next.options)) next.options = []; }
         else delete next.options;
         saveSchema({ ...schema, columns: schema.columns.map((c) => (c.id === col.id ? next : c)) });
@@ -697,15 +695,21 @@ export const database = createReactBlockSpec(
       //
       // Columns only get a fixed pixel width once a user actually drags
       // their resize handle (persisted as column.width / schema.titleWidth);
-      // an untouched column stays flexible (minmax(...,1fr)) so tables that
-      // have never been resized keep filling the block's width, matching
-      // the look every table had before this feature existed.
+      // an untouched column defaults to a fixed, content-sized 180px —
+      // NOT a flexible 1fr track. 1fr used to fill 100% of the block's
+      // width, which meant a table's only unresized column started out
+      // rendered many hundreds of pixels wide; dragging its handle by a
+      // normal amount barely dented that inflated starting width, so the
+      // column stayed almost as wide as before with a big dead-looking
+      // gap between its actual content and the true column edge. A fixed
+      // default also matches Notion's own tables, which size to their
+      // content and don't force-stretch to fill the page.
       const titleWidth = colWidths.__title ?? schema.titleWidth ?? 220;
       const colTemplate = schema.columns
         .map((c) => {
           const live = colWidths[c.id];
           if (live != null) return `${live}px`;
-          return c.width ? `${c.width}px` : "minmax(120px, 1fr)";
+          return c.width ? `${c.width}px` : "180px";
         })
         .join(" ");
       const gridTemplateColumns = `28px ${titleWidth}px ${colTemplate} 32px`;
@@ -1035,20 +1039,24 @@ export const database = createReactBlockSpec(
                   ref={colMenuOpen === c.id ? colMenuRef : null}
                 >
                   <button className="bn-db-col-name-btn" onClick={() => openColMenu(c)}>
-                    <span className="bn-db-col-name">{c.name}</span>
+                    <span className="bn-db-col-name">{c.name || "Propiedad"}</span>
                   </button>
                   <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, c.id)} />
                   {colMenuOpen === c.id && (
                     <div className="bn-db-colmenu-pop" contentEditable={false}>
+                      <input
+                        className="bn-db-colmenu-rename"
+                        value={renameDraft}
+                        autoFocus
+                        placeholder="Nombre de propiedad"
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { renameColumn(c); if (colMenuView === "type") setColMenuOpen(null); }
+                          if (e.key === "Escape") setColMenuOpen(null);
+                        }}
+                      />
                       {colMenuView === "main" ? (
                         <>
-                          <input
-                            className="bn-db-colmenu-rename"
-                            value={renameDraft}
-                            autoFocus
-                            onChange={(e) => setRenameDraft(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") renameColumn(c); if (e.key === "Escape") setColMenuOpen(null); }}
-                          />
                           <button className="bn-db-colmenu-item" onClick={() => setColMenuView("type")}>
                             Cambiar tipo <span className="bn-db-colmenu-current">{(PROP_TYPES.find((t) => t.id === c.type) || {}).label}</span>
                           </button>
@@ -1077,32 +1085,12 @@ export const database = createReactBlockSpec(
                   )}
                 </div>
               ))}
-              <div className="bn-database-addcol bn-db-cell" ref={addColRef}>
-                <button onClick={() => setAddColOpen((v) => !v)} title="Agregar columna">+</button>
-                {addColOpen && (
-                  <div className="bn-db-addcol-pop" contentEditable={false}>
-                    <input
-                      className="bn-db-addcol-name"
-                      placeholder="Nombre de columna"
-                      value={newColName}
-                      autoFocus
-                      onChange={(e) => setNewColName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") confirmAddColumn(); if (e.key === "Escape") setAddColOpen(false); }}
-                    />
-                    <div className="bn-db-addcol-types">
-                      {PROP_TYPES.map((t) => (
-                        <button
-                          key={t.id}
-                          className={"bn-db-addcol-type" + (newColType === t.id ? " active" : "")}
-                          onClick={() => setNewColType(t.id)}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                    <button className="bn-db-addcol-confirm" onClick={confirmAddColumn}>Agregar</button>
-                  </div>
-                )}
+              {/* Matches Notion: clicking "+" creates the column immediately
+                  (see addColumn) and opens the SAME rename/type popover a
+                  column's own header uses, rather than a separate modal
+                  that blocked column creation on typing a name first. */}
+              <div className="bn-database-addcol bn-db-cell">
+                <button onClick={addColumn} title="Agregar columna">+</button>
               </div>
             </div>
 

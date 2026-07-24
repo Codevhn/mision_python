@@ -166,11 +166,18 @@
 }
 
 /* Wide tables scroll horizontally inside this container instead of
-   squeezing every column below its own minmax() floor (audit item #9).
-   The grid itself is width:max-content so unresized columns keep their
-   natural/minimum size and the grid only grows past 100% — triggering
-   this container's own scrollbar — once there's genuinely not enough
-   room, exactly like Notion's own wide-table behavior. */
+   squeezing every column below its own fixed width floor (audit item #9).
+   The grid itself is width:max-content — sized to its actual columns,
+   never force-stretched to fill the block — so it only grows past the
+   container's own width (triggering this container's scrollbar) once
+   there's genuinely not enough room, matching Notion's own wide-table
+   behavior. Deliberately no min-width:100% here: forcing a narrow table
+   (e.g. just Nombre + one property) to always fill the full block width
+   left dead, unstyled space after its last real column once nothing else
+   was left to stretch — same reason .bn-database-grid carries no outer
+   border below: only per-cell border-top/border-left draw the internal
+   grid lines, so a compact table doesn't read as a bordered box sitting
+   apart from the page, matching Notion's own borderless table framing. */
 .bn-db-scroll {
   overflow-x: auto;
   max-width: 100%;
@@ -178,11 +185,7 @@
 .bn-database-grid {
   display: grid;
   width: max-content;
-  min-width: 100%;
   font-size: 0.85em;
-  border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
 }
 .bn-db-grid-row { display: contents; }
 .bn-db-cell {
@@ -553,35 +556,3 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
   padding: 6px 10px;
 }
 
-.bn-db-addcol-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  width: 220px;
-  background: var(--bg-overlay);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
-  padding: 10px;
-  z-index: 50;
-  white-space: normal;
-  font-weight: 400;
-}
-.bn-db-addcol-name {
-  width: 100%; box-sizing: border-box;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg-elevated); color: var(--text);
-  padding: 6px 8px; font-size: 0.85em; margin-bottom: 8px;
-}
-.bn-db-addcol-types { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.bn-db-addcol-type {
-  border: 1px solid var(--border); border-radius: 999px;
-  background: var(--bg-elevated); color: var(--text-muted);
-  font-size: 0.72em; padding: 3px 9px; cursor: pointer;
-}
-.bn-db-addcol-type.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
-.bn-db-addcol-confirm {
-  width: 100%; border: none; border-radius: 6px;
-  background: var(--accent); color: #fff;
-  font-size: 0.8em; font-weight: 600; padding: 6px; cursor: pointer;
-}
