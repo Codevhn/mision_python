@@ -4379,6 +4379,81 @@ def get_concept_theory(course, concept_id):
     return jsonify({"theory": content, "theory_html": theory_html, "cached": False})
 
 
+@app.route("/api/courses/<course>/concepts/<concept_id>/explain", methods=["POST"])
+def explain_concept_feynman(course, concept_id):
+    """Técnica Feynman: el estudiante explica el concepto con sus propias
+    palabras, sin más pista que el nombre — evalúa comprensión real, no otra
+    ronda de quiz/reto. Usa el mismo scoring de 3 ejes que check-text para
+    alimentar el crecimiento de dominio ponderado por calidad en review_concept
+    de la misma forma."""
+    data = load_concepts()
+    entry = data["courses"].get(course)
+    concept = next((c for c in entry["concepts"] if c["id"] == concept_id), None) if entry else None
+    if not concept:
+        return jsonify({"error": "Concepto no encontrado"}), 404
+
+    body = request.json or {}
+    explanation = (body.get("explanation") or "").strip()
+    if not explanation:
+        return jsonify({"correct": False, "feedback": "No escribiste ninguna explicación.", "feedback_html": "", "scores": {}, "quality": None})
+
+    system = (
+        "Eres un evaluador que aplica la técnica Feynman. Un estudiante intenta explicarte, en sus propias "
+        "palabras y SIN pistas previas, un concepto técnico puntual — tu tarea es juzgar si esa explicación "
+        "demuestra comprensión real, no memorización superficial de términos.\n\n"
+        "Sé estricto con imprecisiones técnicas reales, pero tolerante con la forma (no exigas vocabulario "
+        "formal si la idea de fondo está bien explicada).\n\n"
+        "Calificá tres ejes, cada uno 0-100:\n"
+        "- \"correctness\": qué tan técnicamente precisa es la explicación (100 = sin errores).\n"
+        "- \"depth\": si explica el POR QUÉ / CÓMO funciona, con matices o ejemplos propios, no solo repite la "
+        "definición de memoria (100 = comprensión genuina y aplicable; bajo = superficial aunque no esté mal).\n"
+        "- \"clarity\": qué tan clara y bien organizada está la explicación.\n\n"
+        "\"correct\" es true solo si la explicación es sustancialmente correcta Y demuestra comprensión real "
+        "(no basta con mencionar las palabras clave correctas).\n\n"
+        "Si tu feedback cita código o un término técnico, usa Markdown (backtick simple o bloque triple según "
+        "corresponda). Responde en español.\n\n"
+        "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"scores\": {\"correctness\":0-100,"
+        "\"depth\":0-100,\"clarity\":0-100}, \"feedback\": \"...\"} — feedback en 1-3 frases, con tono de tutor "
+        "cercano: qué entendió bien, qué le falta o qué corrigió."
+    )
+    user_msg = (
+        f"Concepto a explicar: {concept['name']}\n"
+        f"Descripción de referencia (no la reveles literal, es solo tu contexto): {concept.get('description', '')}\n\n"
+        f"Explicación del estudiante:\n{explanation}"
+    )
+
+    content, err = _call_ai(system, user_msg, max_tokens=400, json_mode=True, provider=body.get("provider"), model=body.get("model"))
+    if err:
+        return err
+    try:
+        result = json.loads(content)
+        feedback = str(result.get("feedback") or "")
+        scores_raw = result.get("scores") if isinstance(result.get("scores"), dict) else {}
+
+        def _clamp_score(v):
+            try:
+                return max(0, min(100, round(float(v))))
+            except (TypeError, ValueError):
+                return None
+
+        scores = {}
+        for axis in ("correctness", "depth", "clarity"):
+            v = _clamp_score(scores_raw.get(axis))
+            if v is not None:
+                scores[axis] = v
+        quality = round(sum(scores.values()) / len(scores)) if scores else None
+
+        return jsonify({
+            "correct": bool(result.get("correct")),
+            "feedback": feedback,
+            "feedback_html": render_markdown(feedback),
+            "scores": scores,
+            "quality": quality,
+        })
+    except json.JSONDecodeError:
+        return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
+
+
 def _generate_concepts_for_course(course, provider=None, model=None):
     """Core concept-map extraction, shared by the manual regenerate endpoint
     and the lazy auto-generate-on-first-domain-fetch path. Returns
@@ -4487,6 +4562,10 @@ def review_concept():
     if not concept_id:
         return jsonify({"error": "Missing concept_id"}), 400
 
+    modality = (data.get("modality") or "quiz").strip()
+    if modality not in ("quiz", "practice", "explain"):
+        modality = "quiz"
+
     quality = data.get("quality")
     try:
         quality = max(0.0, min(1.0, float(quality) / 100)) if quality is not None else None
@@ -4495,6 +4574,15 @@ def review_concept():
 
     progress = load_concept_progress()
     state = progress.get(concept_id, {"ease": 2.5, "interval": 0, "reps": 0, "course": course})
+
+    # Tracked so 100% "dominio" can't be reached via one modality's luck alone
+    # (see _concept_mastery's cap) — every distinct way this concept has been
+    # genuinely evaluated (quiz / reto práctico / explícamelo) counts, whether
+    # or not this particular attempt was correct.
+    modalities = list(state.get("modalities", []))
+    if modality not in modalities:
+        modalities.append(modality)
+    state["modalities"] = modalities
 
     if correct:
         state["reps"] += 1
@@ -4531,12 +4619,26 @@ def review_concept():
     return jsonify({"concept_id": concept_id, **state})
 
 
+_MODALITY_MASTERY_CAP = {0: 0, 1: 60, 2: 85}  # 3+ modalities -> uncapped (100)
+
+
 def _concept_mastery(progress_state):
     """0-100 mastery proxy: how many days the concept can go before its next
-    review is due, capped at a month (interval 0 = never practiced = 0)."""
+    review is due, capped at a month (interval 0 = never practiced = 0).
+
+    Also capped by how many distinct modalities (quiz / práctica / explícamelo)
+    have ever evaluated this concept — one modality alone tops out at 60%, two
+    at 85%; only real coverage across evaluation types reaches 100%. Records
+    from before this existed have no "modalities" key at all and are left
+    uncapped, so past progress isn't retroactively knocked down until it's
+    reviewed again under the new tracking."""
     if not progress_state:
         return 0
-    return min(100, round(progress_state.get("interval", 0) / 30 * 100))
+    base = min(100, round(progress_state.get("interval", 0) / 30 * 100))
+    if "modalities" not in progress_state:
+        return base
+    cap = _MODALITY_MASTERY_CAP.get(len(progress_state["modalities"]), 100)
+    return min(base, cap)
 
 
 def _ensure_concepts_for_all_courses():

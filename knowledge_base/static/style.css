@@ -7643,6 +7643,19 @@ body {
   min-height: 60px;
 }
 
+/* "Explícamelo" — Feynman-style explain-back, a third evaluation modality
+   alongside quiz/práctica shown inline in the concept hub. */
+.practice-concept-explain {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.practice-concept-explain-title { font-size: 0.92rem; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+.practice-concept-explain-hint { font-size: 0.8rem; color: var(--text-faint); line-height: 1.5; margin: 0 0 10px; }
+.practice-concept-explain-textarea { width: 100%; resize: vertical; min-height: 90px; font-family: inherit; }
+.practice-concept-explain-result { margin-top: 12px; }
+.practice-concept-explain-result.hidden { display: none; }
+
 .practice-empty-main {
   height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

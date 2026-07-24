@@ -8306,7 +8306,7 @@ function _answerQuiz(idx) {
     fetch('/api/concepts/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ concept_id: q.concept_id, course: st.course, correct: idx === q.correct }),
+      body: JSON.stringify({ concept_id: q.concept_id, course: st.course, correct: idx === q.correct, modality: 'quiz' }),
     }).catch(() => {});
   }
 }
@@ -9026,6 +9026,15 @@ async function _renderConceptHubMain() {
         <button class="btn-ghost" id="practiceConceptViewLessonsBtn">📚 Ver lecciones del curso</button>
         <button class="btn-primary" id="practiceConceptGenerateBtn">✦ Generar reto de este concepto</button>
       </div>
+      <div class="practice-concept-explain">
+        <h4 class="practice-concept-explain-title">🗣️ Explícamelo (técnica Feynman)</h4>
+        <p class="practice-concept-explain-hint">Explica este concepto con tus propias palabras, como si se lo enseñaras a alguien más — no copies la teoría de arriba, la IA evalúa si de verdad lo entendiste.</p>
+        <textarea id="practiceConceptExplainInput" class="practice-text-input practice-concept-explain-textarea" rows="4" placeholder="Escribe tu explicación aquí…"></textarea>
+        <div class="practice-main-actions">
+          <button class="btn-primary" id="practiceConceptExplainBtn">Evaluar mi explicación</button>
+        </div>
+        <div class="practice-concept-explain-result hidden" id="practiceConceptExplainResult"></div>
+      </div>
     </div>`;
 
   $('practiceConceptViewLessonsBtn').addEventListener('click', () => {
@@ -9033,6 +9042,7 @@ async function _renderConceptHubMain() {
     if (typeof setActiveCourse === 'function') setActiveCourse(st.conceptCourse);
   });
   $('practiceConceptGenerateBtn').addEventListener('click', _startPracticeGeneration);
+  $('practiceConceptExplainBtn').addEventListener('click', () => _submitConceptExplanation(st, concept));
 
   const theoryEl = $('practiceConceptTheory');
   const conceptIdAtRequest = concept.id;
@@ -9048,6 +9058,71 @@ async function _renderConceptHubMain() {
   } catch (err) {
     if (_practiceState !== st || st.conceptId !== conceptIdAtRequest) return;
     theoryEl.innerHTML = `<div class="quiz-error">Error de red: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// Feynman "explícamelo": a third evaluation modality alongside quiz/práctica,
+// judged the same way as check-text's dimension scoring (correctness/depth/
+// clarity) but on a free-form explanation with no rubric — only the concept's
+// name is given, so parroting the theory above doesn't score well by itself.
+async function _submitConceptExplanation(st, concept) {
+  const input = $('practiceConceptExplainInput');
+  const explanation = (input.value || '').trim();
+  if (!explanation) { showToast('Escribe tu explicación primero', 'error'); return; }
+
+  const btn = $('practiceConceptExplainBtn');
+  btn.disabled = true;
+  btn.textContent = 'Evaluando…';
+  const resultEl = $('practiceConceptExplainResult');
+
+  try {
+    const res = await fetch(`/api/courses/${st.conceptCourse}/concepts/${concept.id}/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ explanation, provider: st.provider, model: st.model }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { showToast(data.error || 'No se pudo evaluar la explicación', 'error'); return; }
+
+    const axisLabels = { correctness: 'Corrección', depth: 'Profundidad', clarity: 'Claridad' };
+    const scoresHtml = (data.scores && Object.keys(data.scores).length)
+      ? `<div class="practice-quality-scores">${Object.entries(data.scores).map(([axis, val]) => `
+          <div class="practice-quality-row">
+            <span class="practice-quality-label">${escapeHtml(axisLabels[axis] || axis)}</span>
+            <div class="practice-quality-bar"><div class="practice-quality-fill" style="width:${val}%"></div></div>
+            <span class="practice-quality-val">${val}%</span>
+          </div>`).join('')}</div>`
+      : '';
+    resultEl.innerHTML = `
+      <div class="practice-feedback practice-md ${data.correct ? 'practice-feedback--ok' : 'practice-feedback--bad'}">
+        ${data.feedback_html || escapeHtml(data.feedback || '')}
+      </div>
+      ${scoresHtml}`;
+    resultEl.classList.remove('hidden');
+
+    if (concept.id) {
+      fetch('/api/concepts/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_id: concept.id, course: st.conceptCourse, correct: !!data.correct, modality: 'explain',
+          ...(typeof data.quality === 'number' ? { quality: data.quality } : {}),
+        }),
+      }).then(() => _getDomainData(true)).then(domainData => {
+        if (_practiceState !== st) return;
+        const updated = domainData.courses[st.conceptCourse]?.concepts.find(c => c.id === concept.id);
+        if (!updated) return;
+        const fill = document.querySelector('.practice-concept-mastery-fill');
+        const label = document.querySelector('.practice-concept-mastery-label');
+        if (fill) fill.style.width = `${updated.mastery}%`;
+        if (label) label.textContent = `${updated.mastery}% dominado`;
+      }).catch(() => {});
+    }
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Evaluar mi explicación';
   }
 }
 
@@ -9396,7 +9471,7 @@ async function _checkPracticeStep() {
         // mastery calc how deep the answer actually was, not just pass/fail —
         // a shallow-but-correct answer grows dominio slower than a strong one.
         body: JSON.stringify({
-          concept_id: step.concept_id, course: st.course, correct: stepState.passed,
+          concept_id: step.concept_id, course: st.course, correct: stepState.passed, modality: 'practice',
           ...(stepState.quality != null ? { quality: stepState.quality } : {}),
         }),
       }).catch(() => {});
