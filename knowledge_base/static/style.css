@@ -7578,6 +7578,70 @@ body {
 
 .practice-generate-btn { width: 100%; margin-top: 2px; }
 
+.practice-refresh-topics-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.74rem;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.practice-refresh-topics-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.practice-refresh-topics-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* "Centro de mando" — the concept hub shown in the main area once a
+   Curso ▸ Categoría ▸ Concepto selection resolves to a specific concept. */
+.practice-concept-hub-category {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.practice-concept-hub-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+.practice-concept-mastery {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.practice-concept-mastery-bar {
+  flex: 1;
+  max-width: 240px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.practice-concept-mastery-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+.practice-concept-mastery-label { font-size: 0.76rem; color: var(--text-faint); font-weight: 600; }
+.practice-concept-hub-theory {
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  font-size: 0.9rem;
+  min-height: 60px;
+}
+
 .practice-empty-main {
   height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

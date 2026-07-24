@@ -4184,7 +4184,46 @@ def get_course_concepts(course):
     return jsonify({"course": course, "generated_at": entry.get("generated_at"), "concepts": entry.get("concepts", [])})
 
 
-def _generate_concepts_for_course(course):
+@app.route("/api/courses/<course>/concepts/<concept_id>/theory", methods=["GET"])
+def get_concept_theory(course, concept_id):
+    """A short, focused explanation of one specific concept — the "centro de
+    mando" hub's Teoría section. Generated once and cached on the concept
+    itself (concepts.json), since the explanation of "CSS positioning" isn't
+    going to change between requests — no reason to burn an API call twice."""
+    data = load_concepts()
+    entry = data["courses"].get(course)
+    if not entry:
+        return jsonify({"error": "Este curso no tiene mapa de conceptos todavía"}), 404
+    concept = next((c for c in entry["concepts"] if c["id"] == concept_id), None)
+    if not concept:
+        return jsonify({"error": "Concepto no encontrado"}), 404
+
+    if concept.get("theory_html"):
+        return jsonify({"theory": concept.get("theory", ""), "theory_html": concept["theory_html"], "cached": True})
+
+    courses_master = load_courses()["courses"]
+    course_label = courses_master.get(course, {}).get("label", course)
+    system = (
+        "Eres un instructor técnico claro y directo. Te piden explicar UN concepto puntual de un curso "
+        "técnico — no el curso entero, solo ese concepto.\n\n"
+        "Escribe 2-3 párrafos breves: qué es, por qué importa en la práctica, y un ejemplo simple que lo "
+        "ilustre. Si citas código, usa bloques Markdown con triple backtick indicando el lenguaje; para un "
+        "nombre de propiedad/función/comando suelto, usa backtick simple. Responde en español, tono cercano "
+        "de instructor, no de enciclopedia."
+    )
+    user_msg = f"Curso: {course_label}\nConcepto: {concept['name']}\nDescripción: {concept.get('description', '')}"
+    content, err = _call_ai(system, user_msg, max_tokens=600, provider=request.args.get("provider"), model=request.args.get("model"))
+    if err:
+        return err
+
+    theory_html = render_markdown(content)
+    concept["theory"] = content
+    concept["theory_html"] = theory_html
+    save_concepts(data)
+    return jsonify({"theory": content, "theory_html": theory_html, "cached": False})
+
+
+def _generate_concepts_for_course(course, provider=None, model=None):
     """Core concept-map extraction, shared by the manual regenerate endpoint
     and the lazy auto-generate-on-first-domain-fetch path. Returns
     (concepts_list, None) on success or (None, error_message) on failure —
@@ -4204,16 +4243,20 @@ def _generate_concepts_for_course(course):
         "extrae el mapa de conceptos clave que un estudiante debe dominar.\n\n"
         "Reglas estrictas:\n"
         "- Identifica entre 6 y 15 conceptos concretos y accionables (habilidades o temas puntuales, no lecciones completas).\n"
+        "- Agrupa cada concepto bajo una \"category\": un tema amplio y reconocible del área (ej. para CSS: "
+        "\"Posicionamiento\", \"Flexbox y Grid\", \"Selectores\", \"Tipografía\"; para SQL: \"Consultas básicas\", "
+        "\"JOINs\", \"Agregaciones\"). Usa entre 3 y 6 categorías distintas en total, reutilizando la misma "
+        "categoría para varios conceptos relacionados en vez de crear una por concepto.\n"
         "- Aplica el principio de Pareto: marca con \"pareto\": true solo el ~20% de los conceptos de mayor "
         "apalancamiento práctico (los que más impactan el dominio real del curso si se aprenden bien); el resto \"pareto\": false.\n"
         "- Cada concepto incluye una descripción breve (1 frase) de qué implica dominarlo.\n"
         "- No dupliques conceptos ni los hagas demasiado genéricos ni demasiado específicos.\n"
         "- Responde en español.\n\n"
-        "Responde ÚNICAMENTE con JSON: {\"concepts\":[{\"name\":\"...\",\"description\":\"...\",\"pareto\":true|false}]}"
+        "Responde ÚNICAMENTE con JSON: {\"concepts\":[{\"name\":\"...\",\"category\":\"...\",\"description\":\"...\",\"pareto\":true|false}]}"
     )
     user_msg = f"Curso: {course_label}\n\nLecciones:\n" + "\n".join(f"- {t}" for t in titles[:120])
 
-    content, err = _call_deepseek(system, user_msg, max_tokens=2000, json_mode=True)
+    content, err = _call_ai(system, user_msg, max_tokens=2000, json_mode=True, provider=provider, model=model)
     if err:
         # err is a (jsonify(...), status) tuple meant for a route; unwrap its message for callers that just want text
         try:
@@ -4240,6 +4283,7 @@ def _generate_concepts_for_course(course):
         clean_concepts.append({
             "id": uuid.uuid4().hex[:8],
             "name": name.strip(),
+            "category": str(c.get("category") or "").strip() or "General",
             "description": str(c.get("description") or ""),
             "pareto": bool(c.get("pareto")),
         })
@@ -4258,7 +4302,8 @@ def _generate_concepts_for_course(course):
 
 @app.route("/api/courses/<course>/concepts/generate", methods=["POST"])
 def generate_course_concepts(course):
-    concepts, error = _generate_concepts_for_course(course)
+    body = request.json or {}
+    concepts, error = _generate_concepts_for_course(course, provider=body.get("provider"), model=body.get("model"))
     if error:
         return jsonify({"error": error}), 502
     data = load_concepts()

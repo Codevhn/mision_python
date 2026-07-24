@@ -8334,6 +8334,7 @@ function _renderPracticeRail() {
       <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
       <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
       <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise">🎲 Reto sorpresa</button>
+      <button class="practice-mode-tab ${st.mode === 'concept' ? 'active' : ''}" data-mode="concept">🧭 Por tema</button>
     </div>
     <div id="practiceModeBody"></div>
     <div class="practice-diff-row practice-diff-row--col">
@@ -8366,7 +8367,14 @@ function _renderPracticeRail() {
   });
 
   document.querySelectorAll('.practice-mode-tab').forEach(btn => {
-    btn.addEventListener('click', () => { st.mode = btn.dataset.mode; _renderPracticeRail(); });
+    btn.addEventListener('click', () => {
+      st.mode = btn.dataset.mode;
+      _renderPracticeRail();
+      // "Por tema" drives what main shows (the concept hub) once a concept is
+      // picked — but never clobber an active reto/results just because the
+      // mode tab was flipped while one was already open.
+      if (st.screen === 'empty' && !st.viewingHistory) _renderPracticeMain();
+    });
   });
   document.querySelectorAll('.practice-diff-btn').forEach(btn => {
     btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderPracticeRail(); });
@@ -8598,8 +8606,147 @@ async function _renderPracticeModeBody() {
     return;
   }
 
+  if (st.mode === 'concept') {
+    // "Centro de mando": Curso ▸ Categoría ▸ Concepto en cascada — cada
+    // select filtra al siguiente. Elegir un concepto no solo prepara la
+    // generación del reto (via concept_id forzado, igual que "Reto
+    // sorpresa"), también dispara el hub en el área principal (teoría +
+    // tu dominio en ESE concepto puntual).
+    container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando temas…</div>`;
+    const domainData = await _getDomainData();
+    if (_practiceState !== st || st.mode !== 'concept') return;
+
+    const courseSlugs = Object.keys(domainData.courses || {});
+    if (!courseSlugs.length) {
+      container.innerHTML = `<div class="practice-empty-note">Todavía no hay cursos con mapa de temas — agregá lecciones a un curso y volvé, se genera solo.</div>`;
+      return;
+    }
+
+    const courseInfo = st.conceptCourse ? domainData.courses[st.conceptCourse] : null;
+    const categories = courseInfo ? [...new Set(courseInfo.concepts.map(c => c.category || 'General'))] : [];
+    const conceptsInCategory = (courseInfo && st.conceptCategory)
+      ? courseInfo.concepts.filter(c => (c.category || 'General') === st.conceptCategory)
+      : [];
+
+    container.innerHTML = `
+      <div class="practice-cselect" id="practiceConceptCourseCSelect"></div>
+      <div class="practice-cselect" id="practiceConceptCategoryCSelect" style="margin-top:8px"></div>
+      <div class="practice-cselect" id="practiceConceptCSelect" style="margin-top:8px"></div>
+      <button class="practice-refresh-topics-btn" id="practiceRefreshTopicsBtn" type="button" ${!st.conceptCourse ? 'disabled' : ''}>🔄 Actualizar temas de este curso</button>`;
+
+    _mountPracticeCustomSelect($('practiceConceptCourseCSelect'), {
+      options: courseSlugs.map(slug => ({ value: slug, label: domainData.courses[slug].label })),
+      value: st.conceptCourse,
+      placeholder: 'Elige un curso…',
+      onChange: value => { st.conceptCourse = value; st.conceptCategory = ''; st.conceptId = ''; _renderPracticeModeBody(); _renderPracticeMain(); },
+    });
+    _mountPracticeCustomSelect($('practiceConceptCategoryCSelect'), {
+      options: categories.map(cat => ({ value: cat, label: cat })),
+      value: st.conceptCategory,
+      placeholder: st.conceptCourse ? 'Elige una categoría…' : 'Primero elige un curso',
+      disabled: !st.conceptCourse,
+      onChange: value => { st.conceptCategory = value; st.conceptId = ''; _renderPracticeModeBody(); _renderPracticeMain(); },
+    });
+    _mountPracticeCustomSelect($('practiceConceptCSelect'), {
+      options: conceptsInCategory.map(c => ({ value: c.id, label: `${c.name} (${c.mastery}%)` })),
+      value: st.conceptId,
+      placeholder: st.conceptCategory ? 'Elige un concepto…' : 'Primero elige una categoría',
+      disabled: !st.conceptCategory,
+      onChange: value => {
+        st.conceptId = value;
+        const picked = conceptsInCategory.find(c => c.id === value);
+        st.conceptName = picked ? picked.name : '';
+        _renderPracticeMain();
+      },
+    });
+    $('practiceRefreshTopicsBtn')?.addEventListener('click', () => _regenerateConceptMap(st));
+    return;
+  }
+
   // surprise
   container.innerHTML = `<div class="practice-empty-note">Elegiremos una lección al azar de tus cursos para retarte.</div>`;
+}
+
+let _domainDataCache = null;
+async function _getDomainData(force) {
+  if (_domainDataCache && !force) return _domainDataCache;
+  try {
+    const res = await fetch('/api/domain');
+    _domainDataCache = await res.json();
+  } catch { _domainDataCache = { courses: {} }; }
+  return _domainDataCache;
+}
+
+async function _regenerateConceptMap(st) {
+  if (!st.conceptCourse) return;
+  const btn = $('practiceRefreshTopicsBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Actualizando…'; }
+  try {
+    const res = await fetch(`/api/courses/${st.conceptCourse}/concepts/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: st.provider, model: st.model }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { showToast(data.error || 'No se pudo actualizar', 'error'); return; }
+    st.conceptCategory = '';
+    st.conceptId = '';
+    await _getDomainData(true);
+    showToast('Temas actualizados', 'success');
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+  } finally {
+    if (_practiceState === st) { _renderPracticeModeBody(); _renderPracticeMain(); }
+  }
+}
+
+async function _renderConceptHubMain() {
+  const st = _practiceState;
+  const domainData = await _getDomainData();
+  if (_practiceState !== st) return;
+  const courseInfo = domainData.courses[st.conceptCourse];
+  const concept = courseInfo?.concepts.find(c => c.id === st.conceptId);
+  if (!concept) { _renderPracticeEmptyMain(); return; }
+
+  $('practiceMain').innerHTML = `
+    <div class="practice-concept-hub">
+      <span class="practice-concept-hub-category">${escapeHtml(concept.category || 'General')}</span>
+      <h3 class="practice-challenge-title" style="margin:4px 0 8px">${escapeHtml(concept.name)}</h3>
+      <p class="practice-concept-hub-desc">${escapeHtml(concept.description || '')}</p>
+      <div class="practice-concept-mastery">
+        <div class="practice-concept-mastery-bar"><div class="practice-concept-mastery-fill" style="width:${concept.mastery}%"></div></div>
+        <span class="practice-concept-mastery-label">${concept.mastery}% dominado</span>
+      </div>
+      <div class="practice-concept-hub-theory practice-md" id="practiceConceptTheory">
+        <div class="practice-loading-inline"><span class="arp-spinner"></span> Preparando la teoría…</div>
+      </div>
+      <div class="practice-main-actions">
+        <button class="btn-ghost" id="practiceConceptViewLessonsBtn">📚 Ver lecciones del curso</button>
+        <button class="btn-primary" id="practiceConceptGenerateBtn">✦ Generar reto de este concepto</button>
+      </div>
+    </div>`;
+
+  $('practiceConceptViewLessonsBtn').addEventListener('click', () => {
+    window.switchSpace?.('courses');
+    if (typeof setActiveCourse === 'function') setActiveCourse(st.conceptCourse);
+  });
+  $('practiceConceptGenerateBtn').addEventListener('click', _startPracticeGeneration);
+
+  const theoryEl = $('practiceConceptTheory');
+  const conceptIdAtRequest = concept.id;
+  try {
+    const qs = new URLSearchParams();
+    if (st.provider) qs.set('provider', st.provider);
+    if (st.model) qs.set('model', st.model);
+    const res = await fetch(`/api/courses/${st.conceptCourse}/concepts/${concept.id}/theory?${qs.toString()}`);
+    const data = await res.json();
+    if (_practiceState !== st || st.conceptId !== conceptIdAtRequest) return; // moved on while this was in flight
+    if (data.error) { theoryEl.innerHTML = `<div class="quiz-error">${escapeHtml(data.error)}</div>`; return; }
+    theoryEl.innerHTML = data.theory_html || escapeHtml(data.theory || '');
+  } catch (err) {
+    if (_practiceState !== st || st.conceptId !== conceptIdAtRequest) return;
+    theoryEl.innerHTML = `<div class="quiz-error">Error de red: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 // ── Main area — dispatches on the current state to whatever should occupy
@@ -8609,7 +8756,11 @@ function _renderPracticeMain() {
   const st = _practiceState;
   if (!st) return;
   if (st.viewingHistory) { _renderPracticeHistoryMain(); return; }
-  if (st.screen === 'empty') { _renderPracticeEmptyMain(); return; }
+  if (st.screen === 'empty') {
+    if (st.mode === 'concept' && st.conceptId) { _renderConceptHubMain(); return; }
+    _renderPracticeEmptyMain();
+    return;
+  }
   if (st.screen === 'loading') { _renderPracticeLoadingMain(); return; }
   if (st.screen === 'challenge') { _renderPracticeChallenge(); return; }
   if (st.screen === 'results') { _renderPracticeResultsScreen(st); return; }
@@ -8986,6 +9137,19 @@ async function _startPracticeGeneration() {
     context = (data.markdown || '').slice(0, 6000);
     entryId = st.entryId;
     course = data.meta.type === 'course' ? (data.meta.course || '') : '';
+  } else if (st.mode === 'concept') {
+    // "Por tema" (centro de mando): the concept picked in the cascading
+    // Curso ▸ Categoría ▸ Concepto selector, forced by concept_id like
+    // "Reto sorpresa" already does for the weakest one — same mechanism,
+    // just user-chosen instead of auto-picked.
+    if (!st.conceptId) { showToast('Elegí un concepto para practicar', 'error'); return; }
+    const domainData = await _getDomainData();
+    const courseInfo = domainData.courses[st.conceptCourse];
+    const concept = courseInfo?.concepts.find(c => c.id === st.conceptId);
+    topic = concept ? concept.name : (st.conceptName || 'concepto');
+    context = concept ? concept.description : '';
+    course = st.conceptCourse;
+    forceConceptId = st.conceptId;
   } else {
     // "Reto sorpresa": target the real weakest high-leverage concept instead of a
     // random lesson, when domain data exists — falls back to random otherwise.
