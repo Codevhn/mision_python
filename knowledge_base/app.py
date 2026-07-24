@@ -3134,6 +3134,16 @@ DEFAULT_PROVIDER = "deepseek"
 DEFAULT_MODEL = "deepseek-chat"
 
 
+# Python's urllib defaults to "Python-urllib/3.x", which some providers'
+# edge/WAF layers (Cloudflare in front of Groq, at least) reject outright —
+# an ordinary API request with a valid key showing up as "error code: 1010".
+# A normal-looking User-Agent (and Accept header) is the standard fix.
+_AI_HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; ProjectAtlas/1.0; +https://mision-pythonhn.fly.dev)",
+    "Accept": "application/json",
+}
+
+
 def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
     payload = {
         "model": model,
@@ -3149,7 +3159,7 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     req = urllib.request.Request(
         base_url,
         data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        headers={**_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
@@ -3168,11 +3178,43 @@ def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mo
     req = urllib.request.Request(
         f"{base_url}/{model}:generateContent",
         data=body,
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        headers={**_AI_HTTP_HEADERS, "Content-Type": "application/json", "x-goog-api-key": api_key},
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
     return result["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def _clean_ai_error(code, err_body):
+    """Provider error bodies range from a one-line edge-block message to
+    several KB of quota-metric JSON (seen from Gemini's 429s) — never dump
+    either raw into the UI. Pulls out a short human message when the body is
+    parseable JSON in a recognizable shape, always caps the length, and adds
+    a plain-language prefix for the error codes users actually hit."""
+    detail = None
+    try:
+        parsed = json.loads(err_body)
+        if isinstance(parsed, list) and parsed:
+            parsed = parsed[0]
+        if isinstance(parsed, dict):
+            err = parsed.get("error")
+            if isinstance(err, dict):
+                detail = err.get("message")
+            elif isinstance(err, str):
+                detail = err
+    except (json.JSONDecodeError, ValueError):
+        pass
+    if not detail:
+        detail = err_body.strip()
+    detail = detail.split("\n")[0].strip()
+    if len(detail) > 220:
+        detail = detail[:220] + "…"
+
+    if code == 429:
+        return f"Límite de la API alcanzado (429). Probá con otro modelo o proveedor, o esperá unos minutos. Detalle: {detail}"
+    if code in (401, 403):
+        return f"La API rechazó la solicitud ({code}). Revisá la API key configurada o probá otro proveedor. Detalle: {detail}"
+    return f"Error de la API ({code}): {detail}"
 
 
 def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None):
@@ -3200,7 +3242,7 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
         return content, None
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
-        return None, (jsonify({"error": f"API error {e.code}: {err_body}"}), 502)
+        return None, (jsonify({"error": _clean_ai_error(e.code, err_body)}), 502)
     except Exception as e:
         return None, (jsonify({"error": str(e)}), 500)
 

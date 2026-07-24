@@ -133,7 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initAIPanel();
   initPasteMarkdown();
   initQuizModal();
-  initPracticeModal();
   initPagePeek();
   // Deep link: ?open=<entryId> — the target of "Copiar enlace" (database
   // row menu, customBlocks.jsx). No other feature reads location.search
@@ -177,8 +176,8 @@ function bindEvents() {
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
-  $("abPractice")?.addEventListener("click", () => _openPracticeModal());
-  $("msnPractice")?.addEventListener("click", () => { closeSidebarMobile(); _openPracticeModal(); });
+  // #abPractice / #msnPractice open via their data-space="practice" attribute
+  // now (generic space-switch wiring below), like every other space icon.
 
   // Clicking in the wrap padding area (outside the block-editor div) triggers same behavior
   $("blockEditorWrap").addEventListener("click", e => {
@@ -1813,7 +1812,7 @@ async function _renderHomeDomain() {
       ${barsHtml ? `<div class="home-domain-bars">${barsHtml}</div>` : ''}`;
 
     $('homeReminderGoBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
-    $('homeReminderPracticeBtn')?.addEventListener('click', () => _openPracticeModal(reminder.concept_name));
+    $('homeReminderPracticeBtn')?.addEventListener('click', () => _openPracticeSpace(reminder.concept_name));
   } catch {
     container.innerHTML = '';
   }
@@ -5149,7 +5148,7 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice'];
 
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
@@ -5190,10 +5189,12 @@ function setSidebarVisible(visible) {
 
     const ctxBarEl = document.getElementById('ctxBar');
 
-    const radarView   = document.getElementById('radarView');
+    const radarView    = document.getElementById('radarView');
+    const practiceView = document.getElementById('practiceView');
 
     if (graphView)      graphView.classList.add('hidden');
     if (radarView)      radarView.classList.add('hidden');
+    if (practiceView)   practiceView.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -5204,6 +5205,10 @@ function setSidebarVisible(visible) {
     if (welcome)        welcome.style.display = 'none';
     _setHomeAmbient(false);
     if (ctxBarEl)       ctxBarEl.classList.add('hidden');
+    // Stray floating bits (custom-select dropdown portals) live outside this
+    // view entirely (appended to document.body), so hiding #practiceView
+    // alone wouldn't remove them if you navigate away mid-pick.
+    document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
@@ -5239,6 +5244,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'mindmaps') {
       // Land directly on the prompt-first screen — no intermediate empty state
       if (window.MindmapApp) window.MindmapApp.showList();
+    } else if (space === 'practice') {
+      if (practiceView) practiceView.classList.remove('hidden');
+      if (typeof _renderPracticeSpace === 'function') _renderPracticeSpace();
     } else {
       // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
@@ -5266,7 +5274,7 @@ function setSidebarVisible(visible) {
       btn.addEventListener('click', () => {
         const space = btn.dataset.space;
         switchSpace(space);
-        const noTree = ['home', 'graph', 'radar'];
+        const noTree = ['home', 'graph', 'radar', 'practice'];
         if (noTree.includes(space)) closeSidebarMobile();
       });
     });
@@ -8194,138 +8202,61 @@ function _renderQuizResults() {
 // Python steps run for real via /api/execute-style checking (/api/practice/check-python);
 // git/shell/text steps are evaluated by the AI as text (/api/practice/check-text) — never
 // executed. See handoff Fase 1: no real terminal/sandbox by explicit user decision.
+// ── FEATURE: Práctica — retos generados por IA, ambiente propio ────────────
+// Not a floating panel: a real dashboard space (switchSpace('practice')),
+// same weight as Cursos/Radar. A persistent rail on the left holds every
+// control (modo, dificultad, modelo, navegación a Historial); the main
+// area on the right shows whatever's active (vacío / cargando / el reto /
+// resultados / el historial). State lives in _practiceState and survives
+// switching away to another space and back — nothing is ever lost by
+// navigating, only by explicitly starting a new reto.
+//
+// git/shell/text steps are evaluated by the AI as text (/api/practice/check-text) —
+// never executed. See handoff Fase 1: no real terminal/sandbox by explicit user decision.
 let _practiceState = null;
 let _practiceTreeCache = null;
+let _practicePresetTopic = null;
 
-function initPracticeModal() {
-  // Docked panel now (área de guerra, fase 3), not a backdrop modal — there
-  // is no overlay to click through anymore, so there is nothing left that
-  // can dismiss an in-progress challenge by accident. Only the explicit ×
-  // closes it.
-  const closeBtn = $('practiceClose');
-  if (!closeBtn) return;
-  closeBtn.addEventListener('click', _closePracticeModal);
-  $('practiceHistoryBtn')?.addEventListener('click', () => {
-    if (!_practiceState) return;
-    _practiceState.screen = 'history';
-    _renderPracticeHistory();
-  });
+// Entry point for anything outside this feature that wants to jump into
+// Práctica (sidebar icon's data-space wiring handles the plain case on its
+// own) — used where a preset topic needs to travel along, e.g. the Home
+// domain-reminder card's "Practicar ahora" button.
+function _openPracticeSpace(presetTopic) {
+  if (typeof presetTopic === 'string' && presetTopic) _practicePresetTopic = presetTopic;
+  window.switchSpace?.('practice');
 }
 
-function _openPracticeModal(presetTopic) {
-  const panel = $('practicePanel');
-  if (!panel) return;
-  panel.classList.remove('hidden');
-  const st = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: typeof presetTopic === 'string' ? presetTopic : '', entryId: '', reviewCourse: '', contextText: '', startNudge: null };
-  _practiceState = st;
-  _renderPracticeSetup();
+function _renderPracticeSpace() {
+  if (!_practiceState) {
+    const st = {
+      screen: 'empty', viewingHistory: false, mode: 'topic', difficulty: 'medio',
+      topic: _practicePresetTopic || '', entryId: '', reviewCourse: '',
+      contextText: '', startNudge: null,
+    };
+    _practicePresetTopic = null;
+    _practiceState = st;
 
-  // Soft nudge: Práctica leans on Cursos, so if there's an unstarted course we
-  // say so — without blocking anything, per the user's explicit "soft, not
-  // hard gate" call. Fetched async so it never delays opening the panel.
-  fetch('/api/domain/reminder').then(r => r.json()).then(data => {
-    if (_practiceState !== st || st.screen !== 'setup') return;
-    if (data.reminder && data.reminder.kind === 'start') {
-      st.startNudge = data.reminder;
-      _renderPracticeSetup();
-    }
-  }).catch(() => {});
-}
-
-function _closePracticeModal() {
-  $('practicePanel')?.classList.add('hidden');
-  _practiceState = null;
-  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
-}
-
-// ── Historial — every generated challenge is saved server-side the moment
-// it's generated (Fase 2), whether finished, abandoned, or just closed
-// mid-way; this lists them so nothing done here is ever silently lost, and
-// an in-progress one can be picked back up exactly where it was left.
-const _PRACTICE_STATUS_LABEL = { in_progress: '● en progreso', completed: '✓ completado', abandoned: '⊘ abandonado' };
-
-async function _renderPracticeHistory() {
-  const st = _practiceState;
-  if (!st) return;
-  $('practiceModalTitle').textContent = '🕘 Historial';
-  $('practiceBody').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando historial…</div>`;
-  $('practiceFooter').innerHTML = '';
-
-  let challenges = [];
-  try {
-    const res = await fetch('/api/practice/history?limit=50');
-    const data = await res.json();
-    challenges = data.challenges || [];
-  } catch { /* keep empty — shows the empty state below */ }
-  if (_practiceState !== st || st.screen !== 'history') return;
-
-  if (!challenges.length) {
-    $('practiceBody').innerHTML = `<div class="practice-history-empty">Todavía no has generado ningún reto.<br>Los que generes se guardan aquí automáticamente.</div>`;
+    // Soft nudge: Práctica leans on Cursos, so if there's an unstarted course we
+    // say so — without blocking anything, per the user's explicit "soft, not
+    // hard gate" call. Fetched async so it never delays showing the space.
+    fetch('/api/domain/reminder').then(r => r.json()).then(data => {
+      if (_practiceState !== st) return;
+      if (data.reminder && data.reminder.kind === 'start') {
+        st.startNudge = data.reminder;
+        _renderPracticeRail();
+      }
+    }).catch(() => {});
+  } else if (_practicePresetTopic && !_practiceState.viewingHistory && _practiceState.screen === 'empty') {
+    // Came back via a "Practicar ahora" shortcut while idle — only honor
+    // the preset if there's nothing already going on to preserve.
+    _practiceState.mode = 'topic';
+    _practiceState.topic = _practicePresetTopic;
+    _practicePresetTopic = null;
   } else {
-    $('practiceBody').innerHTML = `<div class="practice-history-list">${challenges.map(c => `
-      <div class="practice-history-item" data-id="${c.id}">
-        <div class="practice-history-main">
-          <div class="practice-history-title">${escapeHtml(c.title)}</div>
-          <div class="practice-history-meta">
-            <span class="practice-history-status practice-history-status--${c.status}">${_PRACTICE_STATUS_LABEL[c.status] || c.status}</span>
-            <span>${escapeHtml(c.difficulty || '')}</span>
-            <span>${Math.min(c.current_step + 1, c.step_count)}/${c.step_count} pasos</span>
-            <span>${_relTimeAgo(new Date(c.updated_at).getTime())}</span>
-          </div>
-        </div>
-        <button class="practice-history-del" data-id="${c.id}" title="Eliminar del historial">🗑</button>
-      </div>`).join('')}</div>`;
+    _practicePresetTopic = null;
   }
-
-  $('practiceFooter').innerHTML = `<button class="btn-ghost" id="practiceHistoryBackBtn">← Volver</button>`;
-  $('practiceHistoryBackBtn').addEventListener('click', () => { st.screen = 'setup'; _renderPracticeSetup(); });
-
-  document.querySelectorAll('.practice-history-del').forEach(btn => {
-    btn.addEventListener('click', async e => {
-      e.stopPropagation();
-      if (!confirm('¿Eliminar este reto del historial? No se puede deshacer.')) return;
-      try { await fetch(`/api/practice/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
-      if (_practiceState === st && st.screen === 'history') _renderPracticeHistory();
-    });
-  });
-  document.querySelectorAll('.practice-history-item').forEach(item => {
-    item.addEventListener('click', () => _resumePracticeFromHistory(item.dataset.id));
-  });
-}
-
-async function _resumePracticeFromHistory(challengeId) {
-  const st = _practiceState;
-  if (!st) return;
-  $('practiceBody').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando reto…</div>`;
-  $('practiceFooter').innerHTML = '';
-
-  let data;
-  try {
-    const res = await fetch(`/api/practice/${challengeId}`);
-    data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'No se pudo cargar el reto');
-  } catch (err) {
-    showToast(err.message, 'error');
-    if (_practiceState === st) { st.screen = 'history'; _renderPracticeHistory(); }
-    return;
-  }
-  if (_practiceState !== st) return;
-
-  st.challenge = data;
-  st.stepResults = (data.step_results && data.step_results.length === data.steps.length)
-    ? data.step_results
-    : data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
-  st.current = Math.min(data.current_step || 0, data.steps.length - 1);
-  st.topic = data.title;
-  st.course = data.course || '';
-
-  if (data.status === 'in_progress') {
-    st.screen = 'challenge';
-    _renderPracticeChallenge();
-  } else {
-    st.screen = 'results';
-    _renderPracticeResultsScreen(st);
-  }
+  _renderPracticeRail();
+  _renderPracticeMain();
 }
 
 function _practiceSlug(text) {
@@ -8372,11 +8303,13 @@ function _courseModuleEntries(tree, courseSlug) {
   return out;
 }
 
-function _renderPracticeSetup() {
+// ── Rail — persistent configuration + navigation, always visible regardless
+// of what the main area is currently showing (an empty state, a reto in
+// progress, results, or the historial list). ─────────────────────────────
+function _renderPracticeRail() {
   const st = _practiceState;
   if (!st) return;
-  $('practiceModalTitle').textContent = '🎯 Práctica';
-  // Rebuilding #practiceModeBody below detaches any custom-select containers
+  // Rebuilding this rail below detaches any custom-select containers
   // without running their own cleanup, so sweep their body-level portals here.
   document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 
@@ -8387,41 +8320,52 @@ function _renderPracticeSetup() {
       <button class="practice-nudge-btn" id="practiceNudgeGoBtn">Ir a Cursos →</button>
     </div>` : '';
 
-  $('practiceBody').innerHTML = `
-    <div class="practice-setup">
-      ${nudgeHtml}
-      <div class="practice-mode-tabs">
-        <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
-        <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
-        <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise">🎲 Reto sorpresa</button>
+  $('practiceRail').innerHTML = `
+    <div class="practice-rail-nav">
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="practiceNavNew">✏️ Nuevo reto</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="practiceNavHistory">🕘 Historial</button>
+    </div>
+    ${nudgeHtml}
+    <div class="practice-mode-tabs">
+      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
+      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
+      <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise">🎲 Reto sorpresa</button>
+    </div>
+    <div id="practiceModeBody"></div>
+    <div class="practice-diff-row practice-diff-row--col">
+      <span class="practice-diff-label">Dificultad</span>
+      <div class="practice-diff-options">
+        <button class="practice-diff-btn ${st.difficulty === 'facil' ? 'active' : ''}" data-diff="facil">Fácil</button>
+        <button class="practice-diff-btn ${st.difficulty === 'medio' ? 'active' : ''}" data-diff="medio">Medio</button>
+        <button class="practice-diff-btn ${st.difficulty === 'dificil' ? 'active' : ''}" data-diff="dificil">Difícil</button>
       </div>
-      <div id="practiceModeBody"></div>
-      <div class="practice-diff-row">
-        <span class="practice-diff-label">Dificultad</span>
-        <div class="practice-diff-options">
-          <button class="practice-diff-btn ${st.difficulty === 'facil' ? 'active' : ''}" data-diff="facil">Fácil</button>
-          <button class="practice-diff-btn ${st.difficulty === 'medio' ? 'active' : ''}" data-diff="medio">Medio</button>
-          <button class="practice-diff-btn ${st.difficulty === 'dificil' ? 'active' : ''}" data-diff="dificil">Difícil</button>
-        </div>
-      </div>
-      <div class="practice-diff-row">
-        <span class="practice-diff-label">Modelo</span>
-        <div class="practice-cselect" id="practiceModelCSelect" style="flex:1"></div>
-      </div>
-    </div>`;
+    </div>
+    <div class="practice-diff-row practice-diff-row--col">
+      <span class="practice-diff-label">Modelo</span>
+      <div class="practice-cselect" id="practiceModelCSelect"></div>
+    </div>
+    <button class="btn-primary practice-generate-btn" id="practiceGenerateBtn">✦ Generar reto</button>`;
 
-  $('practiceFooter').innerHTML = `<button class="btn-primary" id="practiceGenerateBtn">✦ Generar reto</button>`;
+  $('practiceNudgeGoBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
 
-  $('practiceNudgeGoBtn')?.addEventListener('click', () => {
-    _closePracticeModal();
-    window.switchSpace?.('courses');
+  $('practiceNavNew').addEventListener('click', () => {
+    if (!st.viewingHistory) return;
+    st.viewingHistory = false;
+    _renderPracticeRail();
+    _renderPracticeMain();
+  });
+  $('practiceNavHistory').addEventListener('click', () => {
+    if (st.viewingHistory) return;
+    st.viewingHistory = true;
+    _renderPracticeRail();
+    _renderPracticeMain();
   });
 
   document.querySelectorAll('.practice-mode-tab').forEach(btn => {
-    btn.addEventListener('click', () => { st.mode = btn.dataset.mode; _renderPracticeSetup(); });
+    btn.addEventListener('click', () => { st.mode = btn.dataset.mode; _renderPracticeRail(); });
   });
   document.querySelectorAll('.practice-diff-btn').forEach(btn => {
-    btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderPracticeSetup(); });
+    btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderPracticeRail(); });
   });
   $('practiceGenerateBtn').addEventListener('click', _startPracticeGeneration);
 
@@ -8440,13 +8384,13 @@ function _renderPracticeSetup() {
 }
 
 // Native <select> popups are painted by the OS/browser chrome and can't be
-// themed — they showed up as a stark light-mode list inside this otherwise
-// dark modal. This renders a themed stand-in instead: a button plus a
+// themed — they'd show up as a stark light-mode list inside this otherwise
+// dark rail. This renders a themed stand-in instead: a button plus a
 // floating panel *portaled onto document.body* (position: fixed, coordinates
-// from the button's own bounding rect) — appended outside the modal so the
-// modal's own overflow/height never clips it, the same way a native select's
+// from the button's own bounding rect) — appended outside the rail so the
+// rail's own overflow/height never clips it, the same way a native select's
 // popup escapes its container. The portal is tracked on the container element
-// so a re-mount (or _closePracticeModal) can find and remove the old one.
+// so a re-mount (or leaving the Práctica space) can find and remove the old one.
 function _mountPracticeCustomSelect(container, { options, value, placeholder, disabled, onChange }) {
   if (!container) return;
   container._cselectPortal?.remove();
@@ -8608,7 +8552,7 @@ async function _renderPracticeModeBody() {
   if (!container) return;
   // Rebuilding this container's contents (below) detaches any custom-select
   // wrapper divs without running their own cleanup, orphaning their
-  // body-level portals — sweep them here too, not just in _renderPracticeSetup.
+  // body-level portals — sweep them here too, not just in _renderPracticeRail.
   document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 
   if (st.mode === 'topic') {
@@ -8654,8 +8598,234 @@ async function _renderPracticeModeBody() {
   container.innerHTML = `<div class="practice-empty-note">Elegiremos una lección al azar de tus cursos para retarte.</div>`;
 }
 
+// ── Main area — dispatches on the current state to whatever should occupy
+// the working area: the idle placeholder, a loading spinner, the active
+// reto, its results, or the historial list. ──────────────────────────────
+function _renderPracticeMain() {
+  const st = _practiceState;
+  if (!st) return;
+  if (st.viewingHistory) { _renderPracticeHistoryMain(); return; }
+  if (st.screen === 'empty') { _renderPracticeEmptyMain(); return; }
+  if (st.screen === 'loading') { _renderPracticeLoadingMain(); return; }
+  if (st.screen === 'challenge') { _renderPracticeChallenge(); return; }
+  if (st.screen === 'results') { _renderPracticeResultsScreen(st); return; }
+}
+
+function _renderPracticeEmptyMain() {
+  $('practiceMain').innerHTML = `
+    <div class="practice-empty-main">
+      <span class="practice-empty-main-icon">🎯</span>
+      <p class="practice-empty-main-title">Configura tu reto en el panel de la izquierda</p>
+      <p class="practice-empty-main-sub">Elegí un modo, la dificultad y el modelo que quieras que lo genere — después tocá "Generar reto".</p>
+    </div>`;
+}
+
+function _renderPracticeLoadingMain() {
+  $('practiceMain').innerHTML = `
+    <div class="quiz-loading">
+      <span class="arp-spinner"></span>
+      <span>Generando un reto realista…</span>
+    </div>`;
+}
+
+// Frontend-side safety net: even with the backend now returning clean,
+// human messages (see _call_ai's HTTPError handling), never let an
+// unexpectedly long string blow up this view the way a raw provider error
+// dump once did.
+function _renderPracticeError(msg) {
+  const safeMsg = (msg || '').length > 400 ? msg.slice(0, 400) + '…' : msg;
+  $('practiceMain').innerHTML = `
+    <div class="quiz-error">${escapeHtml(safeMsg)}</div>
+    <button class="btn-ghost" id="practiceRetryErrBtn" style="margin-top:14px">← Volver</button>`;
+  $('practiceRetryErrBtn').addEventListener('click', () => { _practiceState.screen = 'empty'; _renderPracticeMain(); });
+}
+
+function _renderPracticeChallenge() {
+  const st = _practiceState;
+  const ch = st.challenge;
+  const idx = st.current;
+  const step = ch.steps[idx];
+  const stepState = st.stepResults[idx];
+
+  const pills = ch.steps.map((s, i) => {
+    const res = st.stepResults[i];
+    let cls = 'practice-pill';
+    if (i === idx) cls += ' current';
+    else if (res.passed) cls += ' passed';
+    else if (res.revealed) cls += ' revealed';
+    return `<span class="${cls}">${i + 1}</span>`;
+  }).join('');
+
+  let stepBodyHtml;
+  if (step.type === 'python') {
+    stepBodyHtml = `
+      <textarea id="practiceCodeInput" class="practice-code-input" spellcheck="false"
+                placeholder="Escribe tu código aquí…">${escapeHtml(stepState.userCode ?? step.starter_code ?? '')}</textarea>
+      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">▶ Ejecutar y verificar</button></div>
+      <div class="code-exec-output" id="practiceOutput" style="${stepState.lastOutput !== undefined ? '' : 'display:none'}">
+        <pre class="code-exec-stdout" id="practiceStdout"></pre>
+        <pre class="code-exec-stderr hidden" id="practiceStderr"></pre>
+      </div>`;
+  } else {
+    stepBodyHtml = `
+      <textarea id="practiceTextInput" class="practice-text-answer" spellcheck="false"
+                placeholder="Escribe tu comando o respuesta…">${escapeHtml(stepState.userAnswer ?? '')}</textarea>
+      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">✓ Verificar</button></div>
+      <div class="practice-feedback hidden" id="practiceFeedback"></div>`;
+  }
+
+  const hintsShown = stepState.hintsShown || 0;
+  // *_html fields are pre-rendered server-side by render_markdown() (same
+  // pipeline the "Ask AI" panel uses) so a scenario/instruction/hint reads
+  // like real formatted text instead of a raw text dump; fall back to
+  // escaped plain text for older cached challenges or test fixtures that
+  // predate this field.
+  const hintsHtml = step.hints.slice(0, hintsShown)
+    .map((h, i) => `<div class="practice-hint practice-md">💡 Pista ${i + 1}: ${(step.hints_html && step.hints_html[i]) || escapeHtml(h)}</div>`).join('');
+
+  $('practiceMain').innerHTML = `
+    <h3 class="practice-challenge-title">${escapeHtml(ch.title)}</h3>
+    <div class="practice-pills">${pills}</div>
+    <div class="practice-scenario practice-md">${ch.scenario_html || escapeHtml(ch.scenario)}</div>
+    <div class="practice-step">
+      <div class="practice-step-instruction practice-md">${step.instruction_html || escapeHtml(step.instruction)}</div>
+      ${stepBodyHtml}
+      ${hintsHtml}
+      ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
+    </div>
+    <div class="practice-main-actions" id="practiceMainActions"></div>`;
+
+  if (step.type === 'python' && stepState.lastOutput !== undefined) {
+    $('practiceStdout').textContent = stepState.lastOutput || '';
+    const stderrEl = $('practiceStderr');
+    stderrEl.textContent = stepState.lastStderr || '';
+    stderrEl.classList.toggle('hidden', !stepState.lastStderr);
+  }
+  if (step.type === 'text' && stepState.lastFeedback) {
+    const fb = $('practiceFeedback');
+    fb.textContent = stepState.lastFeedback;
+    fb.classList.remove('hidden');
+    fb.classList.toggle('practice-feedback--ok', stepState.passed);
+    fb.classList.toggle('practice-feedback--bad', !stepState.passed);
+  }
+
+  $('practiceCheckBtn').addEventListener('click', _checkPracticeStep);
+
+  const actions = $('practiceMainActions');
+
+  if (hintsShown < step.hints.length) {
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'btn-ghost';
+    hintBtn.textContent = `💡 Pista (${hintsShown}/${step.hints.length})`;
+    hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _savePracticeProgress(st); _renderPracticeChallenge(); });
+    actions.appendChild(hintBtn);
+  } else if (!stepState.revealed && !stepState.passed) {
+    const solBtn = document.createElement('button');
+    solBtn.className = 'btn-ghost';
+    solBtn.textContent = '🔓 Ver solución';
+    solBtn.addEventListener('click', () => {
+      if (confirm('Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
+        stepState.revealed = true;
+        _savePracticeProgress(st);
+        _renderPracticeChallenge();
+      }
+    });
+    actions.appendChild(solBtn);
+  }
+
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  actions.appendChild(spacer);
+
+  if (stepState.passed || stepState.revealed) {
+    const isLast = idx === ch.steps.length - 1;
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn-primary';
+    nextBtn.textContent = isLast ? 'Ver resultados →' : 'Siguiente paso →';
+    nextBtn.addEventListener('click', () => {
+      if (isLast) { _finishPractice(); } else { st.current++; _savePracticeProgress(st); _renderPracticeChallenge(); }
+    });
+    actions.appendChild(nextBtn);
+  }
+
+  const newBtn = document.createElement('button');
+  newBtn.className = 'btn-ghost';
+  newBtn.textContent = '← Nuevo reto';
+  newBtn.title = 'Tu progreso en este reto ya está guardado — podés retomarlo desde Historial';
+  newBtn.addEventListener('click', () => { st.screen = 'empty'; st.challenge = null; _renderPracticeMain(); });
+  actions.appendChild(newBtn);
+}
+
+async function _checkPracticeStep() {
+  const st = _practiceState;
+  const step = st.challenge.steps[st.current];
+  const stepState = st.stepResults[st.current];
+  const btn = $('practiceCheckBtn');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    if (step.type === 'python') {
+      const code = $('practiceCodeInput').value;
+      stepState.userCode = code;
+      const res = await fetch('/api/practice/check-python', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, asserts: step.asserts }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, 'error'); return; }
+      stepState.passed = !!data.passed;
+      stepState.lastOutput = data.output || '';
+      stepState.lastStderr = data.stderr || '';
+    } else {
+      const answer = $('practiceTextInput').value;
+      stepState.userAnswer = answer;
+      const res = await fetch('/api/practice/check-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Reuses the same model this challenge was generated with (saved on
+        // st.challenge server-side in the generate response) rather than
+        // whatever's currently picked in the rail's selector right now — the
+        // two can differ if you tweak the rail between steps.
+        body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric, answer, provider: st.challenge.provider, model: st.challenge.model }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, 'error'); return; }
+      stepState.passed = !!data.passed;
+      stepState.lastFeedback = data.feedback || '';
+    }
+
+    if (step.concept_id) {
+      fetch('/api/concepts/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concept_id: step.concept_id, course: st.course, correct: stepState.passed }),
+      }).catch(() => {});
+    }
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+  } finally {
+    _savePracticeProgress(st);
+    _renderPracticeChallenge();
+  }
+}
+
+// Fire-and-forget autosave — every step-solving action (check a step, use a
+// hint, reveal a solution) calls this so a saved challenge always resumes
+// exactly where it was left, not just where it was last "finished".
+function _savePracticeProgress(st) {
+  if (!st || !st.challenge || !st.challenge.id) return;
+  fetch(`/api/practice/${st.challenge.id}/progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_step: st.current, step_results: st.stepResults }),
+  }).catch(() => {});
+}
+
 async function _startPracticeGeneration() {
   const st = _practiceState;
+  if (st.viewingHistory) { st.viewingHistory = false; _renderPracticeRail(); }
   let topic = '', context = '', entryId = '', course = '', forceConceptId = '', weakestPick = null;
 
   if (st.mode === 'topic') {
@@ -8706,7 +8876,7 @@ async function _startPracticeGeneration() {
   st.contextText = context;
   st.course = course;
   st.screen = 'loading';
-  _renderPracticeLoading();
+  _renderPracticeMain();
 
   try {
     const res = await fetch('/api/practice/generate', {
@@ -8717,6 +8887,7 @@ async function _startPracticeGeneration() {
     const data = await res.json();
     if (_practiceState !== st) return;
     if (!res.ok || data.error) {
+      st.screen = 'empty';
       _renderPracticeError(data.error || 'No se pudo generar el reto.');
       return;
     }
@@ -8730,207 +8901,9 @@ async function _startPracticeGeneration() {
     }
   } catch (err) {
     if (_practiceState !== st) return;
+    st.screen = 'empty';
     _renderPracticeError('Error de red: ' + err.message);
   }
-}
-
-function _renderPracticeLoading() {
-  $('practiceModalTitle').textContent = '🎯 Práctica';
-  $('practiceBody').innerHTML = `
-    <div class="quiz-loading">
-      <span class="arp-spinner"></span>
-      <span>Generando un reto realista…</span>
-    </div>`;
-  $('practiceFooter').innerHTML = '';
-}
-
-function _renderPracticeError(msg) {
-  $('practiceBody').innerHTML = `<div class="quiz-error">${escapeHtml(msg)}</div>`;
-  $('practiceFooter').innerHTML = `<button class="btn-ghost" id="practiceRetryErrBtn">← Volver</button>`;
-  $('practiceRetryErrBtn').addEventListener('click', () => { _practiceState.screen = 'setup'; _renderPracticeSetup(); });
-}
-
-function _renderPracticeChallenge() {
-  const st = _practiceState;
-  const ch = st.challenge;
-  const idx = st.current;
-  const step = ch.steps[idx];
-  const stepState = st.stepResults[idx];
-
-  $('practiceModalTitle').textContent = `🎯 ${ch.title}`;
-
-  const pills = ch.steps.map((s, i) => {
-    const res = st.stepResults[i];
-    let cls = 'practice-pill';
-    if (i === idx) cls += ' current';
-    else if (res.passed) cls += ' passed';
-    else if (res.revealed) cls += ' revealed';
-    return `<span class="${cls}">${i + 1}</span>`;
-  }).join('');
-
-  let stepBodyHtml;
-  if (step.type === 'python') {
-    stepBodyHtml = `
-      <textarea id="practiceCodeInput" class="practice-code-input" spellcheck="false"
-                placeholder="Escribe tu código aquí…">${escapeHtml(stepState.userCode ?? step.starter_code ?? '')}</textarea>
-      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">▶ Ejecutar y verificar</button></div>
-      <div class="code-exec-output" id="practiceOutput" style="${stepState.lastOutput !== undefined ? '' : 'display:none'}">
-        <pre class="code-exec-stdout" id="practiceStdout"></pre>
-        <pre class="code-exec-stderr hidden" id="practiceStderr"></pre>
-      </div>`;
-  } else {
-    stepBodyHtml = `
-      <textarea id="practiceTextInput" class="practice-text-answer" spellcheck="false"
-                placeholder="Escribe tu comando o respuesta…">${escapeHtml(stepState.userAnswer ?? '')}</textarea>
-      <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">✓ Verificar</button></div>
-      <div class="practice-feedback hidden" id="practiceFeedback"></div>`;
-  }
-
-  const hintsShown = stepState.hintsShown || 0;
-  // *_html fields are pre-rendered server-side by render_markdown() (same
-  // pipeline the "Ask AI" panel uses) so a scenario/instruction/hint reads
-  // like real formatted text instead of a raw text dump; fall back to
-  // escaped plain text for older cached challenges or test fixtures that
-  // predate this field.
-  const hintsHtml = step.hints.slice(0, hintsShown)
-    .map((h, i) => `<div class="practice-hint practice-md">💡 Pista ${i + 1}: ${(step.hints_html && step.hints_html[i]) || escapeHtml(h)}</div>`).join('');
-
-  $('practiceBody').innerHTML = `
-    <div class="practice-pills">${pills}</div>
-    <div class="practice-scenario practice-md">${ch.scenario_html || escapeHtml(ch.scenario)}</div>
-    <div class="practice-step">
-      <div class="practice-step-instruction practice-md">${step.instruction_html || escapeHtml(step.instruction)}</div>
-      ${stepBodyHtml}
-      ${hintsHtml}
-      ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
-    </div>`;
-
-  if (step.type === 'python' && stepState.lastOutput !== undefined) {
-    $('practiceStdout').textContent = stepState.lastOutput || '';
-    const stderrEl = $('practiceStderr');
-    stderrEl.textContent = stepState.lastStderr || '';
-    stderrEl.classList.toggle('hidden', !stepState.lastStderr);
-  }
-  if (step.type === 'text' && stepState.lastFeedback) {
-    const fb = $('practiceFeedback');
-    fb.textContent = stepState.lastFeedback;
-    fb.classList.remove('hidden');
-    fb.classList.toggle('practice-feedback--ok', stepState.passed);
-    fb.classList.toggle('practice-feedback--bad', !stepState.passed);
-  }
-
-  $('practiceCheckBtn').addEventListener('click', _checkPracticeStep);
-
-  const footer = $('practiceFooter');
-  footer.innerHTML = '';
-
-  if (hintsShown < step.hints.length) {
-    const hintBtn = document.createElement('button');
-    hintBtn.className = 'btn-ghost';
-    hintBtn.textContent = `💡 Pista (${hintsShown}/${step.hints.length})`;
-    hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _savePracticeProgress(st); _renderPracticeChallenge(); });
-    footer.appendChild(hintBtn);
-  } else if (!stepState.revealed && !stepState.passed) {
-    const solBtn = document.createElement('button');
-    solBtn.className = 'btn-ghost';
-    solBtn.textContent = '🔓 Ver solución';
-    solBtn.addEventListener('click', () => {
-      if (confirm('Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
-        stepState.revealed = true;
-        _savePracticeProgress(st);
-        _renderPracticeChallenge();
-      }
-    });
-    footer.appendChild(solBtn);
-  }
-
-  const spacer = document.createElement('div');
-  spacer.style.flex = '1';
-  footer.appendChild(spacer);
-
-  if (stepState.passed || stepState.revealed) {
-    const isLast = idx === ch.steps.length - 1;
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'btn-primary';
-    nextBtn.textContent = isLast ? 'Ver resultados →' : 'Siguiente paso →';
-    nextBtn.addEventListener('click', () => {
-      if (isLast) { _finishPractice(); } else { st.current++; _savePracticeProgress(st); _renderPracticeChallenge(); }
-    });
-    footer.appendChild(nextBtn);
-  }
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn-ghost';
-  closeBtn.textContent = 'Cerrar';
-  closeBtn.addEventListener('click', _closePracticeModal);
-  footer.appendChild(closeBtn);
-}
-
-async function _checkPracticeStep() {
-  const st = _practiceState;
-  const step = st.challenge.steps[st.current];
-  const stepState = st.stepResults[st.current];
-  const btn = $('practiceCheckBtn');
-  btn.disabled = true;
-  btn.textContent = 'Verificando…';
-
-  try {
-    if (step.type === 'python') {
-      const code = $('practiceCodeInput').value;
-      stepState.userCode = code;
-      const res = await fetch('/api/practice/check-python', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, asserts: step.asserts }),
-      });
-      const data = await res.json();
-      if (data.error) { showToast(data.error, 'error'); return; }
-      stepState.passed = !!data.passed;
-      stepState.lastOutput = data.output || '';
-      stepState.lastStderr = data.stderr || '';
-    } else {
-      const answer = $('practiceTextInput').value;
-      stepState.userAnswer = answer;
-      const res = await fetch('/api/practice/check-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Reuses the same model this challenge was generated with (saved on
-        // st.challenge server-side in the generate response) rather than
-        // whatever's currently picked in the setup screen's selector — the
-        // two can differ if you reopen Práctica between steps.
-        body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric, answer, provider: st.challenge.provider, model: st.challenge.model }),
-      });
-      const data = await res.json();
-      if (data.error) { showToast(data.error, 'error'); return; }
-      stepState.passed = !!data.passed;
-      stepState.lastFeedback = data.feedback || '';
-    }
-
-    if (step.concept_id) {
-      fetch('/api/concepts/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concept_id: step.concept_id, course: st.course, correct: stepState.passed }),
-      }).catch(() => {});
-    }
-  } catch (err) {
-    showToast('Error de red: ' + err.message, 'error');
-  } finally {
-    _savePracticeProgress(st);
-    _renderPracticeChallenge();
-  }
-}
-
-// Fire-and-forget autosave — every step-solving action (check a step, use a
-// hint, reveal a solution) calls this so a saved challenge always resumes
-// exactly where it was left, not just where it was last "finished".
-function _savePracticeProgress(st) {
-  if (!st || !st.challenge || !st.challenge.id) return;
-  fetch(`/api/practice/${st.challenge.id}/progress`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ current_step: st.current, step_results: st.stepResults }),
-  }).catch(() => {});
 }
 
 function _finishPractice() {
@@ -8953,6 +8926,7 @@ function _finishPractice() {
       topic: st.topic, score: passed, total: ch.steps.length,
     }),
   }).catch(() => {});
+  st.screen = 'results';
   _renderPracticeResultsScreen(st);
 }
 
@@ -8970,8 +8944,8 @@ function _renderPracticeResultsScreen(st) {
                  : pct >= 50 ? 'Vas bien, pero repasa los pasos que fallaste o revelaste.'
                  : 'Conviene practicar más este tema antes de seguir.';
 
-  $('practiceModalTitle').textContent = `🎯 ${ch.title} — Resultados`;
-  $('practiceBody').innerHTML = `
+  $('practiceMain').innerHTML = `
+    <h3 class="practice-challenge-title">${escapeHtml(ch.title)} — Resultados</h3>
     <div class="quiz-results">
       <div class="quiz-score quiz-score--${grade}">
         <span class="quiz-score-pct">${pct}%</span>
@@ -8979,7 +8953,8 @@ function _renderPracticeResultsScreen(st) {
       </div>
       <div class="quiz-score-msg">${gradeMsg}</div>
       <div class="quiz-review" id="practiceReview"></div>
-    </div>`;
+    </div>
+    <div class="practice-main-actions" id="practiceMainActions"></div>`;
 
   const review = $('practiceReview');
   ch.steps.forEach((step, i) => {
@@ -8997,30 +8972,19 @@ function _renderPracticeResultsScreen(st) {
     review.appendChild(row);
   });
 
-  const footer = $('practiceFooter');
-  footer.innerHTML = '';
+  const actions = $('practiceMainActions');
 
   const retryBtn = document.createElement('button');
   retryBtn.className = 'btn-ghost';
   retryBtn.textContent = '↻ Nuevo reto';
-  retryBtn.addEventListener('click', () => { st.screen = 'setup'; _renderPracticeSetup(); });
-  footer.appendChild(retryBtn);
+  retryBtn.addEventListener('click', () => { st.screen = 'empty'; st.challenge = null; _renderPracticeMain(); });
+  actions.appendChild(retryBtn);
 
   const saveBtn = document.createElement('button');
   saveBtn.className = 'btn-ghost';
   saveBtn.textContent = '💾 Guardar en Conocimiento';
   saveBtn.addEventListener('click', () => _savePracticeToKnowledge(st, saveBtn));
-  footer.appendChild(saveBtn);
-
-  const spacer = document.createElement('div');
-  spacer.style.flex = '1';
-  footer.appendChild(spacer);
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn-primary';
-  closeBtn.textContent = 'Cerrar';
-  closeBtn.addEventListener('click', _closePracticeModal);
-  footer.appendChild(closeBtn);
+  actions.appendChild(saveBtn);
 }
 
 function _practiceKnowledgeTopic(st) {
@@ -9076,6 +9040,93 @@ async function _savePracticeToKnowledge(st, btn) {
     btn.disabled = false;
     btn.textContent = '💾 Guardar en Conocimiento';
   }
+}
+
+// ── Historial — every generated challenge is saved server-side the moment
+// it's generated (Fase 2), whether finished, abandoned, or just left
+// mid-way; this lists them so nothing done here is ever silently lost, and
+// an in-progress one can be picked back up exactly where it was left.
+const _PRACTICE_STATUS_LABEL = { in_progress: '● en progreso', completed: '✓ completado', abandoned: '⊘ abandonado' };
+
+async function _renderPracticeHistoryMain() {
+  const st = _practiceState;
+  if (!st) return;
+  $('practiceMain').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando historial…</div>`;
+
+  let challenges = [];
+  try {
+    const res = await fetch('/api/practice/history?limit=50');
+    const data = await res.json();
+    challenges = data.challenges || [];
+  } catch { /* keep empty — shows the empty state below */ }
+  if (_practiceState !== st || !st.viewingHistory) return;
+
+  if (!challenges.length) {
+    $('practiceMain').innerHTML = `<div class="practice-history-empty">Todavía no has generado ningún reto.<br>Los que generes se guardan aquí automáticamente.</div>`;
+    return;
+  }
+
+  $('practiceMain').innerHTML = `<div class="practice-history-list">${challenges.map(c => `
+    <div class="practice-history-item" data-id="${c.id}">
+      <div class="practice-history-main">
+        <div class="practice-history-title">${escapeHtml(c.title)}</div>
+        <div class="practice-history-meta">
+          <span class="practice-history-status practice-history-status--${c.status}">${_PRACTICE_STATUS_LABEL[c.status] || c.status}</span>
+          <span>${escapeHtml(c.difficulty || '')}</span>
+          <span>${Math.min(c.current_step + 1, c.step_count)}/${c.step_count} pasos</span>
+          <span>${_relTimeAgo(new Date(c.updated_at).getTime())}</span>
+        </div>
+      </div>
+      <button class="practice-history-del" data-id="${c.id}" title="Eliminar del historial">🗑</button>
+    </div>`).join('')}</div>`;
+
+  document.querySelectorAll('.practice-history-del').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('¿Eliminar este reto del historial? No se puede deshacer.')) return;
+      try { await fetch(`/api/practice/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
+      if (_practiceState === st && st.viewingHistory) _renderPracticeHistoryMain();
+    });
+  });
+  document.querySelectorAll('.practice-history-item').forEach(item => {
+    item.addEventListener('click', () => _resumePracticeFromHistory(item.dataset.id));
+  });
+}
+
+async function _resumePracticeFromHistory(challengeId) {
+  const st = _practiceState;
+  if (!st) return;
+  $('practiceMain').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando reto…</div>`;
+
+  let data;
+  try {
+    const res = await fetch(`/api/practice/${challengeId}`);
+    data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'No se pudo cargar el reto');
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (_practiceState === st) _renderPracticeHistoryMain();
+    return;
+  }
+  if (_practiceState !== st) return;
+
+  st.challenge = data;
+  st.stepResults = (data.step_results && data.step_results.length === data.steps.length)
+    ? data.step_results
+    : data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
+  st.current = Math.min(data.current_step || 0, data.steps.length - 1);
+  st.topic = data.title;
+  st.course = data.course || '';
+  st.viewingHistory = false;
+
+  if (data.status === 'in_progress') {
+    st.screen = 'challenge';
+    _renderPracticeChallenge();
+  } else {
+    st.screen = 'results';
+    _renderPracticeResultsScreen(st);
+  }
+  _renderPracticeRail();
 }
 
 // ── Page Peek — Notion-style floating page preview ────────────────────────

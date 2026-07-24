@@ -105,7 +105,7 @@
           <span class="ab-icon">⦿</span>
           <span class="ab-label">Radar</span>
         </button>
-        <button class="ab-item" id="abPractice" title="Práctica">
+        <button class="ab-item" id="abPractice" data-space="practice" title="Práctica">
           <span class="ab-icon">🎯</span>
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
@@ -147,7 +147,7 @@
         <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
-        <button class="msn-item" id="msnPractice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
+        <button class="msn-item" id="msnPractice" data-space="practice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
       </nav>
 
       <!-- SPACE: KNOWLEDGE -->
@@ -372,6 +372,20 @@
         </div>
         <div class="cv-body" id="cvBody">
           <!-- populated by loadCourseView() -->
+        </div>
+      </div>
+
+      <!-- PRÁCTICA VIEW — a real dashboard space (switchSpace('practice')),
+           same weight as Cursos/Radar, not a floating panel: a persistent
+           rail (mode, dificultad, modelo, historial) on the left, the
+           actual reto/resultados/historial in the main area on the right. -->
+      <div class="practice-view hidden" id="practiceView">
+        <div class="practice-view-header">
+          <h2 class="practice-view-title">🎯 Práctica</h2>
+        </div>
+        <div class="practice-view-body">
+          <aside class="practice-rail" id="practiceRail"></aside>
+          <div class="practice-main" id="practiceMain"></div>
         </div>
       </div>
 
@@ -1274,21 +1288,6 @@
     </div>
   </div>
 
-  <!-- PRACTICE PANEL — docked to the right edge like .toc-panel/.ai-panel,
-       not a backdrop modal: nothing here should ever be lost to a stray
-       click outside it, and it needs to stay reachable while you work in
-       the editor at the same time (area de guerra, fase 3). -->
-  <div class="practice-panel hidden" id="practicePanel">
-    <div class="modal-header">
-      <span id="practiceModalTitle">🎯 Práctica</span>
-      <div class="practice-header-actions">
-        <button class="practice-history-btn" id="practiceHistoryBtn" title="Historial de retos">🕘</button>
-        <button class="modal-close" id="practiceClose">×</button>
-      </div>
-    </div>
-    <div class="modal-body" id="practiceBody"></div>
-    <div class="modal-footer" id="practiceFooter"></div>
-  </div>
 
   <!-- PAGE PEEK — floating Notion-style page preview, opened from a database row -->
   <div class="modal-overlay hidden" id="pagePeekOverlay">
