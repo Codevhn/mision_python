@@ -9028,12 +9028,8 @@ async function _renderConceptHubMain() {
       </div>
       <div class="practice-concept-explain">
         <h4 class="practice-concept-explain-title">🗣️ Explícamelo (técnica Feynman)</h4>
-        <p class="practice-concept-explain-hint">Explica este concepto con tus propias palabras, como si se lo enseñaras a alguien más — no copies la teoría de arriba, la IA evalúa si de verdad lo entendiste.</p>
-        <textarea id="practiceConceptExplainInput" class="practice-text-input practice-concept-explain-textarea" rows="4" placeholder="Escribe tu explicación aquí…"></textarea>
-        <div class="practice-main-actions">
-          <button class="btn-primary" id="practiceConceptExplainBtn">Evaluar mi explicación</button>
-        </div>
-        <div class="practice-concept-explain-result hidden" id="practiceConceptExplainResult"></div>
+        <p class="practice-concept-explain-hint">Explica este concepto con tus propias palabras, como si se lo enseñaras a alguien más — si tu explicación queda superficial, te repregunto antes de dar veredicto.</p>
+        <div id="practiceConceptExplainBody"></div>
       </div>
     </div>`;
 
@@ -9042,7 +9038,7 @@ async function _renderConceptHubMain() {
     if (typeof setActiveCourse === 'function') setActiveCourse(st.conceptCourse);
   });
   $('practiceConceptGenerateBtn').addEventListener('click', _startPracticeGeneration);
-  $('practiceConceptExplainBtn').addEventListener('click', () => _submitConceptExplanation(st, concept));
+  _mountConceptExplain(st, concept);
 
   const theoryEl = $('practiceConceptTheory');
   const conceptIdAtRequest = concept.id;
@@ -9061,51 +9057,118 @@ async function _renderConceptHubMain() {
   }
 }
 
-// Feynman "explícamelo": a third evaluation modality alongside quiz/práctica,
-// judged the same way as check-text's dimension scoring (correctness/depth/
-// clarity) but on a free-form explanation with no rubric — only the concept's
-// name is given, so parroting the theory above doesn't score well by itself.
-async function _submitConceptExplanation(st, concept) {
-  const input = $('practiceConceptExplainInput');
-  const explanation = (input.value || '').trim();
-  if (!explanation) { showToast('Escribe tu explicación primero', 'error'); return; }
+// Feynman "explícamelo": a third evaluation modality alongside quiz/práctica.
+// Not a single "write something, get judged" pass — a short conversation:
+// if an explanation reads shallow, the tutor asks ONE targeted follow-up
+// question before giving a verdict, up to _explainMaxRounds student turns
+// (the backend enforces the cap either way). Judged with the same
+// correctness/depth/clarity dimension scoring as check-text, but on a
+// free-form explanation with no rubric — only the concept's name is given,
+// so parroting the theory above doesn't score well by itself.
+function _mountConceptExplain(st, concept) {
+  if (!st.explain || st.explain.conceptId !== concept.id) {
+    st.explain = { conceptId: concept.id, turns: [], done: false, correct: false, scores: null, feedback: '', feedbackHtml: '', maxRounds: 3 };
+  }
+  _renderConceptExplainBody(st, concept);
+}
 
-  const btn = $('practiceConceptExplainBtn');
-  btn.disabled = true;
-  btn.textContent = 'Evaluando…';
-  const resultEl = $('practiceConceptExplainResult');
+function _renderConceptExplainBody(st, concept) {
+  const container = $('practiceConceptExplainBody');
+  if (!container) return;
+  const ex = st.explain;
 
-  try {
-    const res = await fetch(`/api/courses/${st.conceptCourse}/concepts/${concept.id}/explain`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ explanation, provider: st.provider, model: st.model }),
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) { showToast(data.error || 'No se pudo evaluar la explicación', 'error'); return; }
+  const threadHtml = ex.turns.map(t => t.role === 'student'
+    ? `<div class="practice-explain-msg practice-explain-msg--student">${escapeHtml(t.text)}</div>`
+    : `<div class="practice-explain-msg practice-explain-msg--tutor">${t.html || escapeHtml(t.text)}</div>`
+  ).join('');
 
+  if (ex.done) {
     const axisLabels = { correctness: 'Corrección', depth: 'Profundidad', clarity: 'Claridad' };
-    const scoresHtml = (data.scores && Object.keys(data.scores).length)
-      ? `<div class="practice-quality-scores">${Object.entries(data.scores).map(([axis, val]) => `
+    const scoresHtml = (ex.scores && Object.keys(ex.scores).length)
+      ? `<div class="practice-quality-scores">${Object.entries(ex.scores).map(([axis, val]) => `
           <div class="practice-quality-row">
             <span class="practice-quality-label">${escapeHtml(axisLabels[axis] || axis)}</span>
             <div class="practice-quality-bar"><div class="practice-quality-fill" style="width:${val}%"></div></div>
             <span class="practice-quality-val">${val}%</span>
           </div>`).join('')}</div>`
       : '';
-    resultEl.innerHTML = `
-      <div class="practice-feedback practice-md ${data.correct ? 'practice-feedback--ok' : 'practice-feedback--bad'}">
-        ${data.feedback_html || escapeHtml(data.feedback || '')}
+    container.innerHTML = `
+      <div class="practice-explain-thread">${threadHtml}</div>
+      <div class="practice-feedback practice-md ${ex.correct ? 'practice-feedback--ok' : 'practice-feedback--bad'}">
+        ${ex.feedbackHtml || escapeHtml(ex.feedback || '')}
       </div>
-      ${scoresHtml}`;
-    resultEl.classList.remove('hidden');
+      ${scoresHtml}
+      <div class="practice-main-actions">
+        <button class="btn-ghost" id="practiceConceptExplainResetBtn">↻ Intentar de nuevo</button>
+      </div>`;
+    $('practiceConceptExplainResetBtn').addEventListener('click', () => {
+      st.explain = { conceptId: concept.id, turns: [], done: false, correct: false, scores: null, feedback: '', feedbackHtml: '', maxRounds: ex.maxRounds };
+      _renderConceptExplainBody(st, concept);
+    });
+    return;
+  }
+
+  const studentTurnCount = ex.turns.filter(t => t.role === 'student').length;
+  const roundLabel = studentTurnCount > 0
+    ? `<div class="practice-concept-explain-round">Ronda ${studentTurnCount + 1} de ${ex.maxRounds}</div>`
+    : '';
+  container.innerHTML = `
+    <div class="practice-explain-thread">${threadHtml}</div>
+    ${roundLabel}
+    <textarea id="practiceConceptExplainInput" class="practice-text-input practice-concept-explain-textarea" rows="4"
+      placeholder="${studentTurnCount ? 'Escribe tu respuesta…' : 'Escribe tu explicación aquí…'}"></textarea>
+    <div class="practice-main-actions">
+      <button class="btn-primary" id="practiceConceptExplainBtn">${studentTurnCount ? 'Responder' : 'Evaluar mi explicación'}</button>
+    </div>`;
+  $('practiceConceptExplainBtn').addEventListener('click', () => _submitConceptExplanation(st, concept));
+}
+
+async function _submitConceptExplanation(st, concept) {
+  const input = $('practiceConceptExplainInput');
+  const text = (input.value || '').trim();
+  if (!text) { showToast('Escribe tu explicación primero', 'error'); return; }
+
+  const ex = st.explain;
+  ex.turns.push({ role: 'student', text });
+
+  const btn = $('practiceConceptExplainBtn');
+  btn.disabled = true;
+  btn.textContent = 'Evaluando…';
+
+  try {
+    const res = await fetch(`/api/courses/${st.conceptCourse}/concepts/${concept.id}/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        turns: ex.turns.map(t => ({ role: t.role, text: t.text })),
+        provider: st.provider, model: st.model,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      showToast(data.error || 'No se pudo evaluar la explicación', 'error');
+      ex.turns.pop();
+      return;
+    }
+    if (data.max_rounds) ex.maxRounds = data.max_rounds;
+
+    if (!data.done) {
+      ex.turns.push({ role: 'tutor', text: data.follow_up, html: data.follow_up_html });
+      return;
+    }
+
+    ex.done = true;
+    ex.correct = !!data.correct;
+    ex.scores = data.scores || null;
+    ex.feedback = data.feedback || '';
+    ex.feedbackHtml = data.feedback_html || '';
 
     if (concept.id) {
       fetch('/api/concepts/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          concept_id: concept.id, course: st.conceptCourse, correct: !!data.correct, modality: 'explain',
+          concept_id: concept.id, course: st.conceptCourse, correct: ex.correct, modality: 'explain',
           ...(typeof data.quality === 'number' ? { quality: data.quality } : {}),
         }),
       }).then(() => _getDomainData(true)).then(domainData => {
@@ -9120,9 +9183,9 @@ async function _submitConceptExplanation(st, concept) {
     }
   } catch (err) {
     showToast('Error de red: ' + err.message, 'error');
+    ex.turns.pop();
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Evaluar mi explicación';
+    _renderConceptExplainBody(st, concept);
   }
 }
 

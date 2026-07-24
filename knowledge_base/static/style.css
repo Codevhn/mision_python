@@ -7656,6 +7656,35 @@ body {
 .practice-concept-explain-result { margin-top: 12px; }
 .practice-concept-explain-result.hidden { display: none; }
 
+/* Explícamelo's follow-up conversation — student explanation / tutor
+   probing question, alternating, before the final verdict. */
+.practice-explain-thread { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.practice-explain-thread:empty { display: none; margin: 0; }
+.practice-explain-msg {
+  padding: 9px 13px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  max-width: 88%;
+}
+.practice-explain-msg--student {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+.practice-explain-msg--tutor {
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.practice-concept-explain-round {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
 .practice-empty-main {
   height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;

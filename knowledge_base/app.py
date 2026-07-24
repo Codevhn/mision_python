@@ -4379,13 +4379,66 @@ def get_concept_theory(course, concept_id):
     return jsonify({"theory": content, "theory_html": theory_html, "cached": False})
 
 
+_EXPLAIN_MAX_ROUNDS = 3
+
+_EXPLAIN_SCORING_RULES = (
+    "Sé estricto con imprecisiones técnicas reales, pero tolerante con la forma (no exigas vocabulario formal "
+    "si la idea de fondo está bien explicada).\n\n"
+    "Calificá tres ejes, cada uno 0-100, sobre TODO lo que el estudiante explicó en la conversación (no solo "
+    "su último mensaje):\n"
+    "- \"correctness\": qué tan técnicamente precisa es (100 = sin errores).\n"
+    "- \"depth\": si explica el POR QUÉ / CÓMO funciona, con matices o ejemplos propios, no solo repite la "
+    "definición de memoria (100 = comprensión genuina y aplicable; bajo = superficial aunque no esté mal).\n"
+    "- \"clarity\": qué tan clara y bien organizada está.\n\n"
+    "\"correct\" es true solo si en conjunto la explicación es sustancialmente correcta Y demuestra comprensión "
+    "real (no basta con mencionar las palabras clave correctas).\n\n"
+    "Si citas código o un término técnico, usa Markdown (backtick simple o bloque triple según corresponda). "
+    "Responde en español."
+)
+
+_EXPLAIN_BRANCH_SYSTEM = (
+    "Eres un tutor que aplica la técnica Feynman: el estudiante te explica un concepto técnico con sus propias "
+    "palabras, sin más pista que su nombre. Tu trabajo es decidir si lo que explicó hasta ahora ya demuestra "
+    "comprensión real y suficientemente profunda, o si conviene indagar un poco más con UNA pregunta de "
+    "seguimiento puntual antes de dar veredicto.\n\n"
+    "Si la explicación ya cubre el por qué / cómo funciona con algo de profundidad real, no sigas indagando "
+    "por indagar — cerrá con veredicto. Si decides indagar, la pregunta debe apuntar EXACTAMENTE a lo que "
+    "quedó vago, incompleto o dudoso en lo que dijo — nunca una pregunta genérica tipo \"¿podrías profundizar?\".\n\n"
+    f"{_EXPLAIN_SCORING_RULES}\n\n"
+    "Responde ÚNICAMENTE con uno de estos dos formatos JSON:\n"
+    "- Para indagar más: {\"done\": false, \"follow_up\": \"...\"}\n"
+    "- Para veredicto final: {\"done\": true, \"correct\": true|false, \"scores\": {\"correctness\":0-100,"
+    "\"depth\":0-100,\"clarity\":0-100}, \"feedback\": \"...\"} — feedback en 1-3 frases, tono de tutor cercano."
+)
+
+_EXPLAIN_FINAL_SYSTEM = (
+    "Eres un tutor que aplica la técnica Feynman: el estudiante te explicó un concepto técnico con sus propias "
+    "palabras a lo largo de varias rondas. Esta es la ÚLTIMA ronda permitida — da veredicto final ahora, SIN "
+    "pedir más información, con base en todo lo que explicó hasta el momento (aunque la comprensión no sea "
+    "perfecta).\n\n"
+    f"{_EXPLAIN_SCORING_RULES}\n\n"
+    "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"scores\": {\"correctness\":0-100,"
+    "\"depth\":0-100,\"clarity\":0-100}, \"feedback\": \"...\"} — feedback en 1-3 frases, tono de tutor cercano."
+)
+
+
+def _clamp_score(v):
+    try:
+        return max(0, min(100, round(float(v))))
+    except (TypeError, ValueError):
+        return None
+
+
 @app.route("/api/courses/<course>/concepts/<concept_id>/explain", methods=["POST"])
 def explain_concept_feynman(course, concept_id):
-    """Técnica Feynman: el estudiante explica el concepto con sus propias
-    palabras, sin más pista que el nombre — evalúa comprensión real, no otra
-    ronda de quiz/reto. Usa el mismo scoring de 3 ejes que check-text para
-    alimentar el crecimiento de dominio ponderado por calidad en review_concept
-    de la misma forma."""
+    """Técnica Feynman, iterativa: el estudiante explica el concepto con sus
+    propias palabras, sin más pista que el nombre. Si la explicación es
+    superficial, el tutor puede indagar con hasta _EXPLAIN_MAX_ROUNDS - 1
+    preguntas de seguimiento puntuales antes de dar veredicto — no es una
+    sola pasada de "escribiste algo, listo", es una conversación corta que
+    de verdad prueba comprensión. El veredicto final usa el mismo scoring de
+    3 ejes que check-text para alimentar el crecimiento de dominio ponderado
+    por calidad en review_concept de la misma forma."""
     data = load_concepts()
     entry = data["courses"].get(course)
     concept = next((c for c in entry["concepts"] if c["id"] == concept_id), None) if entry else None
@@ -4393,49 +4446,52 @@ def explain_concept_feynman(course, concept_id):
         return jsonify({"error": "Concepto no encontrado"}), 404
 
     body = request.json or {}
-    explanation = (body.get("explanation") or "").strip()
-    if not explanation:
-        return jsonify({"correct": False, "feedback": "No escribiste ninguna explicación.", "feedback_html": "", "scores": {}, "quality": None})
+    turns = body.get("turns")
+    if not isinstance(turns, list) or not turns:
+        return jsonify({"error": "Falta la conversación"}), 400
 
-    system = (
-        "Eres un evaluador que aplica la técnica Feynman. Un estudiante intenta explicarte, en sus propias "
-        "palabras y SIN pistas previas, un concepto técnico puntual — tu tarea es juzgar si esa explicación "
-        "demuestra comprensión real, no memorización superficial de términos.\n\n"
-        "Sé estricto con imprecisiones técnicas reales, pero tolerante con la forma (no exigas vocabulario "
-        "formal si la idea de fondo está bien explicada).\n\n"
-        "Calificá tres ejes, cada uno 0-100:\n"
-        "- \"correctness\": qué tan técnicamente precisa es la explicación (100 = sin errores).\n"
-        "- \"depth\": si explica el POR QUÉ / CÓMO funciona, con matices o ejemplos propios, no solo repite la "
-        "definición de memoria (100 = comprensión genuina y aplicable; bajo = superficial aunque no esté mal).\n"
-        "- \"clarity\": qué tan clara y bien organizada está la explicación.\n\n"
-        "\"correct\" es true solo si la explicación es sustancialmente correcta Y demuestra comprensión real "
-        "(no basta con mencionar las palabras clave correctas).\n\n"
-        "Si tu feedback cita código o un término técnico, usa Markdown (backtick simple o bloque triple según "
-        "corresponda). Responde en español.\n\n"
-        "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"scores\": {\"correctness\":0-100,"
-        "\"depth\":0-100,\"clarity\":0-100}, \"feedback\": \"...\"} — feedback en 1-3 frases, con tono de tutor "
-        "cercano: qué entendió bien, qué le falta o qué corrigió."
+    student_turns = [t for t in turns if isinstance(t, dict) and t.get("role") == "student"]
+    last_text = (student_turns[-1].get("text") or "").strip() if student_turns else ""
+    if not last_text:
+        return jsonify({"done": False, "follow_up": "No escribiste ninguna explicación todavía.", "follow_up_html": ""})
+
+    conversation = "\n\n".join(
+        f"{'Estudiante' if t.get('role') == 'student' else 'Tutor (tú)'}: {(t.get('text') or '').strip()}"
+        for t in turns if isinstance(t, dict) and (t.get('text') or '').strip()
     )
     user_msg = (
         f"Concepto a explicar: {concept['name']}\n"
         f"Descripción de referencia (no la reveles literal, es solo tu contexto): {concept.get('description', '')}\n\n"
-        f"Explicación del estudiante:\n{explanation}"
+        f"Conversación hasta ahora:\n{conversation}"
     )
+
+    is_final_round = len(student_turns) >= _EXPLAIN_MAX_ROUNDS
+    system = _EXPLAIN_FINAL_SYSTEM if is_final_round else _EXPLAIN_BRANCH_SYSTEM
 
     content, err = _call_ai(system, user_msg, max_tokens=400, json_mode=True, provider=body.get("provider"), model=body.get("model"))
     if err:
         return err
     try:
         result = json.loads(content)
+        done = True if is_final_round else bool(result.get("done", True))
+
+        if not done:
+            follow_up = str(result.get("follow_up") or "").strip()
+            if not follow_up:
+                # Safety net: a malformed "keep going" response shouldn't strand the
+                # student with no next step — fall back to closing the conversation.
+                done = True
+            else:
+                return jsonify({
+                    "done": False,
+                    "follow_up": follow_up,
+                    "follow_up_html": render_markdown(follow_up),
+                    "round": len(student_turns),
+                    "max_rounds": _EXPLAIN_MAX_ROUNDS,
+                })
+
         feedback = str(result.get("feedback") or "")
         scores_raw = result.get("scores") if isinstance(result.get("scores"), dict) else {}
-
-        def _clamp_score(v):
-            try:
-                return max(0, min(100, round(float(v))))
-            except (TypeError, ValueError):
-                return None
-
         scores = {}
         for axis in ("correctness", "depth", "clarity"):
             v = _clamp_score(scores_raw.get(axis))
@@ -4444,11 +4500,14 @@ def explain_concept_feynman(course, concept_id):
         quality = round(sum(scores.values()) / len(scores)) if scores else None
 
         return jsonify({
+            "done": True,
             "correct": bool(result.get("correct")),
             "feedback": feedback,
             "feedback_html": render_markdown(feedback),
             "scores": scores,
             "quality": quality,
+            "round": len(student_turns),
+            "max_rounds": _EXPLAIN_MAX_ROUNDS,
         })
     except json.JSONDecodeError:
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
