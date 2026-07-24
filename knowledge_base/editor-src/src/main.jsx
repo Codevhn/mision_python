@@ -127,6 +127,21 @@ function createInstance(opts) {
     instanceRef.suppressChange = true;
     editor.replaceBlocks(editor.document, blocks);
     instanceRef.suppressChange = false;
+    // replaceBlocks() leaves ProseMirror's selection wherever the old
+    // transaction's position happens to map to; when that lands on/inside
+    // a contentless atom block (e.g. our "database" table, content:"none")
+    // there's no valid text position for it to fall back to, so ProseMirror
+    // selects the whole node instead (NodeSelection) — which BlockNote
+    // renders as a permanent 4px "selected" outline around the block, even
+    // though nothing was actually clicked. Pointing the cursor at the
+    // start of the first block avoids that in the common case (a page
+    // whose body has real text content around its table(s)); a page whose
+    // ONLY content is a single atom block has no valid text position at
+    // all, so the outline can still appear there — a rare, harmless edge
+    // case rather than the everyday one this fixes.
+    if (editor.document.length > 0) {
+      try { editor.setTextCursorPosition(editor.document[0].id, "start"); } catch (_) {}
+    }
   }
 
   const api = {
