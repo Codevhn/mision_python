@@ -6567,9 +6567,10 @@ function openEditCourseModal(courseSlug, courseEntity) {
   _editingCourseSlug = courseSlug;
   const overlay = $('editCourseOverlay');
   if (!overlay) return;
-  $('editCourseLabel').value = courseEntity.label || '';
-  $('editCourseDesc').value  = courseEntity.description || '';
-  $('editCourseLevel').value = courseEntity.level || '';
+  $('editCourseLabel').value  = courseEntity.label || '';
+  $('editCourseDesc').value   = courseEntity.description || '';
+  $('editCourseLevel').value  = courseEntity.level || '';
+  $('editCourseDomain').value = courseEntity.domain || '';
   overlay.classList.remove('hidden');
   setTimeout(() => $('editCourseLabel').focus(), 60);
 }
@@ -6596,6 +6597,7 @@ function initEditCourseModal() {
           label,
           description: $('editCourseDesc').value.trim(),
           level: $('editCourseLevel').value,
+          domain: $('editCourseDomain').value,
         }),
       });
       if (res.ok) {
@@ -7172,6 +7174,7 @@ function initCoursesSpace() {
         label,
         description: ($('newCourseDesc') || {}).value?.trim() || '',
         level:       ($('newCourseLevel') || {}).value || '',
+        domain:      ($('newCourseDomain') || {}).value || '',
       };
       const res = await fetch('/api/courses', {
         method: 'POST',
@@ -7180,8 +7183,9 @@ function initCoursesSpace() {
       });
       if (res.ok) {
         overlay.classList.add('hidden');
-        if ($('newCourseLabel')) $('newCourseLabel').value = '';
-        if ($('newCourseDesc'))  $('newCourseDesc').value  = '';
+        if ($('newCourseLabel'))  $('newCourseLabel').value  = '';
+        if ($('newCourseDesc'))   $('newCourseDesc').value   = '';
+        if ($('newCourseDomain')) $('newCourseDomain').value = '';
         await renderCourseList();
         showToast(`Curso "${label}" creado`);
       } else if (res.status === 409) {
@@ -8666,6 +8670,25 @@ function _renderPracticeChallenge() {
         <pre class="code-exec-stdout" id="practiceStdout"></pre>
         <pre class="code-exec-stderr hidden" id="practiceStderr"></pre>
       </div>`;
+  } else if (step.type === 'css') {
+    // Verified live in the browser (a sandboxed, script-less iframe reading
+    // getComputedStyle) — no server round-trip, and the student SEES the
+    // result render as they type, not just a pass/fail after the fact.
+    stepBodyHtml = `
+      <div class="practice-css-lab">
+        <div class="practice-css-editor-col">
+          <textarea id="practiceCssInput" class="practice-code-input" spellcheck="false"
+                    placeholder="Escribe tu CSS aquí…">${escapeHtml(stepState.userCss ?? step.starter_css ?? '')}</textarea>
+          <div class="practice-step-actions"><button class="btn-primary" id="practiceCheckBtn">▶ Ejecutar y verificar</button></div>
+        </div>
+        <div class="practice-css-preview-col">
+          <div class="practice-css-preview-label">Vista previa en vivo</div>
+          <iframe id="practiceCssPreview" class="practice-css-preview" sandbox="allow-same-origin" title="Vista previa CSS"></iframe>
+        </div>
+      </div>
+      <div class="code-exec-output" id="practiceOutput" style="${stepState.cssResults ? '' : 'display:none'}">
+        <div id="practiceCssResults"></div>
+      </div>`;
   } else {
     stepBodyHtml = `
       <textarea id="practiceTextInput" class="practice-text-answer" spellcheck="false"
@@ -8712,6 +8735,13 @@ function _renderPracticeChallenge() {
     fb.classList.remove('hidden');
     fb.classList.toggle('practice-feedback--ok', stepState.passed);
     fb.classList.toggle('practice-feedback--bad', !stepState.passed);
+  }
+  if (step.type === 'css') {
+    const cssInput = $('practiceCssInput');
+    const updatePreview = () => _updateCssPreview(step, cssInput.value);
+    updatePreview();
+    cssInput.addEventListener('input', updatePreview);
+    if (stepState.cssResults) _renderCssAssertResults(stepState.cssResults);
   }
 
   $('practiceCheckBtn').addEventListener('click', _checkPracticeStep);
@@ -8790,6 +8820,56 @@ function _renderPracticeChallenge() {
   actions.appendChild(newBtn);
 }
 
+// ── CSS steps — verified live in the browser, not by the AI's opinion or a
+// server round-trip: a sandboxed, script-less iframe (sandbox="allow-same-
+// origin" only, no "allow-scripts") renders the student's CSS against the
+// step's fixed html_snippet, and each assertion reads the real computed
+// style off the actual element. Safe because nothing in that iframe can
+// ever execute — CSS text has no code-execution surface on its own.
+function _updateCssPreview(step, css) {
+  const iframe = $('practiceCssPreview');
+  if (!iframe) return;
+  iframe.srcdoc = `<!doctype html><html><head><style>${css}</style></head><body>${step.html_snippet}</body></html>`;
+}
+
+function _runCssAsserts(step, css) {
+  return new Promise(resolve => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('sandbox', 'allow-same-origin');
+    iframe.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+    iframe.addEventListener('load', () => {
+      const results = step.css_asserts.map(a => {
+        let actual = '';
+        let ok = false;
+        try {
+          const doc = iframe.contentDocument;
+          const el = doc.querySelector(a.selector);
+          if (el) {
+            actual = doc.defaultView.getComputedStyle(el)[a.property] || '';
+            ok = actual.trim().toLowerCase() === a.expected.trim().toLowerCase();
+          }
+        } catch (_) { /* malformed selector from the AI — counts as failed, not a crash */ }
+        return { selector: a.selector, property: a.property, expected: a.expected, actual, ok };
+      });
+      iframe.remove();
+      resolve(results);
+    });
+    iframe.srcdoc = `<!doctype html><html><head><style>${css}</style></head><body>${step.html_snippet}</body></html>`;
+    document.body.appendChild(iframe);
+  });
+}
+
+function _renderCssAssertResults(results) {
+  const wrap = $('practiceCssResults');
+  if (!wrap) return;
+  wrap.innerHTML = results.map(r => `
+    <div class="practice-css-assert ${r.ok ? 'ok' : 'bad'}">
+      <span class="practice-css-assert-icon">${r.ok ? '✓' : '✗'}</span>
+      <code>${escapeHtml(r.selector)} { ${escapeHtml(r.property)}: ${escapeHtml(r.expected)}; }</code>
+      ${!r.ok ? `<span class="practice-css-assert-actual">obtuvo: ${escapeHtml(r.actual || '(sin valor — ¿existe ese selector?)')}</span>` : ''}
+    </div>`).join('');
+}
+
 async function _checkPracticeStep() {
   const st = _practiceState;
   const step = st.challenge.steps[st.current];
@@ -8812,6 +8892,12 @@ async function _checkPracticeStep() {
       stepState.passed = !!data.passed;
       stepState.lastOutput = data.output || '';
       stepState.lastStderr = data.stderr || '';
+    } else if (step.type === 'css') {
+      const css = $('practiceCssInput').value;
+      stepState.userCss = css;
+      const results = await _runCssAsserts(step, css);
+      stepState.cssResults = results;
+      stepState.passed = results.length > 0 && results.every(r => r.ok);
     } else {
       const answer = $('practiceTextInput').value;
       stepState.userAnswer = answer;
@@ -9057,9 +9143,9 @@ function _buildPracticeMarkdown(st) {
   const lines = [`**Escenario:** ${ch.scenario}`, ''];
   ch.steps.forEach((step, i) => {
     const r = st.stepResults[i];
-    const lang = step.type === 'python' ? 'python' : '';
+    const lang = step.type === 'python' ? 'python' : step.type === 'css' ? 'css' : '';
     lines.push(`## Paso ${i + 1}: ${step.instruction}`, '');
-    const userAnswer = step.type === 'python' ? (r.userCode || '') : (r.userAnswer || '');
+    const userAnswer = step.type === 'python' ? (r.userCode || '') : step.type === 'css' ? (r.userCss || '') : (r.userAnswer || '');
     if (userAnswer) {
       lines.push('**Tu respuesta:**', '```' + lang, userAnswer, '```', '');
     }

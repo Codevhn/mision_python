@@ -7740,6 +7740,59 @@ body {
 }
 .practice-text-answer { min-height: 70px; font-family: var(--font-mono); }
 
+/* CSS steps — editor on one side, live rendered preview on the other, so
+   the effect of what you're writing is visible before you even hit
+   "Verificar", not just a pass/fail afterward. */
+.practice-css-lab {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.practice-css-editor-col, .practice-css-preview-col {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.practice-css-preview-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.practice-css-preview {
+  width: 100%;
+  height: 160px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.practice-css-assert {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.practice-css-assert-icon { flex-shrink: 0; font-family: var(--font-ui); }
+.practice-css-assert.ok  .practice-css-assert-icon { color: #7ee787; }
+.practice-css-assert.bad .practice-css-assert-icon { color: #ff7b72; }
+[data-theme="light"] .practice-css-assert.ok  .practice-css-assert-icon { color: #0d9669; }
+[data-theme="light"] .practice-css-assert.bad .practice-css-assert-icon { color: #cf222e; }
+.practice-css-assert code { color: inherit; background: none; }
+.practice-css-assert-actual {
+  font-family: var(--font-ui);
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 768px) {
+  .practice-css-lab { flex-direction: column; }
+}
+
 /* Custom select (course/lesson pickers) — replaces native <select> so the
    dropdown panel can be themed instead of using the OS/browser's own popup. */
 .practice-cselect { position: relative; }

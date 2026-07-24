@@ -2035,6 +2035,7 @@ def create_course():
         "description": body.get("description", "").strip(),
         "cover":       body.get("cover", "").strip(),
         "level":       body.get("level", "").strip(),
+        "domain":      body.get("domain", "").strip(),
         "created_at":  now,
     }
     save_courses(courses)
@@ -2047,7 +2048,7 @@ def update_course(course_id):
     if course_id not in courses["courses"]:
         return jsonify({"error": "Not found"}), 404
     body = request.json or {}
-    for field in ("label", "description", "cover", "level", "archived"):
+    for field in ("label", "description", "cover", "level", "domain", "archived"):
         if field in body:
             courses["courses"][course_id][field] = body[field]
     save_courses(courses)
@@ -3767,12 +3768,22 @@ _PRACTICE_SYSTEM_PROMPT = (
     "Reglas estrictas:\n"
     "- Genera un escenario breve y creíble de un caso real de industria relacionado con el tema.\n"
     "- Divide el reto en 3 a 5 pasos verificables, en orden creciente de dificultad.\n"
-    "- Cada paso es de tipo \"python\" (código Python real y ejecutable) o \"text\" (un comando de git/shell/SQL, "
-    "o una respuesta conceptual corta que el estudiante escribe pero NO se ejecuta, solo se evalúa como texto).\n"
-    "- Usa pasos \"python\" solo si el tema es de programación en Python. Para git, shell, SQL, CSS o conceptos, usa \"text\".\n"
+    "- Cada paso es de tipo \"python\" (código Python real y ejecutable), \"css\" (una regla o propiedad CSS "
+    "real, verificada contra un fragmento de HTML dado), o \"text\" (un comando de git/shell/SQL, o una "
+    "respuesta conceptual corta que el estudiante escribe pero NO se ejecuta, solo se evalúa como texto).\n"
+    "- Usa \"python\" solo si el tema es de programación en Python. Usa \"css\" solo si el tema es de CSS "
+    "(propiedades, selectores, layout, box model, etc.) — es el tipo preferido para CSS, no \"text\". Para git, "
+    "shell, SQL o preguntas puramente conceptuales, usa \"text\".\n"
     "- Para pasos \"python\": incluye \"starter_code\" (una plantilla mínima con comentarios guía; puede ser cadena vacía) "
     "y \"asserts\" (una lista de 1 a 4 líneas `assert ...` en Python que validan la solución correcta al ejecutarse "
     "justo después del código del estudiante; deben poder fallar si la solución es incorrecta).\n"
+    "- Para pasos \"css\": incluye \"html_snippet\" (HTML corto y realista, 1-4 elementos, YA con las clases/ids "
+    "que el estudiante va a necesitar en sus selectores), \"starter_css\" (CSS inicial opcional para arrancar, "
+    "puede ser cadena vacía) y \"css_asserts\" (lista de 1 a 4 objetos "
+    "{\"selector\":\"...\",\"property\":\"...\",\"expected\":\"...\"} — selector debe existir literal en "
+    "html_snippet, property un nombre real de propiedad CSS, expected el valor tal como lo devuelve "
+    "getComputedStyle del navegador, ej. \"flex\", \"center\", \"10px\", \"rgb(255, 0, 0)\"; evita valores "
+    "ambiguos que el navegador normaliza distinto).\n"
     "- Para pasos \"text\": incluye \"rubric\" (qué debe contener una respuesta correcta, para que otra IA la evalúe).\n"
     "- Cada paso incluye \"hints\": una lista de EXACTAMENTE 3 pistas progresivas (de sutil a casi explícita, "
     "sin revelar la solución completa en las dos primeras).\n"
@@ -3780,14 +3791,16 @@ _PRACTICE_SYSTEM_PROMPT = (
     "- Ajusta la dificultad real del reto al nivel pedido: facil, medio o dificil.\n"
     "- Formato de texto en \"scenario\" y en el \"instruction\" de cada paso: si incluyes código, un traceback/"
     "stack trace, salida de terminal, contenido de un archivo o un comando, escríbelo SIEMPRE dentro de un bloque "
-    "de código Markdown con triple backtick indicando el lenguaje cuando aplique (```python, ```bash, ```sql, o "
-    "```text para tracebacks y salidas genéricas) — nunca como texto corrido en el mismo párrafo. Para un nombre "
-    "de variable, función o comando suelto dentro de una oración, usa un backtick simple.\n"
+    "de código Markdown con triple backtick indicando el lenguaje cuando aplique (```python, ```css, ```bash, "
+    "```sql, o ```text para tracebacks y salidas genéricas) — nunca como texto corrido en el mismo párrafo. Para "
+    "un nombre de variable, función o comando suelto dentro de una oración, usa un backtick simple.\n"
     "- Responde en español.\n\n"
     "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
     "con este esquema exacto:\n"
-    '{"title":"...","scenario":"...","steps":[{"type":"python|text","instruction":"...",'
-    '"starter_code":"...","asserts":["..."],"rubric":"...","hints":["...","...","..."],"solution":"...","concept":"..."}]}'
+    '{"title":"...","scenario":"...","steps":[{"type":"python|css|text","instruction":"...",'
+    '"starter_code":"...","asserts":["..."],"html_snippet":"...","starter_css":"...",'
+    '"css_asserts":[{"selector":"...","property":"...","expected":"..."}],'
+    '"rubric":"...","hints":["...","...","..."],"solution":"...","concept":"..."}]}'
 )
 
 
@@ -3915,15 +3928,21 @@ def generate_practice_challenge():
             f"más aplique, o cadena vacía si ninguno aplica bien):\n{names}"
         )
 
+    # A course's domain (set at creation, "Curso ▸ Editar") tells the AI which
+    # step type actually fits the subject — e.g. a CSS course should generate
+    # "css" steps with a live preview, not generic "text" ones evaluated blind.
+    course_domain = load_courses()["courses"].get(course, {}).get("domain", "") if course else ""
+    domain_note = f"\n\nDominio del curso: {course_domain}." if course_domain else ""
+
     if context:
         user_msg = (
-            f"Lección de referencia: {topic}\nDificultad: {difficulty}\n\n"
+            f"Lección de referencia: {topic}\nDificultad: {difficulty}{domain_note}\n\n"
             f"Contenido de la lección (el reto debe reforzar exactamente estos conceptos):\n"
             f"```\n{context[:6000]}\n```{concept_note}"
         )
     else:
         user_msg = (
-            f"Tema: {topic}\nDificultad: {difficulty}\n"
+            f"Tema: {topic}\nDificultad: {difficulty}{domain_note}\n"
             "Genera un reto de tema libre sobre este tema, sin atarlo a ninguna lección específica."
             f"{concept_note}"
         )
@@ -3941,7 +3960,7 @@ def generate_practice_challenge():
     for step in challenge.get("steps", []):
         step_type = step.get("type")
         instruction = step.get("instruction")
-        if step_type not in ("python", "text") or not isinstance(instruction, str) or not instruction.strip():
+        if step_type not in ("python", "css", "text") or not isinstance(instruction, str) or not instruction.strip():
             continue
         hints = step.get("hints")
         hints = [str(h) for h in hints][:3] if isinstance(hints, list) else []
@@ -3961,6 +3980,27 @@ def generate_practice_challenge():
                 continue
             clean["starter_code"] = str(step.get("starter_code") or "")
             clean["asserts"] = asserts
+        elif step_type == "css":
+            html_snippet = step.get("html_snippet")
+            if not isinstance(html_snippet, str) or not html_snippet.strip():
+                continue
+            css_asserts_raw = step.get("css_asserts")
+            css_asserts = []
+            if isinstance(css_asserts_raw, list):
+                for a in css_asserts_raw:
+                    if not isinstance(a, dict):
+                        continue
+                    selector = a.get("selector")
+                    prop = a.get("property")
+                    expected = a.get("expected")
+                    if not all(isinstance(v, str) and v.strip() for v in (selector, prop, expected)):
+                        continue
+                    css_asserts.append({"selector": selector, "property": prop, "expected": expected})
+            if not css_asserts:
+                continue
+            clean["html_snippet"] = html_snippet
+            clean["starter_css"] = str(step.get("starter_css") or "")
+            clean["css_asserts"] = css_asserts
         else:
             rubric = step.get("rubric")
             if not isinstance(rubric, str) or not rubric.strip():
