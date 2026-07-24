@@ -3130,9 +3130,56 @@ PROVIDERS = {
             {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro", "hint": "Más profundo, mejor para análisis complejos"},
         ],
     },
+    "openrouter": {
+        "label": "OpenRouter",
+        "kind": "openai_compat",
+        "base_url": "https://openrouter.ai/api/v1/chat/completions",
+        "env": "OPENROUTER_API_KEY",
+        # Populated lazily and filtered to free-tier models only (see
+        # _fetch_openrouter_free_models) — OpenRouter exposes hundreds of
+        # paid models too, but the user explicitly doesn't want those
+        # showing up in the picker until they decide to start paying.
+        "models": [],
+    },
 }
 DEFAULT_PROVIDER = "deepseek"
 DEFAULT_MODEL = "deepseek-chat"
+
+# OpenRouter's public model catalog (no API key needed to list) — cached in
+# memory so every /api/ai/providers call doesn't refetch it. "Free" here
+# means OpenRouter itself charges $0 (pricing.prompt/completion == "0", the
+# convention behind their own ":free" id suffix) — not a statement about
+# the underlying model's rate limits, which OpenRouter still enforces.
+_OPENROUTER_FREE_MODELS_CACHE = {"models": None, "fetched_at": 0.0}
+_OPENROUTER_FREE_MODELS_TTL = 3600
+
+
+def _fetch_openrouter_free_models():
+    now = time.time()
+    cache = _OPENROUTER_FREE_MODELS_CACHE
+    if cache["models"] is not None and (now - cache["fetched_at"]) < _OPENROUTER_FREE_MODELS_TTL:
+        return cache["models"]
+    try:
+        req = urllib.request.Request("https://openrouter.ai/api/v1/models", headers=_AI_HTTP_HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read())
+        free = []
+        for m in data.get("data", []):
+            mid = m.get("id", "")
+            pricing = m.get("pricing") or {}
+            is_free = mid.endswith(":free") or (
+                str(pricing.get("prompt", "")) in ("0", "0.0") and str(pricing.get("completion", "")) in ("0", "0.0")
+            )
+            if is_free and mid:
+                free.append({"id": mid, "label": m.get("name") or mid, "hint": "Gratis vía OpenRouter"})
+        free.sort(key=lambda x: x["label"].lower())
+        cache["models"] = free
+        cache["fetched_at"] = now
+        return free
+    except Exception:
+        # Keep serving the last good list (even if stale) rather than
+        # having the provider vanish from the picker on a transient error.
+        return cache["models"] or []
 
 
 # Python's urllib defaults to "Python-urllib/3.x", which some providers'
@@ -3160,7 +3207,13 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     req = urllib.request.Request(
         base_url,
         data=body,
-        headers={**_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        # HTTP-Referer/X-Title are OpenRouter's recommended (not required)
+        # attribution headers — harmless no-ops for DeepSeek/Groq, which
+        # this function also serves.
+        headers={
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
+        },
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
@@ -3259,11 +3312,14 @@ def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
 def list_ai_providers():
     """Only lists providers whose API key is actually configured, so the
     frontend's model selector never offers a choice that would just 503."""
-    available = [
-        {"id": pid, "label": cfg["label"], "models": cfg["models"]}
-        for pid, cfg in PROVIDERS.items()
-        if os.environ.get(cfg["env"])
-    ]
+    available = []
+    for pid, cfg in PROVIDERS.items():
+        if not os.environ.get(cfg["env"]):
+            continue
+        models = _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
+        if not models:
+            continue  # OpenRouter's catalog fetch failed / returned nothing free right now
+        available.append({"id": pid, "label": cfg["label"], "models": models})
     return jsonify({"providers": available, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
 
 
