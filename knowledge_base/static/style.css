@@ -7445,49 +7445,114 @@ body {
 .quiz-explanation--ok .quiz-explanation-badge  { color: var(--success); }
 .quiz-explanation--bad .quiz-explanation-badge { color: var(--danger); }
 
-.quiz-results { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.quiz-score {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 18px 30px;
-  border-radius: 14px;
-  margin-bottom: 4px;
-}
-.quiz-score-pct { font-size: 2.1rem; font-weight: 800; line-height: 1; }
-.quiz-score-frac { font-size: 0.78rem; color: var(--text-muted); }
-.quiz-score--great { background: color-mix(in srgb, var(--success) 12%, transparent); }
-.quiz-score--great .quiz-score-pct { color: var(--success); }
-.quiz-score--ok     { background: color-mix(in srgb, var(--accent-amber) 12%, transparent); }
-.quiz-score--ok .quiz-score-pct     { color: var(--accent-amber); }
-.quiz-score--low    { background: color-mix(in srgb, var(--danger) 10%, transparent); }
-.quiz-score--low .quiz-score-pct    { color: var(--danger); }
-.quiz-score-msg { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px; }
+/* ── Evaluation results (Quiz + Práctica) — a dashboard-style summary
+   instead of a big colored pill, and a plain reviewable list instead of
+   individually-bordered, left-accent-striped cards for each question. */
+.eval-results { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
-.quiz-review { width: 100%; display: flex; flex-direction: column; gap: 6px; }
-.quiz-review-item {
+.eval-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 10px 12px;
-  font-size: 0.8rem;
+  border-radius: 10px;
+  background: var(--bg-elevated);
 }
-.quiz-review-item.ok  { border-left: 3px solid var(--success); }
-.quiz-review-item.bad { border-left: 3px solid var(--danger); }
-.quiz-review-head { display: flex; align-items: flex-start; gap: 8px; }
-.quiz-review-icon { flex-shrink: 0; font-weight: 700; }
-.quiz-review-item.ok .quiz-review-icon  { color: var(--success); }
-.quiz-review-item.bad .quiz-review-icon { color: var(--danger); }
-.quiz-review-q { color: var(--text); font-weight: 600; line-height: 1.4; }
-.quiz-review-detail { margin-top: 6px; margin-left: 20px; display: flex; flex-direction: column; gap: 3px; color: var(--text-muted); }
-.quiz-review-wrong { color: var(--danger); }
-.quiz-review-correct { color: var(--success); }
-.quiz-review-exp { color: var(--text-faint); font-size: 0.78rem; }
+.eval-summary--great { --ring-c: var(--success); }
+.eval-summary--ok    { --ring-c: var(--accent-amber); }
+.eval-summary--low   { --ring-c: var(--danger); }
+
+.eval-ring {
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--ring-c) calc(var(--pct) * 1%), var(--bg-hover) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eval-ring-hole {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eval-ring-pct { font-size: 0.86rem; font-weight: 700; color: var(--text); }
+
+.eval-summary-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.eval-summary-frac { font-size: 0.92rem; font-weight: 600; color: var(--text); }
+.eval-summary-msg { font-size: 0.8rem; color: var(--text-muted); }
+
+.eval-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.eval-review-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.eval-review-toggle { display: flex; gap: 2px; background: var(--bg-hover); border-radius: 6px; padding: 2px; }
+.eval-review-toggle-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 4px 9px;
+  border-radius: 5px;
+  color: var(--text-faint);
+}
+.eval-review-toggle-btn:hover { color: var(--text); }
+.eval-review-toggle-btn.active { background: var(--bg-elevated); color: var(--text); }
+
+.eval-review-list { display: flex; flex-direction: column; }
+.eval-review-list.filter-bad .eval-review-item.ok { display: none; }
+.eval-review-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.eval-review-item:last-child { border-bottom: none; }
+.eval-review-badge {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+.eval-review-item.ok  .eval-review-badge { background: var(--success); }
+.eval-review-item.bad .eval-review-badge { background: var(--danger); }
+.eval-review-body { flex: 1; min-width: 0; }
+.eval-review-q { color: var(--text); line-height: 1.45; }
+.eval-review-detail { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; color: var(--text-muted); font-size: 0.78rem; }
+.eval-review-wrong { color: var(--danger); }
+.eval-review-correct { color: var(--success); }
+.eval-review-exp { color: var(--text-faint); }
 
 @media (max-width: 600px) {
   .quiz-question { font-size: 0.92rem; }
   .quiz-option { font-size: 0.82rem; padding: 9px 12px; }
-  .quiz-score-pct { font-size: 1.7rem; }
+  .eval-summary { padding: 14px; gap: 12px; }
+  .eval-ring { width: 52px; height: 52px; }
+  .eval-ring-hole { width: 38px; height: 38px; }
+  .eval-ring-pct { font-size: 0.76rem; }
 }
 
 /* ── PRACTICE VIEW (área de guerra, fase 6 — dashboard space, not a

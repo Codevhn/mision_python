@@ -8317,6 +8317,63 @@ function _answerQuiz(idx) {
   }
 }
 
+// ── Shared "evaluation results" screen — Quiz and Práctica both score a
+// run and review it question-by-question, so they share one look: a
+// dashboard-style summary (progress ring, not a big colored pill) plus a
+// plain reviewable list (a badge + divider per row, not individually
+// bordered/left-accent-striped cards) with a "Solo errores" filter so a
+// long run doesn't force scrolling past everything you already got right.
+function _buildEvalSummaryHtml(pct, fracLabel, gradeMsg) {
+  const grade = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
+  return `
+    <div class="eval-summary eval-summary--${grade}">
+      <div class="eval-ring" style="--pct:${pct}">
+        <div class="eval-ring-hole"><span class="eval-ring-pct">${pct}%</span></div>
+      </div>
+      <div class="eval-summary-info">
+        <span class="eval-summary-frac">${escapeHtml(fracLabel)}</span>
+        <span class="eval-summary-msg">${escapeHtml(gradeMsg)}</span>
+      </div>
+    </div>`;
+}
+
+// rows: [{ok, question, detailHtml}] — detailHtml is pre-escaped/rendered
+// markup (wrong/correct answer, explanation, reference solution…), shown
+// only for rows that have one (typically the misses).
+function _mountEvalReview(container, rows) {
+  if (!container) return;
+  container.innerHTML = `
+    <div class="eval-review-head">
+      <span class="eval-review-title">Revisión</span>
+      <div class="eval-review-toggle">
+        <button class="eval-review-toggle-btn active" data-filter="all">Todas</button>
+        <button class="eval-review-toggle-btn" data-filter="bad">Solo errores</button>
+      </div>
+    </div>
+    <div class="eval-review-list"></div>`;
+
+  const list = container.querySelector('.eval-review-list');
+  rows.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'eval-review-item' + (r.ok ? ' ok' : ' bad');
+    row.innerHTML = `
+      <span class="eval-review-badge">${r.ok ? '✓' : '✕'}</span>
+      <div class="eval-review-body">
+        <div class="eval-review-q">${i + 1}. ${escapeHtml(r.question)}</div>
+        ${r.detailHtml ? `<div class="eval-review-detail">${r.detailHtml}</div>` : ''}
+      </div>`;
+    list.appendChild(row);
+  });
+
+  container.querySelectorAll('.eval-review-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.eval-review-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      list.classList.toggle('filter-bad', btn.dataset.filter === 'bad');
+    });
+  });
+}
+
 function _renderQuizResults() {
   const st = _quizState;
   if (!st || !st.quiz) return;
@@ -8324,20 +8381,15 @@ function _renderQuizResults() {
   const total   = quiz.questions.length;
   const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
   const pct     = Math.round((correct / total) * 100);
-  const grade   = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
   const gradeMsg = pct >= 80 ? '¡Excelente dominio del tema!'
                  : pct >= 50 ? 'Vas bien, pero repasa lo que fallaste.'
                  : 'Conviene repasar la lección antes de seguir.';
 
   $('quizMain').innerHTML = `
     <h3 class="practice-challenge-title">${escapeHtml(quiz.title)} — Resultados</h3>
-    <div class="quiz-results">
-      <div class="quiz-score quiz-score--${grade}">
-        <span class="quiz-score-pct">${pct}%</span>
-        <span class="quiz-score-frac">${correct}/${total} correctas</span>
-      </div>
-      <div class="quiz-score-msg">${gradeMsg}</div>
-      <div class="quiz-review" id="quizReview"></div>
+    <div class="eval-results">
+      ${_buildEvalSummaryHtml(pct, `${correct}/${total} correctas`, gradeMsg)}
+      <div id="quizReview"></div>
     </div>
     <div class="practice-main-actions" id="quizMainActions"></div>`;
 
@@ -8358,24 +8410,17 @@ function _renderQuizResults() {
     }).catch(() => {});
   }
 
-  const review = $('quizReview');
-  quiz.questions.forEach((q, i) => {
+  _mountEvalReview($('quizReview'), quiz.questions.map((q, i) => {
     const userAns = quiz.answers[i];
     const ok = userAns === q.correct;
-    const row = document.createElement('div');
-    row.className = 'quiz-review-item' + (ok ? ' ok' : ' bad');
-    row.innerHTML = `
-      <div class="quiz-review-head">
-        <span class="quiz-review-icon">${ok ? '✓' : '✕'}</span>
-        <span class="quiz-review-q">${i + 1}. ${escapeHtml(q.question)}</span>
-      </div>
-      <div class="quiz-review-detail">
-        ${!ok ? `<div class="quiz-review-wrong">Tu respuesta: ${escapeHtml(q.options[userAns])}</div>` : ''}
-        <div class="quiz-review-correct">Correcta: ${escapeHtml(q.options[q.correct])}</div>
-        ${q.explanation ? `<div class="quiz-review-exp">${escapeHtml(q.explanation)}</div>` : ''}
-      </div>`;
-    review.appendChild(row);
-  });
+    const detailParts = [];
+    if (!ok) {
+      detailParts.push(`<div class="eval-review-wrong">Tu respuesta: ${escapeHtml(q.options[userAns])}</div>`);
+      detailParts.push(`<div class="eval-review-correct">Correcta: ${escapeHtml(q.options[q.correct])}</div>`);
+    }
+    if (q.explanation) detailParts.push(`<div class="eval-review-exp">${escapeHtml(q.explanation)}</div>`);
+    return { ok, question: q.question, detailHtml: detailParts.join('') };
+  }));
 
   const actions = $('quizMainActions');
 
@@ -9753,38 +9798,25 @@ function _renderPracticeResultsScreen(st) {
   const total = ch.steps.length;
   const passed = st.stepResults.filter(r => r.passed).length;
   const pct = Math.round((passed / total) * 100);
-  const grade = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
   const gradeMsg = pct >= 80 ? '¡Excelente! Dominas bien este reto.'
                  : pct >= 50 ? 'Vas bien, pero repasa los pasos que fallaste o revelaste.'
                  : 'Conviene practicar más este tema antes de seguir.';
 
   $('practiceMain').innerHTML = `
     <h3 class="practice-challenge-title">${escapeHtml(ch.title)} — Resultados</h3>
-    <div class="quiz-results">
-      <div class="quiz-score quiz-score--${grade}">
-        <span class="quiz-score-pct">${pct}%</span>
-        <span class="quiz-score-frac">${passed}/${total} pasos resueltos</span>
-      </div>
-      <div class="quiz-score-msg">${gradeMsg}</div>
-      <div class="quiz-review" id="practiceReview"></div>
+    <div class="eval-results">
+      ${_buildEvalSummaryHtml(pct, `${passed}/${total} pasos resueltos`, gradeMsg)}
+      <div id="practiceReview"></div>
     </div>
     <div class="practice-main-actions" id="practiceMainActions"></div>`;
 
-  const review = $('practiceReview');
-  ch.steps.forEach((step, i) => {
+  _mountEvalReview($('practiceReview'), ch.steps.map((step, i) => {
     const ok = st.stepResults[i].passed;
-    const row = document.createElement('div');
-    row.className = 'quiz-review-item' + (ok ? ' ok' : ' bad');
-    row.innerHTML = `
-      <div class="quiz-review-head">
-        <span class="quiz-review-icon">${ok ? '✓' : '✕'}</span>
-        <span class="quiz-review-q">${i + 1}. ${escapeHtml(step.instruction)}</span>
-      </div>
-      <div class="quiz-review-detail">
-        ${!ok ? `<div class="quiz-review-wrong">Solución de referencia:</div><pre class="practice-solution-pre">${escapeHtml(step.solution)}</pre>` : ''}
-      </div>`;
-    review.appendChild(row);
-  });
+    const detailHtml = !ok
+      ? `<div class="eval-review-wrong">Solución de referencia:</div><pre class="practice-solution-pre">${escapeHtml(step.solution)}</pre>`
+      : '';
+    return { ok, question: step.instruction, detailHtml };
+  }));
 
   const actions = $('practiceMainActions');
 
