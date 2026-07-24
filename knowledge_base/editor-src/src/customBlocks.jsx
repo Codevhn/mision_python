@@ -49,9 +49,9 @@ export const pageLink = createReactBlockSpec(
 // used to live flat on the schema (filter/sort/groupBy/calc/rowHeight/
 // titleWidth) is now per-VIEW instead — the same rows, filtered/sorted/
 // grouped differently per tab, no data duplicated.
-function makeDefaultView(name, overrides) {
+function makeDefaultView(name, overrides, id) {
   return {
-    id: "view_" + Math.random().toString(36).slice(2, 9),
+    id: id || ("view_" + Math.random().toString(36).slice(2, 9)),
     name,
     type: "table",
     filter: null,
@@ -79,6 +79,15 @@ function parseSchema(raw) {
   // wild keeps looking and behaving exactly the same, nothing for the user
   // to do. Only written back to disk once the user actually changes
   // something (saveSchema/saveView), never forced on a bare read.
+  //
+  // The migrated view's id MUST be stable (not random) across repeated
+  // calls: parseSchema re-runs on every single render straight off
+  // block.props.data, and until something actually calls saveSchema this
+  // fallback is regenerated fresh each time — a random id here would mint
+  // a NEW id on every render, so any state keyed by "this view's id" set
+  // between two renders (e.g. opening its own rename/type popover) would
+  // find its target already replaced by the next render and silently fail
+  // to open. A brand-new, never-saved block hits this exact window.
   const views = Array.isArray(d.views) && d.views.length
     ? d.views
     : [makeDefaultView("Tabla", {
@@ -88,7 +97,7 @@ function parseSchema(raw) {
         calc: d.calc ?? {},
         rowHeight: d.rowHeight || "small",
         titleWidth: d.titleWidth ?? 220,
-      })];
+      }, "view_default")];
   const activeView = views.some((v) => v.id === d.activeView) ? d.activeView : views[0].id;
   return { columns, views, activeView };
 }
@@ -108,6 +117,16 @@ const PROP_DEFAULTS = {
   text: "", number: 0, select: null, multi_select: [],
   status: "No iniciado", date: "", checkbox: false, url: "",
 };
+
+// A view's own layout — "Tabla" (the grid this block has always been) or
+// "Tablero" (Notion's board/Kanban: the same rows as draggable cards, laned
+// by whatever column "Agrupar" is set to — reuses that exact grouping
+// mechanism instead of a separate board-only concept).
+const VIEW_TYPES = [
+  { id: "table", label: "Tabla" },
+  { id: "board", label: "Tablero" },
+];
+function viewTypeIcon(type) { return type === "board" ? "▦" : "▤"; }
 
 // Types simple enough to edit with a plain input right in the table cell.
 // select/multi_select/status get their own colored-tag cell (PropCell,
@@ -223,8 +242,26 @@ function rowGroupKey(row, col) {
   return prop && prop.value != null && prop.value !== "" ? String(prop.value) : NO_GROUP_KEY;
 }
 
-function groupRows(displayRows, groupCol) {
+// Inverse of rowGroupKey, for the board view: dropping a card into a lane
+// (or creating one straight in a lane via its own "+") needs to turn that
+// lane's label back into the actual property value to write. Undefined for
+// "title" and "multi_select" group columns — moving a card can't sensibly
+// rewrite a page's title, and a multi_select row can belong to several
+// lanes at once so "which one did you drag it out of" has no single answer.
+function groupKeyToValue(key, col) {
+  if (!col || col.type === "title" || col.type === "multi_select") return undefined;
+  if (col.type === "checkbox") return key === "Marcada";
+  return key === NO_GROUP_KEY ? "" : key;
+}
+
+// seedKeys: pre-populate these lane keys with an empty array before rows
+// are placed, so a lane with zero rows still shows up (needed for the board
+// view — an empty lane must still exist to be a valid drop target). Table
+// view's own "Agrupar" never passes this — omitted groups collapsing away
+// entirely is the existing, already-shipped, already-tested behavior there.
+function groupRows(displayRows, groupCol, seedKeys) {
   const groups = new Map();
+  if (seedKeys) { for (const k of seedKeys) groups.set(k, []); }
   for (const row of displayRows) {
     const key = rowGroupKey(row, groupCol);
     if (!groups.has(key)) groups.set(key, []);
@@ -370,6 +407,7 @@ export const database = createReactBlockSpec(
       const schema = parseSchema(block.props.data);
       const activeView = schema.views.find((v) => v.id === schema.activeView) || schema.views[0];
       const [viewMenuOpen, setViewMenuOpen] = useState(null);
+      const [viewMenuView, setViewMenuView] = useState("main");
       const [viewRenameDraft, setViewRenameDraft] = useState("");
       const viewMenuRef = useRef(null);
       const [rows, setRows] = useState([]);
@@ -574,16 +612,21 @@ export const database = createReactBlockSpec(
 
       // Same "create with a sensible default, then immediately open its own
       // rename popover" pattern addColumn already uses below — no jarring
-      // native prompt() for something this central to the feature.
+      // native prompt() for something this central to the feature. Opens
+      // straight to the "type" pane (table vs tablero), since picking that
+      // is the one decision that actually matters for a brand-new view —
+      // exactly how addColumn jumps straight to picking a column's type.
       const addView = () => {
         const view = makeDefaultView(`Vista ${schema.views.length + 1}`);
         saveSchema({ ...schema, views: [...schema.views, view], activeView: view.id });
         setViewMenuOpen(view.id);
+        setViewMenuView("type");
         setViewRenameDraft(view.name);
       };
 
       const openViewMenu = (v) => {
         setViewMenuOpen(v.id);
+        setViewMenuView("main");
         setViewRenameDraft(v.name);
       };
 
@@ -591,6 +634,21 @@ export const database = createReactBlockSpec(
         const name = viewRenameDraft.trim();
         if (!name) return;
         saveSchema({ ...schema, views: schema.views.map((x) => (x.id === v.id ? { ...x, name } : x)) });
+        setViewMenuOpen(null);
+      };
+
+      // Switching a view TO "board" needs a groupBy or it has no lanes to
+      // show — auto-pick the first status/select column (col_status, if
+      // present, same as a fresh database's own default column) so a new
+      // board is never empty and unconfigured. Leaves an already-set
+      // groupBy alone (switching back and forth shouldn't reshuffle it).
+      const changeViewType = (v, type) => {
+        const patch = { type };
+        if (type === "board" && !v.groupBy) {
+          const groupable = schema.columns.find((c) => c.type === "status" || c.type === "select");
+          if (groupable) patch.groupBy = groupable.id;
+        }
+        saveSchema({ ...schema, views: schema.views.map((x) => (x.id === v.id ? { ...x, ...patch } : x)) });
         setViewMenuOpen(null);
       };
 
@@ -673,8 +731,10 @@ export const database = createReactBlockSpec(
       // insertAfterId: the row's own gutter "+" (Notion-style, adds a page
       // right where you are, not just at the end) passes the row it was
       // clicked on; the bottom "+ Nueva página" button omits it, keeping
-      // its existing append-at-the-end behavior.
-      const addRow = async (insertAfterId) => {
+      // its existing append-at-the-end behavior. presetGroupCol/Value: a
+      // board lane's own "+ Nueva página" (a card should land in THAT lane
+      // already, not in whatever the groupBy column's bare default is).
+      const addRow = async (insertAfterId, presetGroupCol, presetGroupValue) => {
         if (!pageId) return;
         const res = await fetch("/api/entry", {
           method: "POST",
@@ -685,7 +745,7 @@ export const database = createReactBlockSpec(
         if (!data.id) return;
         const seeded = schema.columns.map((c) => ({
           id: c.id, name: c.name, type: c.type,
-          value: PROP_DEFAULTS[c.type] ?? "",
+          value: (presetGroupCol && c.id === presetGroupCol.id) ? presetGroupValue : (PROP_DEFAULTS[c.type] ?? ""),
         }));
         await fetch(`/api/entry/${data.id}/properties`, {
           method: "PATCH",
@@ -756,6 +816,22 @@ export const database = createReactBlockSpec(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: next.map((r) => r.id) }),
         });
+      };
+
+      // Board view's card drag — dropping a card into a different lane
+      // rewrites its groupBy-column value to that lane's, same underlying
+      // write as editing the property directly (setCellValue), just
+      // triggered by a drop instead of a click. No-ops for group columns
+      // groupKeyToValue can't map back to a value (title, multi_select).
+      const handleCardDrop = async (laneKey) => {
+        const draggedId = dragRowIdRef.current;
+        dragRowIdRef.current = null;
+        if (!draggedId || !groupColResolved) return;
+        const value = groupKeyToValue(laneKey, groupColResolved);
+        if (value === undefined) return;
+        const row = rowsRef.current.find((r) => r.id === draggedId);
+        if (!row || rowGroupKey(row, groupColResolved) === laneKey) return;
+        await setCellValue(draggedId, groupColResolved, value);
       };
 
       // "⋮⋮" row menu actions. Duplicate reuses the app's existing generic
@@ -991,7 +1067,17 @@ export const database = createReactBlockSpec(
 
       const filterSortColumns = [{ id: "__title", name: "Nombre" }, ...schema.columns];
       const groupColResolved = activeView.groupBy ? resolveFilterSortCol(activeView.groupBy, schema.columns) : null;
-      const groups = groupColResolved ? groupRows(displayRows, groupColResolved) : null;
+      // Board lanes need every known option present even at 0 cards (a lane
+      // has to exist to be draggable-into) — table's own grouped rows don't
+      // want that (an empty section is just clutter there), so this only
+      // applies when the active view actually IS a board.
+      const boardSeedKeys = activeView.type === "board" && groupColResolved
+        ? (groupColResolved.type === "status" ? STATUS_OPTIONS
+          : groupColResolved.type === "select" ? (groupColResolved.options || []).map((o) => o.label)
+          : groupColResolved.type === "checkbox" ? ["No marcada", "Marcada"]
+          : null)
+        : null;
+      const groups = groupColResolved ? groupRows(displayRows, groupColResolved, boardSeedKeys) : null;
       // Manual drag-reorder is disabled whenever a sort OR a grouping is
       // active — both compete with a freely-dragged manual order the same
       // way (grouping additionally has no defined cross-group semantics).
@@ -1016,7 +1102,7 @@ export const database = createReactBlockSpec(
                 ref={viewMenuOpen === v.id ? viewMenuRef : null}
               >
                 <button className="bn-db-view-tab-btn" onClick={() => switchView(v.id)}>
-                  <span className="bn-db-view-tab-icon">▤</span>
+                  <span className="bn-db-view-tab-icon">{viewTypeIcon(v.type)}</span>
                   <span className="bn-db-view-tab-name">{v.name}</span>
                 </button>
                 {v.id === activeView.id && (
@@ -1031,13 +1117,33 @@ export const database = createReactBlockSpec(
                       placeholder="Nombre de la vista"
                       onChange={(e) => setViewRenameDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") commitViewRename(v);
+                        if (e.key === "Enter") { commitViewRename(v); if (viewMenuView === "type") setViewMenuOpen(null); }
                         if (e.key === "Escape") setViewMenuOpen(null);
                       }}
                     />
-                    <button className="bn-db-colmenu-item" onClick={() => commitViewRename(v)}>Guardar nombre</button>
-                    {schema.views.length > 1 && (
-                      <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => deleteView(v)}>Eliminar vista</button>
+                    {viewMenuView === "main" ? (
+                      <>
+                        <button className="bn-db-colmenu-item" onClick={() => commitViewRename(v)}>Guardar nombre</button>
+                        <button className="bn-db-colmenu-item" onClick={() => setViewMenuView("type")}>
+                          Cambiar tipo <span className="bn-db-colmenu-current">{(VIEW_TYPES.find((t) => t.id === v.type) || {}).label}</span>
+                        </button>
+                        {schema.views.length > 1 && (
+                          <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => deleteView(v)}>Eliminar vista</button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <button className="bn-db-colmenu-back" onClick={() => setViewMenuView("main")}>← Atrás</button>
+                        {VIEW_TYPES.map((t) => (
+                          <button
+                            key={t.id}
+                            className={"bn-db-colmenu-item" + (v.type === t.id ? " active" : "")}
+                            onClick={() => changeViewType(v, t.id)}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </>
                     )}
                   </div>
                 )}
@@ -1164,25 +1270,112 @@ export const database = createReactBlockSpec(
                 )}
               </div>
             </div>
-            <div className="bn-db-rowheight-wrap" ref={rowHeightRef}>
-              <button className="bn-db-toolbar-btn" onClick={() => setRowHeightOpen((v) => !v)}>
-                ≡ {(ROW_HEIGHTS.find((r) => r.id === rowHeight) || ROW_HEIGHTS[0]).label}
-              </button>
-              {rowHeightOpen && (
-                <div className="bn-db-colmenu-pop bn-db-rowheight-pop" contentEditable={false}>
-                  {ROW_HEIGHTS.map((rh) => (
-                    <button
-                      key={rh.id}
-                      className={"bn-db-colmenu-item" + (rowHeight === rh.id ? " active" : "")}
-                      onClick={() => { saveView({ rowHeight: rh.id }); setRowHeightOpen(false); }}
-                    >
-                      {rh.label}
-                    </button>
-                  ))}
+            {activeView.type === "table" && (
+              <div className="bn-db-rowheight-wrap" ref={rowHeightRef}>
+                <button className="bn-db-toolbar-btn" onClick={() => setRowHeightOpen((v) => !v)}>
+                  ≡ {(ROW_HEIGHTS.find((r) => r.id === rowHeight) || ROW_HEIGHTS[0]).label}
+                </button>
+                {rowHeightOpen && (
+                  <div className="bn-db-colmenu-pop bn-db-rowheight-pop" contentEditable={false}>
+                    {ROW_HEIGHTS.map((rh) => (
+                      <button
+                        key={rh.id}
+                        className={"bn-db-colmenu-item" + (rowHeight === rh.id ? " active" : "")}
+                        onClick={() => { saveView({ rowHeight: rh.id }); setRowHeightOpen(false); }}
+                      >
+                        {rh.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {activeView.type === "board" ? (
+            <div className="bn-db-board">
+              {!groups ? (
+                <div className="bn-db-board-empty">
+                  Elegí una propiedad en "Agrupar" para definir las columnas del tablero.
                 </div>
+              ) : (
+                groups.map(({ key, rows: laneRows }) => (
+                  <div className="bn-db-board-lane" key={key}>
+                    <div className="bn-db-board-lane-header">
+                      <span className="bn-db-board-lane-label">{key}</span>
+                      <span className="bn-db-board-lane-count">{laneRows.length}</span>
+                    </div>
+                    <div
+                      className="bn-db-board-lane-cards"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => { e.preventDefault(); handleCardDrop(key); }}
+                    >
+                      {laneRows.map((row) => (
+                        <div
+                          className="bn-db-board-card"
+                          key={row.id}
+                          draggable={groupKeyToValue(key, groupColResolved) !== undefined}
+                          onDragStart={(e) => { dragRowIdRef.current = row.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", row.id); }}
+                          onDragEnd={() => { dragRowIdRef.current = null; }}
+                          onClick={() => openRow(row.id)}
+                        >
+                          <div className="bn-db-board-card-head">
+                            <span className="bn-db-board-card-title">{row.icon || "📄"} {row.title || "Sin título"}</span>
+                            <button
+                              className="bn-db-board-card-menu-btn"
+                              onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
+                              ref={rowMenuOpen === row.id ? rowMenuRef : null}
+                            >⋮</button>
+                            {rowMenuOpen === row.id && (
+                              <div className="bn-db-colmenu-pop" contentEditable={false} onClick={(e) => e.stopPropagation()}>
+                                <button className="bn-db-colmenu-item" onClick={() => { setRowMenuOpen(null); openRow(row.id); }}>Abrir</button>
+                                <button className="bn-db-colmenu-item" onClick={() => duplicateRow(row.id)}>Duplicar</button>
+                                <button className="bn-db-colmenu-item" onClick={() => copyRowLink(row.id)}>Copiar enlace</button>
+                                <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { setRowMenuOpen(null); deleteRow(row.id); }}>Eliminar</button>
+                              </div>
+                            )}
+                          </div>
+                          {schema.columns.filter((c) => c.id !== activeView.groupBy).length > 0 && (
+                            <div className="bn-db-board-card-props">
+                              {schema.columns.filter((c) => c.id !== activeView.groupBy).map((c) => {
+                                const prop = (row.properties || []).find((p) => p.id === c.id);
+                                if (isTagType(c.type)) {
+                                  const val = prop ? prop.value : PROP_DEFAULTS[c.type];
+                                  const hasVal = c.type === "multi_select" ? Array.isArray(val) && val.length : !!val;
+                                  if (!hasVal) return null;
+                                  const effectiveProp = { id: c.id, name: c.name, type: c.type, value: val, options: c.options || [] };
+                                  return (
+                                    <PropCell
+                                      key={c.id}
+                                      prop={effectiveProp}
+                                      onChange={(updated) => {
+                                        if (c.type !== "status" && JSON.stringify(updated.options || []) !== JSON.stringify(c.options || [])) {
+                                          setColumnOptions(c, updated.options || []);
+                                        }
+                                        setCellValue(row.id, c, updated.value);
+                                      }}
+                                    />
+                                  );
+                                }
+                                const display = propValueDisplay(prop);
+                                if (!display) return null;
+                                return <span className="bn-db-board-card-prop" key={c.id}>{display}</span>;
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="bn-db-board-lane-add"
+                      onClick={() => addRow(undefined, groupColResolved, groupKeyToValue(key, groupColResolved))}
+                    >
+                      + Nueva página
+                    </button>
+                  </div>
+                ))
               )}
             </div>
-          </div>
+          ) : (
           <div className="bn-db-scroll">
             <div
               className={"bn-database-grid" + (selectedIds.size ? " bn-db-has-selection" : "")}
@@ -1365,15 +1558,16 @@ export const database = createReactBlockSpec(
             </div>
           </div>
           </div>
+          )}
           {selectedIds.size > 0 ? (
             <div className="bn-db-selection-bar" contentEditable={false}>
               <span>{selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}</span>
               <button className="bn-db-selection-clear" onClick={() => setSelectedIds(new Set())}>Cancelar</button>
               <button className="bn-db-selection-delete" onClick={deleteSelected}>Eliminar</button>
             </div>
-          ) : (
+          ) : activeView.type === "table" ? (
             <button className="bn-database-addrow" onClick={addRow}>+ Nueva página</button>
-          )}
+          ) : null}
         </div>
       );
     },

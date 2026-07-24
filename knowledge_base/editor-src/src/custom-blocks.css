@@ -642,3 +642,102 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
   padding: 6px 10px;
 }
 
+/* Tablero/Kanban view (audit item #10, second view type) — lanes defined by
+   whatever column "Agrupar" is set to, reusing the exact same grouping
+   logic the table's own "Agrupar" already computes; only the layout of
+   each group differs (a card column instead of a collapsible section). */
+.bn-db-board {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.bn-db-board-empty {
+  color: var(--text-faint);
+  font-size: 0.85em;
+  padding: 24px 4px;
+}
+.bn-db-board-lane {
+  flex: 0 0 260px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 8px;
+}
+.bn-db-board-lane-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 8px;
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.bn-db-board-lane-count { color: var(--text-faint); font-weight: 400; }
+.bn-db-board-lane-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 8px;
+}
+.bn-db-board-lane-add {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.8em;
+  text-align: left;
+  padding: 6px 4px;
+  margin-top: 4px;
+}
+.bn-db-board-lane-add:hover { color: var(--accent); }
+.bn-db-board-card {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.bn-db-board-card:hover { border-color: var(--accent); }
+.bn-db-board-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+.bn-db-board-card-title {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+.bn-db-board-card-menu-btn {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.85em;
+  padding: 0 4px;
+  opacity: 0;
+}
+.bn-db-board-card:hover .bn-db-board-card-menu-btn { opacity: 1; }
+.bn-db-board-card-menu-btn:hover { color: var(--text); }
+.bn-db-board-card-props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.bn-db-board-card-prop {
+  font-size: 0.76em;
+  color: var(--text-faint);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
