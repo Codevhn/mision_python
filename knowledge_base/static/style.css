@@ -7152,12 +7152,13 @@ body {
 }
 .ai-response-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
   border-top: 1px solid var(--border);
   padding-top: 8px;
 }
-.ai-copy-btn, .ai-insert-btn {
+.ai-copy-btn, .ai-insert-btn, .ai-save-page-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -7168,7 +7169,8 @@ body {
   cursor: pointer;
   transition: color 0.1s, border-color 0.1s;
 }
-.ai-copy-btn:hover, .ai-insert-btn:hover { color: var(--accent); border-color: var(--accent); }
+.ai-copy-btn:hover, .ai-insert-btn:hover, .ai-save-page-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.ai-save-page-btn:disabled { opacity: 0.6; cursor: default; }
 .ai-loading {
   padding: 16px 14px;
   font-size: 0.82rem;

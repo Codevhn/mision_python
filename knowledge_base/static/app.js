@@ -7672,6 +7672,42 @@ function initAIPanel() {
     showToast('Respuesta insertada', 'success');
   });
 
+  // Decide AFTER seeing the result, not before generating it: a free-form
+  // ask (e.g. "genérame un roadmap completo de JS") doesn't always belong
+  // inside whatever entry happened to be open — this saves it as its own
+  // new page instead, same shape "＋ Nueva página" already uses.
+  const savePageBtn = $('aiSavePageBtn');
+  savePageBtn?.addEventListener('click', async () => {
+    if (!lastResult) return;
+    const title = (input.value || '').trim()
+      || (lastResult.split('\n')[0] || '').replace(/^#+\s*/, '').trim().slice(0, 80)
+      || 'Respuesta de IA';
+    savePageBtn.disabled = true;
+    savePageBtn.textContent = 'Guardando…';
+    try {
+      const res = await fetch('/api/entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry_type: 'page', title, raw_text: lastResult, already_markdown: true }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        showToast(data.error || 'No se pudo guardar la página', 'error');
+        savePageBtn.disabled = false;
+        savePageBtn.textContent = '＋ guardar como página nueva';
+        return;
+      }
+      showToast(`Guardado como "${title}"`, 'success');
+      closePanel();
+      await loadTree();
+      loadEntry(data.id);
+    } catch (err) {
+      showToast('Error de red: ' + err.message, 'error');
+      savePageBtn.disabled = false;
+      savePageBtn.textContent = '＋ guardar como página nueva';
+    }
+  });
+
   // ── Inline AI toolbar ────────────────────────────────────
   const inlineBar     = document.getElementById('aiInlineBar');
   const inlineLoading = document.getElementById('aiInlineLoading');
