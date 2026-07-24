@@ -132,7 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initRelationsPanel();
   initAIPanel();
   initPasteMarkdown();
-  initQuizModal();
   initPagePeek();
   // Deep link: ?open=<entryId> — the target of "Copiar enlace" (database
   // row menu, customBlocks.jsx). No other feature reads location.search
@@ -5148,7 +5147,7 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
 
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
@@ -5191,10 +5190,12 @@ function setSidebarVisible(visible) {
 
     const radarView    = document.getElementById('radarView');
     const practiceView = document.getElementById('practiceView');
+    const quizView      = document.getElementById('quizView');
 
     if (graphView)      graphView.classList.add('hidden');
     if (radarView)      radarView.classList.add('hidden');
     if (practiceView)   practiceView.classList.add('hidden');
+    if (quizView)       quizView.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -5247,6 +5248,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'practice') {
       if (practiceView) practiceView.classList.remove('hidden');
       if (typeof _renderPracticeSpace === 'function') _renderPracticeSpace();
+    } else if (space === 'quiz') {
+      if (quizView) quizView.classList.remove('hidden');
+      if (typeof _renderQuizSpace === 'function') _renderQuizSpace();
     } else {
       // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
@@ -5274,7 +5278,7 @@ function setSidebarVisible(visible) {
       btn.addEventListener('click', () => {
         const space = btn.dataset.space;
         switchSpace(space);
-        const noTree = ['home', 'graph', 'radar', 'practice'];
+        const noTree = ['home', 'graph', 'radar', 'practice', 'quiz'];
         if (noTree.includes(space)) closeSidebarMobile();
       });
     });
@@ -7824,7 +7828,7 @@ function initAIPanel() {
 
         if (action === 'quiz') {
           _hideBar();
-          _openQuizModal(selText);
+          _openQuizSpace(selText);
           return;
         }
 
@@ -7930,14 +7934,6 @@ function _showAiResultPopover(selText, selRect, action) {
   }, 50);
 }
 
-function initQuizModal() {
-  const overlay = $('quizOverlay');
-  const closeBtn = $('quizClose');
-  if (!overlay || !closeBtn) return;
-  closeBtn.addEventListener('click', _closeQuizModal);
-  overlay.addEventListener('click', e => { if (e.target === overlay) _closeQuizModal(); });
-}
-
 // Insert AI result into the editor ──────────────────────────────────────────
 function _inlineInsert(action, selText, result) {
   if (!currentEntryId || !_inlineEditor) return;
@@ -7971,92 +7967,282 @@ function _inlineInsert(action, selText, result) {
   _inlineEditor.load(md.slice(0, insertAt) + '\n\n' + result + md.slice(insertAt));
 }
 
-// ── Interactive quiz modal ────────────────────────────────────────────────
-// Generates a structured multiple-choice quiz (via /api/quiz) instead of the
-// old "3 Q&A pairs as a wall of markdown text" — real questions, one at a
-// time, with immediate right/wrong feedback and a scored results screen.
-let _quizState = null; // { questions, current, answers[], contextText }
+// ── FEATURE: Quiz — docked dashboard space (switchSpace('quiz')), same
+// pattern as Práctica: a persistent rail (modo, dificultad, modelo,
+// navegación a Historial) plus a main area that dispatches on state
+// (vacío / cargando / pregunta activa / resultados / historial). Replaces
+// the old floating .modal-overlay so state survives navigating away and
+// back, and so every quiz generated is saved server-side as it happens
+// (quizzes.json), never lost by closing a modal mid-way. ─────────────────
+let _quizState = null;
+let _quizPresetContext = null; // { text, title, course } — from inline-selection "Quiz" action
 
-function _openQuizModal(selText) {
-  const overlay = $('quizOverlay');
-  const body    = $('quizBody');
-  const footer  = $('quizFooter');
-  const titleEl = $('quizModalTitle');
-  if (!overlay || !body || !footer) return;
+// Entry point for anything outside this feature that wants to jump straight
+// into a quiz over some selected text (the inline AI toolbar's "Quiz"
+// action) — mirrors _openPracticeSpace's preset-topic handoff.
+function _openQuizSpace(selText) {
+  if (selText) {
+    _quizPresetContext = {
+      text: selText,
+      title: currentEntryMeta?.title || 'esta lección',
+      course: currentEntryMeta?.type === 'course' ? (currentEntryMeta.course || '') : '',
+    };
+  }
+  window.switchSpace?.('quiz');
+}
 
-  // Clear the text selection that triggered this — otherwise the inline AI
-  // toolbar's own mouseup/selectionchange listeners see it's still active
-  // and pop themselves back up on top of the modal.
-  window.getSelection()?.removeAllRanges();
+function _renderQuizSpace() {
+  if (!_quizState) {
+    _quizState = {
+      screen: 'empty', viewingHistory: false, mode: 'topic', difficulty: 'medio',
+      topic: '', entryId: '', reviewCourse: '', contextText: '', course: '',
+    };
+  }
+  if (_quizPresetContext && !_quizState.viewingHistory && _quizState.screen === 'empty') {
+    const preset = _quizPresetContext;
+    _quizPresetContext = null;
+    _quizState.mode = 'review';
+    _renderQuizRail();
+    _startQuizGeneration({ topic: preset.title, context: preset.text, course: preset.course });
+    return;
+  }
+  _quizPresetContext = null;
+  _renderQuizRail();
+  _renderQuizMain();
+}
 
-  const lessonTitle = currentEntryMeta?.title || 'esta lección';
-  titleEl.textContent = `✦ Quiz — ${lessonTitle}`;
-  footer.innerHTML = '';
-  body.innerHTML = `
-    <div class="quiz-loading">
-      <span class="arp-spinner"></span>
-      <span>Generando un quiz a partir del contenido…</span>
+// ── Rail — persistent config + navigation, visible regardless of what the
+// main area is currently showing. ─────────────────────────────────────────
+function _renderQuizRail() {
+  const st = _quizState;
+  if (!st) return;
+  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+
+  $('quizRail').innerHTML = `
+    <div class="practice-rail-nav">
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="quizNavNew">✏️ Nuevo quiz</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="quizNavHistory">🕘 Historial</button>
+    </div>
+    <div class="practice-mode-tabs">
+      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
+      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
+    </div>
+    <div id="quizModeBody"></div>
+    <div class="practice-diff-row practice-diff-row--col">
+      <span class="practice-diff-label">Dificultad</span>
+      <div class="practice-diff-options">
+        <button class="practice-diff-btn ${st.difficulty === 'facil' ? 'active' : ''}" data-diff="facil">Fácil</button>
+        <button class="practice-diff-btn ${st.difficulty === 'medio' ? 'active' : ''}" data-diff="medio">Medio</button>
+        <button class="practice-diff-btn ${st.difficulty === 'dificil' ? 'active' : ''}" data-diff="dificil">Difícil</button>
+      </div>
+    </div>
+    <div class="practice-diff-row practice-diff-row--col">
+      <span class="practice-diff-label">Modelo</span>
+      <div class="practice-cselect" id="quizModelCSelect"></div>
+    </div>
+    <button class="btn-primary practice-generate-btn" id="quizGenerateBtn">✦ Generar quiz</button>`;
+
+  $('quizNavNew').addEventListener('click', () => {
+    if (!st.viewingHistory) return;
+    st.viewingHistory = false;
+    _renderQuizRail();
+    _renderQuizMain();
+  });
+  $('quizNavHistory').addEventListener('click', () => {
+    if (st.viewingHistory) return;
+    st.viewingHistory = true;
+    _renderQuizRail();
+    _renderQuizMain();
+  });
+
+  document.querySelectorAll('#quizRail .practice-mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      st.mode = btn.dataset.mode;
+      _renderQuizRail();
+    });
+  });
+  document.querySelectorAll('#quizRail .practice-diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderQuizRail(); });
+  });
+  $('quizGenerateBtn').addEventListener('click', () => _startQuizGeneration());
+
+  _mountModelSelector($('quizModelCSelect'), {
+    context: 'quiz',
+    value: (st.provider && st.model) ? { provider: st.provider, model: st.model } : null,
+    onChange: choice => { st.provider = choice?.provider; st.model = choice?.model; },
+  });
+
+  _renderQuizModeBody();
+}
+
+async function _renderQuizModeBody() {
+  const st = _quizState;
+  const container = $('quizModeBody');
+  if (!container) return;
+  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+
+  if (st.mode === 'topic') {
+    container.innerHTML = `
+      <input type="text" id="quizTopicInput" class="practice-text-input"
+             placeholder="Ej: manejo de excepciones en Python, subconsultas en SQL…"
+             value="${escapeHtml(st.topic)}">`;
+    $('quizTopicInput').addEventListener('input', e => { st.topic = e.target.value; });
+    return;
+  }
+
+  // review
+  container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando cursos…</div>`;
+  const tree = await _getPracticeTree();
+  if (_quizState !== st || st.mode !== 'review') return;
+  const courseSlugs = Object.keys(tree);
+  if (!courseSlugs.length) {
+    container.innerHTML = `<div class="practice-empty-note">Todavía no tienes lecciones de cursos guardadas.</div>`;
+    return;
+  }
+  const lessons = st.reviewCourse ? _courseModuleEntries(tree, st.reviewCourse) : [];
+  container.innerHTML = `
+    <div class="practice-cselect" id="quizCourseCSelect"></div>
+    <div class="practice-cselect" id="quizEntryCSelect" style="margin-top:8px"></div>`;
+
+  _mountPracticeCustomSelect($('quizCourseCSelect'), {
+    options: courseSlugs.map(slug => ({ value: slug, label: tree[slug].label })),
+    value: st.reviewCourse,
+    placeholder: 'Elige un curso…',
+    onChange: value => { st.reviewCourse = value; st.entryId = ''; _renderQuizModeBody(); },
+  });
+  _mountPracticeCustomSelect($('quizEntryCSelect'), {
+    options: lessons.map(l => ({ value: l.id, label: l.label })),
+    value: st.entryId,
+    placeholder: st.reviewCourse ? 'Elige una lección…' : 'Primero elige un curso',
+    disabled: !st.reviewCourse,
+    onChange: value => { st.entryId = value; },
+  });
+}
+
+// ── Main area — dispatches on state. ──────────────────────────────────────
+function _renderQuizMain() {
+  const st = _quizState;
+  if (!st) return;
+  if (st.viewingHistory) { _renderQuizHistoryMain(); return; }
+  if (st.screen === 'empty') { _renderQuizEmptyMain(); return; }
+  if (st.screen === 'loading') {
+    $('quizMain').innerHTML = `
+      <div class="quiz-loading">
+        <span class="arp-spinner"></span>
+        <span>Generando un quiz a partir del contenido…</span>
+      </div>`;
+    return;
+  }
+  if (st.screen === 'question') { _renderQuizQuestion(st.current); return; }
+  if (st.screen === 'results') { _renderQuizResults(); return; }
+}
+
+function _renderQuizEmptyMain() {
+  $('quizMain').innerHTML = `
+    <div class="practice-empty-main">
+      <span class="practice-empty-main-icon">✦</span>
+      <p class="practice-empty-main-title">Configura tu quiz</p>
+      <p class="practice-empty-main-sub">Elegí un modo, la dificultad y el modelo que quieras que lo genere — después tocá "Generar quiz".</p>
     </div>`;
-  overlay.classList.remove('hidden');
-
-  const course = currentEntryMeta?.type === 'course' ? (currentEntryMeta.course || '') : '';
-  _quizState = { questions: [], current: 0, answers: [], contextText: selText, course };
-  _fetchQuiz(selText, lessonTitle, course);
 }
 
-function _closeQuizModal() {
-  $('quizOverlay')?.classList.add('hidden');
-  _quizState = null;
+function _renderQuizError(msg) {
+  const safeMsg = (msg || '').length > 400 ? msg.slice(0, 400) + '…' : msg;
+  $('quizMain').innerHTML = `
+    <div class="quiz-error">${escapeHtml(safeMsg)}</div>
+    <button class="btn-ghost" id="quizRetryErrBtn" style="margin-top:14px">← Volver</button>`;
+  $('quizRetryErrBtn').addEventListener('click', () => { _quizState.screen = 'empty'; _renderQuizMain(); });
 }
 
-async function _fetchQuiz(context, title, course) {
-  const body = $('quizBody');
-  const footer = $('quizFooter');
+async function _startQuizGeneration(override) {
+  const st = _quizState;
+  if (st.viewingHistory) { st.viewingHistory = false; _renderQuizRail(); }
+  let topic = '', context = '', entryId = '', course = '';
+
+  if (override) {
+    topic = override.topic || '';
+    context = override.context || '';
+    course = override.course || '';
+  } else if (st.mode === 'topic') {
+    topic = (st.topic || '').trim();
+    if (!topic) { showToast('Escribe un tema para el quiz', 'error'); return; }
+  } else {
+    if (!st.entryId) { showToast('Elige una lección para repasar', 'error'); return; }
+    const res = await fetch(`/api/entry/${st.entryId}`);
+    if (!res.ok) { showToast('No se pudo cargar la lección', 'error'); return; }
+    const data = await res.json();
+    topic = data.meta.title;
+    context = (data.markdown || '').slice(0, 6000);
+    entryId = st.entryId;
+    course = data.meta.type === 'course' ? (data.meta.course || '') : '';
+  }
+
+  st.topic = topic;
+  st.entryId = entryId;
+  st.contextText = context;
+  st.course = course;
+  st.screen = 'loading';
+  _renderQuizMain();
+
   try {
     const res = await fetch('/api/quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context, title, course }),
+      body: JSON.stringify({
+        mode: st.mode, topic, context, title: topic, course, entry_id: entryId,
+        difficulty: st.difficulty, provider: st.provider, model: st.model,
+      }),
     });
     const data = await res.json();
+    if (_quizState !== st) return;
     if (!res.ok || data.error) {
-      body.innerHTML = `<div class="quiz-error">${escapeHtml(data.error || 'No se pudo generar el quiz.')}</div>`;
-      footer.innerHTML = `<button class="btn-ghost" id="quizRetryErrBtn">Reintentar</button>`;
-      $('quizRetryErrBtn')?.addEventListener('click', () => _openQuizModal(context));
+      st.screen = 'empty';
+      _renderQuizError(data.error || 'No se pudo generar el quiz.');
       return;
     }
-    _quizState.questions = data.questions;
-    _quizState.answers   = new Array(data.questions.length).fill(null);
+    st.quiz = data;
+    st.current = 0;
+    st.screen = 'question';
     _renderQuizQuestion(0);
   } catch (err) {
-    body.innerHTML = `<div class="quiz-error">Error de red: ${escapeHtml(err.message)}</div>`;
-    footer.innerHTML = `<button class="btn-ghost" id="quizRetryErrBtn">Reintentar</button>`;
-    $('quizRetryErrBtn')?.addEventListener('click', () => _openQuizModal(context));
+    if (_quizState !== st) return;
+    st.screen = 'empty';
+    _renderQuizError('Error de red: ' + err.message);
   }
+}
+
+function _saveQuizProgress(st) {
+  if (!st || !st.quiz || !st.quiz.id) return;
+  fetch(`/api/quiz/${st.quiz.id}/progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_step: st.current, answers: st.quiz.answers }),
+  }).catch(() => {});
 }
 
 function _renderQuizQuestion(i) {
   const st = _quizState;
-  if (!st) return;
+  if (!st || !st.quiz) return;
   st.current = i;
-  const q = st.questions[i];
-  const total = st.questions.length;
-  const answered = st.answers[i];
+  const quiz = st.quiz;
+  const q = quiz.questions[i];
+  const total = quiz.questions.length;
+  const answered = quiz.answers[i];
 
-  const dots = st.questions.map((_, idx) => {
-    const cls = idx === i ? 'current' : (st.answers[idx] != null ? 'done' : '');
+  const dots = quiz.questions.map((_, idx) => {
+    const cls = idx === i ? 'current' : (quiz.answers[idx] != null ? 'done' : '');
     return `<span class="quiz-dot ${cls}"></span>`;
   }).join('');
 
-  const body = $('quizBody');
-  body.innerHTML = `
+  $('quizMain').innerHTML = `
     <div class="quiz-progress">
       <div class="quiz-dots">${dots}</div>
       <span class="quiz-progress-label">Pregunta ${i + 1} de ${total}</span>
     </div>
     <div class="quiz-question">${escapeHtml(q.question)}</div>
     <div class="quiz-options" id="quizOptions"></div>
-    <div class="quiz-explanation hidden" id="quizExplanation"></div>`;
+    <div class="quiz-explanation hidden" id="quizExplanation"></div>
+    <div class="practice-main-actions" id="quizMainActions"></div>`;
 
   const optsEl = $('quizOptions');
   q.options.forEach((opt, idx) => {
@@ -8072,18 +8258,50 @@ function _renderQuizQuestion(i) {
     optsEl.appendChild(btn);
   });
 
-  if (answered != null) _showQuizExplanation(q, answered);
-  _renderQuizFooter();
+  if (answered != null) {
+    const el = $('quizExplanation');
+    const ok = answered === q.correct;
+    el.classList.remove('hidden');
+    el.classList.toggle('quiz-explanation--ok', ok);
+    el.classList.toggle('quiz-explanation--bad', !ok);
+    el.innerHTML = `
+      <span class="quiz-explanation-badge">${ok ? '✓ Correcto' : '✕ Incorrecto'}</span>
+      ${q.explanation ? `<span>${escapeHtml(q.explanation)}</span>` : ''}`;
+  }
+
+  const actions = $('quizMainActions');
+  if (i > 0) {
+    const prev = document.createElement('button');
+    prev.className = 'btn-ghost';
+    prev.textContent = '← Anterior';
+    prev.addEventListener('click', () => _renderQuizQuestion(i - 1));
+    actions.appendChild(prev);
+  }
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  actions.appendChild(spacer);
+
+  const isLast = i === total - 1;
+  const next = document.createElement('button');
+  next.className = 'btn-primary';
+  next.disabled = answered == null;
+  next.textContent = isLast ? 'Ver resultados →' : 'Siguiente →';
+  next.addEventListener('click', () => {
+    if (isLast) { st.screen = 'results'; _renderQuizResults(); }
+    else _renderQuizQuestion(i + 1);
+  });
+  actions.appendChild(next);
 }
 
 function _answerQuiz(idx) {
   const st = _quizState;
-  if (!st || st.answers[st.current] != null) return;
-  st.answers[st.current] = idx;
+  if (!st || !st.quiz || st.quiz.answers[st.current] != null) return;
+  st.quiz.answers[st.current] = idx;
   _renderQuizQuestion(st.current);
+  _saveQuizProgress(st);
 
   // Feed the spaced-repetition tracker per question, not just the final score
-  const q = st.questions[st.current];
+  const q = st.quiz.questions[st.current];
   if (q.concept_id) {
     fetch('/api/concepts/review', {
       method: 'POST',
@@ -8093,60 +8311,20 @@ function _answerQuiz(idx) {
   }
 }
 
-function _showQuizExplanation(q, answered) {
-  const el = $('quizExplanation');
-  if (!el) return;
-  const ok = answered === q.correct;
-  el.classList.remove('hidden');
-  el.classList.toggle('quiz-explanation--ok', ok);
-  el.classList.toggle('quiz-explanation--bad', !ok);
-  el.innerHTML = `
-    <span class="quiz-explanation-badge">${ok ? '✓ Correcto' : '✕ Incorrecto'}</span>
-    ${q.explanation ? `<span>${escapeHtml(q.explanation)}</span>` : ''}`;
-}
-
-function _renderQuizFooter() {
-  const st = _quizState;
-  const footer = $('quizFooter');
-  const isLast = st.current === st.questions.length - 1;
-  const answered = st.answers[st.current] != null;
-
-  footer.innerHTML = '';
-  if (st.current > 0) {
-    const prev = document.createElement('button');
-    prev.className = 'btn-ghost';
-    prev.textContent = '← Anterior';
-    prev.addEventListener('click', () => _renderQuizQuestion(st.current - 1));
-    footer.appendChild(prev);
-  }
-  const spacer = document.createElement('div');
-  spacer.style.flex = '1';
-  footer.appendChild(spacer);
-
-  const next = document.createElement('button');
-  next.className = 'btn-primary';
-  next.disabled = !answered;
-  next.textContent = isLast ? 'Ver resultados →' : 'Siguiente →';
-  next.addEventListener('click', () => {
-    if (isLast) _renderQuizResults();
-    else _renderQuizQuestion(st.current + 1);
-  });
-  footer.appendChild(next);
-}
-
 function _renderQuizResults() {
   const st = _quizState;
-  if (!st) return;
-  const total   = st.questions.length;
-  const correct = st.answers.filter((a, i) => a === st.questions[i].correct).length;
+  if (!st || !st.quiz) return;
+  const quiz = st.quiz;
+  const total   = quiz.questions.length;
+  const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
   const pct     = Math.round((correct / total) * 100);
   const grade   = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
   const gradeMsg = pct >= 80 ? '¡Excelente dominio del tema!'
                  : pct >= 50 ? 'Vas bien, pero repasa lo que fallaste.'
                  : 'Conviene repasar la lección antes de seguir.';
 
-  const body = $('quizBody');
-  body.innerHTML = `
+  $('quizMain').innerHTML = `
+    <h3 class="practice-challenge-title">${escapeHtml(quiz.title)} — Resultados</h3>
     <div class="quiz-results">
       <div class="quiz-score quiz-score--${grade}">
         <span class="quiz-score-pct">${pct}%</span>
@@ -8154,20 +8332,29 @@ function _renderQuizResults() {
       </div>
       <div class="quiz-score-msg">${gradeMsg}</div>
       <div class="quiz-review" id="quizReview"></div>
-    </div>`;
+    </div>
+    <div class="practice-main-actions" id="quizMainActions"></div>`;
 
-  // Persist this attempt server-side (foundation for domain tracking across devices)
-  if (currentEntryId) {
+  // Persist: mark this quiz finished + feed the legacy attempts tracker
+  if (quiz.id) {
+    fetch(`/api/quiz/${quiz.id}/finish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed', answers: quiz.answers }),
+    }).catch(() => {});
+  }
+  const attemptEntryId = st.entryId || currentEntryId;
+  if (attemptEntryId) {
     fetch('/api/attempts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry_id: currentEntryId, type: 'quiz', score: correct, total }),
+      body: JSON.stringify({ entry_id: attemptEntryId, type: 'quiz', score: correct, total }),
     }).catch(() => {});
   }
 
   const review = $('quizReview');
-  st.questions.forEach((q, i) => {
-    const userAns = st.answers[i];
+  quiz.questions.forEach((q, i) => {
+    const userAns = quiz.answers[i];
     const ok = userAns === q.correct;
     const row = document.createElement('div');
     row.className = 'quiz-review-item' + (ok ? ' ok' : ' bad');
@@ -8184,35 +8371,34 @@ function _renderQuizResults() {
     review.appendChild(row);
   });
 
-  const footer = $('quizFooter');
-  footer.innerHTML = '';
+  const actions = $('quizMainActions');
 
   const retryBtn = document.createElement('button');
   retryBtn.className = 'btn-ghost';
-  retryBtn.textContent = '↻ Reintentar (nuevas preguntas)';
-  retryBtn.addEventListener('click', () => _openQuizModal(st.contextText));
-  footer.appendChild(retryBtn);
+  retryBtn.textContent = '↻ Nuevo quiz';
+  retryBtn.addEventListener('click', () => { st.screen = 'empty'; st.quiz = null; _renderQuizMain(); });
+  actions.appendChild(retryBtn);
 
   const copyBtn = document.createElement('button');
   copyBtn.className = 'btn-ghost';
   copyBtn.textContent = '⎘ Copiar resultado';
   copyBtn.addEventListener('click', () => {
-    const lines = [`Quiz — ${currentEntryMeta?.title || ''} — ${correct}/${total} (${pct}%)`, ''];
-    st.questions.forEach((q, i) => {
-      const ok = st.answers[i] === q.correct;
+    const lines = [`Quiz — ${quiz.title || ''} — ${correct}/${total} (${pct}%)`, ''];
+    quiz.questions.forEach((q, i) => {
+      const ok = quiz.answers[i] === q.correct;
       lines.push(`${i + 1}. [${ok ? 'OK' : 'X'}] ${q.question}`);
       lines.push(`   Correcta: ${q.options[q.correct]}`);
       if (q.explanation) lines.push(`   ${q.explanation}`);
     });
     navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Resultado copiado', 'success'));
   });
-  footer.appendChild(copyBtn);
+  actions.appendChild(copyBtn);
 
   const spacer = document.createElement('div');
   spacer.style.flex = '1';
-  footer.appendChild(spacer);
+  actions.appendChild(spacer);
 
-  // Only meaningful inside a course lesson — offer to mark it complete on a good score
+  // Only meaningful inside an open course lesson — offer to mark it complete
   if (currentEntryMeta?.type === 'course' && currentEntryId) {
     const markBtn = document.createElement('button');
     markBtn.className = 'btn-primary';
@@ -8226,16 +8412,96 @@ function _renderQuizResults() {
       });
       updateStatusBtn($('statusBtn'), status);
       showToast(status === 'completado' ? 'Lección marcada como completada' : 'Lección marcada en progreso', 'success');
-      _closeQuizModal();
     });
-    footer.appendChild(markBtn);
+    actions.appendChild(markBtn);
+  }
+}
+
+// ── Historial — every generated quiz is saved server-side the moment it's
+// generated, whether finished, abandoned, or left mid-way; resuming picks
+// it back up exactly where it was left. ───────────────────────────────────
+const _QUIZ_STATUS_LABEL = { in_progress: '● en progreso', completed: '✓ completado', abandoned: '⊘ abandonado' };
+
+async function _renderQuizHistoryMain() {
+  const st = _quizState;
+  if (!st) return;
+  $('quizMain').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando historial…</div>`;
+
+  let quizzes = [];
+  try {
+    const res = await fetch('/api/quiz/history?limit=50');
+    const data = await res.json();
+    quizzes = data.quizzes || [];
+  } catch { /* keep empty — shows the empty state below */ }
+  if (_quizState !== st || !st.viewingHistory) return;
+
+  if (!quizzes.length) {
+    $('quizMain').innerHTML = `<div class="practice-history-empty">Todavía no has generado ningún quiz.<br>Los que generes se guardan aquí automáticamente.</div>`;
+    return;
   }
 
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn-ghost';
-  closeBtn.textContent = 'Cerrar';
-  closeBtn.addEventListener('click', _closeQuizModal);
-  footer.appendChild(closeBtn);
+  $('quizMain').innerHTML = `<div class="practice-history-list">${quizzes.map(q => `
+    <div class="practice-history-item" data-id="${q.id}">
+      <div class="practice-history-main">
+        <div class="practice-history-title">${escapeHtml(q.title)}</div>
+        <div class="practice-history-meta">
+          <span class="practice-history-status practice-history-status--${q.status}">${_QUIZ_STATUS_LABEL[q.status] || q.status}</span>
+          <span>${escapeHtml(q.difficulty || '')}</span>
+          <span>${Math.min(q.current_step + 1, q.question_count)}/${q.question_count} preguntas</span>
+          <span>${_relTimeAgo(new Date(q.updated_at).getTime())}</span>
+        </div>
+      </div>
+      <button class="practice-history-del" data-id="${q.id}" title="Eliminar del historial">🗑</button>
+    </div>`).join('')}</div>`;
+
+  document.querySelectorAll('#quizMain .practice-history-del').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('¿Eliminar este quiz del historial? No se puede deshacer.')) return;
+      try { await fetch(`/api/quiz/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
+      if (_quizState === st && st.viewingHistory) _renderQuizHistoryMain();
+    });
+  });
+  document.querySelectorAll('#quizMain .practice-history-item').forEach(item => {
+    item.addEventListener('click', () => _resumeQuizFromHistory(item.dataset.id));
+  });
+}
+
+async function _resumeQuizFromHistory(quizId) {
+  const st = _quizState;
+  if (!st) return;
+  $('quizMain').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando quiz…</div>`;
+
+  let data;
+  try {
+    const res = await fetch(`/api/quiz/${quizId}`);
+    data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'No se pudo cargar el quiz');
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (_quizState === st) _renderQuizHistoryMain();
+    return;
+  }
+  if (_quizState !== st) return;
+
+  st.quiz = data;
+  if (!data.answers || data.answers.length !== data.questions.length) {
+    data.answers = new Array(data.questions.length).fill(null);
+  }
+  st.current = Math.min(data.current_step || 0, data.questions.length - 1);
+  st.topic = data.title;
+  st.course = data.course || '';
+  st.entryId = data.entry_id || '';
+  st.viewingHistory = false;
+
+  if (data.status === 'in_progress') {
+    st.screen = 'question';
+    _renderQuizQuestion(st.current);
+  } else {
+    st.screen = 'results';
+    _renderQuizResults();
+  }
+  _renderQuizRail();
 }
 
 // ── Práctica: retos generados por IA, sin sandbox real ────────────────────────

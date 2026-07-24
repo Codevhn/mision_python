@@ -110,6 +110,10 @@
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
         </button>
+        <button class="ab-item" id="abQuiz" data-space="quiz" title="Quiz">
+          <span class="ab-icon">✦</span>
+          <span class="ab-label">Quiz</span>
+        </button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -148,6 +152,7 @@
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
         <button class="msn-item" id="msnPractice" data-space="practice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
+        <button class="msn-item" id="msnQuiz" data-space="quiz"><span class="msn-icon">✦</span><span class="msn-label">Quiz</span></button>
       </nav>
 
       <!-- SPACE: KNOWLEDGE -->
@@ -386,6 +391,21 @@
         <div class="practice-view-body">
           <aside class="practice-rail" id="practiceRail"></aside>
           <div class="practice-main" id="practiceMain"></div>
+        </div>
+      </div>
+
+      <!-- QUIZ VIEW — same dashboard chrome as Práctica (shares its CSS
+           classes on purpose: same "área de guerra" visual system, not a
+           floating modal). Own rail/main so state never collides with
+           Práctica's, but Curso/Categoría pickers, model selector and the
+           docked-space layout are all literally the same primitives. -->
+      <div class="practice-view hidden" id="quizView">
+        <div class="practice-view-header">
+          <h2 class="practice-view-title">✦ Quiz</h2>
+        </div>
+        <div class="practice-view-body">
+          <aside class="practice-rail" id="quizRail"></aside>
+          <div class="practice-main" id="quizMain"></div>
         </div>
       </div>
 
@@ -1301,17 +1321,6 @@
     </div>
   </div>
 
-  <!-- QUIZ MODAL -->
-  <div class="modal-overlay hidden" id="quizOverlay">
-    <div class="modal quiz-modal" style="max-width:640px">
-      <div class="modal-header">
-        <span id="quizModalTitle">✦ Quiz</span>
-        <button class="modal-close" id="quizClose">×</button>
-      </div>
-      <div class="modal-body" id="quizBody"></div>
-      <div class="modal-footer" id="quizFooter"></div>
-    </div>
-  </div>
 
 
   <!-- PAGE PEEK — floating Notion-style page preview, opened from a database row -->

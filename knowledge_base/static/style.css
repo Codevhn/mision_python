@@ -7352,8 +7352,7 @@ body {
   .arp-insert, .arp-copy, .arp-discard { font-size: 0.75rem; padding: 5px 9px; }
 }
 
-/* ── QUIZ MODAL ──────────────────────────────────────────── */
-.quiz-modal .modal-footer { flex-wrap: wrap; }
+/* ── QUIZ (contenido reutilizado dentro de #quizMain, dashboard docked) ──── */
 .quiz-loading, .quiz-error {
   display: flex;
   align-items: center;

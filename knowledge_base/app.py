@@ -3633,12 +3633,18 @@ def ai_ask():
 
 @app.route("/api/quiz", methods=["POST"])
 def generate_quiz():
-    data    = request.json or {}
-    context = (data.get("context") or "").strip()
-    title   = (data.get("title") or "").strip()
-    course  = (data.get("course") or "").strip()
-    if not context:
-        return jsonify({"error": "Sin contenido para generar el quiz"}), 400
+    data       = request.json or {}
+    context    = (data.get("context") or "").strip()
+    title      = (data.get("title") or "").strip()
+    course     = (data.get("course") or "").strip()
+    mode       = data.get("mode", "topic")
+    topic      = (data.get("topic") or "").strip()
+    entry_id   = (data.get("entry_id") or "").strip()
+    difficulty = data.get("difficulty", "medio")
+    if difficulty not in ("facil", "medio", "dificil"):
+        difficulty = "medio"
+    if not context and not topic:
+        return jsonify({"error": "Falta el tema o contenido para generar el quiz"}), 400
 
     concepts = _load_course_concepts(course) if course else []
     concept_instructions = ""
@@ -3656,7 +3662,8 @@ def generate_quiz():
         "Reglas estrictas:\n"
         "- Genera exactamente 8 preguntas.\n"
         "- Combina niveles de dificultad: recordar datos concretos, comprender conceptos, y aplicar/analizar "
-        "en un escenario práctico o un fragmento de código si el contenido lo permite.\n"
+        "en un escenario práctico o un fragmento de código si el contenido lo permite. Ajusta la dificultad "
+        "real de las preguntas al nivel pedido: facil, medio o dificil.\n"
         "- Cada pregunta tiene EXACTAMENTE 4 opciones y solo una es correcta.\n"
         "- Los 3 distractores deben ser específicos y plausibles (errores o confusiones reales sobre el tema), "
         "nunca absurdos ni obviamente falsos.\n"
@@ -3668,7 +3675,16 @@ def generate_quiz():
         "con este esquema exacto:\n"
         '{"questions":[{"question":"...","options":["...","...","...","..."],"correct":0,"explanation":"...","concept":"..."}]}'
     )
-    user_msg = f"Lección: {title}\n\nContenido:\n```\n{context[:8000]}\n```"
+    if context:
+        user_msg = (
+            f"Lección: {title or topic}\nDificultad: {difficulty}\n\n"
+            f"Contenido:\n```\n{context[:8000]}\n```"
+        )
+    else:
+        user_msg = (
+            f"Tema: {topic}\nDificultad: {difficulty}\n"
+            "Genera un quiz de tema libre sobre este tema, sin atarlo a ninguna lección específica."
+        )
 
     content, err = _call_ai(system, user_msg, max_tokens=3500, json_mode=True, provider=data.get("provider"), model=data.get("model"))
     if err:
@@ -3691,9 +3707,124 @@ def generate_quiz():
                 })
         if not clean:
             return jsonify({"error": "La IA no devolvió preguntas válidas. Intenta de nuevo."}), 502
-        return jsonify({"questions": clean, "course": course})
+
+        now = datetime.now().isoformat(timespec="seconds")
+        record = {
+            "id": uuid.uuid4().hex[:8],
+            "title": title or topic or "Quiz",
+            "mode": mode,
+            "topic": topic or title,
+            "course": course,
+            "entry_id": entry_id,
+            "difficulty": difficulty,
+            "provider": data.get("provider") or DEFAULT_PROVIDER,
+            "model": data.get("model") or DEFAULT_MODEL,
+            "questions": clean,
+            "status": "in_progress",
+            "current_step": 0,
+            "answers": [None] * len(clean),
+            "created_at": now,
+            "updated_at": now,
+        }
+        store = load_quizzes()
+        store["quizzes"][record["id"]] = record
+        save_quizzes(store)
+        return jsonify(record)
     except (json.JSONDecodeError, KeyError, TypeError):
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
+
+
+# ── FEATURE: Historial de quizzes guardados — mismo principio que Práctica:
+# todo quiz generado se guarda al momento de generarse (status "in_progress"),
+# no solo al terminarlo, para que ninguna llamada a la IA se pierda por
+# cerrar la pestaña o navegar a otro lado. ─────────────────────────────────
+QUIZZES_FILE = DATA_DIR / "quizzes.json"
+
+
+def load_quizzes():
+    if QUIZZES_FILE.exists():
+        return json.loads(QUIZZES_FILE.read_text())
+    return {"quizzes": {}}
+
+
+def save_quizzes(data):
+    tmp = QUIZZES_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, QUIZZES_FILE)
+
+
+@app.route("/api/quiz/history", methods=["GET"])
+def list_quiz_history():
+    store = load_quizzes()
+    quizzes = list(store["quizzes"].values())
+    status = request.args.get("status")
+    if status:
+        quizzes = [q for q in quizzes if q.get("status") == status]
+    quizzes = sorted(quizzes, key=lambda q: q["updated_at"], reverse=True)
+    limit = request.args.get("limit", type=int)
+    if limit:
+        quizzes = quizzes[:limit]
+    summary = [{
+        "id": q["id"], "title": q["title"], "status": q["status"],
+        "difficulty": q.get("difficulty"), "course": q.get("course"),
+        "provider": q.get("provider"), "model": q.get("model"),
+        "question_count": len(q.get("questions", [])), "current_step": q.get("current_step", 0),
+        "created_at": q["created_at"], "updated_at": q["updated_at"],
+    } for q in quizzes]
+    return jsonify({"quizzes": summary})
+
+
+@app.route("/api/quiz/<quiz_id>", methods=["GET"])
+def get_quiz(quiz_id):
+    store = load_quizzes()
+    quiz = store["quizzes"].get(quiz_id)
+    if not quiz:
+        return jsonify({"error": "Quiz no encontrado"}), 404
+    return jsonify(quiz)
+
+
+@app.route("/api/quiz/<quiz_id>", methods=["DELETE"])
+def delete_quiz(quiz_id):
+    store = load_quizzes()
+    if quiz_id not in store["quizzes"]:
+        return jsonify({"error": "Quiz no encontrado"}), 404
+    del store["quizzes"][quiz_id]
+    save_quizzes(store)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/quiz/<quiz_id>/progress", methods=["POST"])
+def save_quiz_progress(quiz_id):
+    store = load_quizzes()
+    quiz = store["quizzes"].get(quiz_id)
+    if not quiz:
+        return jsonify({"error": "Quiz no encontrado"}), 404
+    body = request.json or {}
+    if "current_step" in body:
+        quiz["current_step"] = body["current_step"]
+    if "answers" in body:
+        quiz["answers"] = body["answers"]
+    quiz["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_quizzes(store)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/quiz/<quiz_id>/finish", methods=["POST"])
+def finish_quiz(quiz_id):
+    store = load_quizzes()
+    quiz = store["quizzes"].get(quiz_id)
+    if not quiz:
+        return jsonify({"error": "Quiz no encontrado"}), 404
+    body = request.json or {}
+    status = body.get("status", "completed")
+    if status not in ("completed", "abandoned"):
+        return jsonify({"error": "status inválido"}), 400
+    quiz["status"] = status
+    if "answers" in body:
+        quiz["answers"] = body["answers"]
+    quiz["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_quizzes(store)
+    return jsonify({"ok": True})
 
 
 # ── FEATURE: Practice/Quiz attempt history (Fase 0 — fundación de dominio) ──
