@@ -3778,6 +3778,11 @@ _PRACTICE_SYSTEM_PROMPT = (
     "sin revelar la solución completa en las dos primeras).\n"
     "- Cada paso incluye \"solution\": la solución de referencia completa (código o comando/respuesta).\n"
     "- Ajusta la dificultad real del reto al nivel pedido: facil, medio o dificil.\n"
+    "- Formato de texto en \"scenario\" y en el \"instruction\" de cada paso: si incluyes código, un traceback/"
+    "stack trace, salida de terminal, contenido de un archivo o un comando, escríbelo SIEMPRE dentro de un bloque "
+    "de código Markdown con triple backtick indicando el lenguaje cuando aplique (```python, ```bash, ```sql, o "
+    "```text para tracebacks y salidas genéricas) — nunca como texto corrido en el mismo párrafo. Para un nombre "
+    "de variable, función o comando suelto dentro de una oración, usa un backtick simple.\n"
     "- Responde en español.\n\n"
     "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto adicional, sin comentarios) "
     "con este esquema exacto:\n"
@@ -4017,13 +4022,15 @@ def check_practice_text():
     if not instruction or not rubric:
         return jsonify({"error": "Missing instruction or rubric"}), 400
     if not answer:
-        return jsonify({"passed": False, "feedback": "No escribiste ninguna respuesta."})
+        return jsonify({"passed": False, "feedback": "No escribiste ninguna respuesta.", "feedback_html": ""})
 
     system = (
         "Eres un evaluador técnico estricto pero justo. Un estudiante escribió un comando (git/shell/SQL) o una "
         "respuesta conceptual corta para un paso de un reto práctico; el comando NO se ejecuta, solo evalúas el texto.\n\n"
         "Evalúa si la respuesta cumple la rúbrica. Sé tolerante con variantes válidas (flags en distinto orden, "
         "sinónimos técnicos correctos), pero estricto con errores reales.\n\n"
+        "Si tu feedback cita código, un comando o el comando correcto, usa Markdown: backtick simple para un "
+        "token suelto, o un bloque con triple backtick (con el lenguaje si aplica) si es más de una línea.\n\n"
         "Responde ÚNICAMENTE con JSON: {\"correct\": true|false, \"feedback\": \"...\"} — feedback en español, "
         "1-2 frases, explicando qué está bien o qué falta/está mal."
     )
@@ -4034,7 +4041,12 @@ def check_practice_text():
         return err
     try:
         result = json.loads(content)
-        return jsonify({"passed": bool(result.get("correct")), "feedback": str(result.get("feedback") or "")})
+        feedback = str(result.get("feedback") or "")
+        return jsonify({
+            "passed": bool(result.get("correct")),
+            "feedback": feedback,
+            "feedback_html": render_markdown(feedback),
+        })
     except json.JSONDecodeError:
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
 

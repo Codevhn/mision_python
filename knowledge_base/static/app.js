@@ -8703,7 +8703,11 @@ function _renderPracticeChallenge() {
   }
   if (step.type === 'text' && stepState.lastFeedback) {
     const fb = $('practiceFeedback');
-    fb.textContent = stepState.lastFeedback;
+    // Server-rendered markdown (same render_markdown() pipeline as the
+    // scenario/instruction) so code/comandos citados en el feedback salen
+    // como bloque de código real, no como texto plano corrido.
+    fb.innerHTML = stepState.lastFeedbackHtml || escapeHtml(stepState.lastFeedback);
+    fb.classList.add('practice-md');
     fb.classList.remove('hidden');
     fb.classList.toggle('practice-feedback--ok', stepState.passed);
     fb.classList.toggle('practice-feedback--bad', !stepState.passed);
@@ -8794,6 +8798,7 @@ async function _checkPracticeStep() {
       if (data.error) { showToast(data.error, 'error'); return; }
       stepState.passed = !!data.passed;
       stepState.lastFeedback = data.feedback || '';
+      stepState.lastFeedbackHtml = data.feedback_html || '';
     }
 
     if (step.concept_id) {
