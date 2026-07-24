@@ -3744,6 +3744,106 @@ _PRACTICE_SYSTEM_PROMPT = (
 )
 
 
+# ── FEATURE: Historial de retos guardados ────────────────────────────────────
+# Every generated challenge is saved the moment it's generated (status
+# "in_progress"), not just once finished — the whole point is that nothing
+# a user asked the AI for (and paid an API call for) ever silently
+# disappears, whether they finish it, abandon it, or just close the tab.
+PRACTICE_CHALLENGES_FILE = DATA_DIR / "practice_challenges.json"
+
+
+def load_practice_challenges():
+    if PRACTICE_CHALLENGES_FILE.exists():
+        return json.loads(PRACTICE_CHALLENGES_FILE.read_text())
+    return {"challenges": {}}
+
+
+def save_practice_challenges(data):
+    tmp = PRACTICE_CHALLENGES_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, PRACTICE_CHALLENGES_FILE)
+
+
+@app.route("/api/practice/history", methods=["GET"])
+def list_practice_history():
+    store = load_practice_challenges()
+    challenges = list(store["challenges"].values())
+    status = request.args.get("status")
+    if status:
+        challenges = [c for c in challenges if c.get("status") == status]
+    challenges = sorted(challenges, key=lambda c: c["updated_at"], reverse=True)
+    limit = request.args.get("limit", type=int)
+    if limit:
+        challenges = challenges[:limit]
+    # The list view doesn't need each challenge's full step content (hints,
+    # solutions, asserts...) — just enough to render a row and decide
+    # whether to resume it.
+    summary = [{
+        "id": c["id"], "title": c["title"], "status": c["status"],
+        "difficulty": c.get("difficulty"), "course": c.get("course"),
+        "provider": c.get("provider"), "model": c.get("model"),
+        "step_count": len(c.get("steps", [])), "current_step": c.get("current_step", 0),
+        "created_at": c["created_at"], "updated_at": c["updated_at"],
+    } for c in challenges]
+    return jsonify({"challenges": summary})
+
+
+@app.route("/api/practice/<challenge_id>", methods=["GET"])
+def get_practice_challenge(challenge_id):
+    store = load_practice_challenges()
+    challenge = store["challenges"].get(challenge_id)
+    if not challenge:
+        return jsonify({"error": "Reto no encontrado"}), 404
+    return jsonify(challenge)
+
+
+@app.route("/api/practice/<challenge_id>", methods=["DELETE"])
+def delete_practice_challenge(challenge_id):
+    store = load_practice_challenges()
+    if challenge_id not in store["challenges"]:
+        return jsonify({"error": "Reto no encontrado"}), 404
+    del store["challenges"][challenge_id]
+    save_practice_challenges(store)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/practice/<challenge_id>/progress", methods=["POST"])
+def save_practice_progress(challenge_id):
+    """Autosave while solving — current step index and per-step results
+    (passed/revealed/hints shown/last answer), so resuming a saved
+    challenge picks up exactly where the user left off."""
+    store = load_practice_challenges()
+    challenge = store["challenges"].get(challenge_id)
+    if not challenge:
+        return jsonify({"error": "Reto no encontrado"}), 404
+    body = request.json or {}
+    if "current_step" in body:
+        challenge["current_step"] = body["current_step"]
+    if "step_results" in body:
+        challenge["step_results"] = body["step_results"]
+    challenge["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_practice_challenges(store)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/practice/<challenge_id>/finish", methods=["POST"])
+def finish_practice_challenge(challenge_id):
+    store = load_practice_challenges()
+    challenge = store["challenges"].get(challenge_id)
+    if not challenge:
+        return jsonify({"error": "Reto no encontrado"}), 404
+    body = request.json or {}
+    status = body.get("status", "completed")
+    if status not in ("completed", "abandoned"):
+        return jsonify({"error": "status inválido"}), 400
+    challenge["status"] = status
+    if "step_results" in body:
+        challenge["step_results"] = body["step_results"]
+    challenge["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    save_practice_challenges(store)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/practice/generate", methods=["POST"])
 def generate_practice_challenge():
     data             = request.json or {}
@@ -3821,13 +3921,29 @@ def generate_practice_challenge():
     if not clean_steps:
         return jsonify({"error": "La IA no devolvió pasos válidos. Intenta de nuevo."}), 502
 
-    return jsonify({
+    now = datetime.now().isoformat(timespec="seconds")
+    record = {
+        "id": uuid.uuid4().hex[:8],
         "title": str(challenge.get("title") or topic),
         "scenario": str(challenge.get("scenario") or ""),
         "difficulty": difficulty,
+        "mode": mode,
+        "topic": topic,
         "course": course,
+        "provider": data.get("provider") or DEFAULT_PROVIDER,
+        "model": data.get("model") or DEFAULT_MODEL,
         "steps": clean_steps,
-    })
+        "status": "in_progress",
+        "current_step": 0,
+        "step_results": [],
+        "created_at": now,
+        "updated_at": now,
+    }
+    store = load_practice_challenges()
+    store["challenges"][record["id"]] = record
+    save_practice_challenges(store)
+
+    return jsonify(record)
 
 
 @app.route("/api/practice/check-python", methods=["POST"])
