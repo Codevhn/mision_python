@@ -8205,6 +8205,11 @@ function initPracticeModal() {
   const closeBtn = $('practiceClose');
   if (!closeBtn) return;
   closeBtn.addEventListener('click', _closePracticeModal);
+  $('practiceHistoryBtn')?.addEventListener('click', () => {
+    if (!_practiceState) return;
+    _practiceState.screen = 'history';
+    _renderPracticeHistory();
+  });
 }
 
 function _openPracticeModal(presetTopic) {
@@ -8231,6 +8236,96 @@ function _closePracticeModal() {
   $('practicePanel')?.classList.add('hidden');
   _practiceState = null;
   document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+}
+
+// ── Historial — every generated challenge is saved server-side the moment
+// it's generated (Fase 2), whether finished, abandoned, or just closed
+// mid-way; this lists them so nothing done here is ever silently lost, and
+// an in-progress one can be picked back up exactly where it was left.
+const _PRACTICE_STATUS_LABEL = { in_progress: '● en progreso', completed: '✓ completado', abandoned: '⊘ abandonado' };
+
+async function _renderPracticeHistory() {
+  const st = _practiceState;
+  if (!st) return;
+  $('practiceModalTitle').textContent = '🕘 Historial';
+  $('practiceBody').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando historial…</div>`;
+  $('practiceFooter').innerHTML = '';
+
+  let challenges = [];
+  try {
+    const res = await fetch('/api/practice/history?limit=50');
+    const data = await res.json();
+    challenges = data.challenges || [];
+  } catch { /* keep empty — shows the empty state below */ }
+  if (_practiceState !== st || st.screen !== 'history') return;
+
+  if (!challenges.length) {
+    $('practiceBody').innerHTML = `<div class="practice-history-empty">Todavía no has generado ningún reto.<br>Los que generes se guardan aquí automáticamente.</div>`;
+  } else {
+    $('practiceBody').innerHTML = `<div class="practice-history-list">${challenges.map(c => `
+      <div class="practice-history-item" data-id="${c.id}">
+        <div class="practice-history-main">
+          <div class="practice-history-title">${escapeHtml(c.title)}</div>
+          <div class="practice-history-meta">
+            <span class="practice-history-status practice-history-status--${c.status}">${_PRACTICE_STATUS_LABEL[c.status] || c.status}</span>
+            <span>${escapeHtml(c.difficulty || '')}</span>
+            <span>${Math.min(c.current_step + 1, c.step_count)}/${c.step_count} pasos</span>
+            <span>${_relTimeAgo(new Date(c.updated_at).getTime())}</span>
+          </div>
+        </div>
+        <button class="practice-history-del" data-id="${c.id}" title="Eliminar del historial">🗑</button>
+      </div>`).join('')}</div>`;
+  }
+
+  $('practiceFooter').innerHTML = `<button class="btn-ghost" id="practiceHistoryBackBtn">← Volver</button>`;
+  $('practiceHistoryBackBtn').addEventListener('click', () => { st.screen = 'setup'; _renderPracticeSetup(); });
+
+  document.querySelectorAll('.practice-history-del').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('¿Eliminar este reto del historial? No se puede deshacer.')) return;
+      try { await fetch(`/api/practice/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
+      if (_practiceState === st && st.screen === 'history') _renderPracticeHistory();
+    });
+  });
+  document.querySelectorAll('.practice-history-item').forEach(item => {
+    item.addEventListener('click', () => _resumePracticeFromHistory(item.dataset.id));
+  });
+}
+
+async function _resumePracticeFromHistory(challengeId) {
+  const st = _practiceState;
+  if (!st) return;
+  $('practiceBody').innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando reto…</div>`;
+  $('practiceFooter').innerHTML = '';
+
+  let data;
+  try {
+    const res = await fetch(`/api/practice/${challengeId}`);
+    data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'No se pudo cargar el reto');
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (_practiceState === st) { st.screen = 'history'; _renderPracticeHistory(); }
+    return;
+  }
+  if (_practiceState !== st) return;
+
+  st.challenge = data;
+  st.stepResults = (data.step_results && data.step_results.length === data.steps.length)
+    ? data.step_results
+    : data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
+  st.current = Math.min(data.current_step || 0, data.steps.length - 1);
+  st.topic = data.title;
+  st.course = data.course || '';
+
+  if (data.status === 'in_progress') {
+    st.screen = 'challenge';
+    _renderPracticeChallenge();
+  } else {
+    st.screen = 'results';
+    _renderPracticeResultsScreen(st);
+  }
 }
 
 function _practiceSlug(text) {
@@ -8848,6 +8943,25 @@ function _finishPractice() {
       body: JSON.stringify({ status: 'completed', step_results: st.stepResults }),
     }).catch(() => {});
   }
+  const passed = st.stepResults.filter(r => r.passed).length;
+  const entryId = st.entryId || `practice-${_practiceSlug(st.topic)}`;
+  fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      entry_id: entryId, type: 'practice', mode: st.mode, difficulty: st.difficulty,
+      topic: st.topic, score: passed, total: ch.steps.length,
+    }),
+  }).catch(() => {});
+  _renderPracticeResultsScreen(st);
+}
+
+// Shared by both a just-finished challenge (_finishPractice, which POSTs the
+// finish/attempt records first) and resuming an already-completed/abandoned
+// one from the Historial list (which just re-renders what was saved,
+// nothing to re-POST).
+function _renderPracticeResultsScreen(st) {
+  const ch = st.challenge;
   const total = ch.steps.length;
   const passed = st.stepResults.filter(r => r.passed).length;
   const pct = Math.round((passed / total) * 100);
@@ -8907,16 +9021,6 @@ function _finishPractice() {
   closeBtn.textContent = 'Cerrar';
   closeBtn.addEventListener('click', _closePracticeModal);
   footer.appendChild(closeBtn);
-
-  const entryId = st.entryId || `practice-${_practiceSlug(st.topic)}`;
-  fetch('/api/attempts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      entry_id: entryId, type: 'practice', mode: st.mode, difficulty: st.difficulty,
-      topic: st.topic, score: passed, total,
-    }),
-  }).catch(() => {});
 }
 
 function _practiceKnowledgeTopic(st) {
