@@ -565,7 +565,11 @@ export const database = createReactBlockSpec(
         setColMenuOpen(null);
       };
 
-      const addRow = async () => {
+      // insertAfterId: the row's own gutter "+" (Notion-style, adds a page
+      // right where you are, not just at the end) passes the row it was
+      // clicked on; the bottom "+ Nueva página" button omits it, keeping
+      // its existing append-at-the-end behavior.
+      const addRow = async (insertAfterId) => {
         if (!pageId) return;
         const res = await fetch("/api/entry", {
           method: "POST",
@@ -583,6 +587,16 @@ export const database = createReactBlockSpec(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ properties: seeded }),
         });
+        if (insertAfterId) {
+          const ids = rowsRef.current.map((r) => r.id);
+          const idx = ids.indexOf(insertAfterId);
+          ids.splice(idx >= 0 ? idx + 1 : ids.length, 0, data.id);
+          await fetch("/api/entry/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids }),
+          });
+        }
         reload();
         if (window._openPagePeek) window._openPagePeek(data.id, { onClose: reload });
       };
@@ -712,7 +726,9 @@ export const database = createReactBlockSpec(
           return c.width ? `${c.width}px` : "180px";
         })
         .join(" ");
-      const gridTemplateColumns = `28px ${titleWidth}px ${colTemplate} 32px`;
+      // Leading 32px track is the outside-the-table gutter (drag handle +
+      // per-row "+"), sticky-pinned same as checkbox/title — see renderRow.
+      const gridTemplateColumns = `32px 28px ${titleWidth}px ${colTemplate} 32px`;
 
       const rowHeight = schema.rowHeight || "small";
 
@@ -739,27 +755,21 @@ export const database = createReactBlockSpec(
 
       const renderRow = (row) => (
         <div className="bn-db-grid-row" key={row.id}>
-          <div className="bn-db-cell bn-db-checkbox-cell">
-            <input
-              type="checkbox"
-              checked={selectedIds.has(row.id)}
-              onChange={() => toggleRowSelected(row.id)}
-            />
-          </div>
+          {/* Outside-the-table gutter (audit follow-up): drag handle "⠿"
+              and a per-row "+" (insert a page right after this one), both
+              hover-revealed — matches Notion's own row controls living in
+              a left margin rather than inside the title cell itself. */}
           <div
-            className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
-            // Sticky title cells (item #9) each create their own stacking
-            // context (position:sticky + z-index), so with every row tied
-            // at the same z-index a LATER row's cell paints over an
-            // EARLIER row's open "⋮⋮" popover once it visually overflows
-            // downward — bump only the row whose menu is actually open
-            // above its siblings so its popover stays on top.
+            className="bn-db-cell bn-db-gutter-cell"
+            // Sticky cells (item #9) each create their own stacking context
+            // (position:sticky + z-index), so with every row tied at the
+            // same z-index a LATER row's cell paints over an EARLIER row's
+            // open "⋮⋮" popover once it visually overflows downward — bump
+            // only the row whose menu is actually open above its siblings.
             style={rowMenuOpen === row.id ? { zIndex: 20 } : undefined}
-            onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
-            onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
-            onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
             ref={rowMenuOpen === row.id ? rowMenuRef : null}
           >
+            <button className="bn-db-gutter-add" title="Agregar página debajo" onClick={() => addRow(row.id)}>+</button>
             <span
               className="bn-db-row-handle"
               title={dragDisabledReason ? `Clic para más opciones (arrastrar deshabilitado: ${dragDisabledReason})` : "Arrastrar para reordenar, clic para más opciones"}
@@ -768,10 +778,6 @@ export const database = createReactBlockSpec(
               onDragEnd={() => { dragRowIdRef.current = null; setDragOverRowId(null); }}
               onClick={(e) => { e.stopPropagation(); setRowMenuOpen((prev) => (prev === row.id ? null : row.id)); }}
             >⠿</span>
-            <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
-              <span className="bn-db-row-icon">{row.icon || "📄"}</span>
-              <span className="bn-db-row-title">{row.title || "Sin título"}</span>
-            </button>
             {rowMenuOpen === row.id && (
               <div className="bn-db-colmenu-pop" contentEditable={false}>
                 <button className="bn-db-colmenu-item" onClick={() => { setRowMenuOpen(null); openRow(row.id); }}>Abrir</button>
@@ -785,6 +791,24 @@ export const database = createReactBlockSpec(
                 </button>
               </div>
             )}
+          </div>
+          <div className="bn-db-cell bn-db-checkbox-cell">
+            <input
+              type="checkbox"
+              checked={selectedIds.has(row.id)}
+              onChange={() => toggleRowSelected(row.id)}
+            />
+          </div>
+          <div
+            className={"bn-db-title-col bn-db-cell" + (dragOverRowId === row.id ? " bn-db-row-dragover" : "")}
+            onDragOver={(e) => { e.preventDefault(); if (dragRowIdRef.current && dragRowIdRef.current !== row.id) setDragOverRowId(row.id); }}
+            onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
+            onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
+          >
+            <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
+              <span className="bn-db-row-icon">{row.icon || "📄"}</span>
+              <span className="bn-db-row-title">{row.title || "Sin título"}</span>
+            </button>
           </div>
           {schema.columns.map((c) => {
             const prop = (row.properties || []).find((p) => p.id === c.id);
@@ -1019,6 +1043,7 @@ export const database = createReactBlockSpec(
               data-row-height={rowHeight}
             >
             <div className="bn-db-grid-row bn-db-grid-header">
+              <div className="bn-db-cell bn-db-gutter-cell" />
               <div className="bn-db-cell bn-db-checkbox-cell">
                 <input
                   type="checkbox"
@@ -1130,6 +1155,7 @@ export const database = createReactBlockSpec(
                 any of these cells here would reproduce the same
                 auto-placement misalignment bug fixed above for data rows. */}
             <div className="bn-db-grid-row bn-db-grid-footer">
+              <div className="bn-db-cell bn-db-gutter-cell" />
               <div className="bn-db-cell bn-db-checkbox-cell" />
               <div
                 className="bn-db-title-col bn-db-cell bn-db-calc-cell"

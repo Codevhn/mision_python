@@ -322,30 +322,34 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
    rule above, data rows need their own since that rule is header-only. */
 .bn-db-title-col { position: relative; }
 
-/* Fijar columnas (audit item #9) — the checkbox + "Nombre" columns stay
-   pinned to the left edge while the rest of a wide table scrolls
-   horizontally inside .bn-db-scroll, matching Notion's own frozen name
-   column. Two-class selectors (.bn-db-cell.bn-db-checkbox-cell /
-   .bn-db-cell.bn-db-title-col) so this ties in specificity with, and
-   (being later in the file) wins over, the ".bn-db-grid-header .bn-db-cell"
-   rule above that would otherwise force position:relative back on the
-   header's own title cell. An explicit solid background is required on
-   sticky cells or the scrolled-under columns show through as they pass
-   beneath. checkbox-cell's left offset is always 0; title-col's is always
-   28px (the checkbox column's own fixed width) regardless of the title
-   column's own (resizable) width, since that offset is measured from the
-   scroll container's edge, not from the title cell's own box. */
+/* Fijar columnas (audit item #9) — the gutter, checkbox and "Nombre"
+   columns stay pinned to the left edge while the rest of a wide table
+   scrolls horizontally inside .bn-db-scroll, matching Notion's own frozen
+   name column. Two-class selectors (.bn-db-cell.bn-db-checkbox-cell /
+   .bn-db-cell.bn-db-title-col / .bn-db-cell.bn-db-gutter-cell) so this
+   ties in specificity with, and (being later in the file) wins over, the
+   ".bn-db-grid-header .bn-db-cell" rule above that would otherwise force
+   position:relative back on the header's own cells. An explicit solid
+   background is required on sticky cells or the scrolled-under columns
+   show through as they pass beneath. Offsets stack left-to-right by each
+   preceding sticky column's own fixed width (gutter 32px, checkbox 28px)
+   regardless of the title column's own (resizable) width, since these
+   offsets are measured from the scroll container's edge, not from each
+   cell's own box. */
+.bn-db-cell.bn-db-gutter-cell,
 .bn-db-cell.bn-db-checkbox-cell,
 .bn-db-cell.bn-db-title-col {
   position: sticky;
   z-index: 2;
   background: var(--bg);
 }
-.bn-db-cell.bn-db-checkbox-cell { left: 0; }
+.bn-db-cell.bn-db-gutter-cell { left: 0; }
+.bn-db-cell.bn-db-checkbox-cell { left: 32px; }
 .bn-db-cell.bn-db-title-col {
-  left: 28px;
+  left: 60px;
   box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.35);
 }
+.bn-db-grid-header .bn-db-cell.bn-db-gutter-cell,
 .bn-db-grid-header .bn-db-cell.bn-db-checkbox-cell,
 .bn-db-grid-header .bn-db-cell.bn-db-title-col {
   background: var(--bg-hover);
@@ -386,12 +390,36 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
   margin-top: 1px;
 }
 
+/* Row gutter — sits OUTSIDE the table's visible columns (its own sticky
+   cell to the left of the checkbox column), like Notion's own row
+   controls, rather than living inside the title cell. Holds a per-row
+   "+" (insert a page right after this one) and the "⠿" drag handle, both
+   hover-revealed and kept visible while that row's "⋮⋮" menu is open
+   (:has()) so opening the menu doesn't make its own trigger disappear. */
+.bn-db-gutter-cell { justify-content: center; gap: 2px; }
+
+.bn-db-gutter-add {
+  flex-shrink: 0;
+  width: 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.12s;
+  font-size: 0.95em;
+  line-height: 1;
+  padding: 0;
+}
+.bn-db-grid-row:hover .bn-db-gutter-add,
+.bn-db-gutter-cell:has(.bn-db-colmenu-pop) .bn-db-gutter-add { opacity: 1; }
+.bn-db-gutter-add:hover { color: var(--text); }
+
 /* Row drag handle — appears on row hover, like Notion's own "⠿". Dragging
    it reorders rows via the app's generic /api/entry/reorder endpoint. */
 .bn-db-row-handle {
   flex-shrink: 0;
   width: 14px;
-  margin-left: 4px;
   text-align: center;
   cursor: grab;
   color: var(--text-faint);
@@ -401,7 +429,8 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
   line-height: 1;
   user-select: none;
 }
-.bn-db-grid-row:hover .bn-db-row-handle { opacity: 1; }
+.bn-db-grid-row:hover .bn-db-row-handle,
+.bn-db-gutter-cell:has(.bn-db-colmenu-pop) .bn-db-row-handle { opacity: 1; }
 .bn-db-row-handle:hover { color: var(--text); }
 .bn-db-row-handle:active { cursor: grabbing; }
 .bn-db-row-dragover { box-shadow: inset 0 2px 0 var(--accent); }
