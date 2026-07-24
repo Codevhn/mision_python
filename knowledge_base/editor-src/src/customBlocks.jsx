@@ -410,6 +410,8 @@ export const database = createReactBlockSpec(
       const [viewMenuView, setViewMenuView] = useState("main");
       const [viewRenameDraft, setViewRenameDraft] = useState("");
       const viewMenuRef = useRef(null);
+      const [newViewPickerOpen, setNewViewPickerOpen] = useState(false);
+      const newViewPickerRef = useRef(null);
       const [rows, setRows] = useState([]);
       const [loading, setLoading] = useState(true);
       const [colMenuOpen, setColMenuOpen] = useState(null);
@@ -572,6 +574,13 @@ export const database = createReactBlockSpec(
         return () => document.removeEventListener("mousedown", h);
       }, [viewMenuOpen]);
 
+      useEffect(() => {
+        if (!newViewPickerOpen) return;
+        const h = (e) => { if (newViewPickerRef.current && !newViewPickerRef.current.contains(e.target)) setNewViewPickerOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+      }, [newViewPickerOpen]);
+
       const reload = useCallback(() => {
         if (!pageId) { setLoading(false); return; }
         setLoading(true);
@@ -610,18 +619,34 @@ export const database = createReactBlockSpec(
         setColMenuOpen(null);
       };
 
-      // Same "create with a sensible default, then immediately open its own
-      // rename popover" pattern addColumn already uses below — no jarring
-      // native prompt() for something this central to the feature. Opens
-      // straight to the "type" pane (table vs tablero), since picking that
-      // is the one decision that actually matters for a brand-new view —
-      // exactly how addColumn jumps straight to picking a column's type.
-      const addView = () => {
-        const view = makeDefaultView(`Vista ${schema.views.length + 1}`);
+      // A board view needs a groupBy to have any lanes — auto-pick the first
+      // status/select column (col_status, if present, same as a fresh
+      // database's own default column) so a new board is never empty and
+      // unconfigured. Shared by creating a fresh board view and by
+      // switching an already-existing view to board type.
+      const boardDefaultGroupBy = () => {
+        const groupable = schema.columns.find((c) => c.type === "status" || c.type === "select");
+        return groupable ? groupable.id : null;
+      };
+
+      // Matches Notion's actual "+" flow: it asks WHICH kind of view first —
+      // nothing is created, and no default columns/rows ever flash on
+      // screen, until a type is chosen. (The previous version created a
+      // bare table immediately and only offered to change its type as an
+      // afterthought, which is why a brand-new view used to show up
+      // already populated before you'd picked anything.)
+      const createView = (type) => {
+        const label = (VIEW_TYPES.find((t) => t.id === type) || {}).label || "Vista";
+        const sameTypeCount = schema.views.filter((v) => v.type === type).length;
+        const name = sameTypeCount ? `${label} ${sameTypeCount + 1}` : label;
+        const overrides = { type };
+        if (type === "board") {
+          const groupBy = boardDefaultGroupBy();
+          if (groupBy) overrides.groupBy = groupBy;
+        }
+        const view = makeDefaultView(name, overrides);
         saveSchema({ ...schema, views: [...schema.views, view], activeView: view.id });
-        setViewMenuOpen(view.id);
-        setViewMenuView("type");
-        setViewRenameDraft(view.name);
+        setNewViewPickerOpen(false);
       };
 
       const openViewMenu = (v) => {
@@ -637,16 +662,13 @@ export const database = createReactBlockSpec(
         setViewMenuOpen(null);
       };
 
-      // Switching a view TO "board" needs a groupBy or it has no lanes to
-      // show — auto-pick the first status/select column (col_status, if
-      // present, same as a fresh database's own default column) so a new
-      // board is never empty and unconfigured. Leaves an already-set
-      // groupBy alone (switching back and forth shouldn't reshuffle it).
+      // Changing an ALREADY-EXISTING view's type — separate from createView
+      // above, reached via a view tab's own "⋮" menu, not the "+" picker.
       const changeViewType = (v, type) => {
         const patch = { type };
         if (type === "board" && !v.groupBy) {
-          const groupable = schema.columns.find((c) => c.type === "status" || c.type === "select");
-          if (groupable) patch.groupBy = groupable.id;
+          const groupBy = boardDefaultGroupBy();
+          if (groupBy) patch.groupBy = groupBy;
         }
         saveSchema({ ...schema, views: schema.views.map((x) => (x.id === v.id ? { ...x, ...patch } : x)) });
         setViewMenuOpen(null);
@@ -1149,7 +1171,20 @@ export const database = createReactBlockSpec(
                 )}
               </div>
             ))}
-            <button className="bn-db-view-tab-add" onClick={addView} title="Nueva vista">+</button>
+            <div className="bn-db-view-tab-add-wrap" ref={newViewPickerRef}>
+              <button className="bn-db-view-tab-add" onClick={() => setNewViewPickerOpen((v) => !v)} title="Nueva vista">+</button>
+              {newViewPickerOpen && (
+                <div className="bn-db-colmenu-pop" contentEditable={false}>
+                  <div className="bn-db-newview-title">Elige un tipo de vista</div>
+                  {VIEW_TYPES.map((t) => (
+                    <button key={t.id} className="bn-db-colmenu-item bn-db-newview-item" onClick={() => createView(t.id)}>
+                      <span className="bn-db-view-tab-icon">{viewTypeIcon(t.id)}</span>
+                      <span>{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="bn-db-toolbar">
             <div className="bn-db-toolbar-left">

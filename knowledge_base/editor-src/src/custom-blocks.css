@@ -125,7 +125,24 @@
    attaches a document-wide mousemove listener that assumes any <table> in
    the DOM carries its internal column-resize state, and throws when it
    hovers a plain HTML table that isn't one of its own blocks. */
-.bn-database { width: 100%; margin: 4px 0; }
+.bn-database { width: 100%; margin: 4px 0; border-radius: 8px; }
+
+/* Every click inside the block's contentEditable=false region (a view tab,
+   a cell, the toolbar…) makes ProseMirror treat the WHOLE block as a
+   selected node, and BlockNote's own default for that is a harsh 4px solid
+   blue outline (Block.css) — jarring against this app's dark theme and
+   completely unrelated to anything the user actually did. Replaced with
+   the same soft accent-tinted ring the rest of the app already uses for
+   focus states (inputs, search, etc. — see :focus rules in style.css),
+   which reads as "this is active" without looking like a rendering glitch.
+   Higher specificity than BlockNote's own selector (three classes vs. two
+   classes + a universal child) so this wins regardless of CSS load order. */
+.bn-block-content.ProseMirror-selectednode > .bn-database,
+.ProseMirror-selectednode > .bn-block-content > .bn-database {
+  outline: none;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #4f8cff) 18%, transparent);
+}
 
 /* Vistas (audit item #10) — tabs over the same rows/columns, each with its
    own filter/sort/groupBy/calc/rowHeight/titleWidth. A single-tab database
@@ -183,6 +200,20 @@
   margin-bottom: 2px;
 }
 .bn-db-view-tab-add:hover { background: var(--bg-hover); color: var(--text); }
+.bn-db-view-tab-add-wrap { position: relative; }
+
+/* "+" view picker — asks which TYPE to create before anything exists,
+   matching Notion's own flow (no bare/unconfigured view ever flashes on
+   screen while you're still deciding). */
+.bn-db-newview-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+  padding: 4px 8px 6px;
+}
+.bn-db-newview-item { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
 
 /* Toolbar above the grid — filter/sort on the left, row-height on the
    right (matches where Notion's own equivalent controls sit). */
