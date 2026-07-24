@@ -8184,24 +8184,26 @@ let _practiceState = null;
 let _practiceTreeCache = null;
 
 function initPracticeModal() {
-  const overlay = $('practiceOverlay');
+  // Docked panel now (área de guerra, fase 3), not a backdrop modal — there
+  // is no overlay to click through anymore, so there is nothing left that
+  // can dismiss an in-progress challenge by accident. Only the explicit ×
+  // closes it.
   const closeBtn = $('practiceClose');
-  if (!overlay || !closeBtn) return;
+  if (!closeBtn) return;
   closeBtn.addEventListener('click', _closePracticeModal);
-  overlay.addEventListener('click', e => { if (e.target === overlay) _closePracticeModal(); });
 }
 
 function _openPracticeModal(presetTopic) {
-  const overlay = $('practiceOverlay');
-  if (!overlay) return;
-  overlay.classList.remove('hidden');
+  const panel = $('practicePanel');
+  if (!panel) return;
+  panel.classList.remove('hidden');
   const st = { screen: 'setup', mode: 'topic', difficulty: 'medio', topic: typeof presetTopic === 'string' ? presetTopic : '', entryId: '', reviewCourse: '', contextText: '', startNudge: null };
   _practiceState = st;
   _renderPracticeSetup();
 
   // Soft nudge: Práctica leans on Cursos, so if there's an unstarted course we
   // say so — without blocking anything, per the user's explicit "soft, not
-  // hard gate" call. Fetched async so it never delays opening the modal.
+  // hard gate" call. Fetched async so it never delays opening the panel.
   fetch('/api/domain/reminder').then(r => r.json()).then(data => {
     if (_practiceState !== st || st.screen !== 'setup') return;
     if (data.reminder && data.reminder.kind === 'start') {
@@ -8212,7 +8214,7 @@ function _openPracticeModal(presetTopic) {
 }
 
 function _closePracticeModal() {
-  $('practiceOverlay')?.classList.add('hidden');
+  $('practicePanel')?.classList.add('hidden');
   _practiceState = null;
   document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
 }
@@ -8565,14 +8567,19 @@ function _renderPracticeChallenge() {
   }
 
   const hintsShown = stepState.hintsShown || 0;
+  // *_html fields are pre-rendered server-side by render_markdown() (same
+  // pipeline the "Ask AI" panel uses) so a scenario/instruction/hint reads
+  // like real formatted text instead of a raw text dump; fall back to
+  // escaped plain text for older cached challenges or test fixtures that
+  // predate this field.
   const hintsHtml = step.hints.slice(0, hintsShown)
-    .map((h, i) => `<div class="practice-hint">💡 Pista ${i + 1}: ${escapeHtml(h)}</div>`).join('');
+    .map((h, i) => `<div class="practice-hint practice-md">💡 Pista ${i + 1}: ${(step.hints_html && step.hints_html[i]) || escapeHtml(h)}</div>`).join('');
 
   $('practiceBody').innerHTML = `
     <div class="practice-pills">${pills}</div>
-    <div class="practice-scenario">${escapeHtml(ch.scenario)}</div>
+    <div class="practice-scenario practice-md">${ch.scenario_html || escapeHtml(ch.scenario)}</div>
     <div class="practice-step">
-      <div class="practice-step-instruction">${escapeHtml(step.instruction)}</div>
+      <div class="practice-step-instruction practice-md">${step.instruction_html || escapeHtml(step.instruction)}</div>
       ${stepBodyHtml}
       ${hintsHtml}
       ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
@@ -8601,7 +8608,7 @@ function _renderPracticeChallenge() {
     const hintBtn = document.createElement('button');
     hintBtn.className = 'btn-ghost';
     hintBtn.textContent = `💡 Pista (${hintsShown}/${step.hints.length})`;
-    hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _renderPracticeChallenge(); });
+    hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _savePracticeProgress(st); _renderPracticeChallenge(); });
     footer.appendChild(hintBtn);
   } else if (!stepState.revealed && !stepState.passed) {
     const solBtn = document.createElement('button');
@@ -8610,6 +8617,7 @@ function _renderPracticeChallenge() {
     solBtn.addEventListener('click', () => {
       if (confirm('Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
         stepState.revealed = true;
+        _savePracticeProgress(st);
         _renderPracticeChallenge();
       }
     });
@@ -8626,7 +8634,7 @@ function _renderPracticeChallenge() {
     nextBtn.className = 'btn-primary';
     nextBtn.textContent = isLast ? 'Ver resultados →' : 'Siguiente paso →';
     nextBtn.addEventListener('click', () => {
-      if (isLast) { _finishPractice(); } else { st.current++; _renderPracticeChallenge(); }
+      if (isLast) { _finishPractice(); } else { st.current++; _savePracticeProgress(st); _renderPracticeChallenge(); }
     });
     footer.appendChild(nextBtn);
   }
@@ -8684,13 +8692,33 @@ async function _checkPracticeStep() {
   } catch (err) {
     showToast('Error de red: ' + err.message, 'error');
   } finally {
+    _savePracticeProgress(st);
     _renderPracticeChallenge();
   }
+}
+
+// Fire-and-forget autosave — every step-solving action (check a step, use a
+// hint, reveal a solution) calls this so a saved challenge always resumes
+// exactly where it was left, not just where it was last "finished".
+function _savePracticeProgress(st) {
+  if (!st || !st.challenge || !st.challenge.id) return;
+  fetch(`/api/practice/${st.challenge.id}/progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_step: st.current, step_results: st.stepResults }),
+  }).catch(() => {});
 }
 
 function _finishPractice() {
   const st = _practiceState;
   const ch = st.challenge;
+  if (ch.id) {
+    fetch(`/api/practice/${ch.id}/finish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed', step_results: st.stepResults }),
+    }).catch(() => {});
+  }
   const total = ch.steps.length;
   const passed = st.stepResults.filter(r => r.passed).length;
   const pct = Math.round((passed / total) * 100);

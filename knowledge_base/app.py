@@ -3900,7 +3900,9 @@ def generate_practice_challenge():
         clean = {
             "type": step_type,
             "instruction": instruction,
+            "instruction_html": render_markdown(instruction),
             "hints": hints,
+            "hints_html": [render_markdown(h) for h in hints],
             "solution": str(step.get("solution") or ""),
             "concept_id": force_concept_id or _match_concept_id(concepts, step.get("concept")),
         }
@@ -3926,6 +3928,7 @@ def generate_practice_challenge():
         "id": uuid.uuid4().hex[:8],
         "title": str(challenge.get("title") or topic),
         "scenario": str(challenge.get("scenario") or ""),
+        "scenario_html": render_markdown(str(challenge.get("scenario") or "")),
         "difficulty": difficulty,
         "mode": mode,
         "topic": topic,

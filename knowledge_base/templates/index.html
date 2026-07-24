@@ -1273,16 +1273,17 @@
     </div>
   </div>
 
-  <!-- PRACTICE MODAL -->
-  <div class="modal-overlay hidden" id="practiceOverlay">
-    <div class="modal practice-modal" style="max-width:720px">
-      <div class="modal-header">
-        <span id="practiceModalTitle">🎯 Práctica</span>
-        <button class="modal-close" id="practiceClose">×</button>
-      </div>
-      <div class="modal-body" id="practiceBody"></div>
-      <div class="modal-footer" id="practiceFooter"></div>
+  <!-- PRACTICE PANEL — docked to the right edge like .toc-panel/.ai-panel,
+       not a backdrop modal: nothing here should ever be lost to a stray
+       click outside it, and it needs to stay reachable while you work in
+       the editor at the same time (area de guerra, fase 3). -->
+  <div class="practice-panel hidden" id="practicePanel">
+    <div class="modal-header">
+      <span id="practiceModalTitle">🎯 Práctica</span>
+      <button class="modal-close" id="practiceClose">×</button>
     </div>
+    <div class="modal-body" id="practiceBody"></div>
+    <div class="modal-footer" id="practiceFooter"></div>
   </div>
 
   <!-- PAGE PEEK — floating Notion-style page preview, opened from a database row -->
