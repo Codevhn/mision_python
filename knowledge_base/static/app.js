@@ -7543,6 +7543,15 @@ function initAIPanel() {
 
   let lastResult   = '';
   let _selContext  = '';  // text pinned from a selection
+  let aiModelChoice = null;
+  // Mounted once (this panel is static in the DOM, not rebuilt like
+  // Práctica's body) — shared "ask" context with the inline selection
+  // popover below, so picking a model here also applies there.
+  _mountModelSelector($('aiModelCSelect'), {
+    context: 'ask',
+    value: null,
+    onChange: choice => { aiModelChoice = choice; },
+  });
 
   // ── Open / close ──────────────────────────────────────────
   function openPanel(selText) {
@@ -7600,7 +7609,7 @@ function initAIPanel() {
     fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, prompt: userPrompt, context: ctx }),
+      body: JSON.stringify({ action, prompt: userPrompt, context: ctx, provider: aiModelChoice?.provider, model: aiModelChoice?.model }),
     })
       .then(r => r.json())
       .then(data => {
@@ -7814,10 +7823,15 @@ function _showAiResultPopover(selText, selRect, action) {
   const actionsEl = pop.querySelector('.arp-actions');
   let _result = '';
 
+  // Shares the "ask" context's saved model choice with the main Ask AI
+  // panel (mounted there) rather than showing its own picker in this
+  // compact popover — change the model via the panel's selector and it
+  // applies here too.
+  const popModelChoice = _getRawSavedModelChoice('ask');
   fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, prompt: '', context: selText }),
+    body: JSON.stringify({ action, prompt: '', context: selText, provider: popModelChoice?.provider, model: popModelChoice?.model }),
   })
   .then(r => r.json())
   .then(data => {
@@ -8295,6 +8309,10 @@ function _renderPracticeSetup() {
           <button class="practice-diff-btn ${st.difficulty === 'dificil' ? 'active' : ''}" data-diff="dificil">Difícil</button>
         </div>
       </div>
+      <div class="practice-diff-row">
+        <span class="practice-diff-label">Modelo</span>
+        <div class="practice-cselect" id="practiceModelCSelect" style="flex:1"></div>
+      </div>
     </div>`;
 
   $('practiceFooter').innerHTML = `<button class="btn-primary" id="practiceGenerateBtn">✦ Generar reto</button>`;
@@ -8311,6 +8329,17 @@ function _renderPracticeSetup() {
     btn.addEventListener('click', () => { st.difficulty = btn.dataset.diff; _renderPracticeSetup(); });
   });
   $('practiceGenerateBtn').addEventListener('click', _startPracticeGeneration);
+
+  // Freedom to pick which LLM answers THIS specific request, every time —
+  // not a single app-wide default. Remembers the last model chosen for
+  // Práctica specifically (context "practice"), independent of whatever was
+  // last picked in Ask AI or anywhere else, since different work calls for
+  // different models (fast for a quick check, deep for a hard problem).
+  _mountModelSelector($('practiceModelCSelect'), {
+    context: 'practice',
+    value: (st.provider && st.model) ? { provider: st.provider, model: st.model } : null,
+    onChange: choice => { st.provider = choice?.provider; st.model = choice?.model; },
+  });
 
   _renderPracticeModeBody();
 }
@@ -8380,6 +8409,102 @@ function _mountPracticeCustomSelect(container, { options, value, placeholder, di
       window.addEventListener('resize', reposition);
     });
   }
+}
+
+// ── Shared AI model selector — used anywhere the app calls out to an LLM
+// (Práctica, Ask AI, Quiz, mapa mental…), not just one place. The user
+// wants genuine freedom to pick which model answers each specific request
+// (a fast one for a quick check, a deeper one for a hard problem), so this
+// is never a single app-wide default — it's mounted fresh per feature and
+// remembers the last choice PER CONTEXT (localStorage key scoped to the
+// caller's own context string), since "practice" and "ask" are different
+// kinds of work with their own sensible defaults.
+let _aiProvidersPromise = null;
+function _getAvailableProviders() {
+  if (!_aiProvidersPromise) {
+    _aiProvidersPromise = fetch('/api/ai/providers').then(r => r.json())
+      .catch(() => ({ providers: [], default: { provider: 'deepseek', model: 'deepseek-chat' } }));
+  }
+  return _aiProvidersPromise;
+}
+
+function _modelChoiceStorageKey(context) { return `kb_ai_model:${context}`; }
+
+// Synchronous, unvalidated read of a context's last-saved model choice —
+// for spots (like the inline selection popover below) that fire an AI
+// request immediately and shouldn't wait on an /api/ai/providers round
+// trip just to know which model to ask for. If the saved choice turns out
+// stale (key since removed), the backend's own _call_ai() falls back to
+// its default the same way an unset provider/model always has.
+function _getRawSavedModelChoice(context) {
+  try {
+    const raw = localStorage.getItem(_modelChoiceStorageKey(context));
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function _getSavedModelChoice(context, data) {
+  try {
+    const raw = localStorage.getItem(_modelChoiceStorageKey(context));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const prov = data.providers.find(p => p.id === parsed.provider);
+      if (prov && prov.models.some(m => m.id === parsed.model)) return parsed;
+    }
+  } catch (_) { /* ignore malformed/blocked localStorage */ }
+  if (data.providers.length) {
+    const def = data.providers.find(p => p.id === data.default.provider) || data.providers[0];
+    const model = def.models.find(m => m.id === data.default.model) || def.models[0];
+    return { provider: def.id, model: model.id };
+  }
+  return null;
+}
+
+function _saveModelChoice(context, choice) {
+  try { localStorage.setItem(_modelChoiceStorageKey(context), JSON.stringify(choice)); } catch (_) { /* ignore */ }
+}
+
+// Mounts a themed model picker into `container` (reuses the same custom-
+// select widget as everywhere else in Práctica). `value` pre-selects a
+// specific {provider, model} (e.g. to survive a parent re-render); leave it
+// unset to fall back to this context's last-saved choice, or this app's
+// overall default if there's no saved choice yet. `onChange({provider,
+// model} | null)` fires once immediately with the resolved starting choice,
+// and again on every pick — null means no provider has an API key
+// configured at all, so the caller should let the request fall through to
+// the backend's own default (which will surface the real "no configurada"
+// error same as today).
+function _mountModelSelector(container, { context, value, onChange }) {
+  if (!container) return;
+  container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> modelos…</div>`;
+  _getAvailableProviders().then(data => {
+    if (!container.isConnected) return; // panel/parent was closed or re-rendered while this was in flight
+    if (!data.providers || !data.providers.length) {
+      container.innerHTML = `<div class="practice-empty-note">Sin proveedores de IA configurados.</div>`;
+      onChange(null);
+      return;
+    }
+    const options = [];
+    data.providers.forEach(p => {
+      p.models.forEach(m => options.push({ value: `${p.id}:${m.id}`, label: `${m.label} (${p.label}) — ${m.hint}` }));
+    });
+    const initial = value || _getSavedModelChoice(context, data);
+    onChange(initial);
+    const wrap = document.createElement('div');
+    container.innerHTML = '';
+    container.appendChild(wrap);
+    _mountPracticeCustomSelect(wrap, {
+      options,
+      value: initial ? `${initial.provider}:${initial.model}` : '',
+      placeholder: 'Elegir modelo…',
+      onChange: raw => {
+        const [provider, model] = raw.split(':');
+        const choice = { provider, model };
+        _saveModelChoice(context, choice);
+        onChange(choice);
+      },
+    });
+  });
 }
 
 async function _renderPracticeModeBody() {
@@ -8492,7 +8617,7 @@ async function _startPracticeGeneration() {
     const res = await fetch('/api/practice/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty, concept_id: forceConceptId }),
+      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty, concept_id: forceConceptId, provider: st.provider, model: st.model }),
     });
     const data = await res.json();
     if (_practiceState !== st) return;
@@ -8674,7 +8799,11 @@ async function _checkPracticeStep() {
       const res = await fetch('/api/practice/check-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric, answer }),
+        // Reuses the same model this challenge was generated with (saved on
+        // st.challenge server-side in the generate response) rather than
+        // whatever's currently picked in the setup screen's selector — the
+        // two can differ if you reopen Práctica between steps.
+        body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric, answer, provider: st.challenge.provider, model: st.challenge.model }),
       });
       const data = await res.json();
       if (data.error) { showToast(data.error, 'error'); return; }
