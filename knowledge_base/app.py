@@ -3089,41 +3089,139 @@ def delete_mindmap_node(map_id, node_id):
     return jsonify(mindmap)
 
 
-def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
-    """Shared DeepSeek chat-completion caller, used by whole-map generation and
-    single-node AI transforms alike. Returns (content, None) on success, or
-    (None, (response, status)) ready to `return` straight from a Flask route."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+# ── Multi-provider AI abstraction ───────────────────────────────────────────
+# Every AI-backed feature in the app (mindmap generation/transform, quiz,
+# practice challenges, Ask AI) goes through _call_ai() instead of each
+# hand-rolling its own HTTP call — the user wants the freedom to pick which
+# LLM answers ANY given request (fast/cheap for a quick explanation, deeper
+# for a hard problem), and that's only maintainable from one place that
+# knows how to reach each provider. DeepSeek and Groq are both OpenAI-
+# compatible chat-completions APIs and share one code path; Gemini's REST
+# API has its own request/response shape and gets its own.
+PROVIDERS = {
+    "deepseek": {
+        "label": "DeepSeek",
+        "kind": "openai_compat",
+        "base_url": "https://api.deepseek.com/chat/completions",
+        "env": "DEEPSEEK_API_KEY",
+        "models": [
+            {"id": "deepseek-chat", "label": "DeepSeek Chat", "hint": "Equilibrado, buen default general"},
+            {"id": "deepseek-reasoner", "label": "DeepSeek Reasoner", "hint": "Razonamiento profundo, más lento"},
+        ],
+    },
+    "groq": {
+        "label": "Groq",
+        "kind": "openai_compat",
+        "base_url": "https://api.groq.com/openai/v1/chat/completions",
+        "env": "GROQ_API_KEY",
+        "models": [
+            {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant", "hint": "Muy rápido, ideal para respuestas cortas"},
+            {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B Versatile", "hint": "Rápido y capaz, buen equilibrio"},
+        ],
+    },
+    "gemini": {
+        "label": "Gemini",
+        "kind": "gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/models",
+        "env": "GEMINI_API_KEY",
+        "models": [
+            {"id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash", "hint": "Rápido, bueno para explicaciones"},
+            {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro", "hint": "Más profundo, mejor para análisis complejos"},
+        ],
+    },
+}
+DEFAULT_PROVIDER = "deepseek"
+DEFAULT_MODEL = "deepseek-chat"
+
+
+def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        base_url,
+        data=body,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        result = json.loads(r.read())
+    return result["choices"][0]["message"]["content"]
+
+
+def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+        "systemInstruction": {"parts": [{"text": system}]},
+        "generationConfig": {"maxOutputTokens": max_tokens},
+    }
+    if json_mode:
+        payload["generationConfig"]["responseMimeType"] = "application/json"
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/{model}:generateContent",
+        data=body,
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        result = json.loads(r.read())
+    return result["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None):
+    """Single entry point for every AI-backed feature. `provider`/`model`
+    come from the frontend's model selector (a request body field on every
+    generation endpoint); left unset, every pre-existing call site keeps
+    working exactly as before, on DeepSeek's chat model. Returns
+    (content, None) on success, or (None, (response, status)) ready to
+    `return` straight from a Flask route."""
+    provider = provider or DEFAULT_PROVIDER
+    model = model or DEFAULT_MODEL
+    cfg = PROVIDERS.get(provider)
+    if not cfg:
+        return None, (jsonify({"error": f"Proveedor de IA desconocido: {provider}"}), 400)
+    api_key = os.environ.get(cfg["env"], "")
     if not api_key:
-        return None, (jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503)
+        return None, (jsonify({
+            "error": f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...",
+        }), 503)
     try:
-        payload = {
-            "model": "deepseek-chat",
-            "max_tokens": max_tokens,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_msg},
-            ],
-        }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-        body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.deepseek.com/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            result = json.loads(r.read())
-        return result["choices"][0]["message"]["content"], None
+        if cfg["kind"] == "gemini":
+            content = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+        else:
+            content = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+        return content, None
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         return None, (jsonify({"error": f"API error {e.code}: {err_body}"}), 502)
     except Exception as e:
         return None, (jsonify({"error": str(e)}), 500)
+
+
+def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
+    """Back-compat shim so every call site that hasn't been wired up to the
+    model selector yet keeps working unmodified — new/updated call sites
+    should call _call_ai directly with an explicit provider/model."""
+    return _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode)
+
+
+@app.route("/api/ai/providers")
+def list_ai_providers():
+    """Only lists providers whose API key is actually configured, so the
+    frontend's model selector never offers a choice that would just 503."""
+    available = [
+        {"id": pid, "label": cfg["label"], "models": cfg["models"]}
+        for pid, cfg in PROVIDERS.items()
+        if os.environ.get(cfg["env"])
+    ]
+    return jsonify({"providers": available, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
 
 
 _MINDMAP_SHORTEN_PROMPT = (
@@ -3181,7 +3279,7 @@ def ai_transform_mindmap_node(map_id, node_id):
     else:
         return jsonify({"error": "action inválida"}), 400
 
-    content, err = _call_deepseek(system, user_msg, max_tokens=400)
+    content, err = _call_ai(system, user_msg, max_tokens=400, provider=body.get("provider"), model=body.get("model"))
     if err:
         return err
 
@@ -3275,7 +3373,7 @@ def generate_mindmap():
         system = _MINDMAP_SYSTEM_PROMPT
         user_msg = prompt
 
-    content, err = _call_deepseek(system, user_msg, max_tokens=4000, json_mode=True)
+    content, err = _call_ai(system, user_msg, max_tokens=4000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
 
@@ -3464,10 +3562,6 @@ def ai_ask():
     context = data.get("context", "").strip()
     action  = data.get("action",  "ask")
 
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
-
     systems = {
         "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara y concisa con ejemplos prácticos. Responde en español.",
         "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso. Responde en español.",
@@ -3483,35 +3577,13 @@ def ai_ask():
     system = systems.get(action, systems["ask"])
     user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
 
-    try:
-        body = json.dumps({
-            "model": "deepseek-chat",
-            "max_tokens": 2048,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user",   "content": user_msg},
-            ],
-        }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.deepseek.com/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            result = json.loads(r.read())
-        content = result["choices"][0]["message"]["content"]
-        # Render server-side with the same Markdown pipeline used for note content
-        # (tables, ordered/unordered lists, fenced code) instead of leaving the
-        # frontend to re-parse the reply with a much more limited hand-rolled parser.
-        return jsonify({"result": content, "html": render_markdown(content)})
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="replace")
-        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    content, err = _call_ai(system, user_msg, max_tokens=2048, provider=data.get("provider"), model=data.get("model"))
+    if err:
+        return err
+    # Render server-side with the same Markdown pipeline used for note content
+    # (tables, ordered/unordered lists, fenced code) instead of leaving the
+    # frontend to re-parse the reply with a much more limited hand-rolled parser.
+    return jsonify({"result": content, "html": render_markdown(content)})
 
 
 # ── Quiz generation (structured, multiple-choice) ──────────────────────────────
@@ -3524,10 +3596,6 @@ def generate_quiz():
     course  = (data.get("course") or "").strip()
     if not context:
         return jsonify({"error": "Sin contenido para generar el quiz"}), 400
-
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        return jsonify({"error": "DEEPSEEK_API_KEY no configurada. Añádela con: fly secrets set DEEPSEEK_API_KEY=sk-..."}), 503
 
     concepts = _load_course_concepts(course) if course else []
     concept_instructions = ""
@@ -3559,29 +3627,11 @@ def generate_quiz():
     )
     user_msg = f"Lección: {title}\n\nContenido:\n```\n{context[:8000]}\n```"
 
+    content, err = _call_ai(system, user_msg, max_tokens=3500, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    if err:
+        return err
     try:
-        body = json.dumps({
-            "model": "deepseek-chat",
-            "max_tokens": 3500,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user",   "content": user_msg},
-            ],
-        }).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.deepseek.com/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=45) as r:
-            result = json.loads(r.read())
-        content = result["choices"][0]["message"]["content"]
         quiz = json.loads(content)
-
         # Validate shape — drop malformed questions rather than failing the whole quiz
         clean = []
         for q in quiz.get("questions", []):
@@ -3599,13 +3649,8 @@ def generate_quiz():
         if not clean:
             return jsonify({"error": "La IA no devolvió preguntas válidas. Intenta de nuevo."}), 502
         return jsonify({"questions": clean, "course": course})
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", errors="replace")
-        return jsonify({"error": f"API error {e.code}: {err_body}"}), 502
     except (json.JSONDecodeError, KeyError, TypeError):
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 # ── FEATURE: Practice/Quiz attempt history (Fase 0 — fundación de dominio) ──
@@ -3735,7 +3780,7 @@ def generate_practice_challenge():
             f"{concept_note}"
         )
 
-    content, err = _call_deepseek(_PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True)
+    content, err = _call_ai(_PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
 
@@ -3823,7 +3868,7 @@ def check_practice_text():
     )
     user_msg = f"Instrucción del paso:\n{instruction}\n\nRúbrica esperada:\n{rubric}\n\nRespuesta del estudiante:\n{answer}"
 
-    content, err = _call_deepseek(system, user_msg, max_tokens=300, json_mode=True)
+    content, err = _call_ai(system, user_msg, max_tokens=300, json_mode=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
     try:
