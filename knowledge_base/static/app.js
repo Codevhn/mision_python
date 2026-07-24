@@ -8691,6 +8691,7 @@ function _renderPracticeChallenge() {
       <div class="practice-step-instruction practice-md">${step.instruction_html || escapeHtml(step.instruction)}</div>
       ${stepBodyHtml}
       ${hintsHtml}
+      ${stepState.explanationHtml ? `<div class="practice-explain practice-md"><strong>🤔 Explicación:</strong>${stepState.explanationHtml}</div>` : ''}
       ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
     </div>
     <div class="practice-main-actions" id="practiceMainActions"></div>`;
@@ -8717,6 +8718,24 @@ function _renderPracticeChallenge() {
 
   const actions = $('practiceMainActions');
 
+  // "Repasar la lección" — only for retos generados desde una lección real
+  // (modos "Repasar lección"/"Reto sorpresa" traen st.entryId; "Tema libre"
+  // no, porque no hay una lección puntual a la que mandar a nadie).
+  // Disponible desde el inicio del paso, no solo cuando ya te trabaste —
+  // es material de referencia, no una rendición.
+  if (st.entryId) {
+    const reviewBtn = document.createElement('button');
+    reviewBtn.className = 'btn-ghost';
+    reviewBtn.textContent = '📖 Repasar la lección';
+    reviewBtn.title = 'Tu progreso en este reto queda guardado — volvés a Práctica y seguís donde estabas';
+    reviewBtn.addEventListener('click', () => {
+      window.switchSpace?.('courses');
+      if (st.course && typeof setActiveCourse === 'function') setActiveCourse(st.course);
+      if (typeof openCourseLesson === 'function') openCourseLesson(st.entryId);
+    });
+    actions.appendChild(reviewBtn);
+  }
+
   if (hintsShown < step.hints.length) {
     const hintBtn = document.createElement('button');
     hintBtn.className = 'btn-ghost';
@@ -8724,6 +8743,17 @@ function _renderPracticeChallenge() {
     hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _savePracticeProgress(st); _renderPracticeChallenge(); });
     actions.appendChild(hintBtn);
   } else if (!stepState.revealed && !stepState.passed) {
+    // Después de agotar las 3 pistas y seguir trabado, la solución directa
+    // no es la única salida — "Explícamelo" enseña el concepto general
+    // primero (sin regalar la respuesta puntual); "Ver solución" sigue
+    // ahí para quien solo quiere avanzar.
+    if (!stepState.explanationHtml) {
+      const explainBtn = document.createElement('button');
+      explainBtn.className = 'btn-ghost';
+      explainBtn.textContent = '🤔 Explícamelo';
+      explainBtn.addEventListener('click', () => _explainPracticeStep(st, stepState, explainBtn));
+      actions.appendChild(explainBtn);
+    }
     const solBtn = document.createElement('button');
     solBtn.className = 'btn-ghost';
     solBtn.textContent = '🔓 Ver solución';
@@ -8816,6 +8846,31 @@ async function _checkPracticeStep() {
   }
 }
 
+async function _explainPracticeStep(st, stepState, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Pensando…';
+  try {
+    const step = st.challenge.steps[st.current];
+    const res = await fetch('/api/practice/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // Mismo modelo con el que se generó el reto — igual que check-text,
+      // no lo que esté elegido ahora mismo en el rail.
+      body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric || '', provider: st.challenge.provider, model: st.challenge.model }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { showToast(data.error || 'No se pudo generar la explicación', 'error'); btn.disabled = false; btn.textContent = '🤔 Explícamelo'; return; }
+    stepState.explanation = data.explanation || '';
+    stepState.explanationHtml = data.explanation_html || '';
+    _savePracticeProgress(st);
+    _renderPracticeChallenge();
+  } catch (err) {
+    showToast('Error de red: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '🤔 Explícamelo';
+  }
+}
+
 // Fire-and-forget autosave — every step-solving action (check a step, use a
 // hint, reveal a solution) calls this so a saved challenge always resumes
 // exactly where it was left, not just where it was last "finished".
@@ -8887,7 +8942,7 @@ async function _startPracticeGeneration() {
     const res = await fetch('/api/practice/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: st.mode, topic, context, course, difficulty: st.difficulty, concept_id: forceConceptId, provider: st.provider, model: st.model }),
+      body: JSON.stringify({ mode: st.mode, topic, context, course, entry_id: entryId, difficulty: st.difficulty, concept_id: forceConceptId, provider: st.provider, model: st.model }),
     });
     const data = await res.json();
     if (_practiceState !== st) return;
@@ -9122,6 +9177,7 @@ async function _resumePracticeFromHistory(challengeId) {
   st.current = Math.min(data.current_step || 0, data.steps.length - 1);
   st.topic = data.title;
   st.course = data.course || '';
+  st.entryId = data.entry_id || '';
   st.viewingHistory = false;
 
   if (data.status === 'in_progress') {

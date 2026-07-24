@@ -7569,7 +7569,7 @@ body {
 .practice-empty-main-sub { font-size: 0.8rem; line-height: 1.5; color: var(--text-faint); margin: 0; }
 
 .practice-challenge-title {
-  font-size: 1.05rem; font-weight: 700; color: var(--text);
+  font-size: 1.2rem; font-weight: 700; color: var(--text);
   margin: 0 0 14px;
 }
 
@@ -7705,7 +7705,7 @@ body {
   background: var(--bg-elevated);
   color: var(--text);
   padding: 10px 12px;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   outline: none;
 }
 .practice-text-input:focus, .practice-code-input:focus, .practice-text-answer:focus {
@@ -7713,7 +7713,7 @@ body {
 }
 .practice-code-input, .practice-text-answer {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   line-height: 1.6;
   resize: vertical;
   min-height: 110px;
@@ -7787,25 +7787,25 @@ body {
 .practice-pill.revealed { background: var(--accent-amber); color: #fff; }
 
 .practice-scenario {
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--text-muted);
-  line-height: 1.55;
-  padding: 10px 12px;
-  margin-bottom: 14px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  margin-bottom: 16px;
   border-left: 3px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   border-radius: 0 8px 8px 0;
 }
 
-.practice-step-instruction { font-size: 0.95rem; font-weight: 600; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+.practice-step-instruction { font-size: 1.08rem; font-weight: 600; color: var(--text); line-height: 1.55; margin-bottom: 14px; }
 .practice-step-actions { margin-top: 10px; }
 
 .practice-feedback {
   margin-top: 10px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 9px;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 .practice-feedback.hidden { display: none; }
 .practice-feedback--ok  { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); }
@@ -7813,24 +7813,39 @@ body {
 
 .practice-hint {
   margin-top: 8px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--accent-amber) 10%, transparent);
   color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.88rem;
+  line-height: 1.55;
 }
+
+/* A step between another hint and the raw answer: teaches the underlying
+   concept on request, doesn't hand over the literal solution — visually
+   distinct from both (not amber like a hint, not the neutral solution box). */
+.practice-explain {
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.practice-explain strong { display: block; color: var(--accent); margin-bottom: 4px; }
 
 .practice-solution {
   margin-top: 12px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 9px;
   background: var(--bg-hover);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
 }
 .practice-solution pre, .practice-solution-pre {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--text);
@@ -7839,7 +7854,7 @@ body {
 
 @media (max-width: 600px) {
   .practice-mode-tab { min-width: 100px; font-size: 0.75rem; }
-  .practice-step-instruction { font-size: 0.88rem; }
+  .practice-step-instruction { font-size: 0.95rem; }
 }
 
 /* ── AI selection context strip (inside panel) ── */

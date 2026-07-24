@@ -3898,6 +3898,7 @@ def generate_practice_challenge():
     topic            = (data.get("topic") or "").strip()
     context          = (data.get("context") or "").strip()
     course           = (data.get("course") or "").strip()
+    entry_id         = (data.get("entry_id") or "").strip()
     force_concept_id = (data.get("concept_id") or "").strip()
     difficulty       = data.get("difficulty", "medio")
     if difficulty not in ("facil", "medio", "dificil"):
@@ -3980,6 +3981,7 @@ def generate_practice_challenge():
         "mode": mode,
         "topic": topic,
         "course": course,
+        "entry_id": entry_id,
         "provider": data.get("provider") or DEFAULT_PROVIDER,
         "model": data.get("model") or DEFAULT_MODEL,
         "steps": clean_steps,
@@ -4049,6 +4051,39 @@ def check_practice_text():
         })
     except json.JSONDecodeError:
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido."}), 502
+
+
+@app.route("/api/practice/explain", methods=["POST"])
+def explain_practice_step():
+    """A step between "otra pista" and "revelar la solución": a real
+    explanation of the underlying concept, on request — not a hint, not the
+    answer. Used when a student is stuck even after all 3 progressive
+    hints, so the next thing they see teaches instead of just handing over
+    the literal solution."""
+    data = request.json or {}
+    instruction = (data.get("instruction") or "").strip()
+    rubric = (data.get("rubric") or "").strip()
+    if not instruction:
+        return jsonify({"error": "Falta la instrucción del paso"}), 400
+
+    system = (
+        "Eres un tutor técnico paciente. Un estudiante está atascado en un paso de un reto práctico y ya usó "
+        "todas las pistas disponibles sin lograrlo — necesita ENTENDER el concepto o la técnica involucrada, no "
+        "que le regalen la respuesta.\n\n"
+        "Explica el concepto general en 1-2 párrafos breves, con un ejemplo GENÉRICO distinto al del paso si "
+        "ayuda a ilustrarlo. NO resuelvas el paso en sí ni reveles la respuesta/comando/código exacto que lo "
+        "resolvería — eso lo decide el estudiante ver aparte, en 'Ver solución'.\n\n"
+        "Si citas código, usa bloques Markdown con triple backtick indicando el lenguaje. Responde en español, "
+        "en tono cercano de instructor explicando en persona, no de examen."
+    )
+    user_msg = f"Paso del reto:\n{instruction}"
+    if rubric:
+        user_msg += f"\n\n(Rúbrica interna de evaluación — no la cites literal, es solo para tu contexto): {rubric}"
+
+    content, err = _call_ai(system, user_msg, max_tokens=500, provider=data.get("provider"), model=data.get("model"))
+    if err:
+        return err
+    return jsonify({"explanation": content, "explanation_html": render_markdown(content)})
 
 
 # ── FEATURE: Dominio — mapa de conceptos, repetición espaciada y Pareto (Fase 2) ──
