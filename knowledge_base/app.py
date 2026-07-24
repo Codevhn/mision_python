@@ -3646,6 +3646,14 @@ def generate_quiz():
     if not context and not topic:
         return jsonify({"error": "Falta el tema o contenido para generar el quiz"}), 400
 
+    # Optional steer from "reto sorpresa"'s smart routing: this concept is
+    # missing the "quiz" modality specifically, so make sure at least one
+    # question actually covers it (forced as a fallback below if the AI's own
+    # concept labeling doesn't happen to land on it) instead of leaving it to
+    # chance which of the lesson's several sub-topics get quizzed.
+    force_concept_id = (data.get("concept_id") or "").strip()
+    force_concept_name = (data.get("concept_name") or "").strip()
+
     concepts = _load_course_concepts(course) if course else []
     concept_instructions = ""
     if concepts:
@@ -3654,6 +3662,8 @@ def generate_quiz():
             "\n- Cada pregunta incluye \"concept\": el nombre EXACTO del concepto de esta lista al que pertenece "
             f"(o cadena vacía si ninguno aplica bien):\n{names}\n"
         )
+    if force_concept_name:
+        concept_instructions += f"\n- Asegúrate de incluir al menos una pregunta específicamente sobre: {force_concept_name}.\n"
 
     system = (
         "Eres un diseñador experto de evaluaciones educativas técnicas. A partir del contenido de una "
@@ -3707,6 +3717,9 @@ def generate_quiz():
                 })
         if not clean:
             return jsonify({"error": "La IA no devolvió preguntas válidas. Intenta de nuevo."}), 502
+
+        if force_concept_id and not any(q["concept_id"] == force_concept_id for q in clean):
+            clean[0]["concept_id"] = force_concept_id
 
         now = datetime.now().isoformat(timespec="seconds")
         record = {
@@ -4622,7 +4635,7 @@ def review_concept():
         return jsonify({"error": "Missing concept_id"}), 400
 
     modality = (data.get("modality") or "quiz").strip()
-    if modality not in ("quiz", "practice", "explain"):
+    if modality not in _MODALITY_ORDER:
         modality = "quiz"
 
     quality = data.get("quality")
@@ -4678,6 +4691,7 @@ def review_concept():
     return jsonify({"concept_id": concept_id, **state})
 
 
+_MODALITY_ORDER = ("quiz", "practice", "explain")
 _MODALITY_MASTERY_CAP = {0: 0, 1: 60, 2: 85}  # 3+ modalities -> uncapped (100)
 
 
@@ -4869,13 +4883,30 @@ def get_domain_weakest():
         return jsonify({"weakest": None})
 
     course, concept, mastery = best
+
+    # Which modality (if any) would actually move this concept's mastery —
+    # feeding it more of a modality it's already covered just re-hits its cap
+    # (see _concept_mastery). None means "never tracked" (fresh concept, no
+    # modality data yet — caller should fall back to its own default) or
+    # "already covered by all three" (truly nothing missing).
+    missing_modality = None
+    concept_state = progress.get(concept["id"])
+    if concept_state and "modalities" in concept_state:
+        used = set(concept_state["modalities"])
+        for m in _MODALITY_ORDER:
+            if m not in used:
+                missing_modality = m
+                break
+
     return jsonify({"weakest": {
         "concept_id": concept["id"],
         "concept_name": concept["name"],
+        "category": concept.get("category") or "General",
         "course": course,
         "course_label": courses_master.get(course, {}).get("label", course),
         "pareto": bool(concept.get("pareto")),
         "mastery": mastery,
+        "missing_modality": missing_modality,
     }})
 
 

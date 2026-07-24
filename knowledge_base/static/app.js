@@ -8003,7 +8003,10 @@ function _renderQuizSpace() {
     _quizPresetContext = null;
     _quizState.mode = 'review';
     _renderQuizRail();
-    _startQuizGeneration({ topic: preset.title, context: preset.text, course: preset.course });
+    _startQuizGeneration({
+      topic: preset.title, context: preset.text, course: preset.course,
+      conceptId: preset.conceptId, conceptName: preset.conceptName,
+    });
     return;
   }
   _quizPresetContext = null;
@@ -8157,12 +8160,14 @@ function _renderQuizError(msg) {
 async function _startQuizGeneration(override) {
   const st = _quizState;
   if (st.viewingHistory) { st.viewingHistory = false; _renderQuizRail(); }
-  let topic = '', context = '', entryId = '', course = '';
+  let topic = '', context = '', entryId = '', course = '', conceptId = '', conceptName = '';
 
   if (override) {
     topic = override.topic || '';
     context = override.context || '';
     course = override.course || '';
+    conceptId = override.conceptId || '';
+    conceptName = override.conceptName || '';
   } else if (st.mode === 'topic') {
     topic = (st.topic || '').trim();
     if (!topic) { showToast('Escribe un tema para el quiz', 'error'); return; }
@@ -8191,6 +8196,7 @@ async function _startQuizGeneration(override) {
       body: JSON.stringify({
         mode: st.mode, topic, context, title: topic, course, entry_id: entryId,
         difficulty: st.difficulty, provider: st.provider, model: st.model,
+        ...(conceptId ? { concept_id: conceptId, concept_name: conceptName } : {}),
       }),
     });
     const data = await res.json();
@@ -9615,14 +9621,33 @@ async function _startPracticeGeneration() {
     course = st.conceptCourse;
     forceConceptId = st.conceptId;
   } else {
-    // "Reto sorpresa": target the real weakest high-leverage concept instead of a
-    // random lesson, when domain data exists — falls back to random otherwise.
+    // "Reto sorpresa": target the real weakest high-leverage concept, and route
+    // to whichever modality it's actually MISSING (quiz / práctica / explícamelo)
+    // — feeding more of a modality it already has just re-hits its mastery cap
+    // (see _concept_mastery's multi-modal cap), so "sorpresa" no longer always
+    // means "another Práctica challenge."
+    let weakest = null;
+    try { weakest = (await fetch('/api/domain/weakest').then(r => r.json())).weakest; } catch {}
+
+    if (weakest && weakest.missing_modality === 'explain') {
+      // Explícamelo needs no generation at all — it's already sitting right
+      // there in the concept hub. Jump straight to it instead of spinning up
+      // a reto that wouldn't move this concept's mastery anyway.
+      st.mode = 'concept';
+      st.conceptCourse = weakest.course;
+      st.conceptCategory = weakest.category;
+      st.conceptId = weakest.concept_id;
+      st.conceptName = weakest.concept_name;
+      st.screen = 'empty';
+      _renderPracticeRail();
+      _renderPracticeMain();
+      showToast(`Reto sorpresa: pruébalo con "Explícamelo" en "${weakest.concept_name}"`, 'success');
+      return;
+    }
+
     const tree = await _getPracticeTree();
     const entries = _flattenPracticeEntries(tree);
     if (!entries.length) { showToast('Todavía no tienes lecciones de cursos guardadas', 'error'); return; }
-
-    let weakest = null;
-    try { weakest = (await fetch('/api/domain/weakest').then(r => r.json())).weakest; } catch {}
 
     const courseEntries = weakest ? entries.filter(e => e.course === weakest.course) : [];
     const pick = courseEntries.length
@@ -9632,9 +9657,24 @@ async function _startPracticeGeneration() {
     const res = await fetch(`/api/entry/${pick.id}`);
     if (!res.ok) { showToast('No se pudo cargar la lección', 'error'); return; }
     const data = await res.json();
+    const pickedContext = (data.markdown || '').slice(0, 6000);
+    const pickedCourse = data.meta.type === 'course' ? (data.meta.course || '') : '';
+
+    if (weakest && courseEntries.length && weakest.missing_modality === 'quiz') {
+      // Route to Quiz instead of a Práctica challenge — same lesson pick, just
+      // a different modality doing the evaluating.
+      _quizPresetContext = {
+        text: pickedContext, title: weakest.concept_name, course: pickedCourse,
+        conceptId: weakest.concept_id, conceptName: weakest.concept_name,
+      };
+      window.switchSpace?.('quiz');
+      showToast(`Reto sorpresa: te falta reforzar "${weakest.concept_name}" con Quiz`, 'success');
+      return;
+    }
+
     entryId = pick.id;
-    context = (data.markdown || '').slice(0, 6000);
-    course = data.meta.type === 'course' ? (data.meta.course || '') : '';
+    context = pickedContext;
+    course = pickedCourse;
 
     if (weakest && courseEntries.length) {
       topic = weakest.concept_name;
