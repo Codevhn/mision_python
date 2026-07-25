@@ -2450,18 +2450,12 @@ def preview_course_import(course_id):
     ai_error = None
 
     if not modules:
-        content, err = _call_ai(
+        content, ai_error = _call_ai_with_fallback(
             _COURSE_NORMALIZE_SYSTEM,
             f"Documento original:\n\n{raw}\n\nConviértelo al formato estándar descrito.",
             max_tokens=4000, provider=data.get("provider"), model=data.get("model"),
         )
-        if err:
-            resp, _status = err
-            try:
-                ai_error = resp.get_json().get("error", "No se pudo normalizar con IA")
-            except Exception:
-                ai_error = "No se pudo normalizar con IA"
-        else:
+        if content:
             used_ai_normalize = True
             modules = _parse_canonical_course_md(content)
 
@@ -3589,6 +3583,10 @@ def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
     return _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode)
 
 
+def _provider_models(pid, cfg):
+    return _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
+
+
 @app.route("/api/ai/providers")
 def list_ai_providers():
     """Only lists providers whose API key is actually configured, so the
@@ -3597,11 +3595,69 @@ def list_ai_providers():
     for pid, cfg in PROVIDERS.items():
         if not os.environ.get(cfg["env"]):
             continue
-        models = _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
+        models = _provider_models(pid, cfg)
         if not models:
             continue  # OpenRouter's catalog fetch failed / returned nothing free right now
         available.append({"id": pid, "label": cfg["label"], "models": models})
     return jsonify({"providers": available, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
+
+
+def _list_available_ai_models():
+    """[(provider_id, model_id), ...], round-robin across providers (one
+    model per provider before circling back for each one's 2nd model, etc.)
+    so a fallback loop reaches every configured PROVIDER quickly instead of
+    exhausting one provider's whole catalog — notably OpenRouter's free-tier
+    list, which can be dozens of models long — before ever trying the rest."""
+    per_provider = []
+    for pid, cfg in PROVIDERS.items():
+        if not os.environ.get(cfg["env"]):
+            continue
+        models = _provider_models(pid, cfg)
+        if models:
+            per_provider.append([(pid, m["id"]) for m in models])
+    out = []
+    i = 0
+    while any(i < len(lst) for lst in per_provider):
+        for lst in per_provider:
+            if i < len(lst):
+                out.append(lst[i])
+        i += 1
+    return out
+
+
+_AI_FALLBACK_MAX_ATTEMPTS = 6
+
+def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None):
+    """Like _call_ai, but a single failure (rate limit, a free-tier model
+    being temporarily unavailable, etc.) isn't enough to give up — tries the
+    caller's preferred provider/model first, then falls through other
+    configured provider/model combos (capped at _AI_FALLBACK_MAX_ATTEMPTS, to
+    bound worst-case latency) before reporting failure. Returns (content,
+    None) on the first success, or (None, error_message) once every attempt
+    tried has failed."""
+    attempts = []
+    if provider and model:
+        attempts.append((provider, model))
+    for pm in _list_available_ai_models():
+        if pm not in attempts:
+            attempts.append(pm)
+    if not attempts:
+        return None, "Ningún proveedor de IA está configurado."
+    attempts = attempts[:_AI_FALLBACK_MAX_ATTEMPTS]
+
+    last_error = "Error desconocido de la IA"
+    for pid, mid in attempts:
+        content, err = _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode, provider=pid, model=mid)
+        if not err:
+            return content, None
+        resp, _status = err
+        try:
+            last_error = resp.get_json().get("error", last_error)
+        except Exception:
+            pass
+    if len(attempts) > 1:
+        return None, f"Se probaron {len(attempts)} modelos y todos fallaron. Último error: {last_error}"
+    return None, last_error
 
 
 _MINDMAP_SHORTEN_PROMPT = (
