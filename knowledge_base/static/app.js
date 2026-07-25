@@ -8797,11 +8797,30 @@ function _mountPracticeCustomSelect(container, { options, value, placeholder, di
   document.body.appendChild(dropdown);
   container._cselectPortal = dropdown;
 
+  // Flip upward + clamp height to whatever room is actually there — on a
+  // short viewport (tablet, phone, or just a select near the bottom of a
+  // panel) the previous version always opened downward at a fixed max-height,
+  // so it could render mostly below the visible viewport with no way to
+  // reach or scroll to the cut-off part (the app shell here doesn't page-
+  // scroll, so there was nothing to scroll — the missing options were
+  // simply unreachable, not just hidden behind a scrollbar).
   const reposition = () => {
     const r = btn.getBoundingClientRect();
+    const margin = 8;
+    const spaceBelow = window.innerHeight - r.bottom - margin;
+    const spaceAbove = r.top - margin;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxH = Math.max(120, Math.min(280, (openUp ? spaceAbove : spaceBelow)));
     dropdown.style.left = `${r.left}px`;
-    dropdown.style.top = `${r.bottom + 4}px`;
     dropdown.style.width = `${r.width}px`;
+    dropdown.style.maxHeight = `${maxH}px`;
+    if (openUp) {
+      dropdown.style.top = 'auto';
+      dropdown.style.bottom = `${window.innerHeight - r.top + 4}px`;
+    } else {
+      dropdown.style.bottom = 'auto';
+      dropdown.style.top = `${r.bottom + 4}px`;
+    }
   };
   const close = () => {
     dropdown.classList.add('hidden');
