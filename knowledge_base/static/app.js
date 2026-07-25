@@ -6171,10 +6171,14 @@ async function loadCourseView(courseSlug, courseEntity) {
     cvNewLessonBtn.onclick = () => openNewLessonModal(courseSlug);
   }
 
-  // Wire "↓ Importar roadmap" button in course view header
+  // Wire "↓ Importar roadmap" / "✨ Generar con IA" buttons in course view header
   const cvImportRoadmapBtn = $('cvImportRoadmapBtn');
   if (cvImportRoadmapBtn) {
-    cvImportRoadmapBtn.onclick = () => openImportRoadmapModal(courseSlug);
+    cvImportRoadmapBtn.onclick = () => openImportRoadmapModal(courseSlug, 'paste');
+  }
+  const cvGenerateRoadmapBtn = $('cvGenerateRoadmapBtn');
+  if (cvGenerateRoadmapBtn) {
+    cvGenerateRoadmapBtn.onclick = () => openImportRoadmapModal(courseSlug, 'generate');
   }
 
   // Update modules tab label to reflect dominant section type (Módulos / Fases / Semanas…)
@@ -6201,13 +6205,15 @@ function renderCourseTab(tab, courseSlug, stats) {
       body.innerHTML = `
         <div class="cv-empty-state">
           <p class="cv-empty">No hay lecciones todavía.</p>
-          <div style="display:flex;gap:8px;justify-content:center">
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
             <button class="btn-ghost" id="cvEmptyImportRoadmap">↓ Importar roadmap</button>
+            <button class="btn-ghost" id="cvEmptyGenerateRoadmap">✨ Generar con IA</button>
             <button class="btn-primary" id="cvEmptyNewLesson">+ Crear primera lección</button>
           </div>
         </div>`;
       $('cvEmptyNewLesson')?.addEventListener('click', () => openNewLessonModal(courseSlug));
-      $('cvEmptyImportRoadmap')?.addEventListener('click', () => openImportRoadmapModal(courseSlug));
+      $('cvEmptyImportRoadmap')?.addEventListener('click', () => openImportRoadmapModal(courseSlug, 'paste'));
+      $('cvEmptyGenerateRoadmap')?.addEventListener('click', () => openImportRoadmapModal(courseSlug, 'generate'));
       return;
     }
     body.innerHTML = '';
@@ -7541,24 +7547,43 @@ function initPasteMarkdown() {
   });
 }
 
-// ── Importar roadmap: pegar documento → (normalizar con IA si hace falta) →
+// ── Importar roadmap: (pegar documento | generar con IA desde cero) →
 // vista previa editable → crear módulos/lecciones reales ────────────────────
-const _irState = { courseSlug: '', modelChoice: null };
+// Both entry paths converge on the exact same preview/edit/commit flow —
+// generation just calls a different backend endpoint to produce the same
+// {modules: [...]} shape a pasted-and-parsed document would.
+const _irState = { courseSlug: '', modelChoice: null, mode: 'paste' };
 
-function openImportRoadmapModal(courseSlug) {
+function _irSetMode(mode) {
+  _irState.mode = mode;
+  const isGenerate = mode === 'generate';
+  $('irModeTabPaste').classList.toggle('ir-mode-tab--active', !isGenerate);
+  $('irModeTabGenerate').classList.toggle('ir-mode-tab--active', isGenerate);
+  $('irPasteFields').classList.toggle('hidden', isGenerate);
+  $('irGenerateFields').classList.toggle('hidden', !isGenerate);
+  $('irModelLabel').textContent = isGenerate ? 'Modelo para generar:' : 'Modelo para normalizar (si hace falta):';
+  $('irPreviewBtn').textContent = isGenerate ? '✨ Generar →' : 'Vista previa →';
+}
+
+function openImportRoadmapModal(courseSlug, mode = 'paste') {
   const overlay = $('importRoadmapOverlay');
   if (!overlay) return;
   _irState.courseSlug = courseSlug;
   _irState.modelChoice = null;
   $('irRawInput').value = '';
+  $('irGenTopic').value = '';
+  $('irGenDepth').value = 'estandar';
+  $('irGenLevel').value = '';
+  $('irGenModuleCount').value = '';
   $('irAiNote').classList.add('hidden');
   $('irTreeContainer').innerHTML = '';
   $('irStepPreview').classList.add('hidden');
   $('irFooterPreview').classList.add('hidden');
   $('irStepPaste').classList.remove('hidden');
   $('irFooterPaste').classList.remove('hidden');
+  _irSetMode(mode);
   overlay.classList.remove('hidden');
-  setTimeout(() => $('irRawInput')?.focus(), 60);
+  setTimeout(() => (mode === 'generate' ? $('irGenTopic') : $('irRawInput'))?.focus(), 60);
 }
 
 function closeImportRoadmapModal() {
@@ -7639,7 +7664,9 @@ function _irModuleNode(mod) {
 function _irRenderPreview(data) {
   const aiNote = $('irAiNote');
   const notes = [];
-  if (data.used_ai_normalize) {
+  if (data.generated_by_ai) {
+    notes.push('✨ Roadmap generado por IA — revisa módulos, lecciones y contenido antes de confirmar.');
+  } else if (data.used_ai_normalize) {
     notes.push('✨ El documento no seguía el formato estándar del sistema — la IA lo convirtió a módulos y lecciones. Revísalo antes de confirmar.');
   } else if (data.ai_error) {
     notes.push(`⚠ No se pudo usar IA para reestructurar (${data.ai_error}). Se importó como una sola lección — puedes dividirla manualmente abajo.`);
@@ -7716,6 +7743,9 @@ function initImportRoadmap() {
   // long pasted roadmap (or an edited preview tree) the user would lose
   // entirely from one stray click outside it. Only × / Cancelar close it.
 
+  $('irModeTabPaste').addEventListener('click', () => _irSetMode('paste'));
+  $('irModeTabGenerate').addEventListener('click', () => _irSetMode('generate'));
+
   $('irAddModuleBtn').addEventListener('click', () => {
     $('irTreeContainer').appendChild(_irModuleNode({ title: '', lessons: [{ title: '', content: '' }] }));
   });
@@ -7728,26 +7758,44 @@ function initImportRoadmap() {
   });
 
   $('irPreviewBtn').addEventListener('click', async () => {
-    const raw = $('irRawInput').value.trim();
-    if (!raw) { showToast('Pega el contenido del roadmap primero', 'error'); return; }
+    const isGenerate = _irState.mode === 'generate';
     const btn = $('irPreviewBtn');
+    const body = {};
+    if (_irState.modelChoice) {
+      body.provider = _irState.modelChoice.provider;
+      body.model = _irState.modelChoice.model;
+    }
+    let url;
+    if (isGenerate) {
+      const topic = $('irGenTopic').value.trim();
+      if (!topic) { showToast('Describe el tema o enfoque del curso primero', 'error'); return; }
+      body.topic = topic;
+      body.depth = $('irGenDepth').value;
+      body.level = $('irGenLevel').value;
+      body.module_count = $('irGenModuleCount').value.trim();
+      url = `/api/courses/${_irState.courseSlug}/generate_roadmap`;
+    } else {
+      const raw = $('irRawInput').value.trim();
+      if (!raw) { showToast('Pega el contenido del roadmap primero', 'error'); return; }
+      body.raw_text = raw;
+      url = `/api/courses/${_irState.courseSlug}/import/preview`;
+    }
     btn.disabled = true;
     const prevLabel = btn.textContent;
-    btn.textContent = 'Analizando…';
+    btn.textContent = isGenerate ? 'Generando…' : 'Analizando…';
     try {
-      const body = { raw_text: raw };
-      if (_irState.modelChoice) {
-        body.provider = _irState.modelChoice.provider;
-        body.model = _irState.modelChoice.model;
-      }
-      const res = await fetch(`/api/courses/${_irState.courseSlug}/import/preview`, {
+      const res = await fetch(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'No se pudo analizar el documento', 'error'); return; }
+      if (!res.ok) {
+        showToast(data.error || (isGenerate ? 'No se pudo generar el roadmap' : 'No se pudo analizar el documento'), 'error');
+        return;
+      }
+      if (isGenerate) data.generated_by_ai = true;
       _irRenderPreview(data);
     } catch (e) {
-      showToast('Error de red al analizar el documento', 'error');
+      showToast(isGenerate ? 'Error de red al generar el roadmap' : 'Error de red al analizar el documento', 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = prevLabel;

@@ -384,6 +384,7 @@
             <button class="cv-tab" data-tab="stats">Estadísticas</button>
           </nav>
           <button class="btn-ghost cv-import-btn" id="cvImportRoadmapBtn">↓ Importar roadmap</button>
+          <button class="btn-ghost cv-import-btn" id="cvGenerateRoadmapBtn">✨ Generar con IA</button>
           <button class="btn-primary cv-new-lesson-btn" id="cvNewLessonBtn">+ Lección</button>
         </div>
         <div class="cv-body" id="cvBody">
@@ -1341,19 +1342,66 @@
       </div>
 
       <div class="modal-body" id="irStepPaste" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
-        <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
-          Pega el roadmap o temario del curso. Si ya usa el formato estándar del sistema
-          (<code>## Módulo</code>, <code>### Lección</code>) se estructura directamente; si no,
-          la IA lo convertirá primero a ese formato antes de mostrarte la vista previa.
-        </p>
-        <textarea id="irRawInput"
-          placeholder="# Título del curso&#10;&#10;## Módulo 1&#10;### Lección 1&#10;Contenido…&#10;&#10;(o pega una tabla / temario en cualquier formato)"
-          style="width:100%;height:320px;font-family:var(--font-mono);font-size:0.8rem;
-                 background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;
-                 color:var(--text);padding:12px;resize:vertical;outline:none;
-                 line-height:1.6;box-sizing:border-box"></textarea>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn-ghost ir-mode-tab ir-mode-tab--active" data-mode="paste" id="irModeTabPaste">📋 Pegar documento</button>
+          <button type="button" class="btn-ghost ir-mode-tab" data-mode="generate" id="irModeTabGenerate">✨ Generar con IA</button>
+        </div>
+
+        <div id="irPasteFields" style="display:flex;flex-direction:column;gap:10px">
+          <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
+            Pega el roadmap o temario del curso. Si ya usa el formato estándar del sistema
+            (<code>## Módulo</code>, <code>### Lección</code>) se estructura directamente; si no,
+            la IA lo convertirá primero a ese formato antes de mostrarte la vista previa.
+          </p>
+          <textarea id="irRawInput"
+            placeholder="# Título del curso&#10;&#10;## Módulo 1&#10;### Lección 1&#10;Contenido…&#10;&#10;(o pega una tabla / temario en cualquier formato)"
+            style="width:100%;height:320px;font-family:var(--font-mono);font-size:0.8rem;
+                   background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;
+                   color:var(--text);padding:12px;resize:vertical;outline:none;
+                   line-height:1.6;box-sizing:border-box"></textarea>
+        </div>
+
+        <div id="irGenerateFields" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+          <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
+            Describe el tema o enfoque del curso — la IA genera un roadmap completo (módulos y
+            lecciones) desde cero, sin necesitar ningún documento previo.
+          </p>
+          <textarea id="irGenTopic"
+            placeholder="Ej: Git y GitHub, desde comandos básicos hasta flujos de trabajo en equipo con pull requests"
+            style="width:100%;height:90px;font-size:0.85rem;background:var(--bg-elevated);
+                   border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;
+                   resize:vertical;outline:none;box-sizing:border-box"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:170px">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Profundidad</label>
+              <select id="irGenDepth" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
+                     border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box">
+                <option value="superficial">Superficial — solo temario</option>
+                <option value="estandar" selected>Estándar — equilibrado</option>
+                <option value="profundo">Profundo y granular</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Nivel</label>
+              <select id="irGenLevel" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
+                     border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box">
+                <option value="">Sin especificar</option>
+                <option value="principiante">Principiante</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzado">Avanzado</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px"># Módulos (aprox.)</label>
+              <input type="number" id="irGenModuleCount" min="1" max="20" placeholder="La IA decide"
+                style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
+                       border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box" />
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap">Modelo para normalizar (si hace falta):</label>
+          <label style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap" id="irModelLabel">Modelo para normalizar (si hace falta):</label>
           <div class="practice-cselect" id="irModelCSelect" style="flex:1;min-width:220px;max-width:340px"></div>
         </div>
       </div>

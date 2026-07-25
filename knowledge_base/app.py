@@ -2572,6 +2572,28 @@ def _fuzzy_duplicate_match(mod_slug, title, existing):
     return best_match if best_ratio >= _FUZZY_TEXT_THRESHOLD else None
 
 
+def _flag_existing_duplicates(modules, course_id):
+    """Mutates every lesson dict in place with already_exists/
+    possible_duplicate_of/existing_entry_id — shared by the paste-based
+    import preview and the AI roadmap-generation preview below, since either
+    path can produce content that overlaps what's already in the course."""
+    existing = _existing_course_lessons(course_id)
+    for mod in modules:
+        mod_slug = slugify(mod.get("title", ""))
+        for lesson in mod.get("lessons", []):
+            title_slug = slugify(lesson.get("title", ""))
+            bucket = existing.get(mod_slug, {})
+            if title_slug in bucket:
+                lesson["already_exists"] = True
+                lesson["possible_duplicate_of"] = None
+                lesson["existing_entry_id"] = bucket[title_slug][0]
+            else:
+                fuzzy = _fuzzy_duplicate_match(mod_slug, lesson.get("title", ""), existing)
+                lesson["already_exists"] = False
+                lesson["possible_duplicate_of"] = fuzzy[1] if fuzzy else None
+                lesson["existing_entry_id"] = fuzzy[0] if fuzzy else None
+
+
 @app.route("/api/courses/<course_id>/import/preview", methods=["POST"])
 def preview_course_import(course_id):
     data = request.json or {}
@@ -2604,32 +2626,7 @@ def preview_course_import(course_id):
         fallback_title = title_match.group(1).strip() if title_match else "Contenido importado"
         modules = [{"title": "Módulo 1", "lessons": [{"title": fallback_title, "content": raw}]}]
 
-    # Flag lessons that already exist in this course (same module + same
-    # title, both slugified) — the frontend marks these so the user sees up
-    # front what would otherwise be skipped on commit. Anything not an exact
-    # match also gets a fuzzy pass — catches the same lesson re-pasted with a
-    # slightly reworded title, which an exact-slug check alone would treat as
-    # brand new. Either way, existing_entry_id is included so the frontend
-    # can offer "update this lesson's content" as an alternative to just
-    # skipping or creating a separate duplicate entry — matching content can
-    # genuinely differ from what's already saved (e.g. a roadmap revision
-    # that expanded a lesson that hadn't changed title/number).
-    existing = _existing_course_lessons(course_id)
-    for mod in modules:
-        mod_slug = slugify(mod.get("title", ""))
-        for lesson in mod.get("lessons", []):
-            title_slug = slugify(lesson.get("title", ""))
-            bucket = existing.get(mod_slug, {})
-            if title_slug in bucket:
-                lesson["already_exists"] = True
-                lesson["possible_duplicate_of"] = None
-                lesson["existing_entry_id"] = bucket[title_slug][0]
-            else:
-                fuzzy = _fuzzy_duplicate_match(mod_slug, lesson.get("title", ""), existing)
-                lesson["already_exists"] = False
-                lesson["possible_duplicate_of"] = fuzzy[1] if fuzzy else None
-                lesson["existing_entry_id"] = fuzzy[0] if fuzzy else None
-
+    _flag_existing_duplicates(modules, course_id)
     return jsonify({"used_ai_normalize": used_ai_normalize, "ai_error": ai_error, "modules": modules})
 
 
@@ -2670,6 +2667,91 @@ def commit_course_import(course_id):
     if not created and not skipped_duplicates:
         return jsonify({"error": "No se creó ninguna lección — revisa que cada módulo tenga al menos una lección con título"}), 400
     return jsonify({"created": created, "skipped_duplicates": skipped_duplicates, "count": len(created)})
+
+
+# ── ROADMAP GENERATION: no document to paste at all — ask the AI to draft
+# one from scratch, feeding straight into the same preview/edit/commit flow
+# as a pasted document (same response shape, same _flag_existing_duplicates
+# pass, same module/lesson parser). Depth is the one lever that meaningfully
+# changes what "a roadmap" even means here — a surface-level outline and a
+# fully granular syllabus are different asks, not the same prompt with more
+# tokens, so each gets its own explicit instruction block plus its own
+# max_tokens ceiling (a superficial outline that ran to 6000 tokens would
+# mean the model padded it against the instruction, not that it needed it).
+_COURSE_GENERATE_SYSTEM_TEMPLATE = (
+    "Eres un diseñador instruccional experto. Crea un roadmap/temario de curso completo en "
+    "Markdown, en español, sobre el tema que te dé el usuario. Reglas ESTRICTAS de formato:\n"
+    "- Usa '## ' para cada módulo y '### ' para cada lección dentro de ese módulo.\n"
+    "- Los módulos deben cubrir una progresión lógica del tema, de fundamentos a temas avanzados.\n"
+    "{depth_instructions}\n"
+    "- No agregues comentarios ni explicaciones fuera del markdown resultante.\n"
+    "- Devuelve SOLO el markdown resultante, empezando directamente en la primera línea con '## '."
+)
+
+_COURSE_GENERATE_DEPTH = {
+    "superficial": {
+        "instructions": (
+            "- Nivel de profundidad: SUPERFICIAL. Genera solo un temario de alto nivel: títulos de "
+            "módulo y lección, y para cada lección 1-2 líneas de resumen de qué cubre — sin "
+            "desarrollar el contenido completo ni listas extensas de subtemas."
+        ),
+        "max_tokens": 2000,
+    },
+    "estandar": {
+        "instructions": (
+            "- Nivel de profundidad: ESTÁNDAR. Para cada lección, incluye una lista de viñetas con "
+            "los puntos clave a cubrir — ni un resumen de una línea, ni contenido totalmente "
+            "desarrollado."
+        ),
+        "max_tokens": 4000,
+    },
+    "profundo": {
+        "instructions": (
+            "- Nivel de profundidad: PROFUNDO Y GRANULAR. Desglosa cada lección en subtemas "
+            "específicos, comandos/herramientas concretas cuando aplique, y ejemplos o casos de "
+            "uso reales — el nivel de detalle de un temario universitario completo, no solo títulos."
+        ),
+        "max_tokens": 6000,
+    },
+}
+
+
+@app.route("/api/courses/<course_id>/generate_roadmap", methods=["POST"])
+def generate_course_roadmap(course_id):
+    data = request.json or {}
+    topic = (data.get("topic") or "").strip()
+    if not topic:
+        return jsonify({"error": "Describe el tema o enfoque del curso primero"}), 400
+    courses_data = _sync_courses_from_index()
+    if course_id not in courses_data["courses"]:
+        return jsonify({"error": f"El curso '{course_id}' no existe."}), 400
+
+    depth_cfg = _COURSE_GENERATE_DEPTH.get(data.get("depth"), _COURSE_GENERATE_DEPTH["estandar"])
+    system = _COURSE_GENERATE_SYSTEM_TEMPLATE.format(depth_instructions=depth_cfg["instructions"])
+
+    user_parts = [f"Tema del curso: {topic}"]
+    level = (data.get("level") or "").strip()
+    if level:
+        user_parts.append(f"Nivel del curso: {level}")
+    module_count = (data.get("module_count") or "").strip()
+    if module_count:
+        user_parts.append(f"Número aproximado de módulos: {module_count}")
+    user_parts.append("Genera el roadmap completo siguiendo las reglas de formato indicadas.")
+    user_msg = "\n".join(user_parts)
+
+    content, err = _call_ai_with_fallback(
+        system, user_msg, max_tokens=depth_cfg["max_tokens"],
+        provider=data.get("provider"), model=data.get("model"),
+    )
+    if err:
+        return jsonify({"error": f"No se pudo generar el roadmap: {err}"}), 502
+
+    modules = _parse_canonical_course_md(content)
+    if not modules:
+        return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
+
+    _flag_existing_duplicates(modules, course_id)
+    return jsonify({"modules": modules})
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────
