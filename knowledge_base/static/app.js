@@ -7709,16 +7709,29 @@ function initAIPanel() {
   const savePageBtn = $('aiSavePageBtn');
   savePageBtn?.addEventListener('click', async () => {
     if (!lastResult) return;
-    const title = (input.value || '').trim()
-      || (lastResult.split('\n')[0] || '').replace(/^#+\s*/, '').trim().slice(0, 80)
+    // A response that opens with its own "# Heading" is the AI's own title
+    // for what it wrote — that's a much better page title than the raw
+    // prompt still sitting in the input (e.g. "Escribime un artículo
+    // completo y a fondo sobre pipx…" is an instruction, not a title).
+    // Only fall back to the prompt/first line when the response has no
+    // heading of its own to offer.
+    const firstLine = (lastResult.split('\n').find(l => l.trim()) || '').trim();
+    const headingMatch = firstLine.match(/^#{1,3}\s+(.+)/);
+    const title = (headingMatch ? headingMatch[1].trim() : '')
+      || (input.value || '').trim()
+      || firstLine.replace(/^#+\s*/, '').trim().slice(0, 80)
       || 'Respuesta de IA';
+    // Drop that same heading from the body so it isn't shown twice (once as
+    // the page title, once again as the body's own first line) — same
+    // convention _stripDuplicateHeading applies when loading any entry.
+    const body = headingMatch ? _stripDuplicateHeading(lastResult, title) : lastResult;
     savePageBtn.disabled = true;
     savePageBtn.textContent = 'Guardando…';
     try {
       const res = await fetch('/api/entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entry_type: 'page', title, raw_text: lastResult, already_markdown: true }),
+        body: JSON.stringify({ entry_type: 'page', title, raw_text: body, already_markdown: true }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
