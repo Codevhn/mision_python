@@ -2471,6 +2471,20 @@ _COURSE_NORMALIZE_SYSTEM = (
 )
 
 
+def _existing_course_lessons(course_slug):
+    """{(module_slug, slugified_title): entry_id} for every lesson already in
+    this course — lets the roadmap importer recognize content that's already
+    there (e.g. re-pasting a roadmap you'd only partially imported before)
+    and skip re-creating it as a same-title duplicate under a '-1' slug,
+    instead of requiring the user to delete their existing progress first."""
+    index = load_index()
+    out = {}
+    for entry_id, meta in index.items():
+        if meta.get("type") == "course" and meta.get("course") == course_slug:
+            out[(meta.get("module", ""), slugify(meta.get("title", "")))] = entry_id
+    return out
+
+
 @app.route("/api/courses/<course_id>/import/preview", methods=["POST"])
 def preview_course_import(course_id):
     data = request.json or {}
@@ -2503,6 +2517,15 @@ def preview_course_import(course_id):
         fallback_title = title_match.group(1).strip() if title_match else "Contenido importado"
         modules = [{"title": "Módulo 1", "lessons": [{"title": fallback_title, "content": raw}]}]
 
+    # Flag lessons that already exist in this course (same module + same
+    # title, both slugified) — the frontend marks these so the user sees up
+    # front what will be skipped on commit, instead of finding out after.
+    existing = _existing_course_lessons(course_id)
+    for mod in modules:
+        mod_slug = slugify(mod.get("title", ""))
+        for lesson in mod.get("lessons", []):
+            lesson["already_exists"] = (mod_slug, slugify(lesson.get("title", ""))) in existing
+
     return jsonify({"used_ai_normalize": used_ai_normalize, "ai_error": ai_error, "modules": modules})
 
 
@@ -2510,15 +2533,25 @@ def preview_course_import(course_id):
 def commit_course_import(course_id):
     data = request.json or {}
     modules = data.get("modules") or []
+    # Re-checked here (not just trusted from the preview step) so a
+    # re-imported roadmap never creates same-title duplicates even if the
+    # course changed between preview and commit, or the request was replayed.
+    existing = _existing_course_lessons(course_id)
     created = []
+    skipped_duplicates = []
     for mod in modules:
         module_label = (mod.get("title") or "").strip()
         if not module_label:
             continue
         module_type, module_number, module_title_meta = _detect_module_type_from_title(module_label)
+        mod_slug = slugify(module_label)
         for lesson in (mod.get("lessons") or []):
             title = (lesson.get("title") or "").strip()
             if not title:
+                continue
+            key = (mod_slug, slugify(title))
+            if key in existing:
+                skipped_duplicates.append(title)
                 continue
             content = (lesson.get("content") or "").strip() or f"# {title}\n\n_Contenido pendiente._"
             entry_id, err = _create_course_entry_internal(
@@ -2528,9 +2561,10 @@ def commit_course_import(course_id):
             if err:
                 return jsonify({"error": err}), 400
             created.append(entry_id)
-    if not created:
+            existing[key] = entry_id  # also catches a duplicate row within this same pasted doc
+    if not created and not skipped_duplicates:
         return jsonify({"error": "No se creó ninguna lección — revisa que cada módulo tenga al menos una lección con título"}), 400
-    return jsonify({"created": created, "count": len(created)})
+    return jsonify({"created": created, "skipped_duplicates": skipped_duplicates, "count": len(created)})
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────

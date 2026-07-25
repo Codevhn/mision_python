@@ -7572,11 +7572,15 @@ function _irLessonNode(lesson) {
   const el = document.createElement('div');
   el.className = 'ir-lesson';
   el.style.cssText = 'border-left:2px solid var(--accent);padding-left:10px;margin:6px 0 6px 4px';
+  if (lesson.already_exists) el.style.opacity = '0.55';
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
       <input type="text" class="ir-lesson-title" placeholder="Título de la lección"
         style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;
                padding:5px 8px;color:var(--text);font-size:0.85rem" />
+      ${lesson.already_exists ? `<span class="ir-dup-badge" title="Ya existe una lección con este título en este módulo — se omitirá al confirmar"
+        style="font-size:0.72rem;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);
+               border-radius:4px;padding:2px 6px;white-space:nowrap">Ya existe — se omitirá</span>` : ''}
       <button class="btn-ghost ir-toggle-content" style="font-size:0.75rem;padding:3px 6px">Ver contenido</button>
       <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px">🗑</button>
     </div>
@@ -7619,11 +7623,19 @@ function _irModuleNode(mod) {
 
 function _irRenderPreview(data) {
   const aiNote = $('irAiNote');
+  const notes = [];
   if (data.used_ai_normalize) {
-    aiNote.textContent = '✨ El documento no seguía el formato estándar del sistema — la IA lo convirtió a módulos y lecciones. Revísalo antes de confirmar.';
-    aiNote.classList.remove('hidden');
+    notes.push('✨ El documento no seguía el formato estándar del sistema — la IA lo convirtió a módulos y lecciones. Revísalo antes de confirmar.');
   } else if (data.ai_error) {
-    aiNote.textContent = `⚠ No se pudo usar IA para reestructurar (${data.ai_error}). Se importó como una sola lección — puedes dividirla manualmente abajo.`;
+    notes.push(`⚠ No se pudo usar IA para reestructurar (${data.ai_error}). Se importó como una sola lección — puedes dividirla manualmente abajo.`);
+  }
+  const dupCount = (data.modules || []).reduce(
+    (n, mod) => n + (mod.lessons || []).filter(l => l.already_exists).length, 0);
+  if (dupCount > 0) {
+    notes.push(`↺ ${dupCount} lección(es) ya existían en este curso (mismo módulo y título) — se omitirán automáticamente al confirmar, no se duplicarán.`);
+  }
+  if (notes.length) {
+    aiNote.textContent = notes.join(' ');
     aiNote.classList.remove('hidden');
   } else {
     aiNote.classList.add('hidden');
@@ -7719,7 +7731,11 @@ function initImportRoadmap() {
       });
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Error al crear las lecciones', 'error'); return; }
-      showToast(`${data.count} lección(es) creadas`, 'success');
+      const skippedCount = (data.skipped_duplicates || []).length;
+      const msg = skippedCount
+        ? `${data.count} lección(es) creadas · ${skippedCount} omitida(s) por ya existir`
+        : `${data.count} lección(es) creadas`;
+      showToast(msg, 'success');
       closeImportRoadmapModal();
       _coursesTreeData = await fetch('/api/courses/tree').then(r => r.json());
       renderCoursesTree(_coursesTreeData, _irState.courseSlug);
