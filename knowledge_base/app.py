@@ -2413,13 +2413,14 @@ def create_course_entry():
 # ── ROADMAP IMPORT: paste a document → proposed módulos/lecciones ─────────
 _COURSE_IMPORT_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
-def _parse_canonical_course_md(text):
-    """Parses the system's one standard course-markdown shape: '## ' marks a
-    module, '### ' marks a lesson, everything until the next heading of that
-    level or higher is that lesson's body. Returns a list of
-    {"title": module_title, "lessons": [{"title", "content"}]} — empty list
-    if the text has no '###' lesson headings at all (i.e. doesn't conform)."""
-    lines = text.replace("\r\n", "\n").split("\n")
+def _parse_headings_at_levels(lines, module_level, lesson_level):
+    """One parse attempt at a specific (module_level, lesson_level) heading
+    pair — everything until the next heading of that level or higher is that
+    lesson's body. Modules that end up with zero lessons are dropped: a
+    module can't be persisted without at least one lesson in this system
+    anyway (there's no module-only entity), and an empty one is usually just
+    a stray heading — a document's own leading title line, or a subtitle —
+    that isn't really part of the module/lesson structure."""
     modules = []
     cur_module = None
     cur_lesson = None
@@ -2434,14 +2435,14 @@ def _parse_canonical_course_md(text):
         if m:
             level = len(m.group(1))
             title = m.group(2).strip()
-            if level == 2:
+            if level == module_level:
                 flush()
                 cur_module = {"title": title, "lessons": []}
                 modules.append(cur_module)
                 cur_lesson = None
                 buf = []
                 continue
-            if level == 3:
+            if level == lesson_level:
                 flush()
                 if cur_module is None:
                     cur_module = {"title": "Módulo 1", "lessons": []}
@@ -2450,11 +2451,43 @@ def _parse_canonical_course_md(text):
                 cur_module["lessons"].append(cur_lesson)
                 buf = []
                 continue
-            # h1 or h4+ — not a structural split point, keep as body content
+            # any other heading level — not a structural split point
         if cur_lesson is not None:
             buf.append(line)
     flush()
-    return modules
+    return [m for m in modules if m["lessons"]]
+
+
+# This system's own courses use '## ' for module and '### ' for lesson, and
+# that's the first thing tried below — but plenty of real documents (roadmaps
+# written elsewhere, pasted as-is) use '# ' for module and '## ' for lesson
+# instead, treating their own top-level title as just a one-off subtitle
+# line rather than a first "module". Guessing the right pair from heading
+# COUNTS alone breaks on a document with only one module (its module heading
+# then appears exactly once, indistinguishable from a one-off title) — so
+# instead every plausible adjacent pair is actually parsed, and whichever one
+# explains the most lessons wins. Cheap: it's just re-scanning one document's
+# lines a handful of times, not a real parse.
+_HEADING_LEVEL_CANDIDATES = [(2, 3), (1, 2), (1, 3), (2, 4), (3, 4)]
+
+
+def _parse_canonical_course_md(text):
+    """Parses a course-shaped markdown document — heading hierarchy where an
+    outer level marks each module and the next level in marks each lesson,
+    everything below that is the lesson's body. Returns a list of
+    {"title": module_title, "lessons": [{"title", "content"}]} — empty list
+    if no heading-level pair in _HEADING_LEVEL_CANDIDATES produces any
+    lessons at all (i.e. the document doesn't conform to any recognized
+    module/lesson heading shape)."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    best = []
+    best_count = 0
+    for module_level, lesson_level in _HEADING_LEVEL_CANDIDATES:
+        result = _parse_headings_at_levels(lines, module_level, lesson_level)
+        count = sum(len(m["lessons"]) for m in result)
+        if count > best_count:
+            best, best_count = result, count
+    return best
 
 
 _COURSE_NORMALIZE_SYSTEM = (
