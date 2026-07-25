@@ -3141,9 +3141,15 @@ PROVIDERS = {
         "kind": "openai_compat",
         "base_url": "https://api.deepseek.com/chat/completions",
         "env": "DEEPSEEK_API_KEY",
+        # DeepSeek retired the "deepseek-chat"/"deepseek-reasoner" model ids
+        # for a v4 lineup — the API itself now rejects the old ones with
+        # "The supported API model names are deepseek-v4-pro or
+        # deepseek-v4-flash". Using exactly the two names DeepSeek's own
+        # error message confirmed as currently valid, rather than guessing
+        # at a chat/reasoner → pro/flash mapping.
         "models": [
-            {"id": "deepseek-chat", "label": "DeepSeek Chat", "hint": "Equilibrado, buen default general"},
-            {"id": "deepseek-reasoner", "label": "DeepSeek Reasoner", "hint": "Razonamiento profundo, más lento"},
+            {"id": "deepseek-v4-pro", "label": "DeepSeek V4 Pro", "hint": "Equilibrado, buen default general"},
+            {"id": "deepseek-v4-flash", "label": "DeepSeek V4 Flash", "hint": "Más rápido, ideal para respuestas cortas"},
         ],
     },
     "groq": {
@@ -3179,7 +3185,7 @@ PROVIDERS = {
     },
 }
 DEFAULT_PROVIDER = "deepseek"
-DEFAULT_MODEL = "deepseek-chat"
+DEFAULT_MODEL = "deepseek-v4-pro"
 
 # OpenRouter's public model catalog (no API key needed to list) — cached in
 # memory so every /api/ai/providers call doesn't refetch it. "Free" here

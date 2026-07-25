@@ -8872,7 +8872,7 @@ let _aiProvidersPromise = null;
 function _getAvailableProviders() {
   if (!_aiProvidersPromise) {
     _aiProvidersPromise = fetch('/api/ai/providers').then(r => r.json())
-      .catch(() => ({ providers: [], default: { provider: 'deepseek', model: 'deepseek-chat' } }));
+      .catch(() => ({ providers: [], default: { provider: 'deepseek', model: 'deepseek-v4-pro' } }));
   }
   return _aiProvidersPromise;
 }
