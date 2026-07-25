@@ -704,9 +704,12 @@ export const database = createReactBlockSpec(
         setViewMenuOpen(null);
       };
 
-      const deleteView = (v) => {
+      const deleteView = async (v) => {
         if (schema.views.length <= 1) return; // always at least one view — the "+" is the only way to get a second
-        if (!window.confirm(`¿Eliminar la vista "${v.name}"? No se puede deshacer.`)) return;
+        // window.showConfirm (app.js) — the same themed confirm modal every
+        // other delete in the app uses, instead of the browser's own native
+        // dialog (wrong font, wrong colors, doesn't match dark/light theme).
+        if (!(await window.showConfirm("Eliminar vista", `¿Eliminar la vista "${v.name}"? No se puede deshacer.`))) return;
         const remaining = schema.views.filter((x) => x.id !== v.id);
         const nextActive = activeView.id === v.id ? remaining[0].id : schema.activeView;
         saveSchema({ ...schema, views: remaining, activeView: nextActive });
@@ -836,7 +839,7 @@ export const database = createReactBlockSpec(
       };
 
       const deleteRow = async (rowId) => {
-        if (!window.confirm("¿Eliminar esta página? No se puede deshacer.")) return;
+        if (!(await window.showConfirm("Eliminar página", "¿Eliminar esta página? No se puede deshacer."))) return;
         await fetch(`/api/entry/${rowId}`, { method: "DELETE" });
         reload();
       };
@@ -944,8 +947,16 @@ export const database = createReactBlockSpec(
       const deleteSelected = async () => {
         const ids = Array.from(selectedIds);
         if (!ids.length) return;
-        if (!window.confirm(`¿Eliminar ${ids.length} página(s)? No se puede deshacer.`)) return;
-        await Promise.all(ids.map((id) => fetch(`/api/entry/${id}`, { method: "DELETE" })));
+        if (!(await window.showConfirm("Eliminar páginas", `¿Eliminar ${ids.length} página(s)? No se puede deshacer.`))) return;
+        // Sequential, not Promise.all — the backend's index.json is a single
+        // read-modify-write file with no per-request locking, so firing
+        // these in parallel let one DELETE's write land while another was
+        // mid-read, occasionally 500ing and, worse, sometimes silently
+        // losing whichever deletion wrote first (found by exactly this bulk
+        // path once it started actually happening reliably).
+        for (const id of ids) {
+          await fetch(`/api/entry/${id}`, { method: "DELETE" });
+        }
         setSelectedIds(new Set());
         reload();
       };

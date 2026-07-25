@@ -2880,7 +2880,9 @@ function showConfirm(title, msg) {
 }
 
 // In-app replacement for window.prompt() — same visual language as showConfirm().
-// Resolves to the trimmed input value, or null if cancelled / left empty.
+// Resolves to the trimmed input value (possibly "", e.g. to intentionally
+// clear a field) on OK, or null only if actually cancelled/Escaped — same
+// cancel-vs-empty-submit distinction window.prompt() itself makes.
 function showPrompt(title, placeholder, defaultValue) {
   return new Promise(resolve => {
     $("promptTitle").textContent = title;
@@ -2897,7 +2899,7 @@ function showPrompt(title, placeholder, defaultValue) {
       input.removeEventListener("keydown", onKeydown);
       resolve(result);
     };
-    const onOk = () => cleanup(input.value.trim() || null);
+    const onOk = () => cleanup(input.value.trim());
     const onCancel = () => cleanup(null);
     const onKeydown = e => {
       if (e.key === "Enter") onOk();
@@ -8532,7 +8534,7 @@ async function _renderQuizHistoryMain() {
   document.querySelectorAll('#quizMain .practice-history-del').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
-      if (!confirm('¿Eliminar este quiz del historial? No se puede deshacer.')) return;
+      if (!(await showConfirm('Eliminar quiz', '¿Eliminar este quiz del historial? No se puede deshacer.'))) return;
       try { await fetch(`/api/quiz/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
       if (_quizState === st && st.viewingHistory) _renderQuizHistoryMain();
     });
@@ -9488,8 +9490,8 @@ function _renderPracticeChallenge() {
     const solBtn = document.createElement('button');
     solBtn.className = 'btn-ghost';
     solBtn.textContent = '🔓 Ver solución';
-    solBtn.addEventListener('click', () => {
-      if (confirm('Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
+    solBtn.addEventListener('click', async () => {
+      if (await showConfirm('Ver solución', 'Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
         stepState.revealed = true;
         _savePracticeProgress(st);
         _renderPracticeChallenge();
@@ -9972,7 +9974,7 @@ async function _renderPracticeHistoryMain() {
   document.querySelectorAll('.practice-history-del').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
-      if (!confirm('¿Eliminar este reto del historial? No se puede deshacer.')) return;
+      if (!(await showConfirm('Eliminar reto', '¿Eliminar este reto del historial? No se puede deshacer.'))) return;
       try { await fetch(`/api/practice/${btn.dataset.id}`, { method: 'DELETE' }); } catch { /* best-effort */ }
       if (_practiceState === st && st.viewingHistory) _renderPracticeHistoryMain();
     });
@@ -10215,10 +10217,10 @@ function _initCalloutToolbars(body) {
     // Emoji click → simple inline prompt
     const iconEl = calloutDiv.querySelector('.bn-callout-icon');
     if (iconEl) {
-      iconEl.addEventListener('click', e => {
+      iconEl.addEventListener('click', async e => {
         e.stopPropagation();
-        const next = prompt('Emoji para el callout:', currentEmoji);
-        if (next && next.trim()) _setCalloutEmoji(calloutDiv, next.trim());
+        const next = await showPrompt('Emoji del callout', 'Ej: 💡', currentEmoji);
+        if (next) _setCalloutEmoji(calloutDiv, next);
       });
     }
 

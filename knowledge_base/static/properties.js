@@ -233,12 +233,12 @@ window.Properties = (() => {
       const editBtn = document.createElement("button");
       editBtn.className = "prop-url-edit";
       editBtn.textContent = "✎";
-      editBtn.addEventListener("click", e => {
+      editBtn.addEventListener("click", async e => {
         e.preventDefault();
         e.stopPropagation();
-        const v = prompt("URL:", prop.value || "");
+        const v = await window.showPrompt("URL", "https://…", prop.value || "");
         if (v !== null) {
-          prop.value = v.trim();
+          prop.value = v;
           display.textContent = prop.value ? _shortUrl(prop.value) : "Empty";
           display.href = prop.value || "#";
           display.classList.toggle("has-value", !!prop.value);
@@ -539,8 +539,8 @@ window.Properties = (() => {
     }, 0);
   }
 
-  function _promptAddProperty(typeId) {
-    const name = prompt("Property name:", _defaultName(typeId));
+  async function _promptAddProperty(typeId) {
+    const name = await window.showPrompt("Nueva propiedad", "Nombre", _defaultName(typeId));
     if (!name) return;
     const defaults = {
       text: "", number: 0, select: null, multi_select: [],

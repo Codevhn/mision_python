@@ -77,7 +77,17 @@ def load_index():
 
 
 def save_index(index):
-    INDEX_FILE.write_text(json.dumps(index, indent=2, ensure_ascii=False))
+    # Same atomic write-then-rename pattern already used by save_relations/
+    # save_mindmaps/save_quizzes/etc below — this was the one save function
+    # still writing the target file directly. Two requests that both touch
+    # the index around the same time (e.g. a bulk delete's parallel DELETE
+    # calls) could have a reader land mid-write on the truncated-but-not-
+    # yet-rewritten file and blow up with a JSONDecodeError; os.replace() is
+    # atomic, so a concurrent read always sees either the old or the new
+    # complete file, never a partial one.
+    tmp = INDEX_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(index, indent=2, ensure_ascii=False))
+    os.replace(tmp, INDEX_FILE)
 
 
 def slugify(text):
