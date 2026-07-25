@@ -7572,15 +7572,24 @@ function _irLessonNode(lesson) {
   const el = document.createElement('div');
   el.className = 'ir-lesson';
   el.style.cssText = 'border-left:2px solid var(--accent);padding-left:10px;margin:6px 0 6px 4px';
-  if (lesson.already_exists) el.style.opacity = '0.55';
+  const isDup = !!lesson.already_exists;
+  const isFuzzy = !isDup && !!lesson.possible_duplicate_of;
+  if (isDup || isFuzzy) el.style.opacity = '0.55';
   el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <input type="text" class="ir-lesson-title" placeholder="Título de la lección"
         style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;
                padding:5px 8px;color:var(--text);font-size:0.85rem" />
-      ${lesson.already_exists ? `<span class="ir-dup-badge" title="Ya existe una lección con este título en este módulo — se omitirá al confirmar"
+      ${isDup ? `<span class="ir-dup-badge" title="Ya existe una lección con este título en este módulo — se omitirá al confirmar"
         style="font-size:0.72rem;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);
                border-radius:4px;padding:2px 6px;white-space:nowrap">Ya existe — se omitirá</span>` : ''}
+      ${isFuzzy ? `<label class="ir-fuzzy-label" title="Se parece a una lección que ya existe en este módulo: &quot;${escapeHtml(lesson.possible_duplicate_of)}&quot;"
+        style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:var(--text-muted);
+               background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;
+               white-space:nowrap;cursor:pointer">
+          <input type="checkbox" class="ir-lesson-skip" checked style="cursor:pointer" />
+          ¿Duplicado? Omitir
+        </label>` : ''}
       <button class="btn-ghost ir-toggle-content" style="font-size:0.75rem;padding:3px 6px">Ver contenido</button>
       <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px">🗑</button>
     </div>
@@ -7595,6 +7604,10 @@ function _irLessonNode(lesson) {
     ta.classList.toggle('hidden');
     e.target.textContent = ta.classList.contains('hidden') ? 'Ver contenido' : 'Ocultar contenido';
   });
+  const skipCb = el.querySelector('.ir-lesson-skip');
+  if (skipCb) {
+    skipCb.addEventListener('change', () => { el.style.opacity = skipCb.checked ? '0.55' : ''; });
+  }
   return el;
 }
 
@@ -7634,6 +7647,11 @@ function _irRenderPreview(data) {
   if (dupCount > 0) {
     notes.push(`↺ ${dupCount} lección(es) ya existían en este curso (mismo módulo y título) — se omitirán automáticamente al confirmar, no se duplicarán.`);
   }
+  const fuzzyCount = (data.modules || []).reduce(
+    (n, mod) => n + (mod.lessons || []).filter(l => !l.already_exists && l.possible_duplicate_of).length, 0);
+  if (fuzzyCount > 0) {
+    notes.push(`🔎 ${fuzzyCount} lección(es) se parecen a una ya existente (título reformulado) — se marcaron para omitir por defecto; desmarca la casilla junto a la lección si en realidad es contenido nuevo.`);
+  }
   if (notes.length) {
     aiNote.textContent = notes.join(' ');
     aiNote.classList.remove('hidden');
@@ -7655,6 +7673,8 @@ function _irCollectTree() {
     const title = modEl.querySelector('.ir-module-title').value.trim();
     const lessons = [];
     modEl.querySelectorAll('.ir-lesson').forEach(lessonEl => {
+      const skipCb = lessonEl.querySelector('.ir-lesson-skip');
+      if (skipCb && skipCb.checked) return; // left checked = "sí, es un duplicado, omítela"
       const lt = lessonEl.querySelector('.ir-lesson-title').value.trim();
       const lc = lessonEl.querySelector('.ir-lesson-content').value;
       if (lt) lessons.push({ title: lt, content: lc });

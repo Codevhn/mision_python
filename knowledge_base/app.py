@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import difflib
 import subprocess
 import shutil
 import unicodedata
@@ -2472,17 +2473,69 @@ _COURSE_NORMALIZE_SYSTEM = (
 
 
 def _existing_course_lessons(course_slug):
-    """{(module_slug, slugified_title): entry_id} for every lesson already in
-    this course — lets the roadmap importer recognize content that's already
-    there (e.g. re-pasting a roadmap you'd only partially imported before)
-    and skip re-creating it as a same-title duplicate under a '-1' slug,
-    instead of requiring the user to delete their existing progress first."""
+    """{module_slug: {slugified_title: (entry_id, original_title)}} for every
+    lesson already in this course — lets the roadmap importer recognize
+    content that's already there (e.g. re-pasting a fuller version of a
+    roadmap only partially imported before) and skip re-creating it, instead
+    of requiring the user to delete their existing progress first. Grouped
+    per module (rather than a flat set) so the fuzzy-match pass below only
+    ever compares titles within the same module."""
     index = load_index()
     out = {}
     for entry_id, meta in index.items():
         if meta.get("type") == "course" and meta.get("course") == course_slug:
-            out[(meta.get("module", ""), slugify(meta.get("title", "")))] = entry_id
+            mod = meta.get("module", "")
+            title = meta.get("title", "")
+            out.setdefault(mod, {})[slugify(title)] = (entry_id, title)
     return out
+
+
+_LEADING_NUMBER_RE = re.compile(r"^\s*(\d+(?:\.\d+)*)\b")
+_FUZZY_TEXT_THRESHOLD = 0.85
+
+def _leading_number(title):
+    m = _LEADING_NUMBER_RE.match(title or "")
+    return m.group(1) if m else None
+
+
+def _fuzzy_duplicate_match(mod_slug, title, existing):
+    """Beyond the exact slug match, tries to catch the same lesson re-pasted
+    with different wording — a person can't always remember their own exact
+    past phrasing. A plain text-similarity ratio alone turns out to be
+    unreliable for this: sibling lessons in the same module are often
+    DESIGNED to share vocabulary/pattern (e.g. "Manejo de archivos" / "Manejo
+    de errores" / "Manejo de excepciones" all score similarly high against
+    each other), so a threshold loose enough to catch a genuine rewording
+    also flags legitimate, different siblings. The much stronger signal in
+    a numbered curriculum (matching the user's own course, e.g. "3.1 Manejo
+    de archivos") is the leading number itself — reusing the same number for
+    a genuinely different lesson within the same module would be unusual, so
+    a shared leading number is treated as the primary match, independent of
+    how different the rest of the title reads. Text similarity is kept only
+    as a secondary, deliberately high-threshold fallback for titles with no
+    numbering at all. Returns the matched existing title, or None — advisory
+    either way, the caller decides whether to actually skip it."""
+    bucket = existing.get(mod_slug, {})
+    if not bucket:
+        return None
+    needle = (title or "").strip()
+    if not needle:
+        return None
+    needle_num = _leading_number(needle)
+    if needle_num:
+        for _entry_id, existing_title in bucket.values():
+            if _leading_number(existing_title) == needle_num:
+                return existing_title
+        return None  # numbered titles are only ever compared by their number
+    best_ratio, best_title = 0.0, None
+    needle_lower = needle.lower()
+    for _entry_id, existing_title in bucket.values():
+        if _leading_number(existing_title):
+            continue  # not comparable to an unnumbered title
+        ratio = difflib.SequenceMatcher(None, needle_lower, existing_title.strip().lower()).ratio()
+        if ratio > best_ratio:
+            best_ratio, best_title = ratio, existing_title
+    return best_title if best_ratio >= _FUZZY_TEXT_THRESHOLD else None
 
 
 @app.route("/api/courses/<course_id>/import/preview", methods=["POST"])
@@ -2520,11 +2573,20 @@ def preview_course_import(course_id):
     # Flag lessons that already exist in this course (same module + same
     # title, both slugified) — the frontend marks these so the user sees up
     # front what will be skipped on commit, instead of finding out after.
+    # Anything not an exact match also gets a fuzzy pass — catches the same
+    # lesson re-pasted with a slightly reworded title, which an exact-slug
+    # check alone would treat as brand new.
     existing = _existing_course_lessons(course_id)
     for mod in modules:
         mod_slug = slugify(mod.get("title", ""))
         for lesson in mod.get("lessons", []):
-            lesson["already_exists"] = (mod_slug, slugify(lesson.get("title", ""))) in existing
+            title_slug = slugify(lesson.get("title", ""))
+            if title_slug in existing.get(mod_slug, {}):
+                lesson["already_exists"] = True
+                lesson["possible_duplicate_of"] = None
+            else:
+                lesson["already_exists"] = False
+                lesson["possible_duplicate_of"] = _fuzzy_duplicate_match(mod_slug, lesson.get("title", ""), existing)
 
     return jsonify({"used_ai_normalize": used_ai_normalize, "ai_error": ai_error, "modules": modules})
 
@@ -2549,8 +2611,8 @@ def commit_course_import(course_id):
             title = (lesson.get("title") or "").strip()
             if not title:
                 continue
-            key = (mod_slug, slugify(title))
-            if key in existing:
+            title_slug = slugify(title)
+            if title_slug in existing.get(mod_slug, {}):
                 skipped_duplicates.append(title)
                 continue
             content = (lesson.get("content") or "").strip() or f"# {title}\n\n_Contenido pendiente._"
@@ -2561,7 +2623,8 @@ def commit_course_import(course_id):
             if err:
                 return jsonify({"error": err}), 400
             created.append(entry_id)
-            existing[key] = entry_id  # also catches a duplicate row within this same pasted doc
+            # Also catches a duplicate row within this same pasted doc.
+            existing.setdefault(mod_slug, {})[title_slug] = (entry_id, title)
     if not created and not skipped_duplicates:
         return jsonify({"error": "No se creó ninguna lección — revisa que cada módulo tenga al menos una lección con título"}), 400
     return jsonify({"created": created, "skipped_duplicates": skipped_duplicates, "count": len(created)})
