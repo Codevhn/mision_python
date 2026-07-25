@@ -126,6 +126,42 @@ def _generate_module_label(module_type, module_type_custom, module_number, modul
     return tl
 
 
+# Word → internal module_type key, for detecting a section type straight from
+# a heading's own text (accented and unaccented spellings both accepted).
+_SECTION_TYPE_FROM_WORD = {
+    "modulo": "modulo", "módulo": "modulo",
+    "fase": "fase", "semana": "semana", "unidad": "unidad",
+    "nivel": "nivel", "bloque": "bloque",
+    "seccion": "seccion", "sección": "seccion",
+    "capitulo": "capitulo", "capítulo": "capitulo",
+}
+_SECTION_TYPE_HEADING_RE = re.compile(
+    r"^(m[óo]dulo|fase|semana|unidad|nivel|bloque|secci[óo]n|cap[íi]tulo)\b"
+    r"\s*(\d+)?\s*[:.\-–—]?\s*(.*)$",
+    re.IGNORECASE,
+)
+
+
+def _detect_module_type_from_title(title):
+    """Mirrors the frontend's own _inferTypeFromLabel prefix check (used for
+    the course-view tab label) but goes further, also splitting out the
+    number/title — so an imported module lands in the same structured
+    (module_type, module_number, module_title) shape a manually-built one
+    gets from the '+ Lección' section builder, editable later via
+    'Renombrar módulo' in structured mode, instead of always falling back to
+    a free-text legacy label. Returns (module_type, module_number,
+    module_title); module_type is "" when the text doesn't start with a
+    recognized section word — left as a legacy free-text label, same as
+    before."""
+    m = _SECTION_TYPE_HEADING_RE.match((title or "").strip())
+    if not m:
+        return "", "", ""
+    module_type = _SECTION_TYPE_FROM_WORD.get(m.group(1).lower(), "")
+    if not module_type:
+        return "", "", ""
+    return module_type, m.group(2) or "", (m.group(3) or "").strip()
+
+
 def _entry_path(entry_id, meta):
     if meta.get("type") == "course":
         return KNOWLEDGE_DIR / "courses" / meta["course"] / meta["module"] / f"{entry_id}.md"
@@ -2479,12 +2515,16 @@ def commit_course_import(course_id):
         module_label = (mod.get("title") or "").strip()
         if not module_label:
             continue
+        module_type, module_number, module_title_meta = _detect_module_type_from_title(module_label)
         for lesson in (mod.get("lessons") or []):
             title = (lesson.get("title") or "").strip()
             if not title:
                 continue
             content = (lesson.get("content") or "").strip() or f"# {title}\n\n_Contenido pendiente._"
-            entry_id, err = _create_course_entry_internal(course_id, module_label, title, content)
+            entry_id, err = _create_course_entry_internal(
+                course_id, module_label, title, content,
+                module_type=module_type, module_number=module_number, module_title_meta=module_title_meta,
+            )
             if err:
                 return jsonify({"error": err}), 400
             created.append(entry_id)
