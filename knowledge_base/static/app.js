@@ -107,6 +107,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch(e) { return null; } })();
     if (!activeSpace || activeSpace === 'home') renderHome();
   });
+  _loadActivity().then(() => {
+    // Re-render Home now that "Continuar estudiando"/"Visitados recientemente"
+    // have real cross-device data instead of starting empty.
+    const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch(e) { return null; } })();
+    if (!activeSpace || activeSpace === 'home') renderHome();
+  });
   Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
   loadCourseSuggestions();
   bindEvents();
@@ -1092,10 +1098,6 @@ $("tsPageCreate").addEventListener("click", async () => {
   }
 });
 
-// ---- RECENTLY VISITED ----
-const KB_RECENT_KEY = "kb_recent_v2";
-const KB_RECENT_MAX = 12;
-
 // ---- USER NAME ----
 const KB_USER_NAME_KEY = 'kb_user_name';
 function _getUserName() {
@@ -1106,35 +1108,48 @@ function _getUserName() {
   } catch { return 'Frandev'; }
 }
 
-// ---- STUDYING TRACKER ----
-const KB_STUDYING_KEY = 'kb_studying_v1';
-const KB_STUDYING_MAX = 5;
+// ---- "CONTINUAR ESTUDIANDO" + "VISITADOS RECIENTEMENTE" ----
+// Server-backed (GET/POST /api/activity*) so opening the app on a different
+// device shows what you were ACTUALLY doing last, not that device's own
+// stale local history — this used to be pure localStorage, which never
+// left the browser it was written in. _activityCache is filled once by
+// _loadActivity() near startup (see the call next to loadTree() above) and
+// kept up to date optimistically by the two _track* functions below;
+// _getStudying()/_getRecent() stay synchronous reads off that cache so
+// none of their existing (synchronous) call sites needed to change.
+let _activityCache = null;
+let _activityPromise = null;
+function _loadActivity() {
+  if (!_activityPromise) {
+    _activityPromise = fetch('/api/activity').then(r => r.json())
+      .then(data => { _activityCache = data; return data; })
+      .catch(() => { _activityCache = { studying: [], recent: [] }; return _activityCache; });
+  }
+  return _activityPromise;
+}
+
 function _trackStudying(id, title, courseSlug) {
-  try {
-    let items = JSON.parse(localStorage.getItem(KB_STUDYING_KEY) || '[]');
-    items = items.filter(i => i.id !== id);
-    items.unshift({ id, title, courseSlug: courseSlug || '', ts: Date.now() });
-    if (items.length > KB_STUDYING_MAX) items = items.slice(0, KB_STUDYING_MAX);
-    localStorage.setItem(KB_STUDYING_KEY, JSON.stringify(items));
-  } catch {}
+  if (!_activityCache) _activityCache = { studying: [], recent: [] };
+  _activityCache.studying = [{ id, title, courseSlug: courseSlug || '', ts: Date.now() }]
+    .concat(_activityCache.studying.filter(i => i.id !== id)).slice(0, 5);
+  fetch('/api/activity/studying', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, title, courseSlug: courseSlug || '' }),
+  }).catch(() => {});
 }
-function _getStudying() {
-  try { return JSON.parse(localStorage.getItem(KB_STUDYING_KEY) || '[]'); } catch { return []; }
-}
+function _getStudying() { return _activityCache?.studying || []; }
 
 function _trackRecent(id, title, category, topic, cover, icon) {
-  let recent = [];
-  try { recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch {}
-  const prev = recent.find(r => r.id === id);
-  recent = recent.filter(r => r.id !== id);
-  recent.unshift({ id, title, category, topic, cover: cover || prev?.cover || "", icon: icon || prev?.icon || "", ts: Date.now() });
-  if (recent.length > KB_RECENT_MAX) recent = recent.slice(0, KB_RECENT_MAX);
-  localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
+  if (!_activityCache) _activityCache = { studying: [], recent: [] };
+  const prev = _activityCache.recent.find(r => r.id === id);
+  const entry = { id, title, category, topic, cover: cover || prev?.cover || "", icon: icon || prev?.icon || "", ts: Date.now() };
+  _activityCache.recent = [entry].concat(_activityCache.recent.filter(r => r.id !== id)).slice(0, 12);
+  fetch('/api/activity/recent', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  }).catch(() => {});
 }
-
-function _getRecent() {
-  try { return JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]"); } catch { return []; }
-}
+function _getRecent() { return _activityCache?.recent || []; }
 
 // ── Weather helpers ────────────────────────────────────────────────────────────
 function _weatherCondition(code, isDay) {
@@ -2234,12 +2249,13 @@ function _setPageIconBtn(icon) {
         // Update meta bar
         const glyph = $("entryMeta")?.querySelector(".meta-entry-icon-glyph, .meta-seg-icon");
         if (glyph) glyph.replaceWith(...(new DOMParser().parseFromString(renderIconMarkup(chosenIcon, "meta-entry-icon-glyph"), "text/html").body.childNodes));
-        // Update recent icon
-        try {
-          let rec = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]");
-          rec = rec.map(r => r.id === currentEntryId ? { ...r, icon: chosenIcon } : r);
-          localStorage.setItem(KB_RECENT_KEY, JSON.stringify(rec));
-        } catch {}
+        // Update recent icon (cosmetic cache patch only — the entry's own
+        // metadata, updated above, is the source of truth; this just keeps
+        // the Home page's "recent" card from showing a stale icon until
+        // the next _trackRecent() call naturally corrects it)
+        if (_activityCache) {
+          _activityCache.recent = _activityCache.recent.map(r => r.id === currentEntryId ? { ...r, icon: chosenIcon } : r);
+        }
         renderHome();
       });
     });
@@ -2513,12 +2529,10 @@ async function saveCover(coverValue) {
   renderHome();
 }
 
+// Cosmetic cache patch only, same reasoning as the icon update above.
 function _updateRecentCover(id, cover) {
-  try {
-    let recent = JSON.parse(localStorage.getItem(KB_RECENT_KEY) || "[]");
-    recent = recent.map(r => r.id === id ? { ...r, cover } : r);
-    localStorage.setItem(KB_RECENT_KEY, JSON.stringify(recent));
-  } catch {}
+  if (!_activityCache) return;
+  _activityCache.recent = _activityCache.recent.map(r => r.id === id ? { ...r, cover } : r);
 }
 
 // Init cover buttons (called once)

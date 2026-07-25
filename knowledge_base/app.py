@@ -2711,6 +2711,76 @@ def get_relations():
     return jsonify({"relations": [enrich(r) for r in rels]})
 
 
+# ── ACTIVITY (cross-device "continue studying" / "recently visited") ────────
+# Was purely localStorage on the frontend — per-browser, so opening the app
+# on a second device never saw what you'd been reading on the first one,
+# even though every device talks to this same server. Same small-JSON-file
+# pattern as relations/quizzes/etc above, just server-side instead.
+
+ACTIVITY_FILE = DATA_DIR / "activity.json"
+ACTIVITY_STUDYING_MAX = 5
+ACTIVITY_RECENT_MAX = 12
+
+
+def load_activity():
+    if ACTIVITY_FILE.exists():
+        return json.loads(ACTIVITY_FILE.read_text())
+    return {"studying": [], "recent": []}
+
+
+def save_activity(data):
+    tmp = ACTIVITY_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, ACTIVITY_FILE)
+
+
+@app.route("/api/activity", methods=["GET"])
+def get_activity():
+    return jsonify(load_activity())
+
+
+@app.route("/api/activity/studying", methods=["POST"])
+def track_studying():
+    data = request.json or {}
+    entry_id = (data.get("id") or "").strip()
+    if not entry_id:
+        return jsonify({"error": "Missing id"}), 400
+    activity = load_activity()
+    items = [i for i in activity.get("studying", []) if i.get("id") != entry_id]
+    items.insert(0, {
+        "id": entry_id,
+        "title": data.get("title", ""),
+        "courseSlug": data.get("courseSlug", ""),
+        "ts": int(time.time() * 1000),
+    })
+    activity["studying"] = items[:ACTIVITY_STUDYING_MAX]
+    save_activity(activity)
+    return jsonify({"studying": activity["studying"]})
+
+
+@app.route("/api/activity/recent", methods=["POST"])
+def track_recent_activity():
+    data = request.json or {}
+    entry_id = (data.get("id") or "").strip()
+    if not entry_id:
+        return jsonify({"error": "Missing id"}), 400
+    activity = load_activity()
+    items = activity.get("recent", [])
+    prev = next((i for i in items if i.get("id") == entry_id), None)
+    items = [i for i in items if i.get("id") != entry_id]
+    items.insert(0, {
+        "id": entry_id,
+        "title": data.get("title", ""),
+        "category": data.get("category", ""),
+        "topic": data.get("topic", ""),
+        "cover": data.get("cover") or (prev or {}).get("cover", ""),
+        "icon": data.get("icon") or (prev or {}).get("icon", ""),
+        "ts": int(time.time() * 1000),
+    })
+    activity["recent"] = items[:ACTIVITY_RECENT_MAX]
+    save_activity(activity)
+    return jsonify({"recent": activity["recent"]})
+
 
 @app.route("/api/kanban/boards", methods=["GET"])
 def kanban_list_boards():
