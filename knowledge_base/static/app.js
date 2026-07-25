@@ -5235,7 +5235,7 @@ function setSidebarVisible(visible) {
     // Stray floating bits (custom-select dropdown portals) live outside this
     // view entirely (appended to document.body), so hiding #practiceView
     // alone wouldn't remove them if you navigate away mid-pick.
-    document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+    _sweepStaleCselectPortals($('practiceView'));
 
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
@@ -8058,7 +8058,7 @@ function _renderQuizSpace() {
 function _renderQuizRail() {
   const st = _quizState;
   if (!st) return;
-  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+  _sweepStaleCselectPortals($('practiceView'));
 
   $('quizRail').innerHTML = `
     <div class="practice-rail-nav">
@@ -8121,7 +8121,7 @@ async function _renderQuizModeBody() {
   const st = _quizState;
   const container = $('quizModeBody');
   if (!container) return;
-  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+  _sweepStaleCselectPortals($('practiceView'));
 
   if (st.mode === 'topic') {
     container.innerHTML = `
@@ -8707,7 +8707,7 @@ function _renderPracticeRail() {
   if (!st) return;
   // Rebuilding this rail below detaches any custom-select containers
   // without running their own cleanup, so sweep their body-level portals here.
-  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+  _sweepStaleCselectPortals($('practiceView'));
 
   const nudgeHtml = st.startNudge ? `
     <div class="practice-nudge">
@@ -8787,6 +8787,24 @@ function _renderPracticeRail() {
   _renderPracticeModeBody();
 }
 
+// Removes only the cselect portals that actually belong to containers
+// inside `root` — used when Práctica/Quiz re-renders part of its own rail
+// (its cselects get torn down and remounted, orphaning their body-level
+// portals). MUST be scoped like this rather than a blanket
+// `document.querySelectorAll('.practice-cselect-portal')`: that class is
+// shared by every themed select in the app, including the Ask AI panel's
+// own model picker, which mounts exactly once at page load and is never
+// remounted — a global sweep would delete its portal out from under it the
+// first time the user ever visited Práctica or Quiz, permanently breaking
+// it (no error, just a detached, invisible node) for the rest of the
+// session. This was that bug.
+function _sweepStaleCselectPortals(root) {
+  (root || document).querySelectorAll('.practice-cselect').forEach(el => {
+    el._cselectPortal?.remove();
+    el._cselectPortal = null;
+  });
+}
+
 // Native <select> popups are painted by the OS/browser chrome and can't be
 // themed — they'd show up as a stark light-mode list inside this otherwise
 // dark rail. This renders a themed stand-in instead: a button plus a
@@ -8848,27 +8866,38 @@ function _mountPracticeCustomSelect(container, { options, value, placeholder, di
 
   if (!disabled) {
     btn.addEventListener('click', () => {
-      const isOpen = !dropdown.classList.contains('hidden');
-      if (isOpen) { close(); return; }
-      dropdown.innerHTML = options.length
-        ? options.map(o => `<div class="ss-item" data-value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</div>`).join('')
-        : `<div class="ss-item" style="color:var(--text-faint);cursor:default">Sin opciones</div>`;
-      const valueEl = btn.querySelector('.practice-cselect-value');
-      dropdown.querySelectorAll('.ss-item[data-value]').forEach(item => {
-        item.addEventListener('click', () => {
-          close();
-          if (valueEl) {
-            valueEl.textContent = item.textContent;
-            valueEl.classList.remove('placeholder');
-          }
-          onChange(item.dataset.value);
+      // Wrapped defensively: this handler was reported to sometimes do
+      // nothing at all on click (no dropdown, no visible error) — if
+      // that's an exception partway through (a malformed option, a
+      // detached node, etc.), it would previously fail completely silent.
+      // This at minimum surfaces what actually happened instead of a
+      // dead button, and doesn't change behavior when nothing goes wrong.
+      try {
+        const isOpen = !dropdown.classList.contains('hidden');
+        if (isOpen) { close(); return; }
+        dropdown.innerHTML = options.length
+          ? options.map(o => `<div class="ss-item" data-value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</div>`).join('')
+          : `<div class="ss-item" style="color:var(--text-faint);cursor:default">Sin opciones</div>`;
+        const valueEl = btn.querySelector('.practice-cselect-value');
+        dropdown.querySelectorAll('.ss-item[data-value]').forEach(item => {
+          item.addEventListener('click', () => {
+            close();
+            if (valueEl) {
+              valueEl.textContent = item.textContent;
+              valueEl.classList.remove('placeholder');
+            }
+            onChange(item.dataset.value);
+          });
         });
-      });
-      reposition();
-      dropdown.classList.remove('hidden');
-      document.addEventListener('click', onOutsideClick);
-      document.addEventListener('keydown', onEscape);
-      window.addEventListener('resize', reposition);
+        reposition();
+        dropdown.classList.remove('hidden');
+        document.addEventListener('click', onOutsideClick);
+        document.addEventListener('keydown', onEscape);
+        window.addEventListener('resize', reposition);
+      } catch (err) {
+        console.error('cselect dropdown failed to open:', err);
+        showToast('No se pudo abrir la lista de modelos: ' + err.message, 'error');
+      }
     });
   }
 }
@@ -8976,7 +9005,7 @@ async function _renderPracticeModeBody() {
   // Rebuilding this container's contents (below) detaches any custom-select
   // wrapper divs without running their own cleanup, orphaning their
   // body-level portals — sweep them here too, not just in _renderPracticeRail.
-  document.querySelectorAll('.practice-cselect-portal').forEach(el => el.remove());
+  _sweepStaleCselectPortals($('practiceView'));
 
   if (st.mode === 'topic') {
     container.innerHTML = `
