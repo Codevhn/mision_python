@@ -444,10 +444,20 @@ body.bn-db-resizing-cursor .bn-db-resize-handle::after { background: var(--accen
   left: 60px;
   box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.35);
 }
+/* Sticky cells must stay FULLY OPAQUE (per the comment above) — the header
+   and footer rows both normally paint their whole row with the translucent
+   --bg-hover tint, which is fine for the columns that scroll normally, but
+   left directly on a sticky cell it let whatever scrolled underneath show
+   through as a faint ghost/double-text effect. --layer-1 is the closest
+   opaque step in the same neutral scale, so the sticky cells still read as
+   "a shade off the base" without ever being see-through. */
 .bn-db-grid-header .bn-db-cell.bn-db-gutter-cell,
 .bn-db-grid-header .bn-db-cell.bn-db-checkbox-cell,
-.bn-db-grid-header .bn-db-cell.bn-db-title-col {
-  background: var(--bg-hover);
+.bn-db-grid-header .bn-db-cell.bn-db-title-col,
+.bn-db-grid-footer .bn-db-cell.bn-db-gutter-cell,
+.bn-db-grid-footer .bn-db-cell.bn-db-checkbox-cell,
+.bn-db-grid-footer .bn-db-cell.bn-db-title-col {
+  background: var(--layer-1);
 }
 
 .bn-db-open-row {
