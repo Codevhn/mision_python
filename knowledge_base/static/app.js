@@ -7712,7 +7712,9 @@ function initImportRoadmap() {
 
   $('importRoadmapClose').addEventListener('click', closeImportRoadmapModal);
   $('irCancelBtn').addEventListener('click', closeImportRoadmapModal);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeImportRoadmapModal(); });
+  // Deliberately no backdrop-click-to-close here — this modal can hold a
+  // long pasted roadmap (or an edited preview tree) the user would lose
+  // entirely from one stray click outside it. Only × / Cancelar close it.
 
   $('irAddModuleBtn').addEventListener('click', () => {
     $('irTreeContainer').appendChild(_irModuleNode({ title: '', lessons: [{ title: '', content: '' }] }));
