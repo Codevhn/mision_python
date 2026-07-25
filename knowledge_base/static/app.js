@@ -1924,6 +1924,15 @@ function _stripDuplicateHeading(md, title) {
 
 function _sanitizeMarkdownForEditor(md) {
   if (!md) return md;
+  // Some sources (a rich-text/BlockNote-flavored copy-paste, or AI output
+  // that echoes BlockNote's own inline-color HTML) leave literal
+  // <span data-text-color="..." data-background-color="...">text</span>
+  // tags sitting in the markdown instead of real markdown syntax — this
+  // app's markdown parser doesn't interpret HTML, so they render as
+  // visible garbage around otherwise-normal text. Unwrap to the inner
+  // text; the color itself has no real-markdown equivalent, so it's
+  // simply dropped rather than round-tripped.
+  md = md.replace(/<span(?:\s+data-(?:text|background)-color="[^"]*")+\s*>([\s\S]*?)<\/span>/g, "$1");
   return md.split("\n").map(line => {
     // Collapse ***...*** / ___...___ (bold+italic) → **...** / __...__ FIRST.
     // If processed as separate ** and * passes, the intermediate result is
@@ -10018,7 +10027,6 @@ window._openPagePeek = async function (id, opts) {
 
   _peekEntryId = id;
   _peekOnClose = (opts && opts.onClose) || null;
-  window._currentEntryId = id; // so a database block *inside* this peeked page resolves correctly
 
   overlay.classList.remove('hidden');
   $('pagePeekTitle').value = '';
@@ -10026,7 +10034,12 @@ window._openPagePeek = async function (id, opts) {
   $('pagePeekProps').innerHTML = '';
 
   const res = await fetch(`/api/entry/${id}`);
-  if (!res.ok || _peekEntryId !== id) return; // closed or swapped while loading
+  if (!res.ok || _peekEntryId !== id) return; // closed, swapped, or the id doesn't resolve — don't touch anything else
+  // Only now that the fetch actually succeeded: a database block *inside*
+  // this peeked page needs to resolve against it (was set unconditionally
+  // before, so a 404'ing row/link used to leave the OUTER page's own
+  // database block silently pointed at a nonexistent id too).
+  window._currentEntryId = id;
   const data = await res.json();
   const meta = data.meta || {};
 
@@ -10041,7 +10054,7 @@ window._openPagePeek = async function (id, opts) {
     container: $('pagePeekEditor'),
     onChange: (md) => _peekScheduleAutoSave(md),
   });
-  _peekEditor.load(data.markdown || '');
+  _peekEditor.load(_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown || '', meta.title || '')));
 };
 
 function _closePagePeek() {
