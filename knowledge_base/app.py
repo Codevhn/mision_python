@@ -888,6 +888,14 @@ def create_entry():
             "tags": tags,
             "parent_id": parent_id,
             "icon": icon,
+            # Set only by the database block's own "+ Nueva página" (see
+            # customBlocks.jsx's addRow) — distinguishes an actual database
+            # row from an ordinary standalone page that merely happens to
+            # share entry_type "page" (e.g. one nested under this same
+            # parent via sidebar drag-and-drop). Row pages render inside
+            # their database block already; only non-row children belong in
+            # the generic "Sub-páginas" list (see get_children below).
+            "db_row": bool(data.get("db_row")),
         }
         save_index(index)
         return jsonify({"id": entry_id, "message": "Saved"})
@@ -1729,6 +1737,13 @@ def get_children(entry_id):
             "properties": m.get("properties", []),
             "order": m.get("order", 0),
             "created_at": m.get("created_at", ""),
+            # Rows created before this flag existed have no "db_row" key at
+            # all — default those to "row" (type == page), the same test
+            # every caller used before the flag existed, so pre-existing
+            # databases don't lose their rows or regain their Sub-páginas
+            # duplicates just because this shipped. Only entries created
+            # from here on carry an explicit True/False.
+            "db_row": m.get("db_row", m.get("type") == "page"),
         }
         for eid, m in index.items()
         if m.get("parent_id") == entry_id

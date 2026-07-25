@@ -180,6 +180,36 @@ function propValueDisplay(prop) {
 // doesn't export them) — kept in sync here the same way PROP_DEFAULTS.status
 // already duplicates properties.js's own default.
 const STATUS_OPTIONS = ["No iniciado", "En proceso", "Revisión", "Terminado", "Cancelado"];
+// Same colors as properties.js's STATUS_GROUPS (also not exported) — used to
+// paint the board view's lane headers so a status board reads like Notion's,
+// not just a bare text label.
+const STATUS_COLORS = {
+  "No iniciado": "#888888",
+  "En proceso": "#d4a843",
+  "Revisión": "#7c8cff",
+  "Terminado": "#4ec9b0",
+  "Cancelado": "#e05555",
+};
+// Only bounded-cardinality property types make sense to group a BOARD by —
+// grouping by a title or free-text column gives one lane per row (every
+// value is unique), which is a real degenerate case (this is exactly what
+// happened when a user's board ended up grouped by "Nombre": one card-sized
+// lane per row, no colors, no point). Table view's own "Agrupar" keeps
+// allowing any column — grouping a flat list by title is at least legible.
+function isBoardGroupableType(type) {
+  return type === "status" || type === "select" || type === "checkbox";
+}
+
+// Lane header accent color: status uses the fixed STATUS_COLORS above,
+// select uses that option's own color (set when the tag was created — same
+// place table cells and PropCell already read `.color` from), checkbox has
+// no meaningful color of its own.
+function laneColorFor(groupCol, key) {
+  if (!groupCol) return null;
+  if (groupCol.type === "status") return STATUS_COLORS[key] || null;
+  if (groupCol.type === "select") return (groupCol.options || []).find((o) => o.label === key)?.color || null;
+  return null;
+}
 
 // "__title" is the synthetic column id for the (always-present, not a real
 // schema.columns entry) title/name field, both here and in the filter/sort
@@ -587,7 +617,7 @@ export const database = createReactBlockSpec(
         fetch(`/api/entry/${pageId}/children`)
           .then((r) => r.json())
           .then((data) => {
-            setRows(Array.isArray(data) ? data.filter((c) => c.type === "page") : []);
+            setRows(Array.isArray(data) ? data.filter((c) => c.db_row) : []);
             setLoading(false);
           })
           .catch(() => setLoading(false));
@@ -761,7 +791,7 @@ export const database = createReactBlockSpec(
         const res = await fetch("/api/entry", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Sin título", entry_type: "page", parent_id: pageId }),
+          body: JSON.stringify({ title: "Sin título", entry_type: "page", parent_id: pageId, db_row: true }),
         });
         const data = await res.json();
         if (!data.id) return;
@@ -1088,7 +1118,21 @@ export const database = createReactBlockSpec(
       );
 
       const filterSortColumns = [{ id: "__title", name: "Nombre" }, ...schema.columns];
-      const groupColResolved = activeView.groupBy ? resolveFilterSortCol(activeView.groupBy, schema.columns) : null;
+      const groupColResolvedRaw = activeView.groupBy ? resolveFilterSortCol(activeView.groupBy, schema.columns) : null;
+      // A board whose stored groupBy points at a non-bounded column (e.g. an
+      // older board still set to "Nombre" from before this restriction
+      // existed) falls back to the "choose a property" empty state instead
+      // of rendering a degenerate one-card lane per row — non-destructive,
+      // the stored groupBy is untouched so switching back to Tabla still
+      // groups by it same as before.
+      const groupColResolved = activeView.type === "board" && groupColResolvedRaw && !isBoardGroupableType(groupColResolvedRaw.type)
+        ? null
+        : groupColResolvedRaw;
+      // Board's own "Agrupar" only offers columns a board can sensibly have
+      // lanes for; table view keeps the unrestricted list (title included).
+      const groupableColumns = activeView.type === "board"
+        ? schema.columns.filter((c) => isBoardGroupableType(c.type))
+        : filterSortColumns;
       // Board lanes need every known option present even at 0 cards (a lane
       // has to exist to be draggable-into) — table's own grouped rows don't
       // want that (an empty section is just clutter there), so this only
@@ -1294,8 +1338,13 @@ export const database = createReactBlockSpec(
                       }}
                     >
                       <option value="">Sin agrupar</option>
-                      {filterSortColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      {groupableColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
+                    {activeView.type === "board" && !groupableColumns.length && (
+                      <div className="bn-db-newview-title">
+                        Agregá una columna de Estado o Selección para poder agrupar el tablero.
+                      </div>
+                    )}
                     {activeView.groupBy && (
                       <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { saveView({ groupBy: null }); setCollapsedGroups(new Set()); }}>
                         Quitar agrupación
@@ -1333,10 +1382,17 @@ export const database = createReactBlockSpec(
                   Elegí una propiedad en "Agrupar" para definir las columnas del tablero.
                 </div>
               ) : (
-                groups.map(({ key, rows: laneRows }) => (
+                groups.map(({ key, rows: laneRows }) => {
+                  const laneColor = laneColorFor(groupColResolved, key);
+                  return (
                   <div className="bn-db-board-lane" key={key}>
                     <div className="bn-db-board-lane-header">
-                      <span className="bn-db-board-lane-label">{key}</span>
+                      <span
+                        className={"bn-db-board-lane-label" + (laneColor ? " bn-db-board-lane-label--tag" : "")}
+                        style={laneColor ? { "--lane-c": laneColor } : undefined}
+                      >
+                        {key}
+                      </span>
                       <span className="bn-db-board-lane-count">{laneRows.length}</span>
                     </div>
                     <div
@@ -1407,7 +1463,8 @@ export const database = createReactBlockSpec(
                       + Nueva página
                     </button>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           ) : (

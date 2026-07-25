@@ -4086,7 +4086,13 @@ async function loadEntryChildren(entryId) {
 
   const res = await fetch(`/api/entry/${entryId}/children`);
   if (!res.ok) return;
-  const children = await res.json();
+  // db_row children are rows of a database block that lives right in this
+  // page's own body (see customBlocks.jsx's addRow) — the database already
+  // renders them itself, so listing them again here would just duplicate
+  // every row as a fake "sub-page". Only children with no visual home
+  // elsewhere on the page (e.g. reparented via the sidebar tree) belong in
+  // this list.
+  const children = (await res.json()).filter(c => !c.db_row);
   if (!children.length) return;
 
   const div = document.createElement("div");

@@ -7194,26 +7194,25 @@ body {
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  min-width: 186px;
-  background: var(--bg-surface);
+  min-width: 210px;
+  background: #1a1a2e;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   padding: 4px 0;
   box-shadow: 0 8px 32px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.06) inset;
   pointer-events: all;
   user-select: none;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
 }
 .ai-inline-bar.hidden { display: none; }
+[data-theme="light"] .ai-inline-bar { background: #f4f6fb; }
 
 .ai-inline-header {
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
-  padding: 5px 12px 3px;
+  padding: 6px 14px 4px;
   font-family: var(--font-ui);
 }
 
@@ -7221,10 +7220,10 @@ body {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   font-weight: 500;
   font-family: var(--font-ui);
-  padding: 5px 12px;
+  padding: 7px 14px;
   cursor: pointer;
   white-space: nowrap;
   text-align: left;
@@ -7237,7 +7236,7 @@ body {
 }
 .ai-inline-btn--panel {
   color: var(--text-faint);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 .ai-inline-btn--panel:hover {
   background: var(--bg-elevated);
