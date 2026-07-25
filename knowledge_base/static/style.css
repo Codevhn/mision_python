@@ -6482,10 +6482,18 @@ body.home-ambient .home-hero { overflow: visible; }
 
 /* =============================================================================
    FASE 1 — Mobile drawer navigation
+   FASE 2 — Drill-down: picking a space with its own tree (Conocimiento,
+   Cursos, Tableros, Teamspace, Páginas, Mapas Mentales) swaps the full
+   11-item list for a one-line "← [icon] [Espacio]" header, handing the
+   rest of the drawer's height to that space's actual content instead of
+   permanently reserving ~500px for a list you only need once per session.
+   Tapping the back header returns to the list. Spaces with no tree of
+   their own (Inicio, Radar, Grafo, Práctica, Quiz) still just close the
+   drawer immediately, same as before — nothing to drill into there.
    ============================================================================= */
 
 /* Hidden on desktop — only rendered inside the mobile drawer */
-.mobile-space-nav { display: none; }
+.mobile-space-nav, .msn-back-header { display: none; }
 
 @media (max-width: 768px) {
   /* ── Space nav panel inside sidebar drawer ── */
@@ -6548,6 +6556,44 @@ body.home-ambient .home-hero { overflow: visible; }
     letter-spacing: 0;
   }
 
+  /* ── Drill-down back header — occupies the exact same sticky slot as
+     .mobile-space-nav above (never both visible at once; app.js toggles
+     .hidden on whichever one isn't current). Styled a shade more prominent
+     than a plain .msn-item so it reads as "you're inside a space", not just
+     another list row. ── */
+  .msn-back-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    min-height: 48px;
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-hover);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .msn-back-header.hidden { display: none; }
+  .msn-back-header:active { background: var(--accent-light); }
+  .msn-back-icon {
+    font-size: 1.1rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+  }
+  .msn-back-header .msn-icon { font-size: 1rem; }
+
   /* ── Hamburger: proper 44×44 touch target ── */
   .sidebar-toggle {
     min-width: 44px;
@@ -6570,6 +6616,9 @@ body.home-ambient .home-hero { overflow: visible; }
   }
   [data-theme="light"] .mobile-space-nav {
     background: #e6e6f4;
+  }
+  [data-theme="light"] .msn-back-header {
+    background: #dcdcef;
   }
 }
 

@@ -503,11 +503,27 @@ function isCompact() { return window.innerWidth > 768 && window.innerWidth <= 10
   }, { passive: false });
 })();
 
+// Spaces with their own sidebar tree — these are the ones the mobile
+// drawer drills down INTO; the rest (home/graph/radar/practice/quiz) just
+// close the drawer immediately since there's no tree to show underneath.
+const DRAWER_TREE_SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'pages', 'mindmaps'];
+
 function toggleSidebar() {
   if (isMobile() || isCompact()) {
     const open = $("sidebar").classList.toggle("mobile-open");
     $("sidebarOverlay").classList.toggle("active", open);
     document.body.classList.toggle("sidebar-open", open);
+    // Reopening the drawer while already inside a space with a tree should
+    // drop you back into that tree, not force you to re-pick it from the
+    // full list every time — the back header is right there if you do
+    // want to switch spaces.
+    if (open && isMobile() && window._setMobileDrawerMode) {
+      const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
+      window._setMobileDrawerMode(
+        activeSpace && DRAWER_TREE_SPACES.includes(activeSpace) ? 'content' : 'list',
+        activeSpace
+      );
+    }
   } else {
     $("sidebar").classList.toggle("collapsed");
   }
@@ -5189,6 +5205,29 @@ function setSidebarVisible(visible) {
 (function() {
   const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
 
+  // Mobile drawer drill-down: swaps the full space list for a compact
+  // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
+  // the drawer's height instead of that height being permanently split
+  // with an 11-item list you only need once per session. Also exposed on
+  // window since toggleSidebar() (outside this IIFE) needs to set the
+  // right mode when the drawer is reopened while already inside a space.
+  function _setMobileDrawerMode(mode, space) {
+    const nav = document.getElementById('mobileSpaceNav');
+    const back = document.getElementById('msnBackHeader');
+    if (!nav || !back) return;
+    if (mode === 'content' && space) {
+      const srcBtn = nav.querySelector(`.msn-item[data-space="${space}"]`);
+      $('msnBackSpaceIcon').textContent = srcBtn?.querySelector('.msn-icon')?.textContent || '';
+      $('msnBackSpaceLabel').textContent = srcBtn?.querySelector('.msn-label')?.textContent || '';
+      nav.classList.add('hidden');
+      back.classList.remove('hidden');
+    } else {
+      nav.classList.remove('hidden');
+      back.classList.add('hidden');
+    }
+  }
+  window._setMobileDrawerMode = _setMobileDrawerMode;
+
   function switchSpace(space) {
     // Close floating panels that live outside #entryView
     closeHistoryPanel();
@@ -5313,14 +5352,24 @@ function setSidebarVisible(visible) {
       btn.addEventListener('click', () => switchSpace(btn.dataset.space));
     });
 
-    // Mobile drawer space nav — switch space, close only for spaces with no sidebar tree
+    // Mobile drawer space nav — switch space; for spaces with their own tree,
+    // drill down into it instead of closing (see _setMobileDrawerMode).
     document.querySelectorAll('.msn-item[data-space]').forEach(btn => {
       btn.addEventListener('click', () => {
         const space = btn.dataset.space;
         switchSpace(space);
-        const noTree = ['home', 'graph', 'radar', 'practice', 'quiz'];
-        if (noTree.includes(space)) closeSidebarMobile();
+        if (DRAWER_TREE_SPACES.includes(space)) {
+          _setMobileDrawerMode('content', space);
+        } else {
+          closeSidebarMobile();
+        }
       });
+    });
+
+    // Drill-down back header — return to the full space list without
+    // touching whatever space/content is actually showing behind the drawer.
+    document.getElementById('msnBackHeader')?.addEventListener('click', () => {
+      _setMobileDrawerMode('list');
     });
 
     // Search icon → Command Palette

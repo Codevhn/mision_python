@@ -140,7 +140,12 @@
         </div>
       </div>
 
-      <!-- MOBILE SPACE NAVIGATION (hidden on desktop via CSS, shown in drawer on mobile) -->
+      <!-- MOBILE SPACE NAVIGATION (hidden on desktop via CSS, shown in drawer on mobile).
+           Drill-down: this list and the back-header below occupy the SAME sticky
+           slot — only one is ever visible, toggled by _setMobileDrawerMode() in
+           app.js. Picking a space with its own tree hides this list and hands the
+           rest of the drawer's height to that tree instead of always reserving
+           space for all 11 items regardless of which one you actually need. -->
       <nav class="mobile-space-nav" id="mobileSpaceNav">
         <button class="msn-item" data-space="home"><span class="msn-icon">⌂</span><span class="msn-label">Inicio</span></button>
         <button class="msn-item" data-space="knowledge"><span class="msn-icon">📖</span><span class="msn-label">Conocimiento</span></button>
@@ -154,6 +159,11 @@
         <button class="msn-item" id="msnPractice" data-space="practice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
         <button class="msn-item" id="msnQuiz" data-space="quiz"><span class="msn-icon">✦</span><span class="msn-label">Quiz</span></button>
       </nav>
+      <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
+        <span class="msn-back-icon">←</span>
+        <span class="msn-icon" id="msnBackSpaceIcon"></span>
+        <span class="msn-label" id="msnBackSpaceLabel"></span>
+      </button>
 
       <!-- SPACE: KNOWLEDGE -->
       <div class="sidebar-space" id="spaceKnowledge" style="display:none">
