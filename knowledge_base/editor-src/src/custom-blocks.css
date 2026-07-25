@@ -215,6 +215,13 @@
 }
 .bn-db-newview-item { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
 
+.bn-db-group-empty-hint {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  padding: 4px 8px 8px;
+}
+
 /* Toolbar above the grid — filter/sort on the left, row-height on the
    right (matches where Notion's own equivalent controls sit). */
 .bn-db-toolbar {
@@ -689,6 +696,18 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
   font-size: 0.85em;
   padding: 24px 4px;
 }
+.bn-db-board-empty p { margin: 0 0 10px; max-width: 380px; }
+.bn-db-board-empty-cta {
+  border: 1px solid var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.85em;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bn-db-board-empty-cta:hover { background: var(--accent); color: #fff; }
 .bn-db-board-lane {
   flex: 0 0 260px;
   width: 260px;

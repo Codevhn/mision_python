@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 import shutil
+import unicodedata
 import uuid
 import base64
 import time
@@ -80,6 +81,16 @@ def save_index(index):
 
 
 def slugify(text):
+    # Normalize to NFC first: text typed/pasted from different sources
+    # (notably macOS) can represent the same accented character as either
+    # one composed codepoint or a base letter + combining accent — those
+    # look and print identically but are different strings, so an entry_id
+    # built from one form silently stops matching a request built from the
+    # other (a real 404 seen in production on a title with an accent).
+    # \w below is Unicode-aware in Python 3, so accents survive the strip;
+    # normalizing first guarantees whichever form survives is the same one
+    # every future comparison/URL build will also produce.
+    text = unicodedata.normalize("NFC", text)
     text = text.lower().strip()
     text = re.sub(r"[^\w\s-]", "", text)
     text = re.sub(r"[\s_-]+", "-", text)

@@ -713,6 +713,23 @@ export const database = createReactBlockSpec(
         setViewMenuOpen(null);
       };
 
+      // A board with no Estado/Selección/Casilla column at all has nothing
+      // to offer in "Agrupar" — a dead end otherwise. One click adds a
+      // ready-to-use "Estado" column (same column a brand-new database
+      // starts with) and groups THIS board by it immediately, instead of
+      // making the user go add a column manually and come back.
+      const addBoardStatusColumn = () => {
+        const id = "col_" + Math.random().toString(36).slice(2, 9);
+        const col = { id, name: "Estado", type: "status" };
+        saveSchema({
+          ...schema,
+          columns: [...schema.columns, col],
+          views: schema.views.map((v) => (v.id === activeView.id ? { ...v, groupBy: id } : v)),
+        });
+        setCollapsedGroups(new Set());
+        setGroupOpen(false);
+      };
+
       // Matches Notion's own "+" behavior: the column exists in the grid
       // immediately (default type "text", unnamed) — no modal blocks on
       // typing a name first. The same popover used to rename/retype an
@@ -1328,22 +1345,28 @@ export const database = createReactBlockSpec(
                 </button>
                 {groupOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
-                    <select
-                      className="bn-db-pop-select"
-                      value={activeView.groupBy || ""}
-                      onChange={(e) => {
-                        const colId = e.target.value;
-                        saveView({ groupBy: colId || null });
-                        setCollapsedGroups(new Set());
-                      }}
-                    >
-                      <option value="">Sin agrupar</option>
-                      {groupableColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    {activeView.type === "board" && !groupableColumns.length && (
-                      <div className="bn-db-newview-title">
-                        Agregá una columna de Estado o Selección para poder agrupar el tablero.
-                      </div>
+                    {activeView.type === "board" && !groupableColumns.length ? (
+                      <>
+                        <div className="bn-db-group-empty-hint">
+                          Este tablero todavía no tiene ninguna columna de Estado, Selección o Casilla para agrupar en carriles.
+                        </div>
+                        <button className="bn-db-colmenu-item" onClick={addBoardStatusColumn}>
+                          + Agregar columna "Estado"
+                        </button>
+                      </>
+                    ) : (
+                      <select
+                        className="bn-db-pop-select"
+                        value={activeView.groupBy || ""}
+                        onChange={(e) => {
+                          const colId = e.target.value;
+                          saveView({ groupBy: colId || null });
+                          setCollapsedGroups(new Set());
+                        }}
+                      >
+                        <option value="">Sin agrupar</option>
+                        {groupableColumns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
                     )}
                     {activeView.groupBy && (
                       <button className="bn-db-colmenu-item bn-db-colmenu-danger" onClick={() => { saveView({ groupBy: null }); setCollapsedGroups(new Set()); }}>
@@ -1379,7 +1402,14 @@ export const database = createReactBlockSpec(
             <div className="bn-db-board">
               {!groups ? (
                 <div className="bn-db-board-empty">
-                  Elegí una propiedad en "Agrupar" para definir las columnas del tablero.
+                  {groupableColumns.length ? (
+                    <>Elegí una propiedad en "Agrupar" para definir las columnas del tablero.</>
+                  ) : (
+                    <>
+                      <p>Este tablero todavía no tiene ninguna columna de Estado, Selección o Casilla para agrupar en carriles.</p>
+                      <button className="bn-db-board-empty-cta" onClick={addBoardStatusColumn}>+ Agregar columna "Estado"</button>
+                    </>
+                  )}
                 </div>
               ) : (
                 groups.map(({ key, rows: laneRows }) => {
