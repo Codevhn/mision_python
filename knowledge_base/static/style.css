@@ -109,18 +109,25 @@
 
 /* ── LIGHT variant ── */
 [data-theme="light"] {
+  /* Neutral grayscale (R=G=B) top to bottom — no blue/lavender cast. Was a
+     cool-tinted scale (e.g. --layer-2: #e4ecf6) that read as a dingy gray
+     wash instead of the crisp white/pure-gray look the app is meant to
+     have; every surface token below was tinted the same way and is now
+     achromatic. --bg-hover uses black-at-low-opacity instead of a fixed
+     color specifically so it can never carry a hue no matter what sits
+     underneath it. */
   --layer-0: #ffffff;
-  --layer-1: #dce4ee;
-  --layer-2: #e4ecf6;
-  --layer-3: #eaf0f8;
-  --layer-4: #f0f5fc;
+  --layer-1: #f5f5f5;
+  --layer-2: #efefef;
+  --layer-3: #e8e8e8;
+  --layer-4: #e0e0e0;
 
   --bg:          var(--layer-0);
-  --bg-sidebar:  rgba(215, 225, 240, 0.82);
-  --bg-surface:  rgba(228, 236, 248, 0.80);
-  --bg-elevated: rgba(236, 243, 252, 0.88);
-  --bg-hover:    rgba(205, 218, 235, 0.90);
-  --bg-code:     #edf2f8;
+  --bg-sidebar:  rgba(245, 245, 245, 0.92);
+  --bg-surface:  rgba(248, 248, 248, 0.85);
+  --bg-elevated: rgba(252, 252, 252, 0.92);
+  --bg-hover:    rgba(0, 0, 0, 0.045);
+  --bg-code:     #f5f5f5;
 
   --border:       rgba(0,0,0,0.14);
   --border-light: rgba(0,0,0,0.08);
@@ -130,7 +137,7 @@
   --text-faint: #9ca3af;
   --fg:         var(--text);
   --fg-muted:   var(--text-muted);
-  --bg-overlay: #eaf0f8;
+  --bg-overlay: #f7f7f7;
 
   --accent:         #1793d1;
   --accent-hover:   #2da8e0;
@@ -4287,7 +4294,7 @@ body.sidebar-open .layout {
   background: rgba(0,0,0,0.07);
   color: #0d0d1c;
 }
-[data-theme="light"] .ctx-more-menu { background: #f4f6fb; }
+[data-theme="light"] .ctx-more-menu { background: #f6f6f6; }
 
 /* =============================================
 /* =============================================
@@ -4732,11 +4739,16 @@ body {
 
 /* ── LIGHT MODE ── */
 [data-theme="light"] {
-  --layer-0: #ffffff; --layer-1: #e8e8f2; --layer-2: #e2e2ee;
-  --layer-3: #dcdcea; --layer-4: #d6d6e6;
-  --bg: var(--layer-0); --bg-sidebar: rgba(232,232,244,0.88);
-  --bg-surface: rgba(240,240,252,0.72); --bg-elevated: rgba(248,248,255,0.82);
-  --bg-hover: rgba(224,224,240,0.90); --bg-code: #edf2f8;
+  /* Same neutral-grayscale rule as the base light theme above — this block
+     loads later and wins the cascade for these tokens, so it was the one
+     actually producing the tinted look; kept in lockstep with the values
+     above rather than removed, since something later in the file may still
+     rely on this block existing. */
+  --layer-0: #ffffff; --layer-1: #f5f5f5; --layer-2: #efefef;
+  --layer-3: #e8e8e8; --layer-4: #e0e0e0;
+  --bg: var(--layer-0); --bg-sidebar: rgba(245,245,245,0.92);
+  --bg-surface: rgba(248,248,248,0.85); --bg-elevated: rgba(252,252,252,0.92);
+  --bg-hover: rgba(0,0,0,0.045); --bg-code: #f5f5f5;
   --border: rgba(0,0,0,0.08); --border-light: rgba(0,0,0,0.05); --glass-border: rgba(0,0,0,0.08);
   --text: #111827; --text-muted: #6b7280; --text-faint: #9ca3af;
   --glass-blur: blur(24px) saturate(180%);
@@ -4747,17 +4759,17 @@ body {
   background-image: none !important;
 }
 [data-theme="light"] .topbar {
-  background: rgba(238,238,248,0.85) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
+  background: rgba(255,255,255,0.9) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .sidebar {
-  background: rgba(230,230,244,0.88) !important; border-right-color: rgba(0,0,0,0.07) !important; }
+  background: rgba(248,248,248,0.92) !important; border-right-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .activity-bar {
-  background: rgba(224,224,238,0.92) !important; border-right-color: rgba(0,0,0,0.07) !important; }
+  background: rgba(244,244,244,0.94) !important; border-right-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .ab-item { color: #374151 !important; font-weight: 600 !important; }
 [data-theme="light"] .ab-item:hover { background: rgba(0,0,0,0.06) !important; color: #0c0c1e !important; }
 [data-theme="light"] .ab-item--active { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; color: var(--accent) !important; font-weight: 700 !important; }
 [data-theme="light"] .btn-ghost { color: #6b7280 !important; border-color: rgba(0,0,0,0.12) !important; }
 [data-theme="light"] .btn-ghost:hover { background: rgba(0,0,0,0.06) !important; color: #0c0c1e !important; }
-[data-theme="light"] .modal { background: rgba(245,245,255,0.92) !important; border-color: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .modal { background: rgba(255,255,255,0.95) !important; border-color: rgba(0,0,0,0.08) !important; }
 [data-theme="light"] .modal-header h2,
 [data-theme="light"] .modal-header span { color: #0c0c1e !important; }
 [data-theme="light"] .modal-close { color: rgba(0,0,0,0.35) !important; }
@@ -4789,7 +4801,7 @@ body {
 }
 [data-theme="light"] .home-card-title { color: #0c0c1e !important; }
 [data-theme="light"] .home-card-meta  { color: inherit !important; }
-[data-theme="light"] .ctx-bar { background: rgba(230,230,244,0.85) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
+[data-theme="light"] .ctx-bar { background: rgba(255,255,255,0.92) !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .breadcrumb-seg { color: rgba(0,0,0,0.40) !important; }
 [data-theme="light"] .breadcrumb-space { color: var(--accent) !important; }
 [data-theme="light"] .breadcrumb-current { color: #0c0c1e !important; }
@@ -4800,10 +4812,10 @@ body {
 [data-theme="light"] .inline-title { color: #0c0c1e !important; }
 [data-theme="light"] .tree-entry.active { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
 [data-theme="light"] .workspace-avatar { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 80%, #fff)) !important; }
-[data-theme="light"] .kb-board-column { background: rgba(230,230,244,0.75) !important; border-color: rgba(0,0,0,0.07) !important; }
+[data-theme="light"] .kb-board-column { background: rgba(240,240,240,0.8) !important; border-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .kb-card { background: rgba(255,255,255,0.80) !important; border-color: rgba(0,0,0,0.07) !important; }
 [data-theme="light"] .kb-card:hover { border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important; }
-[data-theme="light"] .cmd-modal { background: rgba(245,245,255,0.95) !important; }
+[data-theme="light"] .cmd-modal { background: rgba(255,255,255,0.96) !important; }
 [data-theme="light"] .cmd-input { color: #0c0c1e !important; }
 [data-theme="light"] .cmd-group-label { color: rgba(0,0,0,0.35) !important; }
 [data-theme="light"] .cmd-item { color: #0c0c1e !important; }
@@ -7204,7 +7216,7 @@ body {
   user-select: none;
 }
 .ai-inline-bar.hidden { display: none; }
-[data-theme="light"] .ai-inline-bar { background: #f4f6fb; }
+[data-theme="light"] .ai-inline-bar { background: #f6f6f6; }
 
 .ai-inline-header {
   font-size: 0.68rem;
