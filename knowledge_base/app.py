@@ -2295,25 +2295,15 @@ def get_courses_tree():
     return jsonify(tree)
 
 
-@app.route("/api/courses/entry", methods=["POST"])
-def create_course_entry():
-    data = request.json
-    course             = data.get("course", "").strip()
-    module             = data.get("module", "").strip()
-    title              = data.get("title", "").strip()
-    raw                = data.get("raw_text", "").strip()
-    icon               = data.get("icon", "").strip()
-    module_type        = data.get("module_type", "").strip()
-    module_type_custom = data.get("module_type_custom", "").strip()
-    module_number      = data.get("module_number", "").strip()
-    module_title_meta  = data.get("module_title", "").strip()
-    if not all([course, module, title, raw]):
-        return jsonify({"error": "Faltan campos"}), 400
-    # `course` is now sent as the slug directly from the frontend
-    course_slug = course
+def _create_course_entry_internal(course_slug, module, title, raw, icon="",
+                                   module_type="", module_type_custom="",
+                                   module_number="", module_title_meta=""):
+    """Shared by the manual '+ Lección' route and the roadmap-import endpoint
+    below — same slug-collision and per-(course,module) order-increment
+    logic either way. Returns (entry_id, None) or (None, error_message)."""
     courses_data = _sync_courses_from_index()
     if course_slug not in courses_data["courses"]:
-        return jsonify({"error": f"El curso '{course_slug}' no existe. Crea la entidad curso primero."}), 400
+        return None, f"El curso '{course_slug}' no existe. Crea la entidad curso primero."
     course_label_stored = courses_data["courses"][course_slug].get("label", course_slug)
     module_slug = slugify(module)
     entry_id    = slugify(title)
@@ -2356,7 +2346,157 @@ def create_course_entry():
         "icon": icon,
     }
     save_index(index)
+    return entry_id, None
+
+
+@app.route("/api/courses/entry", methods=["POST"])
+def create_course_entry():
+    data = request.json
+    course             = data.get("course", "").strip()
+    module             = data.get("module", "").strip()
+    title              = data.get("title", "").strip()
+    raw                = data.get("raw_text", "").strip()
+    icon               = data.get("icon", "").strip()
+    module_type        = data.get("module_type", "").strip()
+    module_type_custom = data.get("module_type_custom", "").strip()
+    module_number      = data.get("module_number", "").strip()
+    module_title_meta  = data.get("module_title", "").strip()
+    if not all([course, module, title, raw]):
+        return jsonify({"error": "Faltan campos"}), 400
+    # `course` is now sent as the slug directly from the frontend
+    entry_id, err = _create_course_entry_internal(
+        course, module, title, raw, icon,
+        module_type, module_type_custom, module_number, module_title_meta,
+    )
+    if err:
+        return jsonify({"error": err}), 400
     return jsonify({"id": entry_id})
+
+
+# ── ROADMAP IMPORT: paste a document → proposed módulos/lecciones ─────────
+_COURSE_IMPORT_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+
+def _parse_canonical_course_md(text):
+    """Parses the system's one standard course-markdown shape: '## ' marks a
+    module, '### ' marks a lesson, everything until the next heading of that
+    level or higher is that lesson's body. Returns a list of
+    {"title": module_title, "lessons": [{"title", "content"}]} — empty list
+    if the text has no '###' lesson headings at all (i.e. doesn't conform)."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    modules = []
+    cur_module = None
+    cur_lesson = None
+    buf = []
+
+    def flush():
+        if cur_lesson is not None:
+            cur_lesson["content"] = "\n".join(buf).strip()
+
+    for line in lines:
+        m = _COURSE_IMPORT_HEADING_RE.match(line)
+        if m:
+            level = len(m.group(1))
+            title = m.group(2).strip()
+            if level == 2:
+                flush()
+                cur_module = {"title": title, "lessons": []}
+                modules.append(cur_module)
+                cur_lesson = None
+                buf = []
+                continue
+            if level == 3:
+                flush()
+                if cur_module is None:
+                    cur_module = {"title": "Módulo 1", "lessons": []}
+                    modules.append(cur_module)
+                cur_lesson = {"title": title, "content": ""}
+                cur_module["lessons"].append(cur_lesson)
+                buf = []
+                continue
+            # h1 or h4+ — not a structural split point, keep as body content
+        if cur_lesson is not None:
+            buf.append(line)
+    flush()
+    return modules
+
+
+_COURSE_NORMALIZE_SYSTEM = (
+    "Eres un asistente que reestructura documentos educativos (roadmaps, "
+    "temarios, tablas de contenido) al formato Markdown estándar de curso "
+    "que usa este sistema. Reglas ESTRICTAS:\n"
+    "- Usa '## ' para cada módulo/fase y '### ' para cada lección dentro de ese módulo.\n"
+    "- CONSERVA todo el contenido informativo original — no lo resumas ni inventes información nueva.\n"
+    "- Si el documento original es una tabla, cada fila se convierte en UNA lección dentro de un "
+    "módulo razonable (agrupa filas relacionadas bajo el mismo módulo si el documento lo sugiere, "
+    "o usa un solo módulo si no hay agrupación clara). El contenido de cada columna de la fila se "
+    "convierte en viñetas dentro del cuerpo de la lección.\n"
+    "- No agregues comentarios ni explicaciones fuera del markdown resultante.\n"
+    "- Devuelve SOLO el markdown resultante, empezando directamente en la primera línea con '## '."
+)
+
+
+@app.route("/api/courses/<course_id>/import/preview", methods=["POST"])
+def preview_course_import(course_id):
+    data = request.json or {}
+    raw = (data.get("raw_text") or "").strip()
+    if not raw:
+        return jsonify({"error": "Pega el contenido del roadmap primero"}), 400
+    courses_data = _sync_courses_from_index()
+    if course_id not in courses_data["courses"]:
+        return jsonify({"error": f"El curso '{course_id}' no existe."}), 400
+
+    modules = _parse_canonical_course_md(raw)
+    used_ai_normalize = False
+    ai_error = None
+
+    if not modules:
+        content, err = _call_ai(
+            _COURSE_NORMALIZE_SYSTEM,
+            f"Documento original:\n\n{raw}\n\nConviértelo al formato estándar descrito.",
+            max_tokens=4000, provider=data.get("provider"), model=data.get("model"),
+        )
+        if err:
+            resp, _status = err
+            try:
+                ai_error = resp.get_json().get("error", "No se pudo normalizar con IA")
+            except Exception:
+                ai_error = "No se pudo normalizar con IA"
+        else:
+            used_ai_normalize = True
+            modules = _parse_canonical_course_md(content)
+
+    if not modules:
+        # Safety net — a malformed/unparseable document (even after an AI
+        # normalize attempt) never hard-fails: it becomes one lesson the
+        # user can still edit or split manually in the preview step.
+        title_match = re.search(r"^#\s+(.+)", raw, re.MULTILINE)
+        fallback_title = title_match.group(1).strip() if title_match else "Contenido importado"
+        modules = [{"title": "Módulo 1", "lessons": [{"title": fallback_title, "content": raw}]}]
+
+    return jsonify({"used_ai_normalize": used_ai_normalize, "ai_error": ai_error, "modules": modules})
+
+
+@app.route("/api/courses/<course_id>/import", methods=["POST"])
+def commit_course_import(course_id):
+    data = request.json or {}
+    modules = data.get("modules") or []
+    created = []
+    for mod in modules:
+        module_label = (mod.get("title") or "").strip()
+        if not module_label:
+            continue
+        for lesson in (mod.get("lessons") or []):
+            title = (lesson.get("title") or "").strip()
+            if not title:
+                continue
+            content = (lesson.get("content") or "").strip() or f"# {title}\n\n_Contenido pendiente._"
+            entry_id, err = _create_course_entry_internal(course_id, module_label, title, content)
+            if err:
+                return jsonify({"error": err}), 400
+            created.append(entry_id)
+    if not created:
+        return jsonify({"error": "No se creó ninguna lección — revisa que cada módulo tenga al menos una lección con título"}), 400
+    return jsonify({"created": created, "count": len(created)})
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────

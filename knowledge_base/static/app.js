@@ -138,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initRelationsPanel();
   initAIPanel();
   initPasteMarkdown();
+  initImportRoadmap();
   initPagePeek();
   // Deep link: ?open=<entryId> — the target of "Copiar enlace" (database
   // row menu, customBlocks.jsx). No other feature reads location.search
@@ -6170,6 +6171,12 @@ async function loadCourseView(courseSlug, courseEntity) {
     cvNewLessonBtn.onclick = () => openNewLessonModal(courseSlug);
   }
 
+  // Wire "↓ Importar roadmap" button in course view header
+  const cvImportRoadmapBtn = $('cvImportRoadmapBtn');
+  if (cvImportRoadmapBtn) {
+    cvImportRoadmapBtn.onclick = () => openImportRoadmapModal(courseSlug);
+  }
+
   // Update modules tab label to reflect dominant section type (Módulos / Fases / Semanas…)
   _updateModulesTabLabel(courseSlug);
 
@@ -6194,9 +6201,13 @@ function renderCourseTab(tab, courseSlug, stats) {
       body.innerHTML = `
         <div class="cv-empty-state">
           <p class="cv-empty">No hay lecciones todavía.</p>
-          <button class="btn-primary" id="cvEmptyNewLesson">+ Crear primera lección</button>
+          <div style="display:flex;gap:8px;justify-content:center">
+            <button class="btn-ghost" id="cvEmptyImportRoadmap">↓ Importar roadmap</button>
+            <button class="btn-primary" id="cvEmptyNewLesson">+ Crear primera lección</button>
+          </div>
         </div>`;
       $('cvEmptyNewLesson')?.addEventListener('click', () => openNewLessonModal(courseSlug));
+      $('cvEmptyImportRoadmap')?.addEventListener('click', () => openImportRoadmapModal(courseSlug));
       return;
     }
     body.innerHTML = '';
@@ -7527,6 +7538,202 @@ function initPasteMarkdown() {
     }
     close();
     showToast('Contenido cargado en el editor', 'success');
+  });
+}
+
+// ── Importar roadmap: pegar documento → (normalizar con IA si hace falta) →
+// vista previa editable → crear módulos/lecciones reales ────────────────────
+const _irState = { courseSlug: '', modelChoice: null };
+
+function openImportRoadmapModal(courseSlug) {
+  const overlay = $('importRoadmapOverlay');
+  if (!overlay) return;
+  _irState.courseSlug = courseSlug;
+  _irState.modelChoice = null;
+  $('irRawInput').value = '';
+  $('irAiNote').classList.add('hidden');
+  $('irTreeContainer').innerHTML = '';
+  $('irStepPreview').classList.add('hidden');
+  $('irFooterPreview').classList.add('hidden');
+  $('irStepPaste').classList.remove('hidden');
+  $('irFooterPaste').classList.remove('hidden');
+  overlay.classList.remove('hidden');
+  setTimeout(() => $('irRawInput')?.focus(), 60);
+}
+
+function closeImportRoadmapModal() {
+  $('importRoadmapOverlay')?.classList.add('hidden');
+}
+
+// A module/lesson row is built once from the proposed data, then edited
+// in-place via its own inputs — the DOM itself is the state, read back at
+// commit time, so there's no separate JS model to keep in sync.
+function _irLessonNode(lesson) {
+  const el = document.createElement('div');
+  el.className = 'ir-lesson';
+  el.style.cssText = 'border-left:2px solid var(--accent);padding-left:10px;margin:6px 0 6px 4px';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="text" class="ir-lesson-title" placeholder="Título de la lección"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+               padding:5px 8px;color:var(--text);font-size:0.85rem" />
+      <button class="btn-ghost ir-toggle-content" style="font-size:0.75rem;padding:3px 6px">Ver contenido</button>
+      <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px">🗑</button>
+    </div>
+    <textarea class="ir-lesson-content hidden" style="width:100%;min-height:120px;margin-top:6px;
+      font-family:var(--font-mono);font-size:0.78rem;background:var(--bg);border:1px solid var(--border);
+      border-radius:6px;color:var(--text);padding:8px;resize:vertical;box-sizing:border-box"></textarea>`;
+  el.querySelector('.ir-lesson-title').value = lesson.title || '';
+  el.querySelector('.ir-lesson-content').value = lesson.content || '';
+  el.querySelector('.ir-del-lesson').addEventListener('click', () => el.remove());
+  el.querySelector('.ir-toggle-content').addEventListener('click', e => {
+    const ta = el.querySelector('.ir-lesson-content');
+    ta.classList.toggle('hidden');
+    e.target.textContent = ta.classList.contains('hidden') ? 'Ver contenido' : 'Ocultar contenido';
+  });
+  return el;
+}
+
+function _irModuleNode(mod) {
+  const el = document.createElement('div');
+  el.className = 'ir-module';
+  el.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;background:var(--bg-elevated)';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <input type="text" class="ir-module-title" placeholder="Título del módulo"
+        style="flex:1;font-weight:600;background:var(--bg);border:1px solid var(--border);
+               border-radius:6px;padding:6px 8px;color:var(--text)" />
+      <button class="btn-ghost ir-del-module" title="Eliminar módulo" style="padding:4px 8px">🗑</button>
+    </div>
+    <div class="ir-lessons"></div>
+    <button class="btn-ghost ir-add-lesson" style="font-size:0.78rem;margin-top:4px">+ Agregar lección</button>`;
+  el.querySelector('.ir-module-title').value = mod.title || '';
+  const lessonsEl = el.querySelector('.ir-lessons');
+  (mod.lessons || []).forEach(l => lessonsEl.appendChild(_irLessonNode(l)));
+  el.querySelector('.ir-del-module').addEventListener('click', () => el.remove());
+  el.querySelector('.ir-add-lesson').addEventListener('click', () => {
+    lessonsEl.appendChild(_irLessonNode({ title: '', content: '' }));
+  });
+  return el;
+}
+
+function _irRenderPreview(data) {
+  const aiNote = $('irAiNote');
+  if (data.used_ai_normalize) {
+    aiNote.textContent = '✨ El documento no seguía el formato estándar del sistema — la IA lo convirtió a módulos y lecciones. Revísalo antes de confirmar.';
+    aiNote.classList.remove('hidden');
+  } else if (data.ai_error) {
+    aiNote.textContent = `⚠ No se pudo usar IA para reestructurar (${data.ai_error}). Se importó como una sola lección — puedes dividirla manualmente abajo.`;
+    aiNote.classList.remove('hidden');
+  } else {
+    aiNote.classList.add('hidden');
+  }
+  const container = $('irTreeContainer');
+  container.innerHTML = '';
+  (data.modules || []).forEach(mod => container.appendChild(_irModuleNode(mod)));
+  $('irStepPaste').classList.add('hidden');
+  $('irFooterPaste').classList.add('hidden');
+  $('irStepPreview').classList.remove('hidden');
+  $('irFooterPreview').classList.remove('hidden');
+}
+
+function _irCollectTree() {
+  const modules = [];
+  document.querySelectorAll('#irTreeContainer > .ir-module').forEach(modEl => {
+    const title = modEl.querySelector('.ir-module-title').value.trim();
+    const lessons = [];
+    modEl.querySelectorAll('.ir-lesson').forEach(lessonEl => {
+      const lt = lessonEl.querySelector('.ir-lesson-title').value.trim();
+      const lc = lessonEl.querySelector('.ir-lesson-content').value;
+      if (lt) lessons.push({ title: lt, content: lc });
+    });
+    if (title && lessons.length) modules.push({ title, lessons });
+  });
+  return modules;
+}
+
+function initImportRoadmap() {
+  const overlay = $('importRoadmapOverlay');
+  if (!overlay) return;
+
+  // Mounted once — this modal is static in the DOM (like Ask AI's panel),
+  // never rebuilt on each open, so remounting here on every
+  // openImportRoadmapModal() call would just leak an orphaned portal per open.
+  _mountModelSelector($('irModelCSelect'), {
+    context: 'course-import',
+    onChange: choice => { _irState.modelChoice = choice; },
+  });
+
+  $('importRoadmapClose').addEventListener('click', closeImportRoadmapModal);
+  $('irCancelBtn').addEventListener('click', closeImportRoadmapModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeImportRoadmapModal(); });
+
+  $('irAddModuleBtn').addEventListener('click', () => {
+    $('irTreeContainer').appendChild(_irModuleNode({ title: '', lessons: [{ title: '', content: '' }] }));
+  });
+
+  $('irBackBtn').addEventListener('click', () => {
+    $('irStepPreview').classList.add('hidden');
+    $('irFooterPreview').classList.add('hidden');
+    $('irStepPaste').classList.remove('hidden');
+    $('irFooterPaste').classList.remove('hidden');
+  });
+
+  $('irPreviewBtn').addEventListener('click', async () => {
+    const raw = $('irRawInput').value.trim();
+    if (!raw) { showToast('Pega el contenido del roadmap primero', 'error'); return; }
+    const btn = $('irPreviewBtn');
+    btn.disabled = true;
+    const prevLabel = btn.textContent;
+    btn.textContent = 'Analizando…';
+    try {
+      const body = { raw_text: raw };
+      if (_irState.modelChoice) {
+        body.provider = _irState.modelChoice.provider;
+        body.model = _irState.modelChoice.model;
+      }
+      const res = await fetch(`/api/courses/${_irState.courseSlug}/import/preview`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'No se pudo analizar el documento', 'error'); return; }
+      _irRenderPreview(data);
+    } catch (e) {
+      showToast('Error de red al analizar el documento', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
+  });
+
+  $('irCommitBtn').addEventListener('click', async () => {
+    const modules = _irCollectTree();
+    if (!modules.length) { showToast('Agrega al menos un módulo con una lección antes de confirmar', 'error'); return; }
+    const btn = $('irCommitBtn');
+    btn.disabled = true;
+    const prevLabel = btn.textContent;
+    btn.textContent = 'Creando…';
+    try {
+      const res = await fetch(`/api/courses/${_irState.courseSlug}/import`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modules }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Error al crear las lecciones', 'error'); return; }
+      showToast(`${data.count} lección(es) creadas`, 'success');
+      closeImportRoadmapModal();
+      _coursesTreeData = await fetch('/api/courses/tree').then(r => r.json());
+      renderCoursesTree(_coursesTreeData, _irState.courseSlug);
+      if (_activeCourseSlug === _irState.courseSlug) {
+        const courses = await fetch('/api/courses').then(r => r.json());
+        const course = courses.find(c => c.id === _irState.courseSlug) || { label: _irState.courseSlug };
+        loadCourseView(_irState.courseSlug, course);
+      }
+    } catch (e) {
+      showToast('Error de red al crear las lecciones', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
   });
 }
 
