@@ -1941,6 +1941,20 @@ function _sanitizeMarkdownForEditor(md) {
 
 // ---- ENTRY VIEW ----
 async function loadEntry(id, opts = {}) {
+  // Fetch FIRST — a broken/stale link (e.g. a page-link block whose target
+  // was deleted or renamed) must not touch any state for the page that's
+  // still actually on screen. This used to cancel the current page's
+  // pending autosave and overwrite currentEntryId/window._currentEntryId
+  // unconditionally before knowing whether `id` even resolves, so a single
+  // dead link could silently redirect the currently-open database block's
+  // "whose children do I list" pointer to a nonexistent id (corrupting
+  // what the table showed) and drop a queued autosave on the floor, while
+  // the visible page never appeared to change at all.
+  const entryUrl = opts.force ? `/api/entry/${id}?_=${Date.now()}` : `/api/entry/${id}`;
+  const res = await fetch(entryUrl, opts.force ? { cache: "no-store" } : undefined);
+  if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
+  const data = await res.json();
+
   // CRITICAL: cancel any pending auto-save from the previous entry before switching
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
@@ -1956,11 +1970,6 @@ async function loadEntry(id, opts = {}) {
   document.querySelectorAll(".tree-pinned-entry").forEach(el => {
     el.classList.toggle("active", el.dataset.id === id);
   });
-
-  const entryUrl = opts.force ? `/api/entry/${id}?_=${Date.now()}` : `/api/entry/${id}`;
-  const res = await fetch(entryUrl, opts.force ? { cache: "no-store" } : undefined);
-  if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
-  const data = await res.json();
 
   $("welcome").classList.add("hidden");
   _setHomeAmbient(false);
