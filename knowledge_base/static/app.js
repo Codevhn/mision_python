@@ -2030,12 +2030,17 @@ async function loadEntry(id, opts = {}) {
 
   // Track in recently visited
   _trackRecent(id, m.title, m.category_label || m.category, m.topic_label || m.topic, m.cover || "", m.icon || "");
-  // Track studying if opened from courses space
-  try {
-    if (sessionStorage.getItem('activeSpace') === 'courses') {
-      _trackStudying(id, m.title, typeof _activeCourseSlug !== 'undefined' ? _activeCourseSlug : '');
-    }
-  } catch {}
+  // Track studying — gated on the ENTRY'S OWN type, never on which space
+  // happened to be active last. It used to check
+  // `sessionStorage.getItem('activeSpace') === 'courses'`, which is just
+  // "the last space the user explicitly switched to" — true for anything
+  // loaded right after browsing a course, including an unrelated page (e.g.
+  // one just created via Ask AI's "guardar como página nueva"), tagging it
+  // with whatever course happened to still be active and showing it under
+  // "Continuar estudiando" as if it were a lesson of that course.
+  if (m.type === 'course') {
+    _trackStudying(id, m.title, m.course || '');
+  }
 
   // "Mover" (category/topic move) only applies to knowledge entries
   const moveBtnEl = $("moveBtn");

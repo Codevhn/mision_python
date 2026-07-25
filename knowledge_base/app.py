@@ -2724,19 +2724,48 @@ ACTIVITY_RECENT_MAX = 12
 
 def load_activity():
     if ACTIVITY_FILE.exists():
-        return json.loads(ACTIVITY_FILE.read_text())
+        try:
+            return json.loads(ACTIVITY_FILE.read_text())
+        except json.JSONDecodeError:
+            # A file written before the unique-tmp-name fix above could
+            # already be sitting on disk corrupted (see save_activity) —
+            # don't 500 the whole Home page over a "continue studying"
+            # list; start fresh instead of surfacing a hard crash.
+            return {"studying": [], "recent": []}
     return {"studying": [], "recent": []}
 
 
 def save_activity(data):
-    tmp = ACTIVITY_FILE.with_suffix('.tmp')
+    # A per-call unique tmp name, not the fixed ".tmp" every other store in
+    # this file uses — activity.json gets written far more often than those
+    # (every page load can fire both a studying and a recent POST), and two
+    # concurrent writers sharing one tmp path can genuinely interleave their
+    # writes to it (both open/truncate/write the same path around the same
+    # time) — os.replace() is atomic, but that only protects the final
+    # rename, not two processes racing on the write-to-tmp step before it.
+    # Reproduced this exact corruption (a valid JSON document with a
+    # truncated leftover tail from a prior write appended after it) while
+    # testing; a unique tmp name per call makes that collision impossible.
+    tmp = ACTIVITY_FILE.with_suffix(f'.tmp.{os.getpid()}.{uuid.uuid4().hex[:8]}')
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
     os.replace(tmp, ACTIVITY_FILE)
 
 
 @app.route("/api/activity", methods=["GET"])
 def get_activity():
-    return jsonify(load_activity())
+    # Self-healing read: drop any "studying" entry that no longer resolves
+    # to an actual type=="course" entry — either it was deleted, or (the
+    # bug this guards against) it got tagged as "studying" before the
+    # frontend started gating on the entry's own type instead of which
+    # space happened to be active when it was saved, so a non-course page
+    # could be sitting in here mislabeled with a stale course name.
+    activity = load_activity()
+    index = load_index()
+    activity["studying"] = [
+        i for i in activity.get("studying", [])
+        if index.get(i.get("id"), {}).get("type") == "course"
+    ]
+    return jsonify(activity)
 
 
 @app.route("/api/activity/studying", methods=["POST"])
