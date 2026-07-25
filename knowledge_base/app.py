@@ -2546,8 +2546,9 @@ def _fuzzy_duplicate_match(mod_slug, title, existing):
     a shared leading number is treated as the primary match, independent of
     how different the rest of the title reads. Text similarity is kept only
     as a secondary, deliberately high-threshold fallback for titles with no
-    numbering at all. Returns the matched existing title, or None — advisory
-    either way, the caller decides whether to actually skip it."""
+    numbering at all. Returns (entry_id, existing_title) of the match, or
+    None — advisory either way, the caller decides what to actually do with
+    it (skip, update that entry's content, or create alongside it anyway)."""
     bucket = existing.get(mod_slug, {})
     if not bucket:
         return None
@@ -2556,19 +2557,19 @@ def _fuzzy_duplicate_match(mod_slug, title, existing):
         return None
     needle_num = _leading_number(needle)
     if needle_num:
-        for _entry_id, existing_title in bucket.values():
+        for entry_id, existing_title in bucket.values():
             if _leading_number(existing_title) == needle_num:
-                return existing_title
+                return (entry_id, existing_title)
         return None  # numbered titles are only ever compared by their number
-    best_ratio, best_title = 0.0, None
+    best_ratio, best_match = 0.0, None
     needle_lower = needle.lower()
-    for _entry_id, existing_title in bucket.values():
+    for entry_id, existing_title in bucket.values():
         if _leading_number(existing_title):
             continue  # not comparable to an unnumbered title
         ratio = difflib.SequenceMatcher(None, needle_lower, existing_title.strip().lower()).ratio()
         if ratio > best_ratio:
-            best_ratio, best_title = ratio, existing_title
-    return best_title if best_ratio >= _FUZZY_TEXT_THRESHOLD else None
+            best_ratio, best_match = ratio, (entry_id, existing_title)
+    return best_match if best_ratio >= _FUZZY_TEXT_THRESHOLD else None
 
 
 @app.route("/api/courses/<course_id>/import/preview", methods=["POST"])
@@ -2605,21 +2606,29 @@ def preview_course_import(course_id):
 
     # Flag lessons that already exist in this course (same module + same
     # title, both slugified) — the frontend marks these so the user sees up
-    # front what will be skipped on commit, instead of finding out after.
-    # Anything not an exact match also gets a fuzzy pass — catches the same
-    # lesson re-pasted with a slightly reworded title, which an exact-slug
-    # check alone would treat as brand new.
+    # front what would otherwise be skipped on commit. Anything not an exact
+    # match also gets a fuzzy pass — catches the same lesson re-pasted with a
+    # slightly reworded title, which an exact-slug check alone would treat as
+    # brand new. Either way, existing_entry_id is included so the frontend
+    # can offer "update this lesson's content" as an alternative to just
+    # skipping or creating a separate duplicate entry — matching content can
+    # genuinely differ from what's already saved (e.g. a roadmap revision
+    # that expanded a lesson that hadn't changed title/number).
     existing = _existing_course_lessons(course_id)
     for mod in modules:
         mod_slug = slugify(mod.get("title", ""))
         for lesson in mod.get("lessons", []):
             title_slug = slugify(lesson.get("title", ""))
-            if title_slug in existing.get(mod_slug, {}):
+            bucket = existing.get(mod_slug, {})
+            if title_slug in bucket:
                 lesson["already_exists"] = True
                 lesson["possible_duplicate_of"] = None
+                lesson["existing_entry_id"] = bucket[title_slug][0]
             else:
+                fuzzy = _fuzzy_duplicate_match(mod_slug, lesson.get("title", ""), existing)
                 lesson["already_exists"] = False
-                lesson["possible_duplicate_of"] = _fuzzy_duplicate_match(mod_slug, lesson.get("title", ""), existing)
+                lesson["possible_duplicate_of"] = fuzzy[1] if fuzzy else None
+                lesson["existing_entry_id"] = fuzzy[0] if fuzzy else None
 
     return jsonify({"used_ai_normalize": used_ai_normalize, "ai_error": ai_error, "modules": modules})
 

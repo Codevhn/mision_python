@@ -7574,22 +7574,24 @@ function _irLessonNode(lesson) {
   el.style.cssText = 'border-left:2px solid var(--accent);padding-left:10px;margin:6px 0 6px 4px';
   const isDup = !!lesson.already_exists;
   const isFuzzy = !isDup && !!lesson.possible_duplicate_of;
-  if (isDup || isFuzzy) el.style.opacity = '0.55';
+  const hasMatch = (isDup || isFuzzy) && lesson.existing_entry_id;
+  if (hasMatch) el.style.opacity = '0.7';
+  el.dataset.existingEntryId = lesson.existing_entry_id || '';
+  const matchTitle = isDup
+    ? 'Ya existe una lección con este título en este módulo'
+    : `Se parece a una lección que ya existe: "${lesson.possible_duplicate_of}"`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <input type="text" class="ir-lesson-title" placeholder="Título de la lección"
         style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;
                padding:5px 8px;color:var(--text);font-size:0.85rem" />
-      ${isDup ? `<span class="ir-dup-badge" title="Ya existe una lección con este título en este módulo — se omitirá al confirmar"
-        style="font-size:0.72rem;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);
-               border-radius:4px;padding:2px 6px;white-space:nowrap">Ya existe — se omitirá</span>` : ''}
-      ${isFuzzy ? `<label class="ir-fuzzy-label" title="Se parece a una lección que ya existe en este módulo: &quot;${escapeHtml(lesson.possible_duplicate_of)}&quot;"
-        style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:var(--text-muted);
-               background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;
-               white-space:nowrap;cursor:pointer">
-          <input type="checkbox" class="ir-lesson-skip" checked style="cursor:pointer" />
-          ¿Duplicado? Omitir
-        </label>` : ''}
+      ${hasMatch ? `<select class="ir-lesson-action" title="${escapeHtml(matchTitle)}"
+        style="font-size:0.72rem;color:var(--text);background:var(--bg);border:1px solid var(--border);
+               border-radius:4px;padding:3px 4px;cursor:pointer;max-width:170px">
+          <option value="skip" selected>${isDup ? 'Ya existe — omitir' : 'Parecido — omitir'}</option>
+          <option value="update">Actualizar existente</option>
+          <option value="create">Crear aparte (duplicar)</option>
+        </select>` : ''}
       <button class="btn-ghost ir-toggle-content" style="font-size:0.75rem;padding:3px 6px">Ver contenido</button>
       <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px">🗑</button>
     </div>
@@ -7604,9 +7606,9 @@ function _irLessonNode(lesson) {
     ta.classList.toggle('hidden');
     e.target.textContent = ta.classList.contains('hidden') ? 'Ver contenido' : 'Ocultar contenido';
   });
-  const skipCb = el.querySelector('.ir-lesson-skip');
-  if (skipCb) {
-    skipCb.addEventListener('change', () => { el.style.opacity = skipCb.checked ? '0.55' : ''; });
+  const actionSel = el.querySelector('.ir-lesson-action');
+  if (actionSel) {
+    actionSel.addEventListener('change', () => { el.style.opacity = actionSel.value === 'skip' ? '0.7' : ''; });
   }
   return el;
 }
@@ -7644,13 +7646,12 @@ function _irRenderPreview(data) {
   }
   const dupCount = (data.modules || []).reduce(
     (n, mod) => n + (mod.lessons || []).filter(l => l.already_exists).length, 0);
-  if (dupCount > 0) {
-    notes.push(`↺ ${dupCount} lección(es) ya existían en este curso (mismo módulo y título) — se omitirán automáticamente al confirmar, no se duplicarán.`);
-  }
   const fuzzyCount = (data.modules || []).reduce(
     (n, mod) => n + (mod.lessons || []).filter(l => !l.already_exists && l.possible_duplicate_of).length, 0);
-  if (fuzzyCount > 0) {
-    notes.push(`🔎 ${fuzzyCount} lección(es) se parecen a una ya existente (título reformulado) — se marcaron para omitir por defecto; desmarca la casilla junto a la lección si en realidad es contenido nuevo.`);
+  if (dupCount > 0 || fuzzyCount > 0) {
+    notes.push(`↺ ${dupCount + fuzzyCount} lección(es) ya existen en este curso (${dupCount} con el mismo título` +
+      (fuzzyCount ? `, ${fuzzyCount} con título reformulado` : '') +
+      `). Por defecto se omiten — usa el selector junto a cada una si en realidad quieres actualizar su contenido o crearla aparte.`);
   }
   if (notes.length) {
     aiNote.textContent = notes.join(' ');
@@ -7667,21 +7668,34 @@ function _irRenderPreview(data) {
   $('irFooterPreview').classList.remove('hidden');
 }
 
+// Returns { modules, updates } — `modules` goes to POST .../import (creates
+// new lessons), `updates` is applied directly against each existing entry's
+// own PATCH /api/entry/<id>/content (same endpoint the editor's autosave
+// uses), since "update" means overwriting an already-existing lesson in
+// place, not creating another one under whatever module happens to be
+// showing in this preview row.
 function _irCollectTree() {
   const modules = [];
+  const updates = [];
   document.querySelectorAll('#irTreeContainer > .ir-module').forEach(modEl => {
     const title = modEl.querySelector('.ir-module-title').value.trim();
     const lessons = [];
     modEl.querySelectorAll('.ir-lesson').forEach(lessonEl => {
-      const skipCb = lessonEl.querySelector('.ir-lesson-skip');
-      if (skipCb && skipCb.checked) return; // left checked = "sí, es un duplicado, omítela"
+      const actionSel = lessonEl.querySelector('.ir-lesson-action');
+      const action = actionSel ? actionSel.value : 'create';
       const lt = lessonEl.querySelector('.ir-lesson-title').value.trim();
       const lc = lessonEl.querySelector('.ir-lesson-content').value;
-      if (lt) lessons.push({ title: lt, content: lc });
+      if (!lt || action === 'skip') return;
+      if (action === 'update') {
+        const entryId = lessonEl.dataset.existingEntryId;
+        if (entryId) updates.push({ entryId, title: lt, content: lc });
+        return;
+      }
+      lessons.push({ title: lt, content: lc });
     });
     if (title && lessons.length) modules.push({ title, lessons });
   });
-  return modules;
+  return { modules, updates };
 }
 
 function initImportRoadmap() {
@@ -7739,23 +7753,39 @@ function initImportRoadmap() {
   });
 
   $('irCommitBtn').addEventListener('click', async () => {
-    const modules = _irCollectTree();
-    if (!modules.length) { showToast('Agrega al menos un módulo con una lección antes de confirmar', 'error'); return; }
+    const { modules, updates } = _irCollectTree();
+    if (!modules.length && !updates.length) {
+      showToast('Agrega al menos un módulo con una lección, o marca alguna para actualizar', 'error');
+      return;
+    }
     const btn = $('irCommitBtn');
     btn.disabled = true;
     const prevLabel = btn.textContent;
     btn.textContent = 'Creando…';
     try {
-      const res = await fetch(`/api/courses/${_irState.courseSlug}/import`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modules }),
-      });
-      const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Error al crear las lecciones', 'error'); return; }
-      const skippedCount = (data.skipped_duplicates || []).length;
-      const msg = skippedCount
-        ? `${data.count} lección(es) creadas · ${skippedCount} omitida(s) por ya existir`
-        : `${data.count} lección(es) creadas`;
-      showToast(msg, 'success');
+      let createdCount = 0, skippedCount = 0;
+      if (modules.length) {
+        const res = await fetch(`/api/courses/${_irState.courseSlug}/import`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modules }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Error al crear las lecciones', 'error'); return; }
+        createdCount = data.count;
+        skippedCount = (data.skipped_duplicates || []).length;
+      }
+      let updatedCount = 0;
+      for (const u of updates) {
+        const r = await fetch(`/api/entry/${u.entryId}/content`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_text: u.content, title: u.title, already_markdown: true }),
+        });
+        if (r.ok) updatedCount++;
+      }
+      const parts = [];
+      if (createdCount) parts.push(`${createdCount} creada(s)`);
+      if (updatedCount) parts.push(`${updatedCount} actualizada(s)`);
+      if (skippedCount) parts.push(`${skippedCount} omitida(s) por ya existir`);
+      showToast(parts.length ? parts.join(' · ') : 'No se hicieron cambios', 'success');
       closeImportRoadmapModal();
       _coursesTreeData = await fetch('/api/courses/tree').then(r => r.json());
       renderCoursesTree(_coursesTreeData, _irState.courseSlug);
@@ -7765,7 +7795,7 @@ function initImportRoadmap() {
         loadCourseView(_irState.courseSlug, course);
       }
     } catch (e) {
-      showToast('Error de red al crear las lecciones', 'error');
+      showToast('Error de red al crear/actualizar las lecciones', 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = prevLabel;
