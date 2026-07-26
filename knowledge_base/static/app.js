@@ -6260,11 +6260,25 @@ function renderCourseTab(tab, courseSlug, stats) {
     if (!modEntries.length) {
       body.innerHTML = `
         <div class="cv-empty-state">
-          <p class="cv-empty">No hay lecciones todavía.</p>
-          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-            <button class="btn-ghost" id="cvEmptyImportRoadmap">↓ Importar roadmap</button>
-            <button class="btn-ghost" id="cvEmptyGenerateRoadmap">✨ Generar con IA</button>
-            <button class="btn-primary" id="cvEmptyNewLesson">+ Crear primera lección</button>
+          <div class="cv-empty-icon">📭</div>
+          <p class="cv-empty-title">Este curso todavía no tiene lecciones</p>
+          <p class="cv-empty-sub">Elige cómo quieres empezar a construir el roadmap</p>
+          <div class="cv-empty-actions">
+            <button class="cv-action-card" id="cvEmptyImportRoadmap">
+              <span class="cv-action-icon">📋</span>
+              <span class="cv-action-title">Importar roadmap</span>
+              <span class="cv-action-desc">Pega un documento con la estructura del curso</span>
+            </button>
+            <button class="cv-action-card cv-action-card--accent" id="cvEmptyGenerateRoadmap">
+              <span class="cv-action-icon">✨</span>
+              <span class="cv-action-title">Generar con IA</span>
+              <span class="cv-action-desc">Describe el tema y deja que la IA arme el roadmap completo</span>
+            </button>
+            <button class="cv-action-card" id="cvEmptyNewLesson">
+              <span class="cv-action-icon">✏️</span>
+              <span class="cv-action-title">Crear manualmente</span>
+              <span class="cv-action-desc">Empieza escribiendo la primera lección tú mismo</span>
+            </button>
           </div>
         </div>`;
       $('cvEmptyNewLesson')?.addEventListener('click', () => openNewLessonModal(courseSlug));

@@ -5524,6 +5524,48 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 .cv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 0; }
 .cv-empty-state .cv-empty { color: var(--text-muted); margin: 0; }
 
+.cv-empty-icon { font-size: 2.2rem; line-height: 1; opacity: 0.85; margin-bottom: -4px; }
+.cv-empty-title { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
+.cv-empty-sub { font-size: 0.82rem; color: var(--text-muted); margin: -10px 0 4px; }
+
+.cv-empty-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 190px));
+  gap: 14px;
+  justify-content: center;
+}
+.cv-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 20px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.cv-action-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+.cv-action-icon { font-size: 1.6rem; line-height: 1; }
+.cv-action-title { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.cv-action-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.35; }
+.cv-action-card--accent {
+  border-color: var(--accent-dim);
+  background: linear-gradient(160deg, var(--accent-light), var(--bg-elevated) 65%);
+}
+.cv-action-card--accent:hover { box-shadow: 0 8px 22px rgba(23, 147, 209, 0.22); }
+
+@media (max-width: 640px) {
+  .cv-empty-actions { grid-template-columns: 1fr; width: 100%; max-width: 300px; }
+}
+
 /* ── Course sidebar ⚙ gear menu ─────────────────────────────────── */
 .course-detail-header {
   display: flex; align-items: center; justify-content: space-between; gap: 6px;
