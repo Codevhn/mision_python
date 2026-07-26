@@ -7666,6 +7666,7 @@ function _irRenderPreview(data) {
   const notes = [];
   if (data.generated_by_ai) {
     notes.push('✨ Roadmap generado por IA — revisa módulos, lecciones y contenido antes de confirmar.');
+    if (data.warning) notes.push(`⚠ ${data.warning}`);
   } else if (data.used_ai_normalize) {
     notes.push('✨ El documento no seguía el formato estándar del sistema — la IA lo convirtió a módulos y lecciones. Revísalo antes de confirmar.');
   } else if (data.ai_error) {

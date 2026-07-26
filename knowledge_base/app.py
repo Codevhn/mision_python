@@ -2613,6 +2613,7 @@ def preview_course_import(course_id):
             _COURSE_NORMALIZE_SYSTEM,
             f"Documento original:\n\n{raw}\n\nConviértelo al formato estándar descrito.",
             max_tokens=4000, provider=data.get("provider"), model=data.get("model"),
+            fail_on_truncation=True,
         )
         if content:
             used_ai_normalize = True
@@ -2672,17 +2673,29 @@ def commit_course_import(course_id):
 # ── ROADMAP GENERATION: no document to paste at all — ask the AI to draft
 # one from scratch, feeding straight into the same preview/edit/commit flow
 # as a pasted document (same response shape, same _flag_existing_duplicates
-# pass, same module/lesson parser). Depth is the one lever that meaningfully
-# changes what "a roadmap" even means here — a surface-level outline and a
-# fully granular syllabus are different asks, not the same prompt with more
-# tokens, so each gets its own explicit instruction block plus its own
-# max_tokens ceiling (a superficial outline that ran to 6000 tokens would
-# mean the model padded it against the instruction, not that it needed it).
+# pass, same module/lesson parser).
+#
+# "Profundidad" is NOT "how many tokens to spend per lesson" — a whole-course
+# roadmap in one generation has a hard token ceiling regardless of depth, so
+# spending it on exhaustive per-lesson prose means the response runs out
+# mid-course and the result LOOKS broken (a single module, half-finished)
+# rather than shallow. "Profundo y granular" instead means more STRUCTURE —
+# more, more specific lessons — with a fuller bullet list per lesson, not an
+# essay; full per-lesson content is a separate, later, per-lesson expansion
+# step. Every depth level also gets an explicit module-count target (the
+# user's own number if given, otherwise a concrete default range) since
+# without one the model has no signal for how much breadth "complete" means
+# and can just as easily stop after module 1 believing it did enough.
 _COURSE_GENERATE_SYSTEM_TEMPLATE = (
-    "Eres un diseñador instruccional experto. Crea un roadmap/temario de curso completo en "
+    "Eres un diseñador instruccional experto. Crea un roadmap/temario de curso COMPLETO en "
     "Markdown, en español, sobre el tema que te dé el usuario. Reglas ESTRICTAS de formato:\n"
     "- Usa '## ' para cada módulo y '### ' para cada lección dentro de ese módulo.\n"
-    "- Los módulos deben cubrir una progresión lógica del tema, de fundamentos a temas avanzados.\n"
+    "- Los módulos deben cubrir una progresión lógica del tema, de fundamentos a temas avanzados, "
+    "y deben cubrir el temario COMPLETO del tema pedido.\n"
+    "- PRIORIDAD: cubrir todos los módulos y lecciones importa más que desarrollar unos pocos de "
+    "forma exhaustiva. Nunca te detengas a mitad de camino porque una lección se volvió extensa — "
+    "si hace falta, sé más breve por lección para poder cubrir el temario completo.\n"
+    "{module_count_instructions}\n"
     "{depth_instructions}\n"
     "- No agregues comentarios ni explicaciones fuera del markdown resultante.\n"
     "- Devuelve SOLO el markdown resultante, empezando directamente en la primera línea con '## '."
@@ -2691,27 +2704,29 @@ _COURSE_GENERATE_SYSTEM_TEMPLATE = (
 _COURSE_GENERATE_DEPTH = {
     "superficial": {
         "instructions": (
-            "- Nivel de profundidad: SUPERFICIAL. Genera solo un temario de alto nivel: títulos de "
-            "módulo y lección, y para cada lección 1-2 líneas de resumen de qué cubre — sin "
-            "desarrollar el contenido completo ni listas extensas de subtemas."
+            "- Nivel de profundidad: SUPERFICIAL. Para cada lección, solo el título y 1 línea de "
+            "resumen de qué cubre — sin viñetas ni desarrollo."
         ),
-        "max_tokens": 2000,
+        "max_tokens": 2500,
     },
     "estandar": {
         "instructions": (
-            "- Nivel de profundidad: ESTÁNDAR. Para cada lección, incluye una lista de viñetas con "
-            "los puntos clave a cubrir — ni un resumen de una línea, ni contenido totalmente "
-            "desarrollado."
+            "- Nivel de profundidad: ESTÁNDAR. Para cada lección, una lista breve de 3-5 viñetas "
+            "con los puntos clave a cubrir."
         ),
-        "max_tokens": 4000,
+        "max_tokens": 4500,
     },
     "profundo": {
         "instructions": (
-            "- Nivel de profundidad: PROFUNDO Y GRANULAR. Desglosa cada lección en subtemas "
-            "específicos, comandos/herramientas concretas cuando aplique, y ejemplos o casos de "
-            "uso reales — el nivel de detalle de un temario universitario completo, no solo títulos."
+            "- Nivel de profundidad: PROFUNDO Y GRANULAR. La granularidad va en la ESTRUCTURA, no "
+            "en desarrollar cada lección como un ensayo: divide temas amplios en varias lecciones "
+            "específicas en vez de una sola genérica, y para cada lección da una lista de 5-8 "
+            "viñetas con subtemas concretos, comandos/herramientas y casos de uso — sin párrafos "
+            "largos de explicación. El contenido completo de cada lección se expande después, "
+            "lección por lección; esta generación es del ROADMAP COMPLETO, así que cubrir todos "
+            "los módulos pesa más que agotar el espacio en pocos."
         ),
-        "max_tokens": 6000,
+        "max_tokens": 6500,
     },
 }
 
@@ -2727,21 +2742,33 @@ def generate_course_roadmap(course_id):
         return jsonify({"error": f"El curso '{course_id}' no existe."}), 400
 
     depth_cfg = _COURSE_GENERATE_DEPTH.get(data.get("depth"), _COURSE_GENERATE_DEPTH["estandar"])
-    system = _COURSE_GENERATE_SYSTEM_TEMPLATE.format(depth_instructions=depth_cfg["instructions"])
+    module_count = (data.get("module_count") or "").strip()
+    if module_count:
+        module_count_instr = (
+            f"- Genera EXACTAMENTE {module_count} módulos — cubre el temario completo distribuido "
+            f"en esa cantidad, ni más ni menos."
+        )
+    else:
+        module_count_instr = (
+            "- Genera entre 6 y 10 módulos que cubran el temario de forma completa y equilibrada "
+            "(ajusta la cantidad exacta al alcance real del tema, pero nunca menos de 4)."
+        )
+    system = _COURSE_GENERATE_SYSTEM_TEMPLATE.format(
+        module_count_instructions=module_count_instr,
+        depth_instructions=depth_cfg["instructions"],
+    )
 
     user_parts = [f"Tema del curso: {topic}"]
     level = (data.get("level") or "").strip()
     if level:
         user_parts.append(f"Nivel del curso: {level}")
-    module_count = (data.get("module_count") or "").strip()
-    if module_count:
-        user_parts.append(f"Número aproximado de módulos: {module_count}")
     user_parts.append("Genera el roadmap completo siguiendo las reglas de formato indicadas.")
     user_msg = "\n".join(user_parts)
 
     content, err = _call_ai_with_fallback(
         system, user_msg, max_tokens=depth_cfg["max_tokens"],
         provider=data.get("provider"), model=data.get("model"),
+        fail_on_truncation=True,
     )
     if err:
         return jsonify({"error": f"No se pudo generar el roadmap: {err}"}), 502
@@ -2750,8 +2777,20 @@ def generate_course_roadmap(course_id):
     if not modules:
         return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
 
+    warning = None
+    if module_count:
+        try:
+            if len(modules) < int(module_count):
+                warning = (
+                    f"Se pidieron {module_count} módulos pero solo se generaron {len(modules)} — "
+                    "puede deberse a un límite de longitud. Revisa si falta cubrir algo, o agrega "
+                    "módulos manualmente abajo."
+                )
+        except ValueError:
+            pass
+
     _flag_existing_duplicates(modules, course_id)
-    return jsonify({"modules": modules})
+    return jsonify({"modules": modules, "warning": warning})
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────
@@ -3753,7 +3792,8 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
-    return result["choices"][0]["message"]["content"]
+    choice = result["choices"][0]
+    return choice["message"]["content"], choice.get("finish_reason") == "length"
 
 
 def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
@@ -3772,7 +3812,8 @@ def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mo
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
-    return result["candidates"][0]["content"]["parts"][0]["text"]
+    candidate = result["candidates"][0]
+    return candidate["content"]["parts"][0]["text"], candidate.get("finishReason") == "MAX_TOKENS"
 
 
 def _clean_ai_error(code, err_body):
@@ -3807,13 +3848,24 @@ def _clean_ai_error(code, err_body):
     return f"Error de la API ({code}): {detail}"
 
 
-def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None):
+def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False):
     """Single entry point for every AI-backed feature. `provider`/`model`
     come from the frontend's model selector (a request body field on every
     generation endpoint); left unset, every pre-existing call site keeps
     working exactly as before, on DeepSeek's chat model. Returns
     (content, None) on success, or (None, (response, status)) ready to
-    `return` straight from a Flask route."""
+    `return` straight from a Flask route.
+
+    `fail_on_truncation` defaults to False — unchanged behavior (a response
+    cut off by the model's own max-output-token limit is returned as-is,
+    same as always) for every pre-existing call site. Opt in for content
+    where a silently truncated result is actively misleading rather than
+    just short (e.g. a whole roadmap where "stopped after module 1" reads
+    as "that's all there is" instead of "it got cut off") — turns a
+    truncated response into an error instead, which _call_ai_with_fallback
+    then treats like any other failure and retries on the next model
+    (useful here specifically: a different model may have more output
+    headroom for the same request)."""
     provider = provider or DEFAULT_PROVIDER
     model = model or DEFAULT_MODEL
     cfg = PROVIDERS.get(provider)
@@ -3826,9 +3878,13 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
         }), 503)
     try:
         if cfg["kind"] == "gemini":
-            content = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+            content, truncated = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
         else:
-            content = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+            content, truncated = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+        if truncated and fail_on_truncation:
+            return None, (jsonify({
+                "error": f"La respuesta de {cfg['label']} se cortó por el límite de tokens antes de terminar.",
+            }), 502)
         return content, None
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
@@ -3888,9 +3944,10 @@ def _list_available_ai_models():
 
 _AI_FALLBACK_MAX_ATTEMPTS = 6
 
-def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None):
+def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False):
     """Like _call_ai, but a single failure (rate limit, a free-tier model
-    being temporarily unavailable, etc.) isn't enough to give up — tries the
+    being temporarily unavailable, or — with fail_on_truncation=True — a
+    response cut off before it finished) isn't enough to give up — tries the
     caller's preferred provider/model first, then falls through other
     configured provider/model combos (capped at _AI_FALLBACK_MAX_ATTEMPTS, to
     bound worst-case latency) before reporting failure. Returns (content,
@@ -3908,7 +3965,7 @@ def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, p
 
     last_error = "Error desconocido de la IA"
     for pid, mid in attempts:
-        content, err = _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode, provider=pid, model=mid)
+        content, err = _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode, provider=pid, model=mid, fail_on_truncation=fail_on_truncation)
         if not err:
             return content, None
         resp, _status = err
