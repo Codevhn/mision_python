@@ -1338,12 +1338,12 @@
   <div class="modal-overlay hidden" id="importRoadmapOverlay">
     <div class="modal" style="max-width:720px;width:95vw">
       <div class="modal-header">
-        <span>↓ Importar roadmap</span>
+        <span id="irModalTitle">↓ Importar roadmap</span>
         <button class="modal-close" id="importRoadmapClose">×</button>
       </div>
 
       <div class="modal-body" id="irStepPaste" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px" id="irModeTabsRow">
           <button type="button" class="btn-ghost ir-mode-tab ir-mode-tab--active" data-mode="paste" id="irModeTabPaste">📋 Pegar documento</button>
           <button type="button" class="btn-ghost ir-mode-tab" data-mode="generate" id="irModeTabGenerate">✨ Generar con IA</button>
         </div>
@@ -1410,6 +1410,9 @@
           <p class="ir-generating-status" id="irGeneratingStatus">Analizando el tema…</p>
           <div class="ir-generating-bar"><div class="ir-generating-bar-fill"></div></div>
         </div>
+
+        <p class="hidden" id="irGenErrorNote" style="font-size:0.8rem;color:var(--danger, #ef4444);
+           background:rgba(239,68,68,0.08);border-radius:6px;padding:8px 10px;margin:0"></p>
 
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap" id="irModelRow">
           <label style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap" id="irModelLabel">Modelo para normalizar (si hace falta):</label>

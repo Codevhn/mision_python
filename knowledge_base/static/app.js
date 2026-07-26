@@ -7633,6 +7633,8 @@ function _irSetMode(mode) {
   $('irGenerateFields').classList.toggle('hidden', !isGenerate);
   $('irModelLabel').textContent = isGenerate ? 'Modelo para generar:' : 'Modelo para normalizar (si hace falta):';
   $('irPreviewBtn').textContent = isGenerate ? '✨ Generar →' : 'Vista previa →';
+  $('irModalTitle').textContent = isGenerate ? '✨ Generar roadmap' : '↓ Importar roadmap';
+  $('irGenErrorNote')?.classList.add('hidden');
 }
 
 function openImportRoadmapModal(courseSlug, mode = 'paste') {
@@ -7819,6 +7821,9 @@ function _irStartGeneratingAnim() {
   if (!overlay || !statusEl) return;
   $('irGenerateFields')?.classList.add('hidden');
   $('irModelRow')?.classList.add('hidden');
+  $('irModeTabsRow')?.classList.add('hidden');
+  const titleEl = $('irModalTitle');
+  if (titleEl) titleEl.textContent = '✨ Creando roadmap…';
   overlay.classList.remove('hidden');
   let i = 0;
   statusEl.textContent = IR_GENERATING_MESSAGES[0];
@@ -7826,7 +7831,7 @@ function _irStartGeneratingAnim() {
   _irGeneratingTimer = setInterval(() => {
     i = (i + 1) % IR_GENERATING_MESSAGES.length;
     statusEl.textContent = IR_GENERATING_MESSAGES[i];
-  }, 1800);
+  }, 3200);
 }
 
 function _irStopGeneratingAnim() {
@@ -7835,6 +7840,9 @@ function _irStopGeneratingAnim() {
   $('irGeneratingOverlay')?.classList.add('hidden');
   $('irGenerateFields')?.classList.remove('hidden');
   $('irModelRow')?.classList.remove('hidden');
+  $('irModeTabsRow')?.classList.remove('hidden');
+  const titleEl = $('irModalTitle');
+  if (titleEl) titleEl.textContent = '✨ Generar roadmap';
 }
 
 function initImportRoadmap() {
@@ -7895,20 +7903,30 @@ function initImportRoadmap() {
     btn.disabled = true;
     const prevLabel = btn.textContent;
     btn.textContent = isGenerate ? 'Generando…' : 'Analizando…';
-    if (isGenerate) _irStartGeneratingAnim();
+    if (isGenerate) { $('irGenErrorNote')?.classList.add('hidden'); _irStartGeneratingAnim(); }
     try {
       const res = await fetch(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        showToast(data.error || (isGenerate ? 'No se pudo generar el roadmap' : 'No se pudo analizar el documento'), 'error');
+        const msg = data.error || (isGenerate ? 'No se pudo generar el roadmap' : 'No se pudo analizar el documento');
+        showToast(msg, 'error');
+        if (isGenerate) {
+          const note = $('irGenErrorNote');
+          if (note) { note.textContent = msg; note.classList.remove('hidden'); }
+        }
         return;
       }
       if (isGenerate) data.generated_by_ai = true;
       _irRenderPreview(data);
     } catch (e) {
-      showToast(isGenerate ? 'Error de red al generar el roadmap' : 'Error de red al analizar el documento', 'error');
+      const msg = isGenerate ? 'Error de red al generar el roadmap' : 'Error de red al analizar el documento';
+      showToast(msg, 'error');
+      if (isGenerate) {
+        const note = $('irGenErrorNote');
+        if (note) { note.textContent = msg; note.classList.remove('hidden'); }
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = prevLabel;

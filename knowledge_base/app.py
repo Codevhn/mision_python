@@ -2870,10 +2870,13 @@ def generate_course_roadmap(course_id):
     user_parts.append("Genera el roadmap completo siguiendo las reglas indicadas — solo estructura, sin desarrollar contenido.")
     user_msg = "\n".join(user_parts)
 
+    # fail_on_truncation OFF here (unlike paste/normalize): with no module
+    # cap, a broad "profunda" topic can legitimately exceed every model's
+    # output ceiling, so hard-failing on truncation would guarantee failure
+    # for exactly the topics worth generating. A partial roadmap beats none.
     content, err = _call_ai_with_fallback(
         system, user_msg, max_tokens=depth_cfg["max_tokens"],
         provider=data.get("provider"), model=data.get("model"),
-        fail_on_truncation=True,
     )
     if err:
         return jsonify({"error": f"No se pudo generar el roadmap: {err}"}), 502
