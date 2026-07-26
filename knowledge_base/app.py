@@ -2675,8 +2675,8 @@ def commit_course_import(course_id):
 # as a pasted document (same response shape, same _flag_existing_duplicates
 # pass, same module/lesson parser).
 #
-# Two hard lessons from the first version of this prompt, both from direct
-# user feedback:
+# Hard lessons from earlier versions of this prompt, all from direct user
+# feedback:
 # 1. This generates a ROADMAP — structure only (module/lesson titles). It
 #    must NEVER write lesson content/bullets/summaries: developing each
 #    lesson is explicitly the user's own job, done afterward inside the
@@ -2693,12 +2693,27 @@ def commit_course_import(course_id):
 #    more. "Profundidad" here means how finely the topic is split into
 #    modules/lessons (structural granularity), not how much prose per
 #    lesson — that's now off the table entirely at every depth level.
+# 3. Two more issues from the same generation: modules came back unnumbered
+#    (breaks visual consistency with every other course, and specifically
+#    breaks _detect_module_type_from_title's structured-field detection,
+#    which needs a "Módulo N: ..." style heading to work) — now required
+#    explicitly. And, worse: given a topic like "SQL 2028" (the user's own
+#    course name, encoding a personal 2028 learning-target date, not a real
+#    product/standard version), the model fabricated an entire fictional
+#    "SQL 2028" edition with invented features rather than recognizing no
+#    such version exists — classic hallucination on an unfamiliar-looking
+#    but confident-sounding term. Now explicitly forbidden: numbers in the
+#    topic that don't match a real, known version/standard must be ignored
+#    as scope, not treated as something to invent details about.
 _COURSE_GENERATE_SYSTEM_TEMPLATE = (
     "Eres un diseñador instruccional experto. Crea el ROADMAP de un curso — módulos y lecciones, "
     "solo la ESTRUCTURA — en Markdown, en español, sobre el tema que te dé el usuario. El "
     "contenido de cada lección se desarrolla después, dentro del sistema; aquí NO se escribe.\n"
     "Reglas ESTRICTAS:\n"
     "- Usa '## ' para cada módulo y '### ' para cada lección dentro de ese módulo.\n"
+    "- Numera los módulos y lecciones: '## Módulo N: Título' y '### N.M Título de la lección' "
+    "(ej. '## Módulo 1: Fundamentos', '### 1.1 Tipos de datos'). Nunca dejes un módulo o lección "
+    "sin numerar.\n"
     "- Cada línea '### ' es solo el título de la lección — NO escribas contenido, resumen, "
     "viñetas ni explicación debajo. Nada de cuerpo, en ningún módulo ni lección.\n"
     "- Cubre el temario COMPLETO del tema, desde los fundamentos hasta un nivel avanzado (no "
@@ -2707,6 +2722,11 @@ _COURSE_GENERATE_SYSTEM_TEMPLATE = (
     "el tema realmente requiera, y tantas lecciones por módulo como haga falta para cubrirlo bien "
     "(puede ser 2 en un módulo simple, o 10 en uno amplio — nunca sacrifiques cobertura por "
     "ajustarte a un número.)\n"
+    "- NUNCA inventes una 'versión', 'edición' o 'especificación' ficticia de la tecnología. Si el "
+    "tema incluye un año o número que no corresponde a una versión real y conocida (puede ser "
+    "solo una meta personal del usuario, no parte del nombre técnico), ignóralo como si no "
+    "estuviera — genera el roadmap sobre la tecnología real tal como existe hoy, sin fabular "
+    "características, nombres de versión ni fechas que no existen.\n"
     "{module_count_instructions}\n"
     "{depth_instructions}\n"
     "- No agregues comentarios ni explicaciones fuera del markdown resultante.\n"
