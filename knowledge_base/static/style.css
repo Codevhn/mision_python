@@ -7391,6 +7391,67 @@ body {
   flex-shrink: 0;
 }
 .arp-error { color: var(--error, #ef4444); font-size: 0.8rem; }
+
+/* ── "Generar con IA" roadmap: animated status while the request is in flight ── */
+.ir-generating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 20px;
+}
+.ir-generating.hidden { display: none; }
+.ir-generating-orb {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  background: conic-gradient(from 0deg, var(--accent), #a78bfa, var(--accent));
+  animation: ir-orb-spin 2.2s linear infinite;
+  box-shadow: 0 0 24px 4px rgba(23, 147, 209, 0.35);
+}
+.ir-generating-orb span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  animation: ir-orb-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ir-orb-spin { to { transform: rotate(360deg); } }
+@keyframes ir-orb-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.ir-generating-status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  min-height: 1.2em;
+  animation: ir-status-fade 1.8s ease-in-out infinite;
+}
+@keyframes ir-status-fade { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.ir-generating-bar {
+  width: 100%;
+  max-width: 280px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+.ir-generating-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  animation: ir-bar-slide 1.4s ease-in-out infinite;
+}
+@keyframes ir-bar-slide {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(350%); }
+}
 .arp-actions {
   display: flex;
   gap: 6px;

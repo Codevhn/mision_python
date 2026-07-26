@@ -1405,7 +1405,13 @@
           </div>
         </div>
 
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="ir-generating hidden" id="irGeneratingOverlay">
+          <div class="ir-generating-orb"><span>✨</span></div>
+          <p class="ir-generating-status" id="irGeneratingStatus">Analizando el tema…</p>
+          <div class="ir-generating-bar"><div class="ir-generating-bar-fill"></div></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap" id="irModelRow">
           <label style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap" id="irModelLabel">Modelo para normalizar (si hace falta):</label>
           <div class="practice-cselect" id="irModelCSelect" style="flex:1;min-width:220px;max-width:340px"></div>
         </div>

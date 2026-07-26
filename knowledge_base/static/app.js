@@ -7637,6 +7637,7 @@ function openImportRoadmapModal(courseSlug, mode = 'paste') {
   $('irFooterPreview').classList.add('hidden');
   $('irStepPaste').classList.remove('hidden');
   $('irFooterPaste').classList.remove('hidden');
+  _irStopGeneratingAnim();
   _irSetMode(mode);
   overlay.classList.remove('hidden');
   setTimeout(() => (mode === 'generate' ? $('irGenTopic') : $('irRawInput'))?.focus(), 60);
@@ -7782,6 +7783,46 @@ function _irCollectTree() {
   return { modules, updates };
 }
 
+// A real generation (especially "profunda" on a broad topic) can take a
+// while — a disabled button with no other feedback reads as "did this
+// freeze?". Swaps the form for a small animated panel with cycling status
+// text instead, purely cosmetic (no real progress signal exists to show,
+// the request is one opaque round trip) but it keeps the wait feeling
+// active rather than stalled.
+const IR_GENERATING_MESSAGES = [
+  '✨ Analizando el tema…',
+  '🧩 Diseñando los módulos…',
+  '📚 Organizando las lecciones…',
+  '🔎 Agregando subtemas…',
+  '🧭 Verificando que cubra todo el temario…',
+  'Los temas amplios pueden tardar un poco más…',
+];
+let _irGeneratingTimer = null;
+
+function _irStartGeneratingAnim() {
+  const overlay = $('irGeneratingOverlay');
+  const statusEl = $('irGeneratingStatus');
+  if (!overlay || !statusEl) return;
+  $('irGenerateFields')?.classList.add('hidden');
+  $('irModelRow')?.classList.add('hidden');
+  overlay.classList.remove('hidden');
+  let i = 0;
+  statusEl.textContent = IR_GENERATING_MESSAGES[0];
+  clearInterval(_irGeneratingTimer);
+  _irGeneratingTimer = setInterval(() => {
+    i = (i + 1) % IR_GENERATING_MESSAGES.length;
+    statusEl.textContent = IR_GENERATING_MESSAGES[i];
+  }, 1800);
+}
+
+function _irStopGeneratingAnim() {
+  clearInterval(_irGeneratingTimer);
+  _irGeneratingTimer = null;
+  $('irGeneratingOverlay')?.classList.add('hidden');
+  $('irGenerateFields')?.classList.remove('hidden');
+  $('irModelRow')?.classList.remove('hidden');
+}
+
 function initImportRoadmap() {
   const overlay = $('importRoadmapOverlay');
   if (!overlay) return;
@@ -7840,6 +7881,7 @@ function initImportRoadmap() {
     btn.disabled = true;
     const prevLabel = btn.textContent;
     btn.textContent = isGenerate ? 'Generando…' : 'Analizando…';
+    if (isGenerate) _irStartGeneratingAnim();
     try {
       const res = await fetch(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -7856,6 +7898,7 @@ function initImportRoadmap() {
     } finally {
       btn.disabled = false;
       btn.textContent = prevLabel;
+      if (isGenerate) _irStopGeneratingAnim();
     }
   });
 
