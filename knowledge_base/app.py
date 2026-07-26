@@ -2675,26 +2675,38 @@ def commit_course_import(course_id):
 # as a pasted document (same response shape, same _flag_existing_duplicates
 # pass, same module/lesson parser).
 #
-# "Profundidad" is NOT "how many tokens to spend per lesson" — a whole-course
-# roadmap in one generation has a hard token ceiling regardless of depth, so
-# spending it on exhaustive per-lesson prose means the response runs out
-# mid-course and the result LOOKS broken (a single module, half-finished)
-# rather than shallow. "Profundo y granular" instead means more STRUCTURE —
-# more, more specific lessons — with a fuller bullet list per lesson, not an
-# essay; full per-lesson content is a separate, later, per-lesson expansion
-# step. Every depth level also gets an explicit module-count target (the
-# user's own number if given, otherwise a concrete default range) since
-# without one the model has no signal for how much breadth "complete" means
-# and can just as easily stop after module 1 believing it did enough.
+# Two hard lessons from the first version of this prompt, both from direct
+# user feedback:
+# 1. This generates a ROADMAP — structure only (module/lesson titles). It
+#    must NEVER write lesson content/bullets/summaries: developing each
+#    lesson is explicitly the user's own job, done afterward inside the
+#    system (manually, or later via a per-lesson AI expansion feature) — not
+#    something to pre-empt here. This also happens to remove most of the
+#    truncation risk the previous content-per-lesson version had, since a
+#    titles-only roadmap is a fraction of the size.
+# 2. A fixed/target module or lesson count is actively harmful, not just
+#    unnecessary: a real topic's honest scope might be 15 modules, and any
+#    number this prompt suggests risks the model treating it as a ceiling
+#    and cutting real content to fit — so there is no default count, and
+#    even a user-supplied number is phrased as a loose reference the model
+#    should exceed rather than truncate to, if the topic genuinely needs
+#    more. "Profundidad" here means how finely the topic is split into
+#    modules/lessons (structural granularity), not how much prose per
+#    lesson — that's now off the table entirely at every depth level.
 _COURSE_GENERATE_SYSTEM_TEMPLATE = (
-    "Eres un diseñador instruccional experto. Crea un roadmap/temario de curso COMPLETO en "
-    "Markdown, en español, sobre el tema que te dé el usuario. Reglas ESTRICTAS de formato:\n"
+    "Eres un diseñador instruccional experto. Crea el ROADMAP de un curso — módulos y lecciones, "
+    "solo la ESTRUCTURA — en Markdown, en español, sobre el tema que te dé el usuario. El "
+    "contenido de cada lección se desarrolla después, dentro del sistema; aquí NO se escribe.\n"
+    "Reglas ESTRICTAS:\n"
     "- Usa '## ' para cada módulo y '### ' para cada lección dentro de ese módulo.\n"
-    "- Los módulos deben cubrir una progresión lógica del tema, de fundamentos a temas avanzados, "
-    "y deben cubrir el temario COMPLETO del tema pedido.\n"
-    "- PRIORIDAD: cubrir todos los módulos y lecciones importa más que desarrollar unos pocos de "
-    "forma exhaustiva. Nunca te detengas a mitad de camino porque una lección se volvió extensa — "
-    "si hace falta, sé más breve por lección para poder cubrir el temario completo.\n"
+    "- Cada línea '### ' es solo el título de la lección — NO escribas contenido, resumen, "
+    "viñetas ni explicación debajo. Nada de cuerpo, en ningún módulo ni lección.\n"
+    "- Cubre el temario COMPLETO del tema, desde los fundamentos hasta un nivel avanzado (no "
+    "extremadamente experto/de investigación) — sin omitir información importante.\n"
+    "- No te limites a una cantidad arbitraria de módulos o lecciones: usa tantos módulos como "
+    "el tema realmente requiera, y tantas lecciones por módulo como haga falta para cubrirlo bien "
+    "(puede ser 2 en un módulo simple, o 10 en uno amplio — nunca sacrifiques cobertura por "
+    "ajustarte a un número.)\n"
     "{module_count_instructions}\n"
     "{depth_instructions}\n"
     "- No agregues comentarios ni explicaciones fuera del markdown resultante.\n"
@@ -2704,29 +2716,25 @@ _COURSE_GENERATE_SYSTEM_TEMPLATE = (
 _COURSE_GENERATE_DEPTH = {
     "superficial": {
         "instructions": (
-            "- Nivel de profundidad: SUPERFICIAL. Para cada lección, solo el título y 1 línea de "
-            "resumen de qué cubre — sin viñetas ni desarrollo."
+            "- Granularidad: SUPERFICIAL. Agrupa en módulos y lecciones más amplios — sigue "
+            "cubriendo el temario completo, solo sin desglosar cada matiz en su propia lección."
         ),
-        "max_tokens": 2500,
+        "max_tokens": 2000,
     },
     "estandar": {
         "instructions": (
-            "- Nivel de profundidad: ESTÁNDAR. Para cada lección, una lista breve de 3-5 viñetas "
-            "con los puntos clave a cubrir."
+            "- Granularidad: ESTÁNDAR. El nivel de desglose típico de un curso — cada lección "
+            "cubre un subtema concreto, ni excesivamente fragmentado ni excesivamente amplio."
         ),
-        "max_tokens": 4500,
+        "max_tokens": 3000,
     },
     "profundo": {
         "instructions": (
-            "- Nivel de profundidad: PROFUNDO Y GRANULAR. La granularidad va en la ESTRUCTURA, no "
-            "en desarrollar cada lección como un ensayo: divide temas amplios en varias lecciones "
-            "específicas en vez de una sola genérica, y para cada lección da una lista de 5-8 "
-            "viñetas con subtemas concretos, comandos/herramientas y casos de uso — sin párrafos "
-            "largos de explicación. El contenido completo de cada lección se expande después, "
-            "lección por lección; esta generación es del ROADMAP COMPLETO, así que cubrir todos "
-            "los módulos pesa más que agotar el espacio en pocos."
+            "- Granularidad: PROFUNDA. Desglosa al máximo detalle razonable: cada subtema, "
+            "herramienta o técnica distinta se convierte en su propia lección en vez de agruparse "
+            "con otras — más módulos y más lecciones que en el nivel estándar."
         ),
-        "max_tokens": 6500,
+        "max_tokens": 4500,
     },
 }
 
@@ -2745,14 +2753,12 @@ def generate_course_roadmap(course_id):
     module_count = (data.get("module_count") or "").strip()
     if module_count:
         module_count_instr = (
-            f"- Genera EXACTAMENTE {module_count} módulos — cubre el temario completo distribuido "
-            f"en esa cantidad, ni más ni menos."
+            f"- El usuario sugiere unos {module_count} módulos como referencia aproximada — "
+            f"tómalo solo como orientación, NUNCA como límite: si el tema necesita más módulos "
+            f"para cubrirlo sin omitir nada, genera los que hagan falta."
         )
     else:
-        module_count_instr = (
-            "- Genera entre 6 y 10 módulos que cubran el temario de forma completa y equilibrada "
-            "(ajusta la cantidad exacta al alcance real del tema, pero nunca menos de 4)."
-        )
+        module_count_instr = ""
     system = _COURSE_GENERATE_SYSTEM_TEMPLATE.format(
         module_count_instructions=module_count_instr,
         depth_instructions=depth_cfg["instructions"],
@@ -2762,7 +2768,7 @@ def generate_course_roadmap(course_id):
     level = (data.get("level") or "").strip()
     if level:
         user_parts.append(f"Nivel del curso: {level}")
-    user_parts.append("Genera el roadmap completo siguiendo las reglas de formato indicadas.")
+    user_parts.append("Genera el roadmap completo siguiendo las reglas indicadas — solo estructura, sin desarrollar contenido.")
     user_msg = "\n".join(user_parts)
 
     content, err = _call_ai_with_fallback(
@@ -2777,20 +2783,8 @@ def generate_course_roadmap(course_id):
     if not modules:
         return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
 
-    warning = None
-    if module_count:
-        try:
-            if len(modules) < int(module_count):
-                warning = (
-                    f"Se pidieron {module_count} módulos pero solo se generaron {len(modules)} — "
-                    "puede deberse a un límite de longitud. Revisa si falta cubrir algo, o agrega "
-                    "módulos manualmente abajo."
-                )
-        except ValueError:
-            pass
-
     _flag_existing_duplicates(modules, course_id)
-    return jsonify({"modules": modules, "warning": warning})
+    return jsonify({"modules": modules})
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────

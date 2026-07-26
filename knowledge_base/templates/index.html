@@ -1363,8 +1363,10 @@
 
         <div id="irGenerateFields" class="hidden" style="display:flex;flex-direction:column;gap:10px">
           <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
-            Describe el tema o enfoque del curso — la IA genera un roadmap completo (módulos y
-            lecciones) desde cero, sin necesitar ningún documento previo.
+            Describe el tema o enfoque del curso — la IA genera solo el <strong>roadmap</strong>
+            (títulos de módulos y lecciones), cubriendo el temario completo de fundamentos a
+            avanzado. No desarrolla el contenido de cada lección — eso lo haces tú después, dentro
+            del sistema.
           </p>
           <textarea id="irGenTopic"
             placeholder="Ej: Git y GitHub, desde comandos básicos hasta flujos de trabajo en equipo con pull requests"
@@ -1373,12 +1375,12 @@
                    resize:vertical;outline:none;box-sizing:border-box"></textarea>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:170px">
-              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Profundidad</label>
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Granularidad</label>
               <select id="irGenDepth" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
                      border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box">
-                <option value="superficial">Superficial — solo temario</option>
-                <option value="estandar" selected>Estándar — equilibrado</option>
-                <option value="profundo">Profundo y granular</option>
+                <option value="superficial">Superficial — módulos y lecciones más amplios</option>
+                <option value="estandar" selected>Estándar — desglose típico de un curso</option>
+                <option value="profundo">Profunda — máximo desglose por subtema</option>
               </select>
             </div>
             <div style="flex:1;min-width:140px">
@@ -1392,8 +1394,10 @@
               </select>
             </div>
             <div style="flex:1;min-width:140px">
-              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px"># Módulos (aprox.)</label>
-              <input type="number" id="irGenModuleCount" min="1" max="20" placeholder="La IA decide"
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px" title="Solo una referencia — la IA cubre el tema completo aunque necesite más">
+                # Módulos (referencia, no límite)
+              </label>
+              <input type="number" id="irGenModuleCount" min="1" placeholder="La IA decide según el tema"
                 style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
                        border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box" />
             </div>
