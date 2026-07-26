@@ -2412,6 +2412,20 @@ def create_course_entry():
 
 # ── ROADMAP IMPORT: paste a document → proposed módulos/lecciones ─────────
 _COURSE_IMPORT_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+_LEADING_HEADING_MARKER_RE = re.compile(r"^#{1,6}\s+")
+
+
+def _strip_redundant_heading_marker(title):
+    """Defensive cleanup for a model that doubles the markdown heading
+    marker into the title text itself instead of just writing the title —
+    e.g. a raw line of '#### ### Tipos de datos' (its real heading level
+    plus a literal, redundant '### ' left over from echoing the prompt's own
+    formatting example) parses as title "### Tipos de datos" verbatim,
+    since the regex above only strips the FIRST run of '#'s. Seen from at
+    least one real provider/model combo. Strips one leading '#' run +
+    whitespace from an already-captured title, if present."""
+    return _LEADING_HEADING_MARKER_RE.sub("", title or "", count=1)
+
 
 def _parse_headings_at_levels(lines, module_level, lesson_level):
     """One parse attempt at a specific (module_level, lesson_level) heading
@@ -2434,7 +2448,7 @@ def _parse_headings_at_levels(lines, module_level, lesson_level):
         m = _COURSE_IMPORT_HEADING_RE.match(line)
         if m:
             level = len(m.group(1))
-            title = m.group(2).strip()
+            title = _strip_redundant_heading_marker(m.group(2).strip())
             if level == module_level:
                 flush()
                 cur_module = {"title": title, "lessons": []}
@@ -2759,6 +2773,28 @@ _COURSE_GENERATE_DEPTH = {
 }
 
 
+def _ensure_numbered_modules(modules):
+    """Generation output shouldn't depend on the model reliably following
+    the "number every module/lesson" instruction — instruction-following on
+    formatting details varies a lot across providers/models (seen directly:
+    one generation skipped numbering entirely). Renumbers deterministically
+    in code instead, so the result always matches the system's own
+    convention no matter what the model actually wrote. A module/lesson
+    whose title already starts with a recognized section word (module) or a
+    leading number (lesson) is left alone — if the model DID comply (or
+    used a different but valid section word, e.g. "Fase"), its own
+    numbering is kept rather than overridden."""
+    for mi, mod in enumerate(modules, start=1):
+        title = (mod.get("title") or "").strip()
+        if not _detect_module_type_from_title(title)[0]:
+            mod["title"] = f"Módulo {mi}: {title}" if title else f"Módulo {mi}"
+        for li, lesson in enumerate(mod.get("lessons", []), start=1):
+            lt = (lesson.get("title") or "").strip()
+            if not _leading_number(lt):
+                lesson["title"] = f"{mi}.{li} {lt}" if lt else f"{mi}.{li}"
+    return modules
+
+
 @app.route("/api/courses/<course_id>/generate_roadmap", methods=["POST"])
 def generate_course_roadmap(course_id):
     data = request.json or {}
@@ -2803,6 +2839,7 @@ def generate_course_roadmap(course_id):
     if not modules:
         return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
 
+    _ensure_numbered_modules(modules)
     _flag_existing_duplicates(modules, course_id)
     return jsonify({"modules": modules})
 
