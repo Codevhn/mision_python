@@ -12,7 +12,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for, Response
 import mistune
 
 app = Flask(__name__)
@@ -2128,12 +2128,12 @@ def update_course(course_id):
     return jsonify(courses["courses"][course_id])
 
 
-@app.route("/api/courses/<course_id>", methods=["DELETE"])
-def delete_course(course_id):
-    courses = load_courses()
-    if course_id not in courses["courses"]:
-        return jsonify({"error": "Not found"}), 404
-    # Cascade: remove all lesson entries from index + files
+def _delete_course_lessons(course_id):
+    """Deletes every lesson entry (index.json record + its .md file) for a
+    course, and the leftover course folder — but leaves the course entity
+    itself untouched. Shared by full course deletion and the "wipe the
+    roadmap, keep the course" action (e.g. before asking the AI to
+    regenerate one from scratch). Returns how many lessons were removed."""
     index = load_index()
     to_delete = [eid for eid, m in index.items()
                  if m.get("type") == "course" and m.get("course") == course_id]
@@ -2144,14 +2144,33 @@ def delete_course(course_id):
             path.unlink()
         del index[eid]
     save_index(index)
-    # Remove course folder if empty
     course_folder = KNOWLEDGE_DIR / "courses" / course_id
     if course_folder.exists():
-        import shutil
         shutil.rmtree(str(course_folder), ignore_errors=True)
+    return len(to_delete)
+
+
+@app.route("/api/courses/<course_id>", methods=["DELETE"])
+def delete_course(course_id):
+    courses = load_courses()
+    if course_id not in courses["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    _delete_course_lessons(course_id)
     del courses["courses"][course_id]
     save_courses(courses)
     return jsonify({"ok": True})
+
+
+@app.route("/api/courses/<course_id>/roadmap", methods=["DELETE"])
+def delete_course_roadmap(course_id):
+    """Wipes every lesson in a course but keeps the course entity itself —
+    for starting over (e.g. re-generating a roadmap from scratch) without
+    losing the course's own label/cover/description."""
+    courses_data = _sync_courses_from_index()
+    if course_id not in courses_data["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    deleted = _delete_course_lessons(course_id)
+    return jsonify({"ok": True, "deleted": deleted})
 
 
 @app.route("/api/courses/<course_id>/duplicate", methods=["POST"])
@@ -2465,7 +2484,18 @@ def _parse_headings_at_levels(lines, module_level, lesson_level):
                 cur_module["lessons"].append(cur_lesson)
                 buf = []
                 continue
-            # any other heading level — not a structural split point
+            # A heading deeper than lesson_level, inside a lesson's own
+            # body — a subtopic. Normalized to '## ' regardless of its
+            # original depth in THIS document, so it lines up with what
+            # the "Ver subtemas" feature (course view roadmap tab) looks
+            # for: '## ' headings inside a lesson's own SAVED content —
+            # which, once committed, is a fresh standalone file with no
+            # relation to whatever heading level this outer roadmap
+            # scratch document happened to use for its own module/lesson
+            # split.
+            if cur_lesson is not None and title:
+                buf.append(f"## {title}")
+                continue
         if cur_lesson is not None:
             buf.append(line)
     flush()
@@ -2707,29 +2737,42 @@ def commit_course_import(course_id):
 #    more. "Profundidad" here means how finely the topic is split into
 #    modules/lessons (structural granularity), not how much prose per
 #    lesson — that's now off the table entirely at every depth level.
-# 3. Two more issues from the same generation: modules came back unnumbered
-#    (breaks visual consistency with every other course, and specifically
-#    breaks _detect_module_type_from_title's structured-field detection,
-#    which needs a "Módulo N: ..." style heading to work) — now required
-#    explicitly. And, worse: given a topic like "SQL 2028" (the user's own
-#    course name, encoding a personal 2028 learning-target date, not a real
-#    product/standard version), the model fabricated an entire fictional
-#    "SQL 2028" edition with invented features rather than recognizing no
-#    such version exists — classic hallucination on an unfamiliar-looking
-#    but confident-sounding term. Now explicitly forbidden: numbers in the
-#    topic that don't match a real, known version/standard must be ignored
-#    as scope, not treated as something to invent details about.
+# 3. Modules came back unnumbered (breaks visual consistency with every
+#    other course, and specifically breaks _detect_module_type_from_title's
+#    structured-field detection, which needs a "Módulo N: ..." style
+#    heading to work) — now required explicitly (and enforced in code
+#    afterward regardless, see _ensure_numbered_modules). And, worse: given
+#    a topic like "SQL 2028" (the user's own course name, encoding a
+#    personal 2028 learning-target date, not a real product/standard
+#    version), the model fabricated an entire fictional "SQL 2028" edition
+#    with invented features rather than recognizing no such version exists
+#    — classic hallucination on an unfamiliar-looking but confident-sounding
+#    term. Now explicitly forbidden: numbers in the topic that don't match a
+#    real, known version/standard must be ignored as scope, not treated as
+#    something to invent details about.
+# 4. "No developed content at all" (point 1) turned out to be one notch too
+#    strict once the user actually used this for real: a bare lesson title
+#    with nothing under it still means opening every single lesson by hand
+#    to figure out what to put in it. The fix isn't prose, though — it's a
+#    third structural level. Each lesson now gets a short, UNNUMBERED list
+#    of subtopics ('#### ', still just titles, still no prose under THEM
+#    either) — this becomes that lesson's own saved content once committed,
+#    and _parse_headings_at_levels normalizes it to '## ' so it lines up
+#    with the existing "Ver subtemas" outline feature in the course view.
 _COURSE_GENERATE_SYSTEM_TEMPLATE = (
-    "Eres un diseñador instruccional experto. Crea el ROADMAP de un curso — módulos y lecciones, "
-    "solo la ESTRUCTURA — en Markdown, en español, sobre el tema que te dé el usuario. El "
-    "contenido de cada lección se desarrolla después, dentro del sistema; aquí NO se escribe.\n"
+    "Eres un diseñador instruccional experto. Crea el ROADMAP de un curso — módulos, lecciones y "
+    "los subtemas de cada lección, en Markdown, en español, sobre el tema que te dé el usuario. "
+    "El desarrollo real de cada subtema (explicaciones, ejemplos, ejercicios) se hace después, "
+    "dentro del sistema; aquí NO se escribe ese desarrollo.\n"
     "Reglas ESTRICTAS:\n"
-    "- Usa '## ' para cada módulo y '### ' para cada lección dentro de ese módulo.\n"
+    "- Usa '## ' para cada módulo, '### ' para cada lección dentro de ese módulo, y '#### ' para "
+    "cada subtema dentro de esa lección.\n"
     "- Numera los módulos y lecciones: '## Módulo N: Título' y '### N.M Título de la lección' "
     "(ej. '## Módulo 1: Fundamentos', '### 1.1 Tipos de datos'). Nunca dejes un módulo o lección "
-    "sin numerar.\n"
-    "- Cada línea '### ' es solo el título de la lección — NO escribas contenido, resumen, "
-    "viñetas ni explicación debajo. Nada de cuerpo, en ningún módulo ni lección.\n"
+    "sin numerar. Los subtemas ('#### ') NO llevan número, solo su título breve.\n"
+    "- Cada lección debe tener de 3 a 6 subtemas ('#### ') que desglosen de qué trata esa lección "
+    "— cada uno en su propio renglón, SOLO el título del subtema, SIN explicación, viñetas ni "
+    "contenido debajo de cada uno.\n"
     "- Cubre el temario COMPLETO del tema, desde los fundamentos hasta un nivel avanzado (no "
     "extremadamente experto/de investigación) — sin omitir información importante.\n"
     "- No te limites a una cantidad arbitraria de módulos o lecciones: usa tantos módulos como "
@@ -2753,14 +2796,14 @@ _COURSE_GENERATE_DEPTH = {
             "- Granularidad: SUPERFICIAL. Agrupa en módulos y lecciones más amplios — sigue "
             "cubriendo el temario completo, solo sin desglosar cada matiz en su propia lección."
         ),
-        "max_tokens": 2000,
+        "max_tokens": 3000,
     },
     "estandar": {
         "instructions": (
             "- Granularidad: ESTÁNDAR. El nivel de desglose típico de un curso — cada lección "
             "cubre un subtema concreto, ni excesivamente fragmentado ni excesivamente amplio."
         ),
-        "max_tokens": 3000,
+        "max_tokens": 5000,
     },
     "profundo": {
         "instructions": (
@@ -2768,7 +2811,7 @@ _COURSE_GENERATE_DEPTH = {
             "herramienta o técnica distinta se convierte en su propia lección en vez de agruparse "
             "con otras — más módulos y más lecciones que en el nivel estándar."
         ),
-        "max_tokens": 4500,
+        "max_tokens": 7000,
     },
 }
 
@@ -2835,13 +2878,71 @@ def generate_course_roadmap(course_id):
     if err:
         return jsonify({"error": f"No se pudo generar el roadmap: {err}"}), 502
 
-    modules = _parse_canonical_course_md(content)
+    # The prompt mandates an exact shape (module='##', lesson='###',
+    # subtopic='####'), so unlike the paste-import path there's no real
+    # ambiguity to guess at — parsing directly at (2, 3) avoids the
+    # multi-candidate heuristic in _parse_canonical_course_md potentially
+    # picking (2, 4) instead (subtopics outnumbering lessons would make
+    # that candidate "win" on raw count, misreading every subtopic as its
+    # own lesson). Only falls back to guessing if the model deviated from
+    # the mandated shape badly enough that (2, 3) found nothing at all.
+    lines = content.replace("\r\n", "\n").split("\n")
+    modules = _parse_headings_at_levels(lines, 2, 3)
+    if not modules:
+        modules = _parse_canonical_course_md(content)
     if not modules:
         return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
 
     _ensure_numbered_modules(modules)
     _flag_existing_duplicates(modules, course_id)
     return jsonify({"modules": modules})
+
+
+@app.route("/api/courses/<course_id>/export/md")
+def export_course_roadmap_md(course_id):
+    """Whole-course export as a single Markdown document — same canonical
+    '## Módulo' / '### Lección' shape this whole feature is built around,
+    so it round-trips straight back in through '↓ Importar roadmap' if
+    needed. Each lesson's own saved content (subtopics, and whatever real
+    content the user has since written) is included underneath its
+    heading, unlike the roadmap-generation preview which is titles-only —
+    this is a full backup/portable copy of the course as it stands today,
+    not just its outline."""
+    courses_data = _sync_courses_from_index()
+    if course_id not in courses_data["courses"]:
+        return jsonify({"error": "Not found"}), 404
+    course_label = courses_data["courses"][course_id].get("label", course_id)
+
+    index = load_index()
+    modules = {}
+    for entry_id, meta in index.items():
+        if meta.get("type") != "course" or meta.get("course") != course_id:
+            continue
+        mod_slug = meta.get("module", "")
+        modules.setdefault(mod_slug, {"label": meta.get("module_label", mod_slug), "entries": []})
+        modules[mod_slug]["entries"].append((meta.get("order", 0), entry_id, meta))
+    for mod in modules.values():
+        mod["entries"].sort(key=lambda e: e[0])
+
+    lines = [f"# {course_label}", ""]
+    for mod in modules.values():
+        lines.append(f"## {mod['label']}")
+        lines.append("")
+        for _order, entry_id, meta in mod["entries"]:
+            lines.append(f"### {meta.get('title', entry_id)}")
+            lines.append("")
+            path = _entry_path(entry_id, meta)
+            content = path.read_text(encoding="utf-8").strip() if path.exists() else ""
+            if content:
+                lines.append(content)
+                lines.append("")
+    md_text = "\n".join(lines).strip() + "\n"
+
+    return Response(
+        md_text,
+        mimetype="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{course_id}.md"'},
+    )
 
 
 # ── REINDEX: scan knowledge/ folder and rebuild index.json ─────────────────

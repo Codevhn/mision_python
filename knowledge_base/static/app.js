@@ -6021,6 +6021,58 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
   setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
 }
 
+// ── Roadmap-level actions menu (export / wipe all lessons) — course view header ──
+let _roadmapMenuEl = null;
+function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
+  _roadmapMenuEl?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'course-actions-menu';
+  menu.innerHTML = `
+    <button data-action="export">⬇ Exportar roadmap (.md)</button>
+    <button data-action="wipe" class="danger">🗑 Eliminar todas las lecciones</button>`;
+  const rect = anchor.getBoundingClientRect();
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 130}px;width:210px;z-index:9999`;
+  document.body.appendChild(menu);
+  _roadmapMenuEl = menu;
+  menu.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      menu.remove(); _roadmapMenuEl = null;
+      const action = btn.dataset.action;
+      if (action === 'export') {
+        window.open(`/api/courses/${courseSlug}/export/md`, '_blank');
+        return;
+      }
+      if (action === 'wipe') {
+        const ok = await showConfirm(
+          'Eliminar todas las lecciones',
+          `¿Eliminar TODOS los módulos y lecciones de "${courseEntity.label}"? El curso en sí se conserva (portada, descripción, nivel), pero esta acción no se puede deshacer. Útil antes de volver a generar el roadmap desde cero.`
+        );
+        if (!ok) return;
+        const res = await fetch(`/api/courses/${courseSlug}/roadmap`, { method: 'DELETE' });
+        if (res.ok) {
+          const data = await res.json();
+          showToast(`${data.deleted} lección(es) eliminadas`);
+          await loadTree();
+          _coursesTreeData = await fetch('/api/courses/tree').then(r => r.json());
+          renderCoursesTree(_coursesTreeData, courseSlug);
+          if (_activeCourseSlug === courseSlug) {
+            const courses = await fetch('/api/courses').then(r => r.json());
+            const course = courses.find(c => c.id === courseSlug) || courseEntity;
+            loadCourseView(courseSlug, course);
+          }
+        } else {
+          showToast('Error al eliminar las lecciones', 'error');
+        }
+      }
+    });
+  });
+  const onOutside = e => {
+    if (!menu.contains(e.target)) { menu.remove(); _roadmapMenuEl = null; document.removeEventListener('mousedown', onOutside); }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
+
 // ── Deactivate course detail ──────────────────────────────────────────────
 function closeCourseDetail() {
   _activeCourseSlug = null;
@@ -6179,6 +6231,10 @@ async function loadCourseView(courseSlug, courseEntity) {
   const cvGenerateRoadmapBtn = $('cvGenerateRoadmapBtn');
   if (cvGenerateRoadmapBtn) {
     cvGenerateRoadmapBtn.onclick = () => openImportRoadmapModal(courseSlug, 'generate');
+  }
+  const cvRoadmapMenuBtn = $('cvRoadmapMenuBtn');
+  if (cvRoadmapMenuBtn) {
+    cvRoadmapMenuBtn.onclick = () => _openRoadmapActionsMenu(cvRoadmapMenuBtn, courseSlug, courseEntity);
   }
 
   // Update modules tab label to reflect dominant section type (Módulos / Fases / Semanas…)
