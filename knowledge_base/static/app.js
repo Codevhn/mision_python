@@ -934,6 +934,17 @@ function renderPagesTree(tree) {
     label.innerHTML = renderTreeEntryLabel(node.icon, node.title, ENTRY_ICON_DEFAULTS.page);
     row.appendChild(label);
 
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "tree-page-menu-btn";
+    menuBtn.title = "Acciones";
+    menuBtn.textContent = "⋯";
+    menuBtn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      _openPageActionsMenu(menuBtn, node);
+    });
+    row.appendChild(menuBtn);
+
     const childrenEl = document.createElement("div");
     childrenEl.className = "tree-page-children";
     (node.children || []).forEach(child => childrenEl.appendChild(buildNodeEl(child)));
@@ -1000,6 +1011,46 @@ function renderPagesTree(tree) {
   });
 
   tree.forEach(node => nav.appendChild(buildNodeEl(node)));
+}
+
+// ── "⋯" actions menu for a single row in the PÁGINAS tree ─────────────────
+let _pageActionsMenuEl = null;
+function _openPageActionsMenu(anchor, node) {
+  _pageActionsMenuEl?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'course-actions-menu';
+  menu.innerHTML = `<button data-action="delete" class="danger">🗑 Eliminar página</button>`;
+  const rect = anchor.getBoundingClientRect();
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.right - 168}px;width:168px;z-index:9999`;
+  document.body.appendChild(menu);
+  _pageActionsMenuEl = menu;
+  menu.querySelector('[data-action="delete"]').addEventListener('click', async e => {
+    e.stopPropagation();
+    menu.remove(); _pageActionsMenuEl = null;
+    const hasChildren = node.children && node.children.length > 0;
+    const msg = hasChildren
+      ? `¿Eliminar "${node.title || 'Sin título'}" y sus ${node.children.length} subpágina(s)? Esta acción no se puede deshacer.`
+      : `¿Eliminar "${node.title || 'Sin título'}"? Esta acción no se puede deshacer.`;
+    const ok = await showConfirm('rm -f página', msg);
+    if (!ok) return;
+    const res = await fetch(`/api/entry/${node.id}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('No se pudo eliminar la página', 'error'); return; }
+    if (currentEntryId === node.id) {
+      currentEntryId = null;
+      $("entryView").classList.add("hidden");
+      $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
+      $("kanbanArea").classList.add("hidden");
+      if ($("ctxBar")) $("ctxBar").classList.add("hidden");
+      $("welcome").classList.remove("hidden");
+      renderHome();
+    }
+    showToast("Página eliminada");
+    await loadTree();
+  });
+  const onOutside = e => {
+    if (!menu.contains(e.target)) { menu.remove(); _pageActionsMenuEl = null; document.removeEventListener('mousedown', onOutside); }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
 }
 
 // ---- NEW ROOT PAGE MODAL ----
