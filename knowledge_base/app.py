@@ -17,6 +17,14 @@ import mistune
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+# Flask's default JSON provider alphabetizes every dict's keys before
+# serializing — silently reordering things like {"módulo-1": ..., "módulo-2":
+# ..., "módulo-10": ...} into "módulo-1, módulo-10, módulo-11, ..., módulo-2"
+# on the wire, no matter what order the Python dict was built in. That's
+# exactly what broke module ordering in the course roadmap view. Nothing in
+# this app relies on alphabetized JSON keys, so restore normal
+# insertion-order serialization app-wide.
+app.json.sort_keys = False
 
 KB_PASSWORD = os.environ.get("KB_PASSWORD", "")
 
@@ -2348,6 +2356,23 @@ def get_courses_tree():
             tree[course]["modules"][mod]["entries"].sort(
                 key=lambda e: (e["order"], "")
             )
+        # Modules must read in the course's logical order (Módulo 1, 2, 3…),
+        # not creation order — a course built across several separate
+        # import/generate passes (e.g. modules 1-9 committed, then modules
+        # 10-19 added later as a new batch) can otherwise land in whatever
+        # order those passes happened to run in. Sort numerically by
+        # module_number when present; modules without one (legacy free-text
+        # labels) keep their relative order, placed after the numbered ones.
+        modules = tree[course]["modules"]
+        original_order = {slug: i for i, slug in enumerate(modules)}
+        ordered = sorted(
+            modules.items(),
+            key=lambda kv: (
+                int(kv[1]["module_number"]) if str(kv[1]["module_number"]).isdigit() else float("inf"),
+                original_order[kv[0]],
+            )
+        )
+        tree[course]["modules"] = {slug: data for slug, data in ordered}
     return jsonify(tree)
 
 
