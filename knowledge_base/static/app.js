@@ -7655,7 +7655,7 @@ function initPasteMarkdown() {
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 
   confirmBtn.addEventListener('click', () => {
-    const md = textarea.value.trim();
+    const md = _sanitizeMarkdownForEditor(textarea.value.trim());
     if (!md) return;
     if (appendChk.checked) {
       const current = _inlineEditor.getMarkdown().trimEnd();
@@ -8270,7 +8270,7 @@ function initAIPanel() {
       _inlineInsert('explain', _selContext, lastResult);
     } else {
       const md = _inlineEditor.getMarkdown();
-      _inlineEditor.load(md + '\n\n' + lastResult);
+      _inlineEditor.load(md + '\n\n' + _sanitizeMarkdownForEditor(lastResult));
     }
     closePanel();
     showToast('Respuesta insertada', 'success');
@@ -8551,6 +8551,12 @@ function _showAiResultPopover(selText, selRect, action) {
 function _inlineInsert(action, selText, result) {
   if (!currentEntryId || !_inlineEditor) return;
   const md = _inlineEditor.getMarkdown();
+  // AI output routinely mixes bold with inline code in the same run now
+  // (e.g. "**Laboratorio práctico:** prueba `display: inline`") — the
+  // block editor's code mark is exclusive, so unsanitized that combo
+  // crashes .load() with "Invalid collection of marks". Every other
+  // .load() call site sanitizes before loading; this one didn't.
+  result = _sanitizeMarkdownForEditor(result);
 
   // Actions that REPLACE the selected text
   if (action === 'fix' || action === 'improve') {
