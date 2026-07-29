@@ -14,4 +14,5 @@ COPY knowledge_base/ ./knowledge_base/
 
 EXPOSE 8080
 CMD ["gunicorn", "--chdir", "knowledge_base", "app:app", \
-     "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120"]
+     "--bind", "0.0.0.0:8080", "--worker-class", "gthread", \
+     "--workers", "2", "--threads", "4", "--timeout", "120"]
