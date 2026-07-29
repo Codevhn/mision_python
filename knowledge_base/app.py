@@ -4489,6 +4489,23 @@ def weather_proxy():
 
 # ── Ask AI ────────────────────────────────────────────────────────────────────
 
+# Shared teaching style for every AI response that actually EXPLAINS something
+# to the user (as opposed to editing text or generating structure) — applied
+# to "explain"/"example"/"ask" below and to the concept "Teoría" tab. Not
+# applied to "summarize" (conflicts with brevity), to the pure text-editing
+# actions ("improve"/"fix"/"continue"/"translate_en" — a grammar fix doesn't
+# need a lab), or to course roadmap generation, which is a deliberately
+# separate, structure-only feature (titles only, no content at all).
+_PARETO_TEACHING_STYLE = (
+    " Aplica el principio de Pareto (80/20): prioriza el 20% de las ideas que explican el 80% de lo que "
+    "realmente hace falta entender del tema — enfócate en lo más importante y de mayor impacto práctico, sin "
+    "por eso omitir la teoría fundamental que el estudiante necesita de verdad (no es simplificar de más, es "
+    "priorizar bien). Cuando el tema lo amerite, incluye varios ejemplos concretos, ejercicios prácticos para "
+    "reforzar lo aprendido, casos de estudio reales, y algún laboratorio práctico (algo que el estudiante "
+    "pueda hacer o probar por su cuenta). No fuerces estos elementos si la pregunta es puntual o breve y no "
+    "los amerita — úsalos donde aporten valor real, no como relleno."
+)
+
 @app.route("/api/ai", methods=["POST"])
 def ai_ask():
     data = request.json or {}
@@ -4497,11 +4514,11 @@ def ai_ask():
     action  = data.get("action",  "ask")
 
     systems = {
-        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara y concisa con ejemplos prácticos. Responde en español.",
+        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara, con ejemplos prácticos." + _PARETO_TEACHING_STYLE + " Responde en español.",
         "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso. Responde en español.",
         "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin añadir comentarios ni prefijos.",
-        "example":   "Genera un ejemplo práctico y completo del concepto. Usa código Python si aplica. Responde en español.",
-        "ask":       "Eres un asistente técnico experto en programación. Responde de forma clara y útil en español.",
+        "example":   "Genera uno o varios ejemplos prácticos y completos del concepto. Usa código Python si aplica." + _PARETO_TEACHING_STYLE + " Responde en español.",
+        "ask":       "Eres un asistente técnico experto en programación." + _PARETO_TEACHING_STYLE + " Responde en español.",
         # Inline AI actions
         "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
         "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
@@ -4511,7 +4528,12 @@ def ai_ask():
     system = systems.get(action, systems["ask"])
     user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
 
-    content, err = _call_ai(system, user_msg, max_tokens=2048, provider=data.get("provider"), model=data.get("model"))
+    # "explain"/"example"/"ask" now routinely want room for several examples,
+    # exercises, a case study and a lab — 2048 tokens was tuned for a plain
+    # short explanation and would truncate that. Editing/translation actions
+    # don't need the extra room; keep them at the original budget.
+    max_tokens = 3500 if action in ("explain", "example", "ask") else 2048
+    content, err = _call_ai(system, user_msg, max_tokens=max_tokens, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
     # Render server-side with the same Markdown pipeline used for note content
@@ -5265,14 +5287,14 @@ def get_concept_theory(course, concept_id):
     course_label = courses_master.get(course, {}).get("label", course)
     system = (
         "Eres un instructor técnico claro y directo. Te piden explicar UN concepto puntual de un curso "
-        "técnico — no el curso entero, solo ese concepto.\n\n"
-        "Escribe 2-3 párrafos breves: qué es, por qué importa en la práctica, y un ejemplo simple que lo "
-        "ilustre. Si citas código, usa bloques Markdown con triple backtick indicando el lenguaje; para un "
-        "nombre de propiedad/función/comando suelto, usa backtick simple. Responde en español, tono cercano "
-        "de instructor, no de enciclopedia."
+        "técnico — no el curso entero, solo ese concepto: qué es y por qué importa en la práctica."
+        + _PARETO_TEACHING_STYLE +
+        " Si citas código, usa bloques Markdown con triple backtick indicando el lenguaje; para un nombre de "
+        "propiedad/función/comando suelto, usa backtick simple. Responde en español, tono cercano de "
+        "instructor, no de enciclopedia."
     )
     user_msg = f"Curso: {course_label}\nConcepto: {concept['name']}\nDescripción: {concept.get('description', '')}"
-    content, err = _call_ai(system, user_msg, max_tokens=600, provider=request.args.get("provider"), model=request.args.get("model"))
+    content, err = _call_ai(system, user_msg, max_tokens=1800, provider=request.args.get("provider"), model=request.args.get("model"))
     if err:
         return err
 
