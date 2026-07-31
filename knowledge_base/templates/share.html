@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{{ title if found else 'Enlace no disponible' }} — Project Atlas</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231793d1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-family='sans-serif' font-weight='700'>K</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
+  <style>
+    body { display: block; min-height: 100vh; background: var(--bg); }
+    .share-page { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+    .share-banner {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-ui); font-size: 0.8rem; color: var(--text-faint);
+      margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .share-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .share-icon { font-size: 2rem; line-height: 1; }
+    .share-title { font-family: var(--font-ui); font-size: 1.9rem; font-weight: 700; color: var(--text); }
+    .share-empty {
+      max-width: 480px; margin: 15vh auto; text-align: center;
+      font-family: var(--font-ui); color: var(--text-muted);
+    }
+    .share-empty .share-empty-icon { font-size: 2.4rem; display: block; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+{% if found %}
+  <div class="share-page">
+    <div class="share-banner">🔗 Enlace compartido de solo lectura — Project Atlas</div>
+    <div class="share-header">
+      {% if icon %}<span class="share-icon">{{ icon }}</span>{% endif %}
+      <h1 class="share-title">{{ title }}</h1>
+    </div>
+    <div class="entry-body">{{ html | safe }}</div>
+  </div>
+{% else %}
+  <div class="share-empty">
+    <span class="share-empty-icon">🔒</span>
+    <p>Este enlace no existe o ya no está disponible — puede que quien lo compartió haya dejado de compartirlo.</p>
+  </div>
+{% endif %}
+</body>
+</html>

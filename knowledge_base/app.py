@@ -8,6 +8,7 @@ import unicodedata
 import uuid
 import base64
 import time
+import secrets
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -35,7 +36,7 @@ def require_auth():
     if not KB_PASSWORD:
         return
     public = {"/login", "/logout"}
-    if request.path in public or request.path.startswith("/static/"):
+    if request.path in public or request.path.startswith("/static/") or request.path.startswith("/share/"):
         return
     # Allow admin endpoints with a bearer token
     if ADMIN_TOKEN and request.headers.get("Authorization") == f"Bearer {ADMIN_TOKEN}":
@@ -360,6 +361,43 @@ class CodeBlockRenderer(mistune.HTMLRenderer):
         lang_attr = f' class="language-{lang}"' if lang else ""
         data_lang = f' data-lang="{lang}"' if lang else ""
         return f'<pre{lang_attr}{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
+
+
+_HEADING_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF☀-➿︀-️]"
+)
+
+
+def _strip_duplicate_heading(md, title):
+    """Mirrors the editor's own _stripDuplicateHeading (app.js) for the
+    public share page, which renders server-side and never goes through
+    that JS path: drop a leading '#'-'###' heading that just repeats the
+    entry's title, so it isn't shown twice (once as the page header, once
+    as the first line of the body)."""
+    if not md or not title:
+        return md
+
+    def _clean(s):
+        s = _HEADING_EMOJI_RE.sub("", s)
+        s = re.sub(r"^[\s#\-*>]+", "", s)
+        return s.strip().lower()
+
+    clean_title = _clean(title)
+    if not clean_title:
+        return md
+    lines = md.split("\n")
+    for i in range(min(4, len(lines))):
+        line = lines[i]
+        if not line.strip():
+            continue
+        m = re.match(r"^#{1,3}\s+(.*)", line)
+        if m and _clean(m.group(1)) == clean_title:
+            del lines[i]
+            if i < len(lines) and not lines[i].strip():
+                del lines[i]
+            return "\n".join(lines)
+        break
+    return md
 
 
 def render_markdown(md_text):
@@ -879,6 +917,60 @@ def get_entry(entry_id):
     meta["last_viewed_at"] = datetime.now().isoformat(timespec="seconds")
     save_index(index)
     return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": raw, "html": html})
+
+
+# ── Public sharing: a Notion-style read-only link for one entry, exempt from
+# the app's global password (see require_auth's "/share/" allowance above).
+# The token is a separate unguessable value — never the entry's own id/slug —
+# so turning sharing off (which clears it) actually revokes the old link
+# instead of leaving a guessable path reachable again the moment someone
+# re-shares the same entry. ────────────────────────────────────────────────
+
+@app.route("/api/entry/<entry_id>/share", methods=["POST"])
+def share_entry(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    if not meta.get("share_token"):
+        meta["share_token"] = secrets.token_urlsafe(24)
+    meta["shared"] = True
+    save_index(index)
+    return jsonify({"shared": True, "share_token": meta["share_token"]})
+
+
+@app.route("/api/entry/<entry_id>/share", methods=["DELETE"])
+def unshare_entry(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    meta["shared"] = False
+    meta["share_token"] = ""
+    save_index(index)
+    return jsonify({"shared": False})
+
+
+@app.route("/share/<token>")
+def share_page(token):
+    index = load_index()
+    entry_id = next(
+        (eid for eid, meta in index.items()
+         if meta.get("shared") and meta.get("share_token") == token),
+        None,
+    )
+    if not entry_id:
+        return render_template("share.html", found=False), 404
+    meta = index[entry_id]
+    path = _entry_path(entry_id, meta)
+    if not path.exists():
+        return render_template("share.html", found=False), 404
+    title = meta.get("title", entry_id)
+    html = render_markdown(_strip_duplicate_heading(path.read_text(), title))
+    return render_template(
+        "share.html", found=True, title=title,
+        icon=meta.get("icon", ""), html=html, v=_build_id(),
+    )
 
 
 @app.route("/api/entry", methods=["POST"])

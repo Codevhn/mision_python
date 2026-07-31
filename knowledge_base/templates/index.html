@@ -306,6 +306,7 @@
               <button class="ctx-more-item" id="cmToc">¶ Tabla de contenidos</button>
               <button class="ctx-more-item" id="cmFocus">⊙ Modo focus</button>
               <div class="ctx-menu-sep"></div>
+              <button class="ctx-more-item" id="cmShare">🔗 Compartir…</button>
               <button class="ctx-more-item" id="cmExport">Exportar…</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmStar">Destacar</button>
@@ -1301,6 +1302,33 @@
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
         <button class="btn-ghost" id="exportModalCancel">Cancelar</button>
         <button class="btn-primary" id="exportModalConfirm">↓ Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARE MODAL -->
+  <div class="modal-overlay hidden" id="shareModalOverlay">
+    <div class="modal" id="shareModal" style="max-width:440px">
+      <div class="modal-header">
+        <h2>🔗 Compartir entrada</h2>
+        <button class="modal-close" id="shareModalClose">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="shareToggle" style="margin-top:3px">
+          <span>
+            <span style="display:block;font-weight:600;font-size:0.9rem">Compartir públicamente</span>
+            <span style="display:block;font-size:0.78rem;color:var(--text-muted)">Cualquiera con el enlace puede verla, de solo lectura y sin iniciar sesión.</span>
+          </span>
+        </label>
+        <div id="shareLinkRow" class="hidden" style="display:flex;gap:8px">
+          <input type="text" id="shareLinkInput" readonly
+                 style="flex:1;min-width:0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--font-mono);font-size:0.78rem;color:var(--text)">
+          <button class="btn-ghost" id="shareCopyBtn">⎘ copiar</button>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
+        <button class="btn-ghost" id="shareModalCancel">Cerrar</button>
       </div>
     </div>
   </div>

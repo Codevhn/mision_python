@@ -3039,6 +3039,70 @@ function openExportModal() {
   };
 }
 
+// ---- SHARE (public read-only link, no auth) ----
+function _shareUrlFor(token) {
+  return `${location.origin}/share/${token}`;
+}
+
+function closeShareModal() {
+  $('shareModalOverlay')?.classList.add('hidden');
+}
+
+function openShareModal() {
+  if (!currentEntryId) return;
+  const overlay = $('shareModalOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+
+  const close = () => overlay.classList.add('hidden');
+  $('shareModalClose').onclick  = close;
+  $('shareModalCancel').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  const toggle   = $('shareToggle');
+  const linkRow  = $('shareLinkRow');
+  const linkInput = $('shareLinkInput');
+  const copyBtn  = $('shareCopyBtn');
+
+  const applyState = (shared, token) => {
+    toggle.checked = shared;
+    linkRow.classList.toggle('hidden', !shared);
+    if (shared && token) linkInput.value = _shareUrlFor(token);
+  };
+  applyState(!!currentEntryMeta?.shared, currentEntryMeta?.share_token);
+
+  toggle.onchange = async () => {
+    const entryId = currentEntryId;
+    toggle.disabled = true;
+    try {
+      if (toggle.checked) {
+        const res = await fetch(`/api/entry/${entryId}/share`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'No se pudo compartir', 'error'); toggle.checked = false; return; }
+        if (currentEntryMeta) { currentEntryMeta.shared = true; currentEntryMeta.share_token = data.share_token; }
+        applyState(true, data.share_token);
+        showToast('Enlace público creado');
+      } else {
+        const res = await fetch(`/api/entry/${entryId}/share`, { method: 'DELETE' });
+        if (!res.ok) { showToast('No se pudo dejar de compartir', 'error'); toggle.checked = true; return; }
+        if (currentEntryMeta) { currentEntryMeta.shared = false; currentEntryMeta.share_token = ''; }
+        applyState(false, '');
+        showToast('Ya no es pública');
+      }
+    } finally {
+      toggle.disabled = false;
+    }
+  };
+
+  copyBtn.onclick = () => {
+    if (!linkInput.value) return;
+    navigator.clipboard.writeText(linkInput.value).then(() => {
+      copyBtn.textContent = '✓ copiado';
+      setTimeout(() => { copyBtn.textContent = '⎘ copiar'; }, 1500);
+    });
+  };
+}
+
 // ---- SEARCH ----
 async function runSearch(q) {
   const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -4899,6 +4963,7 @@ function buildBreadcrumb(meta) {
   $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
   $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });
   $("cmFocus")?.addEventListener("click",     () => { $("focusBtn")?.click();        _closeCtxMenu(); });
+  $("cmShare")?.addEventListener("click",     () => { openShareModal();              _closeCtxMenu(); });
   $("cmExport")?.addEventListener("click",    () => { openExportModal();             _closeCtxMenu(); });
   $("cmStar")?.addEventListener("click",      () => { $("starBtn")?.click();         _closeCtxMenu(); });
   $("cmPin")?.addEventListener("click",       () => { $("pinBtn")?.click();          _closeCtxMenu(); });
