@@ -147,7 +147,7 @@ _SECTION_TYPE_FROM_WORD = {
 }
 _SECTION_TYPE_HEADING_RE = re.compile(
     r"^(m[óo]dulo|fase|semana|unidad|nivel|bloque|secci[óo]n|cap[íi]tulo)\b"
-    r"\s*(\d+)?\s*[:.\-–—]?\s*(.*)$",
+    r"\s*(\d+(?:\.\d+)?)?\s*[:.\-–—]?\s*(.*)$",
     re.IGNORECASE,
 )
 
@@ -2460,7 +2460,7 @@ def get_courses_tree():
         ordered = sorted(
             modules.items(),
             key=lambda kv: (
-                int(kv[1]["module_number"]) if str(kv[1]["module_number"]).isdigit() else float("inf"),
+                (lambda n: float(n) if re.match(r'^\d+(?:\.\d+)?$', str(n or "")) else float("inf"))(kv[1]["module_number"]),
                 original_order[kv[0]],
             )
         )

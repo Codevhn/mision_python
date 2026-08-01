@@ -2112,6 +2112,19 @@ async function loadEntry(id, opts = {}) {
     titleEl.classList.toggle("is-empty", !m.title);
   }
 
+  // Module label above title — only for course lessons
+  const moduleLabelEl = $("entryModuleLabel");
+  if (moduleLabelEl) {
+    const modLabel = m.type === "course" ? (m.module_label || m.module || "") : "";
+    if (modLabel) {
+      moduleLabelEl.innerHTML = `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
+      moduleLabelEl.classList.remove("hidden");
+    } else {
+      moduleLabelEl.classList.add("hidden");
+    }
+    $("entryView")?.classList.toggle("has-module-label", !!modLabel);
+  }
+
   // Set page icon button (Notion-style large icon before title)
   _setPageIconBtn(m.icon);
 

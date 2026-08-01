@@ -1050,12 +1050,35 @@ input, textarea, select { font-family: inherit; }
   display: block;
 }
 
+.entry-module-label {
+  padding: 20px 40px 0;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  cursor: default;
+  user-select: none;
+}
+.entry-module-label .eml-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .inline-title-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
   padding: 20px 40px 0;
+}
+.entry-view.has-module-label .inline-title-wrap {
+  padding-top: 4px;
 }
 .inline-title {
   font-family: var(--font-ui);
