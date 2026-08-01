@@ -2127,7 +2127,11 @@ async function loadEntry(id, opts = {}) {
   // Module label above title — only for course lessons
   const moduleLabelEl = $("entryModuleLabel");
   if (moduleLabelEl) {
-    const modLabel = m.type === "course" ? (m.module_label || m.module || "") : "";
+    // Prefer the stored label; fall back to the live tree lookup (handles old
+    // index entries created before module_label was always written).
+    const modLabel = m.type === "course"
+      ? (m.module_label || _findEntryModule(m.course, id) || "")
+      : "";
     if (modLabel) {
       moduleLabelEl.innerHTML = `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
       moduleLabelEl.classList.remove("hidden");
@@ -6461,12 +6465,20 @@ function renderCourseTab(tab, courseSlug, stats) {
       section.className = 'cv-roadmap-section';
       section.dataset.modSlug = modSlug;
       section.innerHTML = `<div class="cv-roadmap-module">
-        <span class="cv-roadmap-mod-label">${escapeHtml(mod.label)}</span>
+        <button class="cv-roadmap-mod-label" title="Contraer / expandir módulo">
+          <span class="cv-mod-toggle">▾</span>${escapeHtml(mod.label)}
+        </button>
         <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
         <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+</button>
       </div>`;
       const entries = document.createElement('div');
       entries.className = 'cv-roadmap-entries';
+      // Toggle collapse on module header click
+      section.querySelector('.cv-roadmap-mod-label').addEventListener('click', ev => {
+        ev.stopPropagation();
+        const collapsed = entries.classList.toggle('cv-entries-collapsed');
+        section.querySelector('.cv-mod-toggle').textContent = collapsed ? '▸' : '▾';
+      });
       (mod.entries || []).forEach((e, ei) => {
         const row = document.createElement('div');
         row.className = `cv-roadmap-entry cv-roadmap-entry--${e.status || 'pendiente'}`;

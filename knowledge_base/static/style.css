@@ -5529,7 +5529,14 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 }
 .cv-roadmap-mod-label {
   font-size: 0.84rem; font-weight: 700; color: var(--text); flex: 1;
+  background: none; border: none; padding: 0; text-align: left;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-ui);
 }
+.cv-roadmap-mod-label:hover { color: var(--accent); }
+.cv-mod-toggle { font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; transition: color 0.12s; }
+.cv-roadmap-mod-label:hover .cv-mod-toggle { color: var(--accent); }
+.cv-roadmap-entries.cv-entries-collapsed { display: none; }
 .cv-roadmap-mod-count { font-size: 0.68rem; color: var(--text-muted); }
 .cv-roadmap-entries { display: flex; flex-direction: column; gap: 4px; padding-left: 4px; }
 .cv-roadmap-entry {
