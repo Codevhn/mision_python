@@ -495,6 +495,38 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--font-ui);
 }
 
+.tree-loading {
+  padding: 18px 14px;
+  color: var(--text-faint);
+  font-size: 0.76rem;
+  font-family: var(--font-ui);
+}
+
+/* Inline text-style button (looks like a link) */
+button.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  display: block;
+  text-decoration: underline;
+}
+button.link-btn:hover { opacity: 0.75; }
+.tree-loading-dots::after {
+  content: '';
+  animation: loading-dots 1.4s steps(4, end) infinite;
+}
+@keyframes loading-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
 /* Category — Notion-style: generous padding, rounded hover, no ASCII tree lines */
 .tree-category-header {
   display: flex;

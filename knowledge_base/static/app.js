@@ -102,11 +102,23 @@ document.addEventListener("DOMContentLoaded", () => {
   initIconPickers();
   renderHome();
 
-  loadTree().then(() => {
-    // Re-render Home now that _index is populated with real stats
-    const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch(e) { return null; } })();
-    if (!activeSpace || activeSpace === 'home') renderHome();
-  });
+  // Retry loadTree on failure (handles Fly.io cold-start delays)
+  (async () => {
+    const retryDelays = [3000, 6000, 12000, 20000];
+    for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+      try {
+        await loadTree();
+        const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch(e) { return null; } })();
+        if (!activeSpace || activeSpace === 'home') renderHome();
+        break;
+      } catch (err) {
+        if (attempt < retryDelays.length) {
+          await new Promise(res => setTimeout(res, retryDelays[attempt]));
+        }
+        // renderCourseList already shows retry UI after its own retry exhaustion
+      }
+    }
+  })();
   _loadActivity().then(() => {
     // Re-render Home now that "Continuar estudiando"/"Visitados recientemente"
     // have real cross-device data instead of starting empty.
@@ -6011,8 +6023,36 @@ async function renderCourseList() {
   const list = $('courseList');
   if (!list) return;
   let allCourses;
-  try { allCourses = await fetch('/api/courses?archived=1').then(r => r.json()); }
-  catch { return; }
+
+  // Retry up to 4 times with exponential backoff (handles Fly.io cold starts)
+  const delays = [2000, 4000, 8000, 16000];
+  let lastErr;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const r = await fetch('/api/courses?archived=1');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      allCourses = await r.json();
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < delays.length) {
+        // Show loading feedback while retrying
+        list.innerHTML = `<div class="tree-loading">Cargando cursos<span class="tree-loading-dots"></span></div>`;
+        await new Promise(res => setTimeout(res, delays[attempt]));
+      }
+    }
+  }
+
+  if (lastErr || !Array.isArray(allCourses)) {
+    list.innerHTML = `<div class="tree-empty" style="cursor:default">
+      <span>Error al cargar cursos.</span>
+      <button class="link-btn" id="retryCoursesBtn" style="margin-top:6px">Reintentar</button>
+    </div>`;
+    const btn = list.querySelector('#retryCoursesBtn');
+    if (btn) btn.addEventListener('click', () => renderCourseList());
+    return;
+  }
 
   const active   = allCourses.filter(c => !c.archived);
   const archived = allCourses.filter(c => c.archived);
