@@ -952,7 +952,6 @@ def unshare_entry(entry_id):
 
 
 @app.route("/api/courses/<slug>/share", methods=["GET"])
-@require_auth
 def get_course_share(slug):
     data = load_courses()
     course = data.get("courses", {}).get(slug)
@@ -962,7 +961,6 @@ def get_course_share(slug):
 
 
 @app.route("/api/courses/<slug>/share", methods=["POST"])
-@require_auth
 def share_course(slug):
     data = load_courses()
     courses = data.get("courses", {})
@@ -977,7 +975,6 @@ def share_course(slug):
 
 
 @app.route("/api/courses/<slug>/share", methods=["DELETE"])
-@require_auth
 def unshare_course(slug):
     data = load_courses()
     courses = data.get("courses", {})
