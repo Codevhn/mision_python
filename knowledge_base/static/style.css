@@ -5593,6 +5593,41 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   margin-right: 4px; white-space: nowrap;
 }
 
+/* ── Roadmap contextual toolbar (below tab bar, roadmap tab only) ── */
+.cv-roadmap-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 20px; border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.cv-roadmap-toolbar.hidden { display: none !important; }
+.cv-rt-left { display: flex; align-items: center; gap: 6px; }
+.cv-rt-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: transparent;
+  color: var(--text-muted); font-size: 0.75rem; font-family: var(--font-ui);
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cv-rt-btn:hover { background: var(--bg-hover); color: var(--text); }
+.cv-rt-btn--ai {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.cv-rt-btn--ai:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.cv-rt-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: transparent;
+  color: var(--text-muted); font-size: 1.1rem; line-height: 1;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.cv-rt-menu-btn:hover { background: var(--bg-hover); color: var(--text); }
+
 /* Roadmap — per-module add lesson button */
 .cv-roadmap-add-lesson {
   margin-left: auto; background: none; border: 1px solid var(--border);
@@ -9076,7 +9111,7 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   /* ── Hide all app chrome — nav, toolbars, panels, editing-only UI ── */
   .topbar, .sidebar, .sidebar-overlay, .activity-bar, .ctx-bar, .nav-back-bar,
   .entry-actions, .prop-container, .move-panel, .relations-panel,
-  .entry-add-cover, .entry-cover-btns, .cv-hero-btns, .cv-tabs-row,
+  .entry-add-cover, .entry-cover-btns, .cv-hero-btns, .cv-tabs-row, .cv-roadmap-toolbar,
   .cv-progress-bar-wrap, .welcome, .course-empty-state, .radar-view,
   .graph-view, .kanban-area, .modal-overlay, .toast, .ai-panel,
   .more-actions-dropdown, #moreActionsBtn, .autosave-indicator,

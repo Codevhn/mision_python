@@ -384,10 +384,14 @@
             <button class="cv-tab" data-tab="modules">Módulos</button>
             <button class="cv-tab" data-tab="stats">Estadísticas</button>
           </nav>
-          <button class="btn-ghost cv-import-btn" id="cvImportRoadmapBtn">↓ Importar roadmap</button>
-          <button class="btn-ghost cv-import-btn" id="cvGenerateRoadmapBtn">✨ Generar con IA</button>
-          <button class="btn-ghost cv-import-btn" id="cvRoadmapMenuBtn" title="Más acciones del roadmap">⋯</button>
           <button class="btn-primary cv-new-lesson-btn" id="cvNewLessonBtn">+ Lección</button>
+        </div>
+        <div class="cv-roadmap-toolbar" id="cvRoadmapToolbar">
+          <div class="cv-rt-left">
+            <button class="cv-rt-btn" id="cvImportRoadmapBtn" title="Importar roadmap desde Markdown">↓ Importar</button>
+            <button class="cv-rt-btn cv-rt-btn--ai" id="cvGenerateRoadmapBtn" title="Generar roadmap con IA">✨ Generar con IA</button>
+          </div>
+          <button class="cv-rt-menu-btn" id="cvRoadmapMenuBtn" title="Más acciones del roadmap">⋯</button>
         </div>
         <div class="cv-body" id="cvBody">
           <!-- populated by loadCourseView() -->
@@ -1331,6 +1335,33 @@
       </div>
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
         <button class="btn-ghost" id="shareModalCancel">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COURSE SHARE MODAL -->
+  <div class="modal-overlay hidden" id="courseShareModalOverlay">
+    <div class="modal" id="courseShareModal" style="max-width:440px">
+      <div class="modal-header">
+        <h2>🔗 Compartir roadmap</h2>
+        <button class="modal-close" id="courseShareModalClose">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="courseShareToggle" style="margin-top:3px">
+          <span>
+            <span style="display:block;font-weight:600;font-size:0.9rem">Compartir públicamente</span>
+            <span style="font-size:0.8rem;color:var(--text-muted)">Genera un enlace de solo lectura del roadmap de este curso, sin necesidad de contraseña.</span>
+          </span>
+        </label>
+        <div id="courseShareLinkRow" class="hidden" style="display:flex;gap:8px">
+          <input type="text" id="courseShareLinkInput" readonly
+                 style="flex:1;min-width:0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--font-mono);font-size:0.78rem;color:var(--text)">
+          <button class="btn-ghost" id="courseShareCopyBtn">Copiar</button>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
+        <button class="btn-ghost" id="courseShareModalCancel">Cerrar</button>
       </div>
     </div>
   </div>

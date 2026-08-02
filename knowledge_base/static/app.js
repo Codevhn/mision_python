@@ -6201,6 +6201,7 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
   menu.innerHTML = `
+    <button data-action="share">🔗 Compartir roadmap</button>
     <button data-action="export">⬇ Exportar roadmap (.md)</button>
     <button data-action="wipe" class="danger">🗑 Eliminar todas las lecciones</button>`;
   const rect = anchor.getBoundingClientRect();
@@ -6212,6 +6213,10 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
       e.stopPropagation();
       menu.remove(); _roadmapMenuEl = null;
       const action = btn.dataset.action;
+      if (action === 'share') {
+        openCourseShareModal(courseSlug, courseEntity);
+        return;
+      }
       if (action === 'export') {
         window.open(`/api/courses/${courseSlug}/export/md`, '_blank');
         return;
@@ -6244,6 +6249,61 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
     if (!menu.contains(e.target)) { menu.remove(); _roadmapMenuEl = null; document.removeEventListener('mousedown', onOutside); }
   };
   setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
+
+// ── Course roadmap public share modal ────────────────────────────────────
+async function openCourseShareModal(courseSlug, courseEntity) {
+  const overlay = $('courseShareModalOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+
+  const close = () => overlay.classList.add('hidden');
+  $('courseShareModalClose').onclick = close;
+  $('courseShareModalCancel').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  const toggle   = $('courseShareToggle');
+  const linkRow  = $('courseShareLinkRow');
+  const linkInput = $('courseShareLinkInput');
+  const copyBtn  = $('courseShareCopyBtn');
+
+  // Load current share state from backend
+  let currentShared = false;
+  let currentToken  = '';
+  try {
+    const r = await fetch(`/api/courses/${courseSlug}/share`);
+    if (r.ok) {
+      const d = await r.json();
+      currentShared = !!d.shared;
+      currentToken  = d.share_token || '';
+    }
+  } catch { /* ignore */ }
+
+  const applyState = (shared, token) => {
+    toggle.checked = shared;
+    linkRow.classList.toggle('hidden', !shared);
+    if (shared && token) linkInput.value = `${location.origin}/share/roadmap/${token}`;
+  };
+  applyState(currentShared, currentToken);
+
+  toggle.onchange = async () => {
+    const wantShared = toggle.checked;
+    try {
+      const r = await fetch(`/api/courses/${courseSlug}/share`, {
+        method: wantShared ? 'POST' : 'DELETE'
+      });
+      const d = await r.json();
+      if (!r.ok) { showToast(d.error || 'Error al cambiar estado de compartición', 'error'); toggle.checked = !wantShared; return; }
+      applyState(wantShared, d.share_token || '');
+      showToast(wantShared ? 'Enlace público del roadmap creado' : 'Ya no es público');
+    } catch { showToast('Error de red', 'error'); toggle.checked = !wantShared; }
+  };
+
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(linkInput.value).then(() => showToast('Enlace copiado'));
+    };
+  }
 }
 
 // ── Deactivate course detail ──────────────────────────────────────────────
@@ -6426,6 +6486,8 @@ function _nextStatus(s) {
 
 function renderCourseTab(tab, courseSlug, stats) {
   const body = $('cvBody');
+  const toolbar = $('cvRoadmapToolbar');
+  if (toolbar) toolbar.classList.toggle('hidden', tab !== 'roadmap');
 
   if (tab === 'roadmap') {
     const tree    = _coursesTreeData[courseSlug];

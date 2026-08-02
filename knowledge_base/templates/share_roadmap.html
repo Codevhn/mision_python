@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{{ title if found else 'Enlace no disponible' }} — Project Atlas</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231793d1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-family='sans-serif' font-weight='700'>K</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
+  <style>
+    body { display: block; min-height: 100vh; background: var(--bg); }
+    .sr-page { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
+    .sr-banner {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-ui); font-size: 0.8rem; color: var(--text-faint);
+      margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .sr-header { margin-bottom: 32px; }
+    .sr-title-row { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+    .sr-icon { font-size: 2.2rem; line-height: 1; }
+    .sr-title { font-family: var(--font-ui); font-size: 2rem; font-weight: 700; color: var(--text); margin: 0; }
+    .sr-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sr-badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 99px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent); font-family: var(--font-ui); font-size: 0.75rem; font-weight: 600;
+    }
+    .sr-desc { font-family: var(--font-ui); font-size: 0.88rem; color: var(--text-muted); margin-top: 8px; }
+    .sr-module {
+      margin-bottom: 24px;
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .sr-module-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px;
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      border-left: 3px solid var(--accent);
+    }
+    .sr-module-label {
+      font-family: var(--font-ui); font-size: 0.92rem; font-weight: 700; color: var(--text);
+    }
+    .sr-module-count { font-family: var(--font-ui); font-size: 0.76rem; color: var(--text-muted); }
+    .sr-lesson {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 18px; border-top: 1px solid var(--border-light);
+      font-family: var(--font-ui); font-size: 0.85rem; color: var(--text);
+    }
+    .sr-lesson:first-child { border-top: none; }
+    .sr-lesson-status {
+      width: 18px; height: 18px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
+    }
+    .sr-lesson-status--completado {
+      background: var(--success, #22c55e); color: #fff;
+    }
+    .sr-lesson-status--en_progreso {
+      background: var(--accent); color: #fff;
+    }
+    .sr-lesson-status--pendiente {
+      background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-faint);
+    }
+    .sr-empty {
+      max-width: 480px; margin: 15vh auto; text-align: center;
+      font-family: var(--font-ui); color: var(--text-muted);
+    }
+    .sr-empty .sr-empty-icon { font-size: 2.4rem; display: block; margin-bottom: 12px; }
+    .sr-stats {
+      font-family: var(--font-ui); font-size: 0.8rem; color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+{% if found %}
+  <div class="sr-page">
+    <div class="sr-banner">🔗 Roadmap compartido de solo lectura — Project Atlas</div>
+    <div class="sr-header">
+      <div class="sr-title-row">
+        {% if icon %}<span class="sr-icon">{{ icon }}</span>{% endif %}
+        <h1 class="sr-title">{{ title }}</h1>
+      </div>
+      <div class="sr-meta">
+        {% if level %}<span class="sr-badge">{{ level }}</span>{% endif %}
+        <span class="sr-stats">{{ total }} lecciones · {{ modules | length }} módulos</span>
+      </div>
+      {% if description %}<p class="sr-desc">{{ description }}</p>{% endif %}
+    </div>
+
+    {% for mod_label, mod in modules %}
+    <div class="sr-module">
+      <div class="sr-module-header">
+        <span class="sr-module-label">{{ mod_label }}</span>
+        <span class="sr-module-count">{{ mod.entries | length }} lecciones</span>
+      </div>
+      <div class="sr-lessons">
+        {% for e in mod.entries %}
+        <div class="sr-lesson">
+          <span class="sr-lesson-status sr-lesson-status--{{ e.status }}"
+                title="{{ e.status }}">
+            {% if e.status == 'completado' %}✓{% elif e.status == 'en_progreso' %}→{% else %}○{% endif %}
+          </span>
+          <span>{{ e.title }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="sr-empty">
+    <span class="sr-empty-icon">🔒</span>
+    <p>Este enlace no existe o ya no está disponible — puede que quien lo compartió haya dejado de compartirlo.</p>
+  </div>
+{% endif %}
+</body>
+</html>

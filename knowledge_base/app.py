@@ -951,6 +951,84 @@ def unshare_entry(entry_id):
     return jsonify({"shared": False})
 
 
+@app.route("/api/courses/<slug>/share", methods=["GET"])
+@require_auth
+def get_course_share(slug):
+    data = load_courses()
+    course = data.get("courses", {}).get(slug)
+    if not course:
+        return jsonify({"error": "Course not found"}), 404
+    return jsonify({"shared": bool(course.get("shared")), "share_token": course.get("share_token", "")})
+
+
+@app.route("/api/courses/<slug>/share", methods=["POST"])
+@require_auth
+def share_course(slug):
+    data = load_courses()
+    courses = data.get("courses", {})
+    if slug not in courses:
+        return jsonify({"error": "Course not found"}), 404
+    course = courses[slug]
+    if not course.get("share_token"):
+        course["share_token"] = secrets.token_urlsafe(24)
+    course["shared"] = True
+    save_courses(data)
+    return jsonify({"shared": True, "share_token": course["share_token"]})
+
+
+@app.route("/api/courses/<slug>/share", methods=["DELETE"])
+@require_auth
+def unshare_course(slug):
+    data = load_courses()
+    courses = data.get("courses", {})
+    if slug not in courses:
+        return jsonify({"error": "Course not found"}), 404
+    course = courses[slug]
+    course["shared"] = False
+    course["share_token"] = ""
+    save_courses(data)
+    return jsonify({"shared": False})
+
+
+@app.route("/share/roadmap/<token>")
+def share_roadmap_page(token):
+    data = load_courses()
+    courses = data.get("courses", {})
+    slug = next(
+        (s for s, c in courses.items()
+         if c.get("shared") and c.get("share_token") == token),
+        None,
+    )
+    if not slug:
+        return render_template("share_roadmap.html", found=False), 404
+    course = courses[slug]
+    index = load_index()
+    modules: dict = {}
+    for meta in index.values():
+        if meta.get("type") == "course" and meta.get("course") == slug:
+            mod_label = meta.get("module_label") or "Sin módulo"
+            try:
+                sort_key = float(meta.get("module_number") or 0)
+            except (TypeError, ValueError):
+                sort_key = 0.0
+            if mod_label not in modules:
+                modules[mod_label] = {"sort_key": sort_key, "entries": []}
+            modules[mod_label]["entries"].append({
+                "title": meta.get("title", ""),
+                "status": meta.get("status", "pendiente"),
+            })
+    sorted_mods = sorted(modules.items(), key=lambda x: x[1]["sort_key"])
+    total = sum(len(m["entries"]) for _, m in sorted_mods)
+    return render_template(
+        "share_roadmap.html", found=True,
+        title=course.get("label", slug),
+        description=course.get("description", ""),
+        icon=course.get("icon", ""),
+        level=course.get("level", ""),
+        modules=sorted_mods, total=total, v=_build_id(),
+    )
+
+
 @app.route("/share/<token>")
 def share_page(token):
     index = load_index()
