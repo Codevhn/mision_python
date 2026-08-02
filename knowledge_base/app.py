@@ -13,7 +13,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_file, session, redirect, url_for, Response
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, session, redirect, url_for, Response
 import mistune
 
 app = Flask(__name__)
@@ -35,7 +35,7 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 def require_auth():
     if not KB_PASSWORD:
         return
-    public = {"/login", "/logout"}
+    public = {"/login", "/logout", "/sw.js", "/manifest.json"}
     if request.path in public or request.path.startswith("/static/") or request.path.startswith("/share/"):
         return
     # Allow admin endpoints with a bearer token
@@ -705,6 +705,21 @@ _STATIC_DIR = _os.path.join(_os.path.dirname(__file__), 'static')
 def _build_id():
     h = lambda f: _file_hash(_os.path.join(_STATIC_DIR, f))
     return f"{h('style.css')}-{h('app.js')}-{h('kanban.css')}-{h('kanban.js')}-{h('blocknote/editor.bundle.js')}"
+
+@app.route("/sw.js")
+def service_worker():
+    resp = send_from_directory(_STATIC_DIR, "sw.js", mimetype="application/javascript")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/manifest.json")
+def web_manifest():
+    resp = send_from_directory(_STATIC_DIR, "manifest.json", mimetype="application/manifest+json")
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
