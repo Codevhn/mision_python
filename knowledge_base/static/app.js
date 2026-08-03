@@ -23,10 +23,15 @@ let _restoreInProgress = false;
 let _codeExecResizeHandler = null;
 let _codeExecObserver = null;
 let _codeExecPanels = [];
-// px reserved below a python block while its console is open (termbar 30 +
-// tty 190 + status 24 + gaps). Toggled as an inline margin-bottom on the
-// block because .code-exec-console is absolutely positioned inside #entryView.
-const CODE_EXEC_RESERVE = 260;
+// The console is absolutely positioned inside #entryView (ProseMirror owns the
+// editor DOM and would strip anything we inject into it), so it participates in
+// the document flow through *space reservation* instead: while open, the owning
+// python block gets an inline margin-bottom equal to the console's real height
+// plus the gaps below. That pushes every following block and, when the block is
+// the last one in the document, the panels below the editor (relations /
+// backlinks / footer) down instead of letting the terminal float over them.
+const CODE_EXEC_GAP   = 8;   // px between code block bottom and console top
+const CODE_EXEC_AFTER = 24;  // 1.5rem breathing room below the console
 
 const ENTRY_ICON_DEFAULTS = {
   knowledge: "lucide:file-text",
@@ -11082,6 +11087,7 @@ function postProcessEntry() {
   // Remove previous inline code execution panels
   const entryView = $('entryView');
   if (entryView) entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
+  body.style.marginBottom = '';
   _codeExecPanels = [];
   if (_codeExecResizeHandler) {
     window.removeEventListener('resize', _codeExecResizeHandler);
@@ -11146,17 +11152,49 @@ function _codePreview(code, maxLines = 3) {
   return code.split('\n').slice(0, maxLines).join('\n');
 }
 
+// Real height the console occupies once open: content height (which the tty's
+// own max-height already caps) clamped to the console's max-height, plus its
+// 1px borders. Measured via scrollHeight so it's valid even mid-transition —
+// never mutates styles, so the slide-open animation keeps playing.
+function _codeExecOpenHeight(consoleEl) {
+  const maxHeight = parseFloat(getComputedStyle(consoleEl).maxHeight) || 0;
+  const contentH  = consoleEl.scrollHeight || 0;
+  const capped    = maxHeight ? Math.min(contentH, maxHeight) : contentH;
+  return capped + 2; // top + bottom border
+}
+
+// Highest ancestor of a block that is still a direct child of #entryBody.
+function _codeExecTopBlock(block, body) {
+  let node = block;
+  while (node && node.parentElement && node.parentElement !== body) node = node.parentElement;
+  return node;
+}
+
+// True when `block` is the last real content block of the document (the
+// trailing "click to continue" placeholder, when present, doesn't count).
+function _codeExecIsLast(block, body) {
+  const top = _codeExecTopBlock(block, body);
+  if (!top) return false;
+  let sib = top.nextElementSibling;
+  while (sib && sib.classList && sib.classList.contains('bn-trailing-block')) sib = sib.nextElementSibling;
+  return sib === null;
+}
+
 // Position the play trigger (top-right of its block) and, when open, the
 // terminal console (below the block). Always re-queries code blocks fresh
-// (React may have re-rendered them). Also reserves layout space for an open
-// console via an inline margin-bottom on the block — re-applied on every pass
-// so ProseMirror's DOM reconciliation can't silently revert it.
+// (React may have re-rendered them). Reserves layout space for an open console
+// via an inline margin-bottom on the block — re-applied on every pass so
+// ProseMirror's DOM reconciliation can't silently revert it — plus, when the
+// block is the last one in the document, an equal margin on #entryBody itself
+// so the sections below the editor (relations/backlinks/footer) get pushed
+// down instead of being covered by the console.
 function _positionCodePanels(panels) {
   const entryView = $('entryView');
   const entryBody = $('entryBody');
   if (!entryView || !entryBody) return;
   const freshBlocks = [...entryBody.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
   const evRect = entryView.getBoundingClientRect();
+  let lastReserve = '';
   panels.forEach((panel, i) => {
     const block = freshBlocks[i] || panel.block;
     if (!block) return;
@@ -11164,11 +11202,31 @@ function _positionCodePanels(panels) {
     // top relative to #entryView content origin (scroll-invariant: scroll cancels out).
     const top = blockRect.top - evRect.top;
     panel.trigger.style.top = (top + 6) + 'px';
-    panel.console.style.top  = (top + blockRect.height + 8) + 'px';
-    // Reserve room for an open console so it never overlaps the next block.
     const isOpen = panel.console.classList.contains('open');
-    block.style.marginBottom = isOpen ? CODE_EXEC_RESERVE + 'px' : '';
+    panel.console.style.top = (top + blockRect.height + CODE_EXEC_GAP) + 'px';
+    // Square the block's bottom corners while its console is open so block +
+    // terminal read as one continuous card (re-applied each pass, like the
+    // margin, because ProseMirror manages these nodes).
+    if (isOpen) {
+      block.style.borderBottomLeftRadius  = '0';
+      block.style.borderBottomRightRadius = '0';
+    } else {
+      block.style.borderBottomLeftRadius  = '';
+      block.style.borderBottomRightRadius = '';
+    }
+    // Reserve exactly what the console occupies + 1.5rem below it.
+    let reserve = '';
+    if (isOpen) {
+      const openHeight = _codeExecOpenHeight(panel.console);
+      reserve = (openHeight + CODE_EXEC_GAP + CODE_EXEC_AFTER) + 'px';
+    }
+    block.style.marginBottom = reserve;
+    if (isOpen && _codeExecIsLast(block, entryBody)) lastReserve = reserve;
   });
+  // Push the panels below the editor down when the open console is the
+  // document's last block (its block margin would collapse through #entryBody,
+  // which has no bottom padding).
+  entryBody.style.marginBottom = lastReserve;
 }
 
 // Ensure the ► play trigger + terminal console exist for every python code
@@ -11189,6 +11247,7 @@ function _syncCodeExecutionPanels() {
     }
     entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
     pyBlocks.forEach(b => b.style.marginBottom = '');
+    body.style.marginBottom = '';
     _codeExecPanels = [];
     _initCodeExecution(pyBlocks);
   }

@@ -8577,7 +8577,11 @@ body {
 .code-exec-play.busy svg { animation: code-exec-spin 0.8s linear infinite; }
 
 /* Terminal console — collapsed by default; slides open on first run. Always a
-   dark terminal regardless of the app theme (Jupyter/W3Schools-style TTY). */
+   dark terminal regardless of the app theme (Jupyter/W3Schools-style TTY). It
+   sits directly under its code block as a visual continuation of it (square
+   top corners, no shadow/z-index) and participates in the document flow by
+   pushing the content below it through the space reserved via the block's
+   margin-bottom (see _positionCodePanels in app.js). */
 .code-exec-console {
   position: absolute;
   /* Match .entry-body's own horizontal padding (40px desktop) so the console
@@ -8585,8 +8589,7 @@ body {
      .entry-view container it's actually appended to. */
   left: 40px;
   right: 40px;
-  z-index: 5;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   overflow: hidden;
   max-height: 0;
   opacity: 0;
@@ -8595,7 +8598,6 @@ body {
   transition: max-height 0.28s ease, opacity 0.2s ease, transform 0.28s ease;
   background: #1e1e2e;
   border: 1px solid #2a2a3c;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .code-exec-console.open {
@@ -8607,7 +8609,6 @@ body {
 .code-exec-console.err {
   border-color: #7f1d1d;
   background: #241a1d;
-  box-shadow: 0 8px 24px rgba(127, 29, 29, 0.4);
 }
 
 .code-exec-termbar {
