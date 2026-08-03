@@ -13,11 +13,53 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
+from collections import deque
 from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, session, redirect, url_for, Response
 import mistune
+import bleach
+from bleach.css_sanitizer import CSSSanitizer
+
+# ── Startup security (fail-closed) ─────────────────────────────────────────────
+# If SECRET_KEY or KB_PASSWORD/ADMIN_TOKEN are missing, the app would start with
+# a forgeable session secret or with authentication completely disabled — the
+# two worst ways for this single-user KB to end up exposed. Refuse to boot
+# unless they're configured. For LOCAL DEVELOPMENT ONLY you may set
+# ALLOW_INSECURE=1 to bypass this (and to disable Secure cookies on http).
+_ALLOW_INSECURE = os.environ.get("ALLOW_INSECURE", "").lower() in ("1", "true", "yes")
+
+
+def _check_startup_security():
+    allow_insecure = os.environ.get("ALLOW_INSECURE", "").lower() in ("1", "true", "yes")
+    problems = []
+    secret_key = os.environ.get("SECRET_KEY", "")
+    if not secret_key or secret_key == "dev-secret-change-in-prod":
+        problems.append("SECRET_KEY no está definida (o usa el valor por defecto)")
+    if not os.environ.get("KB_PASSWORD") and not os.environ.get("ADMIN_TOKEN"):
+        problems.append("KB_PASSWORD/ADMIN_TOKEN no están definidos (la app quedaría sin autenticación)")
+    if problems and not allow_insecure:
+        raise RuntimeError(
+            "Arranque seguro bloqueado (fail-closed). Configura: " + "; ".join(problems)
+            + " — o define ALLOW_INSECURE=1 solo para desarrollo local."
+        )
+
+
+_check_startup_security()
+
+# Kill switch for server-side Python execution (/api/execute and the practice
+# step checker run real code on the server via subprocess). Default OFF: with
+# no sandbox, this is the closest thing to a safe default. Set
+# ENABLE_CODE_EXECUTION=true in production only if you actually use it.
+CODE_EXECUTION_ENABLED = os.environ.get("ENABLE_CODE_EXECUTION", "").lower() in ("1", "true", "yes")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB request cap (uploads, JSON bodies)
+_secure_cookies_default = "false" if _ALLOW_INSECURE else "true"
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("SECURE_COOKIES", _secure_cookies_default).lower() in ("1", "true", "yes"),
+)
 # Flask's default JSON provider alphabetizes every dict's keys before
 # serializing — silently reordering things like {"módulo-1": ..., "módulo-2":
 # ..., "módulo-10": ...} into "módulo-1, módulo-10, módulo-11, ..., módulo-2"
@@ -53,6 +95,16 @@ def prevent_api_cache(response):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+    return response
+
+
+@app.after_request
+def set_security_headers(response):
+    # nosniff matters most for /static/covers/: it stops a browser from sniffing
+    # an uploaded file into HTML/script if its Content-Type is ever wrong.
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return response
 
 BASE_DIR = Path(__file__).parent
@@ -400,10 +452,54 @@ def _strip_duplicate_heading(md, title):
     return md
 
 
+# ── HTML sanitization (server-side) ───────────────────────────────────────────
+# render_markdown output is injected with `| safe` into public share pages and
+# into PDF/HTML exports, so raw HTML must be allowlisted, not trusted. bleach
+# keeps the tags/attrs the app's own pipeline generates (alert divs, chat
+# bubbles, wikilinks, code blocks, BlockNote inline-color spans, tables) while
+# stripping <script>, on* handlers, javascript: URLs, and unknown tags.
+_SANITIZE_TAGS = [
+    "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "strong", "em", "b", "i", "u", "s", "del", "ins",
+    "code", "pre", "blockquote", "a", "img", "span", "div",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+    "sub", "sup", "mark", "small", "kbd", "samp", "var", "abbr",
+    "figure", "figcaption",
+]
+_SANITIZE_ATTRS = {
+    "*": ["class", "style", "title", "id", "align"],
+    "a": ["href", "name", "target", "rel"],
+    "img": ["src", "alt", "width", "height", "loading"],
+    "code": ["class", "data-lang"],
+    "pre": ["class", "data-lang"],
+    "span": ["data-title", "data-text-color", "data-background-color",
+             "data-mention", "data-type", "data-name", "data-url"],
+    "th": ["colspan", "rowspan", "scope"],
+    "td": ["colspan", "rowspan"],
+    "ol": ["start", "type"],
+}
+_SANITIZE_PROTOCOLS = ["http", "https", "mailto"]
+_bleach_cleaner = bleach.Cleaner(
+    tags=_SANITIZE_TAGS,
+    attributes=_SANITIZE_ATTRS,
+    protocols=_SANITIZE_PROTOCOLS,
+    strip=True,
+    # CSSSanitizer (tinycss2) keeps harmless inline styles like color while
+    # dropping position:fixed and url(javascript:...) values.
+    css_sanitizer=CSSSanitizer(),
+)
+
+
+def sanitize_html(html):
+    if not html:
+        return html
+    return _bleach_cleaner.clean(html)
+
+
 def render_markdown(md_text):
     chat_html, is_chat = process_chat_blocks(md_text)
     if is_chat:
-        return chat_html
+        return sanitize_html(chat_html)
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         renderer=CodeBlockRenderer(escape=False),
@@ -411,7 +507,7 @@ def render_markdown(md_text):
     )
     html = renderer(processed)
     html = post_process_wikilinks(html)
-    return html
+    return sanitize_html(html)
 
 
 def _strip_duplicate_heading_md(md, title):
@@ -721,6 +817,37 @@ def web_manifest():
     return resp
 
 
+# ── Login rate limit ──────────────────────────────────────────────────────────
+# In-memory sliding window per client IP (5 failures / 60s). Best-effort by
+# design: it's a personal app, and it also naturally throttles a brute-force
+# behind a single proxy (all attempts collapse onto one bucket).
+_LOGIN_ATTEMPTS = {}
+_LOGIN_MAX_FAILS = 5
+_LOGIN_WINDOW_SECONDS = 60
+
+
+def _client_ip():
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def _login_throttled(ip):
+    now = time.time()
+    dq = _LOGIN_ATTEMPTS.setdefault(ip, deque())
+    while dq and now - dq[0] > _LOGIN_WINDOW_SECONDS:
+        dq.popleft()
+    return len(dq) >= _LOGIN_MAX_FAILS
+
+
+def _record_login_failure(ip):
+    dq = _LOGIN_ATTEMPTS.setdefault(ip, deque())
+    dq.append(time.time())
+    while len(dq) > _LOGIN_MAX_FAILS:
+        dq.popleft()
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
     if not KB_PASSWORD:
@@ -729,9 +856,14 @@ def login_page():
         return redirect(url_for("index"))
     error = None
     if request.method == "POST":
+        ip = _client_ip()
+        if _login_throttled(ip):
+            return render_template("login.html", error="Demasiados intentos. Espera 60 segundos e inténtalo de nuevo."), 429
         if request.form.get("password") == KB_PASSWORD:
+            _LOGIN_ATTEMPTS.pop(ip, None)
             session["authenticated"] = True
             return redirect(url_for("index"))
+        _record_login_failure(ip)
         error = "Contraseña incorrecta."
     return render_template("login.html", error=error)
 
@@ -1848,6 +1980,20 @@ def search_photos():
     return jsonify({"photos": photos, "source": "flickr"})
 
 
+# SVG is deliberately excluded: it can carry <script> and would be a stored-XSS
+# vector once served from /static/covers/. Magic bytes are validated below so
+# the on-disk bytes always match the declared extension.
+_ALLOWED_COVER_EXTS = {"png", "jpeg", "jpg", "webp", "gif"}
+_COVER_MAX_BYTES = 8 * 1024 * 1024
+_COVER_MAGIC_BYTES = {
+    "png": (b"\x89PNG\r\n\x1a\n",),
+    "jpeg": (b"\xff\xd8\xff",),
+    "jpg": (b"\xff\xd8\xff",),
+    "gif": (b"GIF87a", b"GIF89a"),
+    "webp": (b"RIFF",),
+}
+
+
 @app.route("/api/upload/cover", methods=["POST"])
 def upload_cover_image():
     """Receive a base64-encoded image, save to static/covers/, return URL."""
@@ -1858,11 +2004,29 @@ def upload_cover_image():
     if not data_url.startswith("data:image/"):
         return jsonify({"error": "Invalid image"}), 400
     header, encoded = data_url.split(",", 1)
-    ext = header.split("/")[1].split(";")[0]  # e.g. "jpeg", "png", "webp"
+    ext = header.split("/")[1].split(";")[0].lower()  # e.g. "jpeg", "png", "webp"
+    if ext not in _ALLOWED_COVER_EXTS:
+        return jsonify({"error": "Formato no permitido (solo PNG/JPEG/WebP/GIF, sin SVG)"}), 400
+    try:
+        raw = base64.b64decode(encoded)
+    except Exception:
+        return jsonify({"error": "Invalid image data"}), 400
+    if not raw:
+        return jsonify({"error": "Invalid image data"}), 400
+    if len(raw) > _COVER_MAX_BYTES:
+        return jsonify({"error": "Imagen demasiado grande (máx 8MB)"}), 400
+    # Verify magic bytes match the declared extension — a PNG renamed to .webp
+    # (or a text file riding in as data:image/png) must be rejected. This is
+    # what actually stops an SVG-with-<script> from landing on /static/covers/.
+    magics = _COVER_MAGIC_BYTES[ext]
+    if not any(raw.startswith(m) for m in magics):
+        return jsonify({"error": "El archivo no corresponde al formato declarado"}), 400
+    if ext == "webp" and b"WEBP" not in raw[8:16]:
+        return jsonify({"error": "El archivo no corresponde al formato declarado"}), 400
     filename = f"{uuid.uuid4().hex[:12]}.{ext}"
     filepath = covers_dir / filename
     with open(filepath, "wb") as f:
-        f.write(base64.b64decode(encoded))
+        f.write(raw)
     return jsonify({"ok": True, "url": f"/static/covers/{filename}"})
 
 
@@ -5279,6 +5443,9 @@ def generate_practice_challenge():
 
 @app.route("/api/practice/check-python", methods=["POST"])
 def check_practice_python():
+    gated = _code_execution_gate()
+    if gated is not None:
+        return gated
     data    = request.json or {}
     code    = data.get("code", "")
     asserts = data.get("asserts")
@@ -6025,8 +6192,28 @@ def _run_python(code):
         return {"error": "⏱ Timeout: el código superó 10 segundos."}
 
 
+def _code_execution_gate():
+    """Strict gate for server-side code execution.
+
+    Returns None if allowed, otherwise a (jsonify_response, status) tuple ready
+    to return from the route. Execution runs real Python on this server with no
+    sandbox, so it demands BOTH the feature flag AND real authentication —
+    session or admin bearer token — even if KB_PASSWORD was somehow left empty.
+    """
+    if not CODE_EXECUTION_ENABLED:
+        return (jsonify({"error": "La ejecución de código está deshabilitada (ENABLE_CODE_EXECUTION=true la activa)."}), 403)
+    if not (session.get("authenticated")
+            or (ADMIN_TOKEN and request.headers.get("Authorization") == f"Bearer {ADMIN_TOKEN}")):
+        return (jsonify({"error": "Unauthorized"}), 401)
+    return None
+
+
 @app.route("/api/execute", methods=["POST"])
 def execute_code():
+    gated = _code_execution_gate()
+    if gated is not None:
+        return gated
+
     data     = request.json or {}
     code     = data.get("code", "").strip()
     language = data.get("language", "python").lower().replace("python3", "python")

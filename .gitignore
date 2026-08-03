@@ -5,3 +5,6 @@ __pycache__/
 venv/
 .venv/
 env/
+
+# Uploaded images (runtime-generated, must never be committed)
+knowledge_base/static/covers/
