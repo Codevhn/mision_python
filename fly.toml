@@ -1,10 +1,8 @@
-# fly.toml app configuration file generated for mision-python-guurbw on 2026-08-02T01:58:45Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
+# fly.toml — app real: mision-pythonhn (la KB con los 1045 registros).
+# NOTA: no cambiar el nombre de la app a mision-python-guurbw (duplicado vacío).
 
-app = 'mision-python-guurbw'
-primary_region = 'ams'
+app = 'mision-pythonhn'
+primary_region = 'lax'
 
 [build]
   dockerfile = 'Dockerfile'
