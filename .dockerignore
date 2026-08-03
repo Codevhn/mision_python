@@ -1,13 +1,50 @@
-# flyctl launch added from .gitignore
-**/__pycache__
-**/*.pyc
-**/*.pyo
-**/.claude
+# ============================================================
+# .dockerignore — keep the build context small for fly deploy
+# Current problem: knowledge_base/editor-src/node_modules is
+# 320 MB but never enters the image (the bundle is prebuilt into
+# static/blocknote/editor.bundle.js), so the context was ~319 MB.
+# ============================================================
+
+# --- The big one: editor build tree is not needed at runtime ---
+knowledge_base/editor-src/
+
+# --- Git metadata ---
+.git
+.gitignore
+.gitattributes
+.github
+
+# --- Python caches & virtualenvs ---
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.venv
+venv
+env
+ENV
+
+# --- JS ---
+node_modules
+
+# --- Local tooling / editor state (never in the image) ---
+.agents
+.codex
+.claude
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# --- Root-level docs only (keep knowledge_base/knowledge/**/*.md
+#     seed content, used when DATA_ROOT is unset) ---
+/*.md
+/*.pdf
+
+# --- Not needed at runtime ---
+tests/
+knowledge_base/tests/
+*.log
+.env
 fly.toml
-
-# local virtualenvs and git metadata — never needed in the build context
-venv/
-.venv/
-env/
-.git/
-
