@@ -1924,8 +1924,8 @@ button.link-btn:hover { opacity: 0.75; }
   .entry-view { padding: 4px 4px 80px; max-width: 100%; }
   /* Entry body: 40px desktop padding → 12px on mobile (was squeezing text) */
   .entry-body { padding: 0 12px !important; }
-  .code-exec-inline { left: 12px; right: 12px; }
-  .code-exec-runbar { padding: 0 12px; }
+  .code-exec-console { left: 12px; right: 12px; }
+  .code-exec-play { right: 12px; }
 
   /* ENTRY COVER — reduce height on mobile */
   .entry-cover { height: 110px; }
@@ -7065,7 +7065,7 @@ body.focus-mode .layout { height: 100dvh; }
   /* Entry body: fill available width without huge side margins */
   .entry-view { max-width: 100%; padding: 0 0 80px; }
   .entry-body { padding: 0 20px !important; }
-  .code-exec-inline { left: 20px; right: 20px; }
+  .code-exec-console { left: 20px; right: 20px; }
 
   /* Inline title: less horizontal padding */
   .inline-title-wrap { padding: 12px 20px 0 !important; }
@@ -8331,6 +8331,35 @@ body {
 .practice-step-instruction { font-size: 1.08rem; font-weight: 600; color: var(--text); line-height: 1.55; margin-bottom: 14px; }
 .practice-step-actions { margin-top: 10px; }
 
+/* Practice step result box — self-contained, since the old shared
+   .code-exec-output/.code-exec-stdout/.code-exec-stderr rules were replaced by
+   the interactive-terminal design and no longer exist. */
+#practiceOutput {
+  margin-top: 10px;
+  background: #0d1117;
+  border-left: 3px solid #10b981;
+  border-radius: 0 8px 8px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+#practiceOutput .code-exec-stdout,
+#practiceOutput .code-exec-stderr {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+#practiceOutput .code-exec-stdout { color: #7ee787; }
+#practiceOutput .code-exec-stderr { color: #f87171; border-top: 1px solid rgba(248, 113, 113, 0.2); }
+#practiceOutput .code-exec-stderr.hidden { display: none; }
+#practiceCssResults { padding: 10px 14px; font-family: var(--font-mono); font-size: 13px; color: #7ee787; white-space: pre-wrap; }
+[data-theme="light"] #practiceOutput .code-exec-stdout { color: #0d5d3e; }
+[data-theme="light"] #practiceOutput .code-exec-stderr { color: #c0392b; }
+[data-theme="light"] #practiceOutput { background: #f6f8fa; border-left-color: #0d9669; }
+
 .practice-feedback {
   margin-top: 10px;
   padding: 12px 16px;
@@ -8448,40 +8477,8 @@ body {
    FEATURE PANELS (code runner, mermaid, math) — sit BELOW the editor
    ============================================================ */
 
-/* CSS counter to label each Python block with its number — no DOM injection needed */
-#entryBody { counter-reset: py-block mmd-block math-block; }
-
-[data-content-type="codeBlock"][data-language="python"] {
-  counter-increment: py-block;
-  position: relative;
-  /* The run bar + output panel below this block (.code-exec-inline, appended in
-     app.js) is position:absolute so it can't push BlockNote's own blocks down —
-     writing to this element's layout directly gets silently reverted by
-     ProseMirror's DOM reconciliation. Reserve exact space here instead: 8px gap
-     + 32px run bar + 170px fixed-height result box + 20px breathing room before
-     the next block. The result box is always visible at that same height
-     (see .code-exec-output), so this is a precise fit, not a worst-case guess. */
-  margin-bottom: 230px;
-}
-[data-content-type="codeBlock"][data-language="python"]::after {
-  content: "▶ bloque " counter(py-block);
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 0.62rem;
-  font-family: var(--font-ui);
-  font-weight: 600;
-  color: #0d9669;
-  background: color-mix(in srgb, #10b981 12%, var(--bg));
-  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
-  border-radius: 4px;
-  padding: 1px 6px;
-  pointer-events: none;
-  z-index: 1;
-}
-[data-theme="dark"] [data-content-type="codeBlock"][data-language="python"]::after {
-  color: #10b981;
-}
+/* CSS counter to label each Mermaid/math block with its number — no DOM injection needed */
+#entryBody { counter-reset: mmd-block math-block; }
 
 [data-content-type="codeBlock"][data-language="mermaid"] {
   counter-increment: mmd-block;
@@ -8548,135 +8545,177 @@ body {
 }
 
 /* ============================================================
-   FEATURE: JUPYTER-STYLE INLINE CODE EXECUTION
+   FEATURE: INTERACTIVE PYTHON CODE EXECUTION (terminal console)
    ============================================================ */
-.code-exec-inline {
+
+/* Play trigger — sits in the code block's top bar (top-right), next to the
+   language selector BlockNote renders there. Replaces the old non-interactive
+   "▶ bloque N" badge. Appended to #entryView (absolute) so ProseMirror's DOM
+   reconciliation never reverts it. */
+.code-exec-play {
   position: absolute;
-  /* Match .entry-body's own horizontal padding (40px desktop) so the run
-     bar/output box lines up with the code block above it instead of
-     stretching to the wider .entry-view container it's actually appended to. */
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, #10b981 40%, transparent);
+  background: color-mix(in srgb, #10b981 14%, transparent);
+  color: #0d9669;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  transition: background 0.15s, transform 0.1s;
+}
+[data-theme="dark"] .code-exec-play { color: #10b981; }
+.code-exec-play:hover { background: color-mix(in srgb, #10b981 26%, transparent); }
+.code-exec-play:active { transform: scale(0.94); }
+.code-exec-play svg { width: 12px; height: 12px; fill: currentColor; }
+.code-exec-play.busy svg { animation: code-exec-spin 0.8s linear infinite; }
+
+/* Terminal console — collapsed by default; slides open on first run. Always a
+   dark terminal regardless of the app theme (Jupyter/W3Schools-style TTY). */
+.code-exec-console {
+  position: absolute;
+  /* Match .entry-body's own horizontal padding (40px desktop) so the console
+     lines up with the code block above it instead of stretching to the wider
+     .entry-view container it's actually appended to. */
   left: 40px;
   right: 40px;
   z-index: 5;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: max-height 0.28s ease, opacity 0.2s ease, transform 0.28s ease;
+  background: #1e1e2e;
+  border: 1px solid #2a2a3c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-.code-exec-runbar {
+.code-exec-console.open {
+  max-height: 310px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.code-exec-console.err {
+  border-color: #7f1d1d;
+  background: #241a1d;
+  box-shadow: 0 8px 24px rgba(127, 29, 29, 0.4);
+}
+
+.code-exec-termbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
-  height: 32px;
-  background: var(--bg-code);
-  border-bottom: 2px solid color-mix(in srgb, #10b981 30%, transparent);
+  height: 30px;
+  padding: 0 8px 0 14px;
+  background: #181825;
+  border-bottom: 1px solid #2a2a3c;
+  color: #a6adc8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  user-select: none;
   gap: 8px;
 }
-.code-exec-lang {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-faint);
-  display: flex;
+.code-exec-term-title {
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
-.code-exec-lang::before {
-  content: '';
-  display: inline-block;
+.code-exec-term-title::before {
+  content: "";
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #3776AB;
-  flex-shrink: 0;
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
 }
-.code-exec-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: color-mix(in srgb, #10b981 15%, transparent);
-  border: 1px solid color-mix(in srgb, #10b981 40%, transparent);
-  color: #0d9669;
-  border-radius: 4px;
-  padding: 2px 10px;
-  font-size: 12px;
-  font-family: var(--font-ui);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  line-height: 1.8;
+.code-exec-console.err .code-exec-term-title::before {
+  background: #f38ba8;
+  box-shadow: 0 0 6px rgba(243, 139, 168, 0.7);
 }
-[data-theme="dark"] .code-exec-btn { color: #10b981; }
-.code-exec-btn:hover { background: color-mix(in srgb, #10b981 25%, transparent); }
-.code-exec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.code-exec-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.code-exec-output {
-  background: #0d1117;
-  border-left: 3px solid #10b981;
-  position: relative;
-  /* Always-visible, fixed-height result box (Jupyter/W3Schools style) instead of
-     something that pops in on run: a constant height means the space reserved
-     for it below the code block (see the codeBlock rule above) is never a
-     mystery blank gap, before or after execution — it's always a real, visible
-     box, just empty until you run the code. Single scroll for stdout+stderr+meta
-     together keeps that height true regardless of how much output comes back. */
-  height: 170px;
-  overflow-y: auto;
-}
-[data-theme="light"] .code-exec-output { background: #f6f8fa; border-left-color: #0d9669; }
-
-.code-exec-stdout {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: #7ee787;
-  padding: 10px 14px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.6;
-  margin: 0;
-}
-[data-theme="light"] .code-exec-stdout { color: #0d5d3e; }
-.code-exec-stdout.placeholder { color: var(--text-faint); font-style: italic; }
-
-.code-exec-stderr {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: #f87171;
-  padding: 8px 14px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.6;
-  margin: 0;
-  border-top: 1px solid rgba(248,113,113,0.2);
-}
-[data-theme="light"] .code-exec-stderr { color: #c0392b; background: #fff5f5; }
-.code-exec-stderr.hidden { display: none; }
-
-.code-exec-meta {
-  font-size: 11px;
-  color: #7d8590;
-  padding: 4px 14px;
-  font-family: var(--font-mono);
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-[data-theme="light"] .code-exec-meta { color: #57606a; border-top-color: rgba(0,0,0,0.08); }
-.code-exec-meta:empty { display: none; }
 
 .code-exec-close {
-  /* Lives in the run bar (.code-exec-actions), not inside the scrollable
-     output box, so it's always reachable regardless of scroll position. */
   background: none;
   border: none;
   color: #7d8590;
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
-  padding: 3px 6px;
-  border-radius: 3px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-family: var(--font-ui);
 }
-.code-exec-close:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+.code-exec-close:hover { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
+.code-exec-tty {
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  color: #a6adc8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.code-exec-stdout {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #cdd6f4;
+}
+.code-exec-stderr {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #f38ba8;
+}
+
+/* Busy state: spinner + "Ejecutando…" replaces stdout/stderr until the run
+   resolves, then the response text swaps in. */
+.code-exec-busy {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  color: #a6adc8;
+  font-size: 13px;
+}
+.code-exec-console.busy .code-exec-busy { display: inline-flex; }
+.code-exec-console.busy .code-exec-stdout,
+.code-exec-console.busy .code-exec-stderr { display: none; }
+.code-exec-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #45475a;
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: code-exec-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes code-exec-spin { to { transform: rotate(360deg); } }
+
+.code-exec-status {
+  padding: 4px 14px;
+  border-top: 1px solid #2a2a3c;
+  font-size: 11px;
+  color: #7d8590;
+  font-family: var(--font-ui);
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.code-exec-status:empty { display: none; }
+.code-exec-status.ok { color: #a6e3a1; }
+.code-exec-console.err .code-exec-status { color: #f38ba8; }
 
 /* ============================================================
    FEATURE: MERMAID DIAGRAMS
@@ -9119,7 +9158,7 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   .bn-side-menu, .bn-formatting-toolbar, .bn-link-toolbar,
   .bn-suggestion-menu, .bn-table-handle, .bn-table-handle-menu,
   .bn-drag-handle-menu, .callout-toolbar, .bn-callout-emoji-picker,
-  .code-exec-runbar, .code-exec-output,
+  .code-exec-play, .code-exec-console,
   #_callout_ep {
     display: none !important;
   }
@@ -9128,10 +9167,6 @@ html.is-touch-device .bn-side-menu { display: none !important; }
      emoji is the one button we keep, as decorative content identity. */
   #entryBody button:not(.bn-callout-icon),
   #entryBody select {
-    display: none !important;
-  }
-  /* "▶ bloque N" Python-block counter badge — pure CSS ::after, editing aid only */
-  [data-content-type="codeBlock"][data-language="python"]::after {
     display: none !important;
   }
   [data-content-type="codeBlock"] > pre { padding-top: 14px !important; }

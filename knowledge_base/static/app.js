@@ -22,6 +22,11 @@ let _autoSaveTimer = null;
 let _restoreInProgress = false;
 let _codeExecResizeHandler = null;
 let _codeExecObserver = null;
+let _codeExecPanels = [];
+// px reserved below a python block while its console is open (termbar 30 +
+// tty 190 + status 24 + gaps). Toggled as an inline margin-bottom on the
+// block because .code-exec-console is absolutely positioned inside #entryView.
+const CODE_EXEC_RESERVE = 260;
 
 const ENTRY_ICON_DEFAULTS = {
   knowledge: "lucide:file-text",
@@ -11076,7 +11081,8 @@ function postProcessEntry() {
 
   // Remove previous inline code execution panels
   const entryView = $('entryView');
-  if (entryView) entryView.querySelectorAll('.code-exec-inline').forEach(p => p.remove());
+  if (entryView) entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
+  _codeExecPanels = [];
   if (_codeExecResizeHandler) {
     window.removeEventListener('resize', _codeExecResizeHandler);
     _codeExecResizeHandler = null;
@@ -11140,8 +11146,11 @@ function _codePreview(code, maxLines = 3) {
   return code.split('\n').slice(0, maxLines).join('\n');
 }
 
-// Position all inline code execution panels below their respective code blocks.
-// Always re-queries code blocks fresh (React may have re-rendered them).
+// Position the play trigger (top-right of its block) and, when open, the
+// terminal console (below the block). Always re-queries code blocks fresh
+// (React may have re-rendered them). Also reserves layout space for an open
+// console via an inline margin-bottom on the block — re-applied on every pass
+// so ProseMirror's DOM reconciliation can't silently revert it.
 function _positionCodePanels(panels) {
   const entryView = $('entryView');
   const entryBody = $('entryBody');
@@ -11149,38 +11158,48 @@ function _positionCodePanels(panels) {
   const freshBlocks = [...entryBody.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
   const evRect = entryView.getBoundingClientRect();
   panels.forEach((panel, i) => {
-    const block = freshBlocks[i];
+    const block = freshBlocks[i] || panel.block;
     if (!block) return;
     const blockRect = block.getBoundingClientRect();
     // top relative to #entryView content origin (scroll-invariant: scroll cancels out).
-    // +8px gap so the run bar doesn't sit flush against the code block above it.
-    panel.style.top = (blockRect.top - evRect.top + blockRect.height + 8) + 'px';
+    const top = blockRect.top - evRect.top;
+    panel.trigger.style.top = (top + 6) + 'px';
+    panel.console.style.top  = (top + blockRect.height + 8) + 'px';
+    // Reserve room for an open console so it never overlaps the next block.
+    const isOpen = panel.console.classList.contains('open');
+    block.style.marginBottom = isOpen ? CODE_EXEC_RESERVE + 'px' : '';
   });
 }
 
-// Ensure the ► Ejecutar run bar exists below every python code block, and keep
-// it that way as BlockNote (re)renders or the user edits. Idempotent: only
-// (re)builds when the panel count doesn't match the current block count, so
-// normal typing never tears down/recreates the bars.
+// Ensure the ► play trigger + terminal console exist for every python code
+// block, and keep them that way as BlockNote (re)renders or the user edits.
+// Idempotent: only (re)builds when the panel count doesn't match the current
+// block count, so normal typing never tears down/recreates the consoles.
 function _syncCodeExecutionPanels() {
   const entryView = $('entryView');
   const body      = $('entryBody');
   if (!entryView || !body) return;
 
   const pyBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
-  const existing = entryView.querySelectorAll('.code-exec-inline').length;
+  const existing = entryView.querySelectorAll('.code-exec-console').length;
   if (pyBlocks.length && existing !== pyBlocks.length) {
     if (_codeExecResizeHandler) {
       window.removeEventListener('resize', _codeExecResizeHandler);
       _codeExecResizeHandler = null;
     }
-    entryView.querySelectorAll('.code-exec-inline').forEach(p => p.remove());
+    entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
+    pyBlocks.forEach(b => b.style.marginBottom = '');
+    _codeExecPanels = [];
     _initCodeExecution(pyBlocks);
   }
 
+  // Keep triggers/consoles glued to their blocks even as BlockNote re-renders.
+  _positionCodePanels(_codeExecPanels);
+
   // Watch #entryBody: a one-shot init misses code blocks that BlockNote mounts
   // after it runs (React renders asynchronously) or that the user adds while
-  // editing — both leave the CSS "▶ bloque N" label visible with no run bar.
+  // editing — both would otherwise leave a play button but no console, or the
+  // reverse, behind.
   if (_codeExecObserver) _codeExecObserver.disconnect();
   _codeExecObserver = new MutationObserver(() => _syncCodeExecutionPanels());
   _codeExecObserver.observe(body, { childList: true, subtree: true });
@@ -11193,115 +11212,64 @@ function _initCodeExecution(blocks) {
   const panels = [];
 
   blocks.forEach((_, i) => {
-    const panel = document.createElement('div');
-    panel.className = 'code-exec-inline';
+    const block = blocks[i];
 
-    // Run bar — always visible just below the code block
-    const runBar = document.createElement('div');
-    runBar.className = 'code-exec-runbar';
+    // Play trigger — code block top bar, top-right (replaces the old
+    // non-interactive "▶ bloque N" badge).
+    const trigger = document.createElement('button');
+    trigger.className = 'code-exec-play';
+    trigger.type = 'button';
+    trigger.title = 'Ejecutar este código';
+    trigger.setAttribute('aria-label', 'Ejecutar este código');
+    trigger.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v14l11-7z"/></svg>';
 
-    const langTag = document.createElement('span');
-    langTag.className = 'code-exec-lang';
-    langTag.textContent = 'Python';
+    // Terminal console — collapsed until the first run.
+    const consoleEl = document.createElement('div');
+    consoleEl.className = 'code-exec-console';
 
-    const runBtn = document.createElement('button');
-    runBtn.className = 'code-exec-btn';
-    runBtn.textContent = '▶ Ejecutar';
-
-    // Lives in the run bar (not inside the scrollable output below) so it stays
-    // reachable no matter how far the user has scrolled through long output.
+    const termbar = document.createElement('div');
+    termbar.className = 'code-exec-termbar';
+    const title = document.createElement('span');
+    title.className = 'code-exec-term-title';
+    title.textContent = 'TERMINAL';
     const closeBtn = document.createElement('button');
     closeBtn.className = 'code-exec-close';
-    closeBtn.title = 'Limpiar salida';
+    closeBtn.type = 'button';
+    closeBtn.title = 'Cerrar consola';
     closeBtn.textContent = '✕';
+    termbar.append(title, closeBtn);
 
-    const actions = document.createElement('div');
-    actions.className = 'code-exec-actions';
-    actions.append(runBtn, closeBtn);
-
-    runBar.append(langTag, actions);
-
-    // Output zone — always visible (Jupyter/W3Schools-style result box) so the
-    // space it needs is never a mystery blank gap before it's ever been run.
-    const outputZone = document.createElement('div');
-    outputZone.className = 'code-exec-output';
-
+    const tty = document.createElement('div');
+    tty.className = 'code-exec-tty';
+    const busy = document.createElement('div');
+    busy.className = 'code-exec-busy';
+    const spinner = document.createElement('span');
+    spinner.className = 'code-exec-spinner';
+    const busyText = document.createElement('span');
+    busyText.textContent = 'Ejecutando…';
+    busy.append(spinner, busyText);
     const stdout = document.createElement('pre');
-    stdout.className = 'code-exec-stdout placeholder';
-    stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
+    stdout.className = 'code-exec-stdout';
     const stderr = document.createElement('pre');
-    stderr.className = 'code-exec-stderr hidden';
-    const meta = document.createElement('div');
-    meta.className = 'code-exec-meta';
+    stderr.className = 'code-exec-stderr';
+    tty.append(busy, stdout, stderr);
 
-    outputZone.append(stdout, stderr, meta);
-    panel.append(runBar, outputZone);
-    entryView.appendChild(panel);
+    const status = document.createElement('div');
+    status.className = 'code-exec-status';
+
+    consoleEl.append(termbar, tty, status);
+
+    entryView.appendChild(trigger);
+    entryView.appendChild(consoleEl);
+
+    const panel = { block, trigger, console: consoleEl, stdout, stderr, status };
     panels.push(panel);
 
-    runBtn.addEventListener('click', () => {
-      // Read code from editor markdown state (React-safe) or fall back to DOM
-      const mdCode = _pyCodeFromMd(i);
-      let currentCode = mdCode;
-      if (currentCode === null) {
-        const body = $('entryBody');
-        const liveBlock = body
-          ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
-          : null;
-        currentCode = liveBlock ? _codeText(liveBlock) : '';
-      }
-
-      if (!currentCode || !currentCode.trim()) {
-        stdout.classList.remove('placeholder');
-        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
-        meta.textContent = '';
-        _positionCodePanels(panels);
-        return;
-      }
-
-      runBtn.disabled = true;
-      runBtn.textContent = '⏳ Ejecutando…';
-      stdout.classList.remove('placeholder');
-      stdout.textContent = '';
-      stderr.classList.add('hidden');
-      stderr.textContent = '';
-      meta.textContent = '';
-      _positionCodePanels(panels);
-
-      fetch('/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: currentCode, language: 'python' }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar';
-          if (data.error) {
-            stdout.textContent = '✗ ' + data.error;
-            meta.textContent = '';
-          } else {
-            stdout.textContent = data.output || '(sin salida)';
-            if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
-            const rc = data.returncode ?? '?';
-            meta.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
-          }
-          _positionCodePanels(panels);
-        })
-        .catch(err => {
-          runBtn.disabled = false;
-          runBtn.textContent = '▶ Ejecutar';
-          stdout.textContent = '✗ Error de red: ' + err.message;
-          _positionCodePanels(panels);
-        });
-    });
+    trigger.addEventListener('click', () => _runPythonCode(panel, i, panels));
 
     closeBtn.addEventListener('click', () => {
-      stdout.classList.add('placeholder');
-      stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
-      stderr.textContent = '';
-      stderr.classList.add('hidden');
-      meta.textContent = '';
+      consoleEl.classList.remove('open', 'busy', 'err');
+      trigger.classList.remove('busy');
       _positionCodePanels(panels);
     });
   });
@@ -11316,6 +11284,76 @@ function _initCodeExecution(blocks) {
   // Reposition on window resize
   _codeExecResizeHandler = () => _positionCodePanels(panels);
   window.addEventListener('resize', _codeExecResizeHandler);
+}
+
+// Run the code of a python block: slides the terminal console open with a
+// loading spinner, then swaps in the real /api/execute response.
+function _runPythonCode(panel, idx, panels) {
+  const { console: consoleEl, stdout, stderr, status } = panel;
+
+  // Open the console and show the spinner immediately.
+  consoleEl.classList.remove('err');
+  consoleEl.classList.add('open', 'busy');
+  panel.trigger.classList.add('busy');
+  stdout.textContent = '';
+  stderr.textContent = '';
+  status.textContent = '';
+  status.classList.remove('ok');
+  _positionCodePanels(panels);
+
+  // Read code from editor markdown state (React-safe) or fall back to DOM
+  let currentCode = _pyCodeFromMd(idx);
+  if (currentCode === null) {
+    const body = $('entryBody');
+    const liveBlock = body
+      ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][idx]
+      : null;
+    currentCode = liveBlock ? _codeText(liveBlock) : '';
+  }
+
+  if (!currentCode || !currentCode.trim()) {
+    consoleEl.classList.remove('busy');
+    panel.trigger.classList.remove('busy');
+    stderr.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
+    consoleEl.classList.add('err');
+    _positionCodePanels(panels);
+    return;
+  }
+
+  fetch('/api/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: currentCode, language: 'python' }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      consoleEl.classList.remove('busy');
+      panel.trigger.classList.remove('busy');
+      if (data.error) {
+        stderr.textContent = data.error;
+        consoleEl.classList.add('err');
+      } else {
+        stdout.textContent = data.output || '(sin salida)';
+        if (data.stderr) stderr.textContent = data.stderr;
+        const rc = data.returncode ?? '?';
+        if (rc === 0) {
+          status.textContent = '✓ Process finished with code 0';
+          status.classList.add('ok');
+          consoleEl.classList.remove('err');
+        } else {
+          status.textContent = '✗ Process finished with exit code ' + rc;
+          consoleEl.classList.add('err');
+        }
+      }
+      _positionCodePanels(panels);
+    })
+    .catch(err => {
+      consoleEl.classList.remove('busy');
+      panel.trigger.classList.remove('busy');
+      stderr.textContent = 'Error de red: ' + err.message;
+      consoleEl.classList.add('err');
+      _positionCodePanels(panels);
+    });
 }
 
 let _mermaidLoaded = false;
