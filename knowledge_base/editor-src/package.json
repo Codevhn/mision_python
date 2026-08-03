@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "vite-node test/markdown.test.js"
+    "test": "vite-node test/markdown.test.js && vite-node test/pasteCode.test.js"
   },
   "dependencies": {
     "@blocknote/core": "0.51.4",

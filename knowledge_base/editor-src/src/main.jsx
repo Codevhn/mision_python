@@ -7,6 +7,7 @@ import "@blocknote/mantine/style.css";
 import "./custom-blocks.css";
 import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
+import { detectPastedCode } from "./pasteCode.js";
 
 // The "database" block type is registered in schema.js (so old content still
 // renders), but BlockNote's built-in slash menu only auto-lists its own
@@ -105,6 +106,53 @@ function createInstance(opts) {
     else readyResolvers.push(resolve);
   });
 
+  // Intercept pastes of code (markdown fenced blocks / code fragments) and
+  // turn them into a real codeBlock instead of a plain paragraph. Runs on the
+  // container in the capture phase so it fires before BlockNote's own paste
+  // importer, which would otherwise let the plain text fall through as prose
+  // (and whose text/html path never looks at the fenced/indented shape).
+  function insertPastedCodeBlock(code, language) {
+    const editor = instanceRef.editor;
+    if (!editor) return;
+    // Never hijack a paste that's already landing inside a code block.
+    let current;
+    try { current = editor.getTextCursorPosition().block; } catch (_) { return; }
+    if (current && current.type === "codeBlock") return;
+
+    const block = {
+      type: "codeBlock",
+      props: { language },
+      content: [{ type: "text", text: code, styles: {} }],
+    };
+
+    if (current) {
+      editor.insertBlocks([block], current.id, "after").then(([created]) => {
+        if (created) { try { editor.setTextCursorPosition(created.id, "start"); } catch (_) {} }
+      });
+    } else if (editor.document.length > 0) {
+      editor.insertBlocks([block], editor.document[0].id, "before");
+    } else {
+      editor.replaceBlocks(editor.document, [block]);
+    }
+  }
+
+  const onPaste = (e) => {
+    const editor = instanceRef.editor;
+    if (!editor) return;
+    // Files/images are handled by BlockNote's own file-block upload path.
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) return;
+
+    const text = (e.clipboardData
+      && (e.clipboardData.getData("text/plain") || e.clipboardData.getData("text/markdown"))) || "";
+    const detected = detectPastedCode(text);
+    if (!detected) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    insertPastedCodeBlock(detected.code, detected.language);
+  };
+  container.addEventListener("paste", onPaste, true);
+
   root.render(
     <EditorView
       instanceRef={instanceRef}
@@ -143,12 +191,12 @@ function createInstance(opts) {
       try { editor.setTextCursorPosition(editor.document[0].id, "start"); } catch (_) {}
     }
   }
-
   const api = {
     load(markdown) {
       if (ready) applyMarkdown(markdown);
       else pendingMarkdown = markdown;
     },
+
     loadMarkdown(markdown) { api.load(markdown); },
     getMarkdown() {
       return instanceRef.editor ? blocksToMd(instanceRef.editor.document) : "";
@@ -184,7 +232,10 @@ function createInstance(opts) {
       if (onChange) onChange(blocksToMd(instanceRef.editor.document));
       return true;
     },
-    destroy() { root.unmount(); },
+    destroy() {
+      container.removeEventListener("paste", onPaste, true);
+      root.unmount();
+    },
   };
 
   return api;

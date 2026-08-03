@@ -21,6 +21,7 @@ let _inlineEditor = null;  // inline entry editor instance
 let _autoSaveTimer = null;
 let _restoreInProgress = false;
 let _codeExecResizeHandler = null;
+let _codeExecObserver = null;
 
 const ENTRY_ICON_DEFAULTS = {
   knowledge: "lucide:file-text",
@@ -11080,6 +11081,10 @@ function postProcessEntry() {
     window.removeEventListener('resize', _codeExecResizeHandler);
     _codeExecResizeHandler = null;
   }
+  if (_codeExecObserver) {
+    _codeExecObserver.disconnect();
+    _codeExecObserver = null;
+  }
 
   // Callout color-picker toolbar
   _initCalloutToolbars(body);
@@ -11088,7 +11093,16 @@ function postProcessEntry() {
   const mmdBlocks  = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]')];
   const mathBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="math"]')];
 
-  if (!pyBlocks.length && !mmdBlocks.length && !mathBlocks.length) return;
+  // Python gets Jupyter-style inline panels below each code block. Armed even
+  // when no python block is present yet (see below) and wired to a
+  // MutationObserver so the ► Ejecutar bar appears whenever a python block is
+  // in the DOM — including blocks added while editing, not only on reload.
+  // The one-shot CSS "▶ bloque N" label renders the moment the block mounts,
+  // so a run bar that depends on a single fixed timeout can leave a label
+  // with no bar behind; the observer closes that gap.
+  _syncCodeExecutionPanels();
+
+  if (!mmdBlocks.length && !mathBlocks.length) return;
 
   // Mermaid & KaTeX still use the bottom container panel
   if (mmdBlocks.length || mathBlocks.length) {
@@ -11098,9 +11112,6 @@ function postProcessEntry() {
     if (mmdBlocks.length)  _initMermaid(panels, mmdBlocks);
     if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
   }
-
-  // Python gets Jupyter-style inline panels below each code block
-  if (pyBlocks.length) _initCodeExecution(pyBlocks);
 }
 
 // Read Python code from BlockNote's markdown (reliable, React-safe).
@@ -11145,6 +11156,34 @@ function _positionCodePanels(panels) {
     // +8px gap so the run bar doesn't sit flush against the code block above it.
     panel.style.top = (blockRect.top - evRect.top + blockRect.height + 8) + 'px';
   });
+}
+
+// Ensure the ► Ejecutar run bar exists below every python code block, and keep
+// it that way as BlockNote (re)renders or the user edits. Idempotent: only
+// (re)builds when the panel count doesn't match the current block count, so
+// normal typing never tears down/recreates the bars.
+function _syncCodeExecutionPanels() {
+  const entryView = $('entryView');
+  const body      = $('entryBody');
+  if (!entryView || !body) return;
+
+  const pyBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
+  const existing = entryView.querySelectorAll('.code-exec-inline').length;
+  if (pyBlocks.length && existing !== pyBlocks.length) {
+    if (_codeExecResizeHandler) {
+      window.removeEventListener('resize', _codeExecResizeHandler);
+      _codeExecResizeHandler = null;
+    }
+    entryView.querySelectorAll('.code-exec-inline').forEach(p => p.remove());
+    _initCodeExecution(pyBlocks);
+  }
+
+  // Watch #entryBody: a one-shot init misses code blocks that BlockNote mounts
+  // after it runs (React renders asynchronously) or that the user adds while
+  // editing — both leave the CSS "▶ bloque N" label visible with no run bar.
+  if (_codeExecObserver) _codeExecObserver.disconnect();
+  _codeExecObserver = new MutationObserver(() => _syncCodeExecutionPanels());
+  _codeExecObserver.observe(body, { childList: true, subtree: true });
 }
 
 function _initCodeExecution(blocks) {
