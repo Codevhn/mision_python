@@ -2310,12 +2310,18 @@ function _updateCourseNav(id, meta) {
     ${prev
       ? `<button class="course-nav-btn course-nav-prev" data-id="${escapeHtml(prev.id)}">
            <span class="cnb-arrow">←</span>
-           <span class="cnb-label">${escapeHtml(prev.title)}</span>
+           <div class="cnb-content">
+             <span class="cnb-overlabel">← Lección anterior</span>
+             <span class="cnb-label">${escapeHtml(prev.title)}</span>
+           </div>
          </button>`
       : '<span class="course-nav-spacer"></span>'}
     ${next
       ? `<button class="course-nav-btn course-nav-next" data-id="${escapeHtml(next.id)}">
-           <span class="cnb-label">${escapeHtml(next.title)}</span>
+           <div class="cnb-content">
+             <span class="cnb-overlabel">Siguiente lección →</span>
+             <span class="cnb-label">${escapeHtml(next.title)}</span>
+           </div>
            <span class="cnb-arrow">→</span>
          </button>`
       : '<span class="course-nav-spacer"></span>'}
