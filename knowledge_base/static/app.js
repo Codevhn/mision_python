@@ -25,11 +25,17 @@ let _codeExecObserver = null;
 let _codeExecPanels = [];
 // The console is absolutely positioned inside #entryView (ProseMirror owns the
 // editor DOM and would strip anything we inject into it), so it participates in
-// the document flow through *space reservation* instead: while open, the owning
-// python block gets an inline margin-bottom equal to the console's real height
-// plus the gaps below. That pushes every following block and, when the block is
-// the last one in the document, the panels below the editor (relations /
-// backlinks / footer) down instead of letting the terminal float over them.
+// the document flow through *space reservation* instead. Two mechanisms, both
+// structural, are used (see _positionCodePanels):
+//   • A console open under a non-last block pushes the NEXT block down via the
+//     block's inline margin-bottom (that gap sits between two siblings, so it
+//     can't collapse away).
+//   • A console open under the document's LAST block reserves its space with an
+//     explicit padding-bottom on #entryBody itself, NOT a margin: margins
+//     collapse through the paddingless .bn-editor/#entryBody chain and vanish
+//     in production, letting the terminal float over relations/backlinks/footer.
+//     Padding never collapses and, since #entryBody is our container (BlockNote
+//     mounts inside it), React/ProseMirror can't strip or reset it either.
 const CODE_EXEC_GAP   = 8;   // px between code block bottom and console top
 const CODE_EXEC_AFTER = 24;  // 1.5rem breathing room below the console
 
@@ -11087,6 +11093,7 @@ function postProcessEntry() {
   // Remove previous inline code execution panels
   const entryView = $('entryView');
   if (entryView) entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
+  body.style.paddingBottom = '';
   body.style.marginBottom = '';
   _codeExecPanels = [];
   if (_codeExecResizeHandler) {
@@ -11163,19 +11170,21 @@ function _codeExecOpenHeight(consoleEl) {
   return capped + 2; // top + bottom border
 }
 
-// Highest ancestor of a block that is still a direct child of #entryBody.
-function _codeExecTopBlock(block, body) {
-  let node = block;
-  while (node && node.parentElement && node.parentElement !== body) node = node.parentElement;
-  return node;
-}
-
 // True when `block` is the last real content block of the document (the
 // trailing "click to continue" placeholder, when present, doesn't count).
+// Walks up to the document-root .bn-block-group — NOT a nested group such as a
+// callout's children, and NOT the whole .bn-editor: BlockNote nests top-level
+// blocks one level deeper (… > .bn-block-group > .bn-block-outer > .bn-block),
+// so the old "highest ancestor that is a direct child of #entryBody" check
+// resolved to the .bn-editor for EVERY block and wrongly treated every open
+// console as being on the document's last block.
 function _codeExecIsLast(block, body) {
-  const top = _codeExecTopBlock(block, body);
-  if (!top) return false;
-  let sib = top.nextElementSibling;
+  const editor    = body.querySelector('.bn-editor') || body;
+  const rootGroup = editor.querySelector('.bn-block-group') || editor;
+  let node = block;
+  while (node && node.parentElement && node.parentElement !== rootGroup) node = node.parentElement;
+  if (!node) return false;
+  let sib = node.nextElementSibling;
   while (sib && sib.classList && sib.classList.contains('bn-trailing-block')) sib = sib.nextElementSibling;
   return sib === null;
 }
@@ -11183,11 +11192,16 @@ function _codeExecIsLast(block, body) {
 // Position the play trigger (top-right of its block) and, when open, the
 // terminal console (below the block). Always re-queries code blocks fresh
 // (React may have re-rendered them). Reserves layout space for an open console
-// via an inline margin-bottom on the block — re-applied on every pass so
-// ProseMirror's DOM reconciliation can't silently revert it — plus, when the
-// block is the last one in the document, an equal margin on #entryBody itself
-// so the sections below the editor (relations/backlinks/footer) get pushed
-// down instead of being covered by the console.
+// with two structural mechanisms, re-applied on every pass so ProseMirror's
+// DOM reconciliation can't silently revert them:
+//   • non-last open block → inline margin-bottom on the block itself, pushing
+//     the NEXT block down (that gap sits between two siblings, so it can't
+//     collapse away);
+//   • last open block → explicit padding-bottom on #entryBody (the note
+//     container), pushing RELACIONES/backlinks/footer down. Padding, unlike
+//     margin, never collapses through the paddingless .bn-editor/#entryBody
+//     chain — the previous margin approach silently failed in production and
+//     let the terminal float over those sections.
 function _positionCodePanels(panels) {
   const entryView = $('entryView');
   const entryBody = $('entryBody');
@@ -11206,7 +11220,7 @@ function _positionCodePanels(panels) {
     panel.console.style.top = (top + blockRect.height + CODE_EXEC_GAP) + 'px';
     // Square the block's bottom corners while its console is open so block +
     // terminal read as one continuous card (re-applied each pass, like the
-    // margin, because ProseMirror manages these nodes).
+    // margins, because ProseMirror manages these nodes).
     if (isOpen) {
       block.style.borderBottomLeftRadius  = '0';
       block.style.borderBottomRightRadius = '0';
@@ -11220,13 +11234,22 @@ function _positionCodePanels(panels) {
       const openHeight = _codeExecOpenHeight(panel.console);
       reserve = (openHeight + CODE_EXEC_GAP + CODE_EXEC_AFTER) + 'px';
     }
-    block.style.marginBottom = reserve;
-    if (isOpen && _codeExecIsLast(block, entryBody)) lastReserve = reserve;
+    if (isOpen && _codeExecIsLast(block, entryBody)) {
+      // End-of-page reservation lives on the container (see header comment).
+      // The block itself must NOT also get a margin here — it would collapse
+      // through the paddingless wrappers AND stack with the container padding,
+      // doubling the gap above RELACIONES.
+      block.style.marginBottom = '';
+      lastReserve = reserve;
+    } else {
+      block.style.marginBottom = reserve;
+    }
   });
-  // Push the panels below the editor down when the open console is the
-  // document's last block (its block margin would collapse through #entryBody,
-  // which has no bottom padding).
-  entryBody.style.marginBottom = lastReserve;
+  // Structural reservation below the document for an open terminal on its last
+  // block: padding (never collapsible, never stripped by BlockNote/ProseMirror,
+  // since #entryBody is our container — React mounts inside it), not margin.
+  entryBody.style.paddingBottom = lastReserve;
+  entryBody.style.marginBottom = '';
 }
 
 // Ensure the ► play trigger + terminal console exist for every python code
@@ -11247,6 +11270,7 @@ function _syncCodeExecutionPanels() {
     }
     entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
     pyBlocks.forEach(b => b.style.marginBottom = '');
+    body.style.paddingBottom = '';
     body.style.marginBottom = '';
     _codeExecPanels = [];
     _initCodeExecution(pyBlocks);

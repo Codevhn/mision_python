@@ -8580,8 +8580,11 @@ body {
    dark terminal regardless of the app theme (Jupyter/W3Schools-style TTY). It
    sits directly under its code block as a visual continuation of it (square
    top corners, no shadow/z-index) and participates in the document flow by
-   pushing the content below it through the space reserved via the block's
-   margin-bottom (see _positionCodePanels in app.js). */
+   pushing the content below it through structural space reservation (see
+   _positionCodePanels in app.js): a margin-bottom on a non-last block, and an
+   explicit padding-bottom on #entryBody when the block is the document's last
+   one — the padding, unlike a collapsible margin, is what keeps it clear of
+   the RELACIONES/backlinks/footer sections in production. */
 .code-exec-console {
   position: absolute;
   /* Match .entry-body's own horizontal padding (40px desktop) so the console
