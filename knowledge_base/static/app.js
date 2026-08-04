@@ -8430,17 +8430,18 @@ function initAIPanel() {
     const ctx = _selContext || (currentEntryId ? (_inlineEditor.getMarkdown() || '') : '');
     const userPrompt = (prompt || input.value || '').trim();
 
-    // Build structured context: Course > Module N: Name > Lesson Title
+    // Build structured context: CONTEXTO ACTUAL: Curso de ... > Módulo: ... > Lección: ...
     let lessonCtx = '';
     const m = currentEntryMeta;
     if (m) {
-      const courseLabel = (m.course ? _coursesTreeData[m.course]?.label : '') || m.course_label || '';
-      const modLabel    = m.module_label
+      const courseName = (m.course ? _coursesTreeData[m.course]?.label : '') || m.course_label || m.course || '';
+      const moduleName = m.module_label
         || (m.course ? _findEntryModule(m.course, currentEntryId) : '')
         || m.module || '';
-      const entryTitle  = m.title || '';
-      const parts = [courseLabel, modLabel, entryTitle].filter(Boolean);
-      if (parts.length) lessonCtx = 'Contexto actual: ' + parts.join(' > ');
+      const lessonName = m.title || '';
+      if (courseName || moduleName || lessonName) {
+        lessonCtx = `CONTEXTO ACTUAL: Curso de ${courseName} > Módulo: ${moduleName} > Lección: ${lessonName}`;
+      }
     }
 
     responseEl.classList.add('hidden');

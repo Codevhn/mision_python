@@ -4862,15 +4862,18 @@ _PROJECT_ATLAS_SYSTEM = (
     "Eres el motor de documentación técnica de Project Atlas. "
     "Tu función es responder consultas de aprendizaje de forma directa, técnica y precisa."
 
+    "\n\n{CONTEXTO_ACTUAL}"
     "\n\nREGLAS DE SALIDA Y ESTILO:"
-    "\n- Sé directo, profesional y ve al grano."
-    "\n- PROHIBIDO usar introducciones ('¡Claro!', 'Aquí tienes'), saludos o párrafos de cierre/conclusión ('En resumen', 'En conclusión', 'Espero que te sirva')."
-    "\n- PROHIBIDO inventar o parafrasear incorrectamente especificaciones oficiales (PEPs, RFCs, estándares del lenguaje)."
-    "\n- Interpreta todas las siglas y conceptos exclusivamente dentro del dominio del curso activo indicado en el contexto."
-    "\n- Da explicaciones concisas e incluye siempre ejemplos de código real moderno (Anti-pattern vs Best Practice)."
-    "\n- Formatea la salida en Markdown limpio."
-    " " + _PARETO_TEACHING_STYLE
-    + "\n\nResponde en español."
+    "\n1. CERO MULETILLAS: Prohibidos saludos, introducciones (\"¡Claro!\"), confirmaciones y conclusiones (\"En resumen\", \"En conclusión\")."
+    "\n2. RIGOR TÉCNICO EN ESTÁNDARES: Prohibido inventar o parafrasear incorrectamente especificaciones (PEPs, RFCs, ISOs). Mantén los términos técnicos originales o traducciones literales exactas."
+    "\n3. FORMATO DE SALIDA OBLIGATORIO:"
+    "\n   - Responde estrictamente lo solicitado según el contexto del curso activo."
+    "\n   - Desglose conciso de conceptos/principios."
+    "\n   - Ejemplos Prácticos en Código (Anti-pattern vs Best Practice) usando código moderno (Python 3.10+ / type hints / estándares de industria)."
+    "\n   - Laboratorio Práctico si la consulta requiere pasos en CLI/entorno."
+    "\n   - CERO PROSA POST-CÓDIGO: El código refactorizado debe explicarse por sí mismo."
+
+    "\n\nResponde en español."
 )
 
 
@@ -4882,22 +4885,17 @@ def ai_ask():
     action  = data.get("action",  "ask")
     lesson_context = data.get("lesson_context", "").strip()
 
-    # System prompt: Atlas documentation engine with injected course context
-    system = _PROJECT_ATLAS_SYSTEM
-    if lesson_context:
-        system = lesson_context + "\n\n" + system
-
-    # Inline text-editing actions use simple, self-contained prompts — they
-    # don't need the full documentation-engine persona or low temperature.
-    INLINE_SYSTEMS = {
-        "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin añadir comentarios ni prefijos.",
-        "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
-        "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
-        "continue":  "Continúa escribiendo de forma natural a partir del siguiente fragmento, manteniendo el estilo, tono y tema. Devuelve solo la continuación.",
-        "translate_en": "Traduce el siguiente texto al inglés de forma natural y precisa. Devuelve solo la traducción.",
-    }
-    if action in INLINE_SYSTEMS:
-        system = INLINE_SYSTEMS[action]
+    # Inject course/module/lesson context into the system prompt at the
+    # {CONTEXTO_ACTUAL} placeholder. If unavailable, drop the blank line.
+    ctx_actual = (lesson_context or "").strip()
+    system = _PROJECT_ATLAS_SYSTEM.replace(
+        "{CONTEXTO_ACTUAL}",
+        ctx_actual if ctx_actual else "",
+    )
+    if not ctx_actual:
+        # Collapse the empty placeholder line so we don't ship a blank
+        # paragraph that reads as an incomplete prompt instruction.
+        system = system.replace("\n\n\n", "\n\n")
 
     user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
 
@@ -4906,10 +4904,7 @@ def ai_ask():
     # short explanation and would truncate that. Editing/translation actions
     # don't need the extra room; keep them at the original budget.
     max_tokens = 3500 if action in ("explain", "example", "ask") else 2048
-    # Low temperature for technical accuracy — avoids hallucinating specs/PEPs/RFCs.
-    # Inline text actions keep the model default (no temperature override).
-    temperature = 0.1 if action not in INLINE_SYSTEMS else None
-    content, err = _call_ai(system, user_msg, max_tokens=max_tokens, temperature=temperature, provider=data.get("provider"), model=data.get("model"))
+    content, err = _call_ai(system, user_msg, max_tokens=max_tokens, temperature=0.1, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
     # Render server-side with the same Markdown pipeline used for note content
