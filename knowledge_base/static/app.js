@@ -2135,8 +2135,11 @@ async function loadEntry(id, opts = {}) {
       ? _coursesTreeData[m.course]?.modules?.[m.module]?.module_number
       : "";
     if (modLabel) {
+      const cleanLabel = modNumber
+        ? modLabel.replace(/^(M[oó]dulo\s+\d+[\.:\s]*)\s*/i, "").trim()
+        : modLabel;
       moduleLabelEl.innerHTML = modNumber
-        ? `<span class="eml-num">MÓDULO ${escapeHtml(modNumber)}</span><span class="eml-sep">:</span><span class="eml-text">${escapeHtml(modLabel)}</span>`
+        ? `<span class="eml-num">MÓDULO ${escapeHtml(modNumber)}</span><span class="eml-sep">:</span><span class="eml-text">${escapeHtml(cleanLabel)}</span>`
         : `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
       moduleLabelEl.classList.remove("hidden");
     } else {
