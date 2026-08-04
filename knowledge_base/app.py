@@ -4854,20 +4854,31 @@ _PARETO_TEACHING_STYLE = (
     "los amerita — úsalos donde aporten valor real, no como relleno."
 )
 
+_AST_DIRECTO = (
+    " NO uses saludos ('Hola', 'Claro', 'Por supuesto'), introducciones conversacionales ni "
+    "cierres ('En resumen', 'En conclusión', 'Espero que te sirva'). Ve directo al contenido: "
+    "tono técnico profesional, sin rodeos ni muletillas. No necesitas presentarte ni despedirte. "
+    "Interpreta siglas y conceptos técnicos dentro del dominio del curso activo indicado en el contexto."
+    " Responde en español."
+)
+
+
 @app.route("/api/ai", methods=["POST"])
 def ai_ask():
     data = request.json or {}
     prompt  = data.get("prompt",  "").strip()
     context = data.get("context", "").strip()
     action  = data.get("action",  "ask")
+    lesson_context = data.get("lesson_context", "").strip()
 
     systems = {
-        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara, con ejemplos prácticos." + _PARETO_TEACHING_STYLE + " Responde en español.",
-        "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso. Responde en español.",
+        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara, con ejemplos prácticos." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
+        "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso." + _AST_DIRECTO,
         "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin añadir comentarios ni prefijos.",
-        "example":   "Genera uno o varios ejemplos prácticos y completos del concepto. Usa código Python si aplica." + _PARETO_TEACHING_STYLE + " Responde en español.",
-        "ask":       "Eres un asistente técnico experto en programación." + _PARETO_TEACHING_STYLE + " Responde en español.",
-        # Inline AI actions
+        "example":   "Genera uno o varios ejemplos prácticos y completos del concepto. Usa código Python si aplica." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
+        "ask":       "Eres un asistente técnico experto en programación. Interpreta siglas y conceptos técnicos dentro del dominio del curso activo indicado en el contexto." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
+        # Inline AI actions — these already enforce "returns only the result",
+        # so they don't need the non-conversational directive.
         "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
         "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
         "continue":  "Continúa escribiendo de forma natural a partir del siguiente fragmento, manteniendo el estilo, tono y tema. Devuelve solo la continuación.",
@@ -4875,6 +4886,8 @@ def ai_ask():
     }
     system = systems.get(action, systems["ask"])
     user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
+    if lesson_context:
+        user_msg = f"{lesson_context}\n\n{user_msg}"
 
     # "explain"/"example"/"ask" now routinely want room for several examples,
     # exercises, a case study and a lab — 2048 tokens was tuned for a plain

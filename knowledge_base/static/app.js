@@ -8430,6 +8430,19 @@ function initAIPanel() {
     const ctx = _selContext || (currentEntryId ? (_inlineEditor.getMarkdown() || '') : '');
     const userPrompt = (prompt || input.value || '').trim();
 
+    // Build structured context: Course > Module N: Name > Lesson Title
+    let lessonCtx = '';
+    const m = currentEntryMeta;
+    if (m) {
+      const courseLabel = (m.course ? _coursesTreeData[m.course]?.label : '') || m.course_label || '';
+      const modLabel    = m.module_label
+        || (m.course ? _findEntryModule(m.course, currentEntryId) : '')
+        || m.module || '';
+      const entryTitle  = m.title || '';
+      const parts = [courseLabel, modLabel, entryTitle].filter(Boolean);
+      if (parts.length) lessonCtx = 'Contexto actual: ' + parts.join(' > ');
+    }
+
     responseEl.classList.add('hidden');
     errorEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
@@ -8437,7 +8450,14 @@ function initAIPanel() {
     fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, prompt: userPrompt, context: ctx, provider: aiModelChoice?.provider, model: aiModelChoice?.model }),
+      body: JSON.stringify({
+        action,
+        prompt: userPrompt,
+        context: ctx,
+        lesson_context: lessonCtx,
+        provider: aiModelChoice?.provider,
+        model: aiModelChoice?.model,
+      }),
     })
       .then(r => r.json())
       .then(data => {
