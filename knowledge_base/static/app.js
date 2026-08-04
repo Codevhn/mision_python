@@ -2259,8 +2259,15 @@ async function loadEntry(id, opts = {}) {
     $("propContainer").after(bar);
   }
 
-  // Cover banner
-  applyCover(m.cover || "");
+  // Cover banner — inherit upward if the entry has no own cover:
+  //   entry.cover → parent module cover → course root cover
+  const effectiveCover = m.cover
+    || (m.course && m.module
+        ? _coursesTreeData[m.course]?.modules?.[m.module]?.cover
+        : "")
+    || (m.course ? _coursesTreeData[m.course]?.cover : "")
+    || "";
+  applyCover(effectiveCover);
 
   // Relations panel
   loadRelations(m.uid || id);

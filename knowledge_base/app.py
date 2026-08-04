@@ -2680,6 +2680,7 @@ def get_courses_tree():
         module = meta["module"]
         tree.setdefault(course, {
             "label": courses_master.get(course, {}).get("label") or meta.get("course_label", course),
+            "cover": courses_master.get(course, {}).get("cover", ""),
             "modules": {}
         })
         tree[course]["modules"].setdefault(module, {
@@ -2688,6 +2689,7 @@ def get_courses_tree():
             "module_type_custom":meta.get("module_type_custom", ""),
             "module_number":     meta.get("module_number", ""),
             "module_title":      meta.get("module_title", ""),
+            "cover":             courses_master.get(course, {}).get("modules", {}).get(module, {}).get("cover", ""),
             "entries": []
         })
         tree[course]["modules"][module]["entries"].append({
