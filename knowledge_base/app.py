@@ -4295,7 +4295,7 @@ _AI_HTTP_HEADERS = {
 }
 
 
-def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
+def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_tokens, json_mode, temperature=None):
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -4306,6 +4306,8 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
+    if temperature is not None:
+        payload["temperature"] = temperature
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         base_url,
@@ -4324,7 +4326,7 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     return choice["message"]["content"], choice.get("finish_reason") == "length"
 
 
-def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mode):
+def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mode, temperature=None):
     payload = {
         "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
         "systemInstruction": {"parts": [{"text": system}]},
@@ -4332,6 +4334,8 @@ def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mo
     }
     if json_mode:
         payload["generationConfig"]["responseMimeType"] = "application/json"
+    if temperature is not None:
+        payload["generationConfig"]["temperature"] = temperature
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         f"{base_url}/{model}:generateContent",
@@ -4376,7 +4380,7 @@ def _clean_ai_error(code, err_body):
     return f"Error de la API ({code}): {detail}"
 
 
-def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False):
+def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False, temperature=None):
     """Single entry point for every AI-backed feature. `provider`/`model`
     come from the frontend's model selector (a request body field on every
     generation endpoint); left unset, every pre-existing call site keeps
@@ -4406,9 +4410,9 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
         }), 503)
     try:
         if cfg["kind"] == "gemini":
-            content, truncated = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+            content, truncated = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
         else:
-            content, truncated = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode)
+            content, truncated = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
         if truncated and fail_on_truncation:
             return None, (jsonify({
                 "error": f"La respuesta de {cfg['label']} se cortó por el límite de tokens antes de terminar.",
@@ -4854,12 +4858,19 @@ _PARETO_TEACHING_STYLE = (
     "los amerita — úsalos donde aporten valor real, no como relleno."
 )
 
-_AST_DIRECTO = (
-    " NO uses saludos ('Hola', 'Claro', 'Por supuesto'), introducciones conversacionales ni "
-    "cierres ('En resumen', 'En conclusión', 'Espero que te sirva'). Ve directo al contenido: "
-    "tono técnico profesional, sin rodeos ni muletillas. No necesitas presentarte ni despedirte. "
-    "Interpreta siglas y conceptos técnicos dentro del dominio del curso activo indicado en el contexto."
-    " Responde en español."
+_PROJECT_ATLAS_SYSTEM = (
+    "Eres el motor de documentación técnica de Project Atlas. "
+    "Tu función es responder consultas de aprendizaje de forma directa, técnica y precisa."
+
+    "\n\nREGLAS DE SALIDA Y ESTILO:"
+    "\n- Sé directo, profesional y ve al grano."
+    "\n- PROHIBIDO usar introducciones ('¡Claro!', 'Aquí tienes'), saludos o párrafos de cierre/conclusión ('En resumen', 'En conclusión', 'Espero que te sirva')."
+    "\n- PROHIBIDO inventar o parafrasear incorrectamente especificaciones oficiales (PEPs, RFCs, estándares del lenguaje)."
+    "\n- Interpreta todas las siglas y conceptos exclusivamente dentro del dominio del curso activo indicado en el contexto."
+    "\n- Da explicaciones concisas e incluye siempre ejemplos de código real moderno (Anti-pattern vs Best Practice)."
+    "\n- Formatea la salida en Markdown limpio."
+    " " + _PARETO_TEACHING_STYLE
+    + "\n\nResponde en español."
 )
 
 
@@ -4871,30 +4882,34 @@ def ai_ask():
     action  = data.get("action",  "ask")
     lesson_context = data.get("lesson_context", "").strip()
 
-    systems = {
-        "explain":   "Eres un tutor técnico experto. Explica el contenido de forma clara, con ejemplos prácticos." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
-        "summarize": "Resume el contenido en viñetas clave ordenadas. Sé conciso." + _AST_DIRECTO,
+    # System prompt: Atlas documentation engine with injected course context
+    system = _PROJECT_ATLAS_SYSTEM
+    if lesson_context:
+        system = lesson_context + "\n\n" + system
+
+    # Inline text-editing actions use simple, self-contained prompts — they
+    # don't need the full documentation-engine persona or low temperature.
+    INLINE_SYSTEMS = {
         "improve":   "Mejora la claridad y fluidez del texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin añadir comentarios ni prefijos.",
-        "example":   "Genera uno o varios ejemplos prácticos y completos del concepto. Usa código Python si aplica." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
-        "ask":       "Eres un asistente técnico experto en programación. Interpreta siglas y conceptos técnicos dentro del dominio del curso activo indicado en el contexto." + _PARETO_TEACHING_STYLE + _AST_DIRECTO,
-        # Inline AI actions — these already enforce "returns only the result",
-        # so they don't need the non-conversational directive.
         "expand":    "Amplía y desarrolla el siguiente fragmento con más detalle, ejemplos y contexto. Mantén el mismo estilo y tono. Devuelve solo el texto ampliado, sin comentarios.",
         "fix":       "Corrige la gramática, ortografía y claridad del siguiente texto. Mantén el significado original. Devuelve solo el texto corregido, sin explicaciones.",
         "continue":  "Continúa escribiendo de forma natural a partir del siguiente fragmento, manteniendo el estilo, tono y tema. Devuelve solo la continuación.",
         "translate_en": "Traduce el siguiente texto al inglés de forma natural y precisa. Devuelve solo la traducción.",
     }
-    system = systems.get(action, systems["ask"])
+    if action in INLINE_SYSTEMS:
+        system = INLINE_SYSTEMS[action]
+
     user_msg = f"Contexto:\n```\n{context}\n```\n\n{prompt}" if (context and action not in ("expand","fix","continue","translate_en","improve")) else (context or prompt)
-    if lesson_context:
-        user_msg = f"{lesson_context}\n\n{user_msg}"
 
     # "explain"/"example"/"ask" now routinely want room for several examples,
     # exercises, a case study and a lab — 2048 tokens was tuned for a plain
     # short explanation and would truncate that. Editing/translation actions
     # don't need the extra room; keep them at the original budget.
     max_tokens = 3500 if action in ("explain", "example", "ask") else 2048
-    content, err = _call_ai(system, user_msg, max_tokens=max_tokens, provider=data.get("provider"), model=data.get("model"))
+    # Low temperature for technical accuracy — avoids hallucinating specs/PEPs/RFCs.
+    # Inline text actions keep the model default (no temperature override).
+    temperature = 0.1 if action not in INLINE_SYSTEMS else None
+    content, err = _call_ai(system, user_msg, max_tokens=max_tokens, temperature=temperature, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
     # Render server-side with the same Markdown pipeline used for note content
