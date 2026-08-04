@@ -21,23 +21,6 @@ let _inlineEditor = null;  // inline entry editor instance
 let _autoSaveTimer = null;
 let _restoreInProgress = false;
 let _codeExecResizeHandler = null;
-let _codeExecObserver = null;
-let _codeExecPanels = [];
-// The console is absolutely positioned inside #entryView (ProseMirror owns the
-// editor DOM and would strip anything we inject into it), so it participates in
-// the document flow through *space reservation* instead. Two mechanisms, both
-// structural, are used (see _positionCodePanels):
-//   • A console open under a non-last block pushes the NEXT block down via the
-//     block's inline margin-bottom (that gap sits between two siblings, so it
-//     can't collapse away).
-//   • A console open under the document's LAST block reserves its space with an
-//     explicit padding-bottom on #entryBody itself, NOT a margin: margins
-//     collapse through the paddingless .bn-editor/#entryBody chain and vanish
-//     in production, letting the terminal float over relations/backlinks/footer.
-//     Padding never collapses and, since #entryBody is our container (BlockNote
-//     mounts inside it), React/ProseMirror can't strip or reset it either.
-const CODE_EXEC_GAP   = 8;   // px between code block bottom and console top
-const CODE_EXEC_AFTER = 24;  // 1.5rem breathing room below the console
 
 const ENTRY_ICON_DEFAULTS = {
   knowledge: "lucide:file-text",
@@ -11092,17 +11075,10 @@ function postProcessEntry() {
 
   // Remove previous inline code execution panels
   const entryView = $('entryView');
-  if (entryView) entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
-  body.style.paddingBottom = '';
-  body.style.marginBottom = '';
-  _codeExecPanels = [];
+  if (entryView) entryView.querySelectorAll('.code-exec-inline').forEach(p => p.remove());
   if (_codeExecResizeHandler) {
     window.removeEventListener('resize', _codeExecResizeHandler);
     _codeExecResizeHandler = null;
-  }
-  if (_codeExecObserver) {
-    _codeExecObserver.disconnect();
-    _codeExecObserver = null;
   }
 
   // Callout color-picker toolbar
@@ -11112,16 +11088,7 @@ function postProcessEntry() {
   const mmdBlocks  = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="mermaid"]')];
   const mathBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="math"]')];
 
-  // Python gets Jupyter-style inline panels below each code block. Armed even
-  // when no python block is present yet (see below) and wired to a
-  // MutationObserver so the ► Ejecutar bar appears whenever a python block is
-  // in the DOM — including blocks added while editing, not only on reload.
-  // The one-shot CSS "▶ bloque N" label renders the moment the block mounts,
-  // so a run bar that depends on a single fixed timeout can leave a label
-  // with no bar behind; the observer closes that gap.
-  _syncCodeExecutionPanels();
-
-  if (!mmdBlocks.length && !mathBlocks.length) return;
+  if (!pyBlocks.length && !mmdBlocks.length && !mathBlocks.length) return;
 
   // Mermaid & KaTeX still use the bottom container panel
   if (mmdBlocks.length || mathBlocks.length) {
@@ -11131,6 +11098,9 @@ function postProcessEntry() {
     if (mmdBlocks.length)  _initMermaid(panels, mmdBlocks);
     if (mathBlocks.length) _initKaTeX(panels, mathBlocks);
   }
+
+  // Python gets Jupyter-style inline panels below each code block
+  if (pyBlocks.length) _initCodeExecution(pyBlocks);
 }
 
 // Read Python code from BlockNote's markdown (reliable, React-safe).
@@ -11159,133 +11129,22 @@ function _codePreview(code, maxLines = 3) {
   return code.split('\n').slice(0, maxLines).join('\n');
 }
 
-// Real height the console occupies once open: content height (which the tty's
-// own max-height already caps) clamped to the console's max-height, plus its
-// 1px borders. Measured via scrollHeight so it's valid even mid-transition —
-// never mutates styles, so the slide-open animation keeps playing.
-function _codeExecOpenHeight(consoleEl) {
-  const maxHeight = parseFloat(getComputedStyle(consoleEl).maxHeight) || 0;
-  const contentH  = consoleEl.scrollHeight || 0;
-  const capped    = maxHeight ? Math.min(contentH, maxHeight) : contentH;
-  return capped + 2; // top + bottom border
-}
-
-// True when `block` is the last real content block of the document (the
-// trailing "click to continue" placeholder, when present, doesn't count).
-// Walks up to the document-root .bn-block-group — NOT a nested group such as a
-// callout's children, and NOT the whole .bn-editor: BlockNote nests top-level
-// blocks one level deeper (… > .bn-block-group > .bn-block-outer > .bn-block),
-// so the old "highest ancestor that is a direct child of #entryBody" check
-// resolved to the .bn-editor for EVERY block and wrongly treated every open
-// console as being on the document's last block.
-function _codeExecIsLast(block, body) {
-  const editor    = body.querySelector('.bn-editor') || body;
-  const rootGroup = editor.querySelector('.bn-block-group') || editor;
-  let node = block;
-  while (node && node.parentElement && node.parentElement !== rootGroup) node = node.parentElement;
-  if (!node) return false;
-  let sib = node.nextElementSibling;
-  while (sib && sib.classList && sib.classList.contains('bn-trailing-block')) sib = sib.nextElementSibling;
-  return sib === null;
-}
-
-// Position the play trigger (top-right of its block) and, when open, the
-// terminal console (below the block). Always re-queries code blocks fresh
-// (React may have re-rendered them). Reserves layout space for an open console
-// with two structural mechanisms, re-applied on every pass so ProseMirror's
-// DOM reconciliation can't silently revert them:
-//   • non-last open block → inline margin-bottom on the block itself, pushing
-//     the NEXT block down (that gap sits between two siblings, so it can't
-//     collapse away);
-//   • last open block → explicit padding-bottom on #entryBody (the note
-//     container), pushing RELACIONES/backlinks/footer down. Padding, unlike
-//     margin, never collapses through the paddingless .bn-editor/#entryBody
-//     chain — the previous margin approach silently failed in production and
-//     let the terminal float over those sections.
+// Position all inline code execution panels below their respective code blocks.
+// Always re-queries code blocks fresh (React may have re-rendered them).
 function _positionCodePanels(panels) {
   const entryView = $('entryView');
   const entryBody = $('entryBody');
   if (!entryView || !entryBody) return;
   const freshBlocks = [...entryBody.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
   const evRect = entryView.getBoundingClientRect();
-  let lastReserve = '';
   panels.forEach((panel, i) => {
-    const block = freshBlocks[i] || panel.block;
+    const block = freshBlocks[i];
     if (!block) return;
     const blockRect = block.getBoundingClientRect();
     // top relative to #entryView content origin (scroll-invariant: scroll cancels out).
-    const top = blockRect.top - evRect.top;
-    panel.trigger.style.top = (top + 6) + 'px';
-    const isOpen = panel.console.classList.contains('open');
-    panel.console.style.top = (top + blockRect.height + CODE_EXEC_GAP) + 'px';
-    // Square the block's bottom corners while its console is open so block +
-    // terminal read as one continuous card (re-applied each pass, like the
-    // margins, because ProseMirror manages these nodes).
-    if (isOpen) {
-      block.style.borderBottomLeftRadius  = '0';
-      block.style.borderBottomRightRadius = '0';
-    } else {
-      block.style.borderBottomLeftRadius  = '';
-      block.style.borderBottomRightRadius = '';
-    }
-    // Reserve exactly what the console occupies + 1.5rem below it.
-    let reserve = '';
-    if (isOpen) {
-      const openHeight = _codeExecOpenHeight(panel.console);
-      reserve = (openHeight + CODE_EXEC_GAP + CODE_EXEC_AFTER) + 'px';
-    }
-    if (isOpen && _codeExecIsLast(block, entryBody)) {
-      // End-of-page reservation lives on the container (see header comment).
-      // The block itself must NOT also get a margin here — it would collapse
-      // through the paddingless wrappers AND stack with the container padding,
-      // doubling the gap above RELACIONES.
-      block.style.marginBottom = '';
-      lastReserve = reserve;
-    } else {
-      block.style.marginBottom = reserve;
-    }
+    // +8px gap so the run bar doesn't sit flush against the code block above it.
+    panel.style.top = (blockRect.top - evRect.top + blockRect.height + 8) + 'px';
   });
-  // Structural reservation below the document for an open terminal on its last
-  // block: padding (never collapsible, never stripped by BlockNote/ProseMirror,
-  // since #entryBody is our container — React mounts inside it), not margin.
-  entryBody.style.paddingBottom = lastReserve;
-  entryBody.style.marginBottom = '';
-}
-
-// Ensure the ► play trigger + terminal console exist for every python code
-// block, and keep them that way as BlockNote (re)renders or the user edits.
-// Idempotent: only (re)builds when the panel count doesn't match the current
-// block count, so normal typing never tears down/recreates the consoles.
-function _syncCodeExecutionPanels() {
-  const entryView = $('entryView');
-  const body      = $('entryBody');
-  if (!entryView || !body) return;
-
-  const pyBlocks = [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')];
-  const existing = entryView.querySelectorAll('.code-exec-console').length;
-  if (pyBlocks.length && existing !== pyBlocks.length) {
-    if (_codeExecResizeHandler) {
-      window.removeEventListener('resize', _codeExecResizeHandler);
-      _codeExecResizeHandler = null;
-    }
-    entryView.querySelectorAll('.code-exec-console,.code-exec-play').forEach(p => p.remove());
-    pyBlocks.forEach(b => b.style.marginBottom = '');
-    body.style.paddingBottom = '';
-    body.style.marginBottom = '';
-    _codeExecPanels = [];
-    _initCodeExecution(pyBlocks);
-  }
-
-  // Keep triggers/consoles glued to their blocks even as BlockNote re-renders.
-  _positionCodePanels(_codeExecPanels);
-
-  // Watch #entryBody: a one-shot init misses code blocks that BlockNote mounts
-  // after it runs (React renders asynchronously) or that the user adds while
-  // editing — both would otherwise leave a play button but no console, or the
-  // reverse, behind.
-  if (_codeExecObserver) _codeExecObserver.disconnect();
-  _codeExecObserver = new MutationObserver(() => _syncCodeExecutionPanels());
-  _codeExecObserver.observe(body, { childList: true, subtree: true });
 }
 
 function _initCodeExecution(blocks) {
@@ -11295,64 +11154,115 @@ function _initCodeExecution(blocks) {
   const panels = [];
 
   blocks.forEach((_, i) => {
-    const block = blocks[i];
+    const panel = document.createElement('div');
+    panel.className = 'code-exec-inline';
 
-    // Play trigger — code block top bar, top-right (replaces the old
-    // non-interactive "▶ bloque N" badge).
-    const trigger = document.createElement('button');
-    trigger.className = 'code-exec-play';
-    trigger.type = 'button';
-    trigger.title = 'Ejecutar este código';
-    trigger.setAttribute('aria-label', 'Ejecutar este código');
-    trigger.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v14l11-7z"/></svg>';
+    // Run bar — always visible just below the code block
+    const runBar = document.createElement('div');
+    runBar.className = 'code-exec-runbar';
 
-    // Terminal console — collapsed until the first run.
-    const consoleEl = document.createElement('div');
-    consoleEl.className = 'code-exec-console';
+    const langTag = document.createElement('span');
+    langTag.className = 'code-exec-lang';
+    langTag.textContent = 'Python';
 
-    const termbar = document.createElement('div');
-    termbar.className = 'code-exec-termbar';
-    const title = document.createElement('span');
-    title.className = 'code-exec-term-title';
-    title.textContent = 'TERMINAL';
+    const runBtn = document.createElement('button');
+    runBtn.className = 'code-exec-btn';
+    runBtn.textContent = '▶ Ejecutar';
+
+    // Lives in the run bar (not inside the scrollable output below) so it stays
+    // reachable no matter how far the user has scrolled through long output.
     const closeBtn = document.createElement('button');
     closeBtn.className = 'code-exec-close';
-    closeBtn.type = 'button';
-    closeBtn.title = 'Cerrar consola';
+    closeBtn.title = 'Limpiar salida';
     closeBtn.textContent = '✕';
-    termbar.append(title, closeBtn);
 
-    const tty = document.createElement('div');
-    tty.className = 'code-exec-tty';
-    const busy = document.createElement('div');
-    busy.className = 'code-exec-busy';
-    const spinner = document.createElement('span');
-    spinner.className = 'code-exec-spinner';
-    const busyText = document.createElement('span');
-    busyText.textContent = 'Ejecutando…';
-    busy.append(spinner, busyText);
+    const actions = document.createElement('div');
+    actions.className = 'code-exec-actions';
+    actions.append(runBtn, closeBtn);
+
+    runBar.append(langTag, actions);
+
+    // Output zone — always visible (Jupyter/W3Schools-style result box) so the
+    // space it needs is never a mystery blank gap before it's ever been run.
+    const outputZone = document.createElement('div');
+    outputZone.className = 'code-exec-output';
+
     const stdout = document.createElement('pre');
-    stdout.className = 'code-exec-stdout';
+    stdout.className = 'code-exec-stdout placeholder';
+    stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
     const stderr = document.createElement('pre');
-    stderr.className = 'code-exec-stderr';
-    tty.append(busy, stdout, stderr);
+    stderr.className = 'code-exec-stderr hidden';
+    const meta = document.createElement('div');
+    meta.className = 'code-exec-meta';
 
-    const status = document.createElement('div');
-    status.className = 'code-exec-status';
-
-    consoleEl.append(termbar, tty, status);
-
-    entryView.appendChild(trigger);
-    entryView.appendChild(consoleEl);
-
-    const panel = { block, trigger, console: consoleEl, stdout, stderr, status };
+    outputZone.append(stdout, stderr, meta);
+    panel.append(runBar, outputZone);
+    entryView.appendChild(panel);
     panels.push(panel);
 
-    trigger.addEventListener('click', () => _runPythonCode(panel, i, panels));
+    runBtn.addEventListener('click', () => {
+      // Read code from editor markdown state (React-safe) or fall back to DOM
+      const mdCode = _pyCodeFromMd(i);
+      let currentCode = mdCode;
+      if (currentCode === null) {
+        const body = $('entryBody');
+        const liveBlock = body
+          ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][i]
+          : null;
+        currentCode = liveBlock ? _codeText(liveBlock) : '';
+      }
+
+      if (!currentCode || !currentCode.trim()) {
+        stdout.classList.remove('placeholder');
+        stdout.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
+        meta.textContent = '';
+        _positionCodePanels(panels);
+        return;
+      }
+
+      runBtn.disabled = true;
+      runBtn.textContent = '⏳ Ejecutando…';
+      stdout.classList.remove('placeholder');
+      stdout.textContent = '';
+      stderr.classList.add('hidden');
+      stderr.textContent = '';
+      meta.textContent = '';
+      _positionCodePanels(panels);
+
+      fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: currentCode, language: 'python' }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Ejecutar';
+          if (data.error) {
+            stdout.textContent = '✗ ' + data.error;
+            meta.textContent = '';
+          } else {
+            stdout.textContent = data.output || '(sin salida)';
+            if (data.stderr) { stderr.textContent = data.stderr; stderr.classList.remove('hidden'); }
+            const rc = data.returncode ?? '?';
+            meta.textContent = rc === 0 ? '✓ salió con código 0' : `⚠ código de salida: ${rc}`;
+          }
+          _positionCodePanels(panels);
+        })
+        .catch(err => {
+          runBtn.disabled = false;
+          runBtn.textContent = '▶ Ejecutar';
+          stdout.textContent = '✗ Error de red: ' + err.message;
+          _positionCodePanels(panels);
+        });
+    });
 
     closeBtn.addEventListener('click', () => {
-      consoleEl.classList.remove('open', 'busy', 'err');
-      trigger.classList.remove('busy');
+      stdout.classList.add('placeholder');
+      stdout.textContent = '▷ ejecuta el código para ver el resultado aquí';
+      stderr.textContent = '';
+      stderr.classList.add('hidden');
+      meta.textContent = '';
       _positionCodePanels(panels);
     });
   });
@@ -11367,76 +11277,6 @@ function _initCodeExecution(blocks) {
   // Reposition on window resize
   _codeExecResizeHandler = () => _positionCodePanels(panels);
   window.addEventListener('resize', _codeExecResizeHandler);
-}
-
-// Run the code of a python block: slides the terminal console open with a
-// loading spinner, then swaps in the real /api/execute response.
-function _runPythonCode(panel, idx, panels) {
-  const { console: consoleEl, stdout, stderr, status } = panel;
-
-  // Open the console and show the spinner immediately.
-  consoleEl.classList.remove('err');
-  consoleEl.classList.add('open', 'busy');
-  panel.trigger.classList.add('busy');
-  stdout.textContent = '';
-  stderr.textContent = '';
-  status.textContent = '';
-  status.classList.remove('ok');
-  _positionCodePanels(panels);
-
-  // Read code from editor markdown state (React-safe) or fall back to DOM
-  let currentCode = _pyCodeFromMd(idx);
-  if (currentCode === null) {
-    const body = $('entryBody');
-    const liveBlock = body
-      ? [...body.querySelectorAll('[data-content-type="codeBlock"][data-language="python"]')][idx]
-      : null;
-    currentCode = liveBlock ? _codeText(liveBlock) : '';
-  }
-
-  if (!currentCode || !currentCode.trim()) {
-    consoleEl.classList.remove('busy');
-    panel.trigger.classList.remove('busy');
-    stderr.textContent = '⚠ No se pudo leer el código. Guarda la entrada e intenta de nuevo.';
-    consoleEl.classList.add('err');
-    _positionCodePanels(panels);
-    return;
-  }
-
-  fetch('/api/execute', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: currentCode, language: 'python' }),
-  })
-    .then(r => r.json())
-    .then(data => {
-      consoleEl.classList.remove('busy');
-      panel.trigger.classList.remove('busy');
-      if (data.error) {
-        stderr.textContent = data.error;
-        consoleEl.classList.add('err');
-      } else {
-        stdout.textContent = data.output || '(sin salida)';
-        if (data.stderr) stderr.textContent = data.stderr;
-        const rc = data.returncode ?? '?';
-        if (rc === 0) {
-          status.textContent = '✓ Process finished with code 0';
-          status.classList.add('ok');
-          consoleEl.classList.remove('err');
-        } else {
-          status.textContent = '✗ Process finished with exit code ' + rc;
-          consoleEl.classList.add('err');
-        }
-      }
-      _positionCodePanels(panels);
-    })
-    .catch(err => {
-      consoleEl.classList.remove('busy');
-      panel.trigger.classList.remove('busy');
-      stderr.textContent = 'Error de red: ' + err.message;
-      consoleEl.classList.add('err');
-      _positionCodePanels(panels);
-    });
 }
 
 let _mermaidLoaded = false;
