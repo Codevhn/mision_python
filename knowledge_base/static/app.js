@@ -2131,8 +2131,13 @@ async function loadEntry(id, opts = {}) {
     const modLabel = m.type === "course"
       ? (m.module_label || _findEntryModule(m.course, id) || "")
       : "";
+    const modNumber = m.type === "course" && m.course && m.module
+      ? _coursesTreeData[m.course]?.modules?.[m.module]?.module_number
+      : "";
     if (modLabel) {
-      moduleLabelEl.innerHTML = `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
+      moduleLabelEl.innerHTML = modNumber
+        ? `<span class="eml-num">MÓDULO ${escapeHtml(modNumber)}</span><span class="eml-sep">:</span><span class="eml-text">${escapeHtml(modLabel)}</span>`
+        : `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
       moduleLabelEl.classList.remove("hidden");
     } else {
       moduleLabelEl.classList.add("hidden");

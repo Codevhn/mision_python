@@ -1082,28 +1082,41 @@ button.link-btn:hover { opacity: 0.75; }
   display: block;
 }
 
-/* Module banner — spans full width, accent-tinted background strip */
+/* Module badge — compact accent-tinted bar with module number + label */
 .entry-module-label {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 40px 16px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 100%);
-  border-left: 4px solid var(--accent);
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 18px;
+  margin: 0 20px 4px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 7px;
   font-family: var(--font-ui);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text-faint);
   cursor: default;
   user-select: none;
-  margin-bottom: 0;
+  width: fit-content;
+  min-width: 0;
+}
+.entry-module-label .eml-num {
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.entry-module-label .eml-sep {
+  font-weight: 400;
+  color: var(--text-faint);
+  opacity: 0.5;
 }
 .entry-module-label .eml-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-muted);
 }
 .inline-title-wrap {
   display: flex;
@@ -1113,7 +1126,7 @@ button.link-btn:hover { opacity: 0.75; }
   padding: 20px 40px 0;
 }
 .entry-view.has-module-label .inline-title-wrap {
-  padding-top: 16px;
+  padding-top: 12px;
 }
 .inline-title {
   font-family: var(--font-ui);
@@ -6911,6 +6924,12 @@ body.home-ambient .home-hero { overflow: visible; }
   .inline-title-wrap {
     padding: 10px 16px 0 !important;
     gap: 8px;
+  }
+  .entry-module-label {
+    margin-left: 12px;
+    margin-right: 12px;
+    padding: 8px 14px;
+    font-size: 0.72rem;
   }
   .inline-title { font-size: 1.35rem !important; }
   .entry-page-icon-btn iconify-icon,
