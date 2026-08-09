@@ -1,0 +1,111 @@
+/* ============================================================
+   Pygments token theme — applied to <code class="highlight-code">
+   blocks produced by CodeBlockRenderer (server-side).
+   Scoped so it only colors real code blocks, not the app.
+   ============================================================ */
+
+.highlight-code { background: transparent !important; }
+
+/* Keywords */
+.highlight-code .tok-k,
+.highlight-code .tok-kd,
+.highlight-code .tok-kn,
+.highlight-code .tok-kp,
+.highlight-code .tok-kr,
+.highlight-code .tok-kt { color: #ff7b72; font-weight: 600; }
+
+/* Strings */
+.highlight-code .tok-s,
+.highlight-code .tok-s1,
+.highlight-code .tok-s2,
+.highlight-code .tok-sb,
+.highlight-code .tok-sd,
+.highlight-code .tok-se,
+.highlight-code .tok-si,
+.highlight-code .tok-sx,
+.highlight-code .tok-sr { color: #a5d6ff; }
+
+/* Comments */
+.highlight-code .tok-c,
+.highlight-code .tok-c1,
+.highlight-code .tok-cm,
+.highlight-code .tok-cs { color: #8b949e; font-style: italic; }
+
+/* Numbers / booleans */
+.highlight-code .tok-m,
+.highlight-code .tok-mb,
+.highlight-code .tok-mf,
+.highlight-code .tok-mh,
+.highlight-code .tok-mi,
+.highlight-code .tok-mo,
+.highlight-code .tok-il { color: #79c0ff; }
+
+/* Function / class names */
+.highlight-code .tok-nf { color: #d2a8ff; }
+.highlight-code .tok-nc { color: #7ee787; }
+.highlight-code .tok-nb { color: #79c0ff; }
+.highlight-code .tok-na { color: #7ee787; }
+.highlight-code .tok-nd { color: #d2a8ff; }
+
+/* Builtins / constants */
+.highlight-code .tok-bp { color: #79c0ff; }
+.highlight-code .tok-kt .tok-bp { color: #79c0ff; }
+
+/* Tags / attributes (HTML/CSS-ish) */
+.highlight-code .tok-tag { color: #7ee787; }
+.highlight-code .tok-name { color: #ff7b72; }
+.highlight-code .tok-attr { color: #d2a8ff; }
+
+/* Decorators / preprocessor */
+.highlight-code .tok-desc { color: #d2a8ff; }
+.highlight-code .tok-deco { color: #d2a8ff; }
+
+/* Operators / punctuation keep default foreground, slightly dimmed */
+.highlight-code .tok-o,
+.highlight-code .tok-p { color: inherit; }
+
+/* Errors */
+.highlight-code .tok-err { color: #f85149; }
+
+/* Diff-style highlights */
+.highlight-code .tok-gd { color: #ffa198; }
+.highlight-code .tok-gi { color: #56d364; }
+
+/* Light theme overrides */
+[data-theme="light"] .highlight-code .tok-k,
+[data-theme="light"] .highlight-code .tok-kd,
+[data-theme="light"] .highlight-code .tok-kn,
+[data-theme="light"] .highlight-code .tok-kp,
+[data-theme="light"] .highlight-code .tok-kr,
+[data-theme="light"] .highlight-code .tok-kt,
+[data-theme="light"] .highlight-code .tok-name { color: #cf222e; }
+[data-theme="light"] .highlight-code .tok-s,
+[data-theme="light"] .highlight-code .tok-s1,
+[data-theme="light"] .highlight-code .tok-s2,
+[data-theme="light"] .highlight-code .tok-sb,
+[data-theme="light"] .highlight-code .tok-sd,
+[data-theme="light"] .highlight-code .tok-se,
+[data-theme="light"] .highlight-code .tok-si,
+[data-theme="light"] .highlight-code .tok-sx,
+[data-theme="light"] .highlight-code .tok-sr { color: #0a3069; }
+[data-theme="light"] .highlight-code .tok-c,
+[data-theme="light"] .highlight-code .tok-c1,
+[data-theme="light"] .highlight-code .tok-cm,
+[data-theme="light"] .highlight-code .tok-cs { color: #6e7781; }
+[data-theme="light"] .highlight-code .tok-m,
+[data-theme="light"] .highlight-code .tok-mb,
+[data-theme="light"] .highlight-code .tok-mf,
+[data-theme="light"] .highlight-code .tok-mh,
+[data-theme="light"] .highlight-code .tok-mi,
+[data-theme="light"] .highlight-code .tok-mo,
+[data-theme="light"] .highlight-code .tok-il,
+[data-theme="light"] .highlight-code .tok-bp,
+[data-theme="light"] .highlight-code .tok-nb { color: #0550ae; }
+[data-theme="light"] .highlight-code .tok-nf,
+[data-theme="light"] .highlight-code .tok-nd,
+[data-theme="light"] .highlight-code .tok-deco,
+[data-theme="light"] .highlight-code .tok-desc { color: #8250df; }
+[data-theme="light"] .highlight-code .tok-nc,
+[data-theme="light"] .highlight-code .tok-na,
+[data-theme="light"] .highlight-code .tok-tag { color: #116329; }
+[data-theme="light"] .highlight-code .tok-err { color: #cf222e; }

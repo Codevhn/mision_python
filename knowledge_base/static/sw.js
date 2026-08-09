@@ -1,7 +1,8 @@
-const CACHE = 'atlas-v1';
+const CACHE = 'atlas-v2';
 const PRECACHE = [
   '/',
   '/static/style.css',
+  '/static/pygments.css',
   '/static/app.js',
   '/static/kanban.css',
   '/static/mindmap.css',

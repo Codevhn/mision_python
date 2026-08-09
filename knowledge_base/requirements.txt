@@ -4,3 +4,4 @@ weasyprint==68.1
 gunicorn==23.0.0
 bleach==6.2.0
 tinycss2==1.5.0
+pygments==2.19.1

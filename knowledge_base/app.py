@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import deque
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, session, redirect, url_for, Response
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, session, redirect, url_for, Response, stream_with_context
 import mistune
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
@@ -412,6 +412,23 @@ class CodeBlockRenderer(mistune.HTMLRenderer):
         lang = lang.strip().split()[0] if lang.strip() else ""
         lang_attr = f' class="language-{lang}"' if lang else ""
         data_lang = f' data-lang="{lang}"' if lang else ""
+        if lang:
+            # Pygments server-side syntax highlighting: emits colored token
+            # spans inside the <code> block. Unknown/invalid languages fall
+            # back to the plain escaped path below (never raise).
+            try:
+                from pygments import highlight
+                from pygments.lexers import get_lexer_by_name
+                from pygments.formatters import HtmlFormatter
+                lexer = get_lexer_by_name(lang)
+                formatter = HtmlFormatter(nowrap=True, classprefix="tok-")
+                colored = highlight(code, lexer, formatter)
+                return (
+                    f'<pre class="language-{lang} highlight"{data_lang}>'
+                    f'<code class="language-{lang} highlight-code">{colored}</code></pre>\n'
+                )
+            except Exception:
+                pass
         return f'<pre{lang_attr}{data_lang}><code{lang_attr}>{mistune.escape(code)}</code></pre>\n'
 
 
@@ -800,7 +817,7 @@ _STATIC_DIR = _os.path.join(_os.path.dirname(__file__), 'static')
 
 def _build_id():
     h = lambda f: _file_hash(_os.path.join(_STATIC_DIR, f))
-    return f"{h('style.css')}-{h('app.js')}-{h('kanban.css')}-{h('kanban.js')}-{h('blocknote/editor.bundle.js')}"
+    return f"{h('style.css')}-{h('app.js')}-{h('kanban.css')}-{h('kanban.js')}-{h('blocknote/editor.bundle.js')}-{h('pygments.css')}"
 
 @app.route("/sw.js")
 def service_worker():
@@ -4432,6 +4449,130 @@ def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
     return _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode)
 
 
+# ── Streaming (SSE) ──────────────────────────────────────────────────────────
+# The Ask AI panel streams deltas for a ChatGPT/Claude feel. Inner generators
+# yield plain text deltas; after the stream ends they yield a sentinel tuple
+# ("__done__", truncated). Errors are raised as HTTPError/Exception and caught
+# in _stream_call_ai, which yields (None, {"error", "status"}) instead.
+
+def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, temperature=None):
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": messages,
+        "stream": True,
+    }
+    if temperature is not None:
+        payload["temperature"] = temperature
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        base_url,
+        data=body,
+        headers={
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
+        },
+    )
+    truncated = False
+    with urllib.request.urlopen(req, timeout=180) as r:
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[len("data:"):].strip()
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            choices = chunk.get("choices") or []
+            if not choices:
+                continue
+            delta = choices[0].get("delta") or {}
+            frag = delta.get("content")
+            if frag:
+                yield frag
+            if choices[0].get("finish_reason") == "length":
+                truncated = True
+    yield "__done__", truncated
+
+
+def _stream_gemini(base_url, api_key, model, system, messages, max_tokens, temperature=None):
+    contents = []
+    for m in messages:
+        if m.get("role") == "system":
+            continue
+        role = "user" if m.get("role") == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": m.get("content") or ""}]})
+    payload = {
+        "contents": contents,
+        "systemInstruction": {"parts": [{"text": system}]},
+        "generationConfig": {"maxOutputTokens": max_tokens, "candidateCount": 1},
+    }
+    if temperature is not None:
+        payload["generationConfig"]["temperature"] = temperature
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/{model}:streamGenerateContent?alt=sse",
+        data=body,
+        headers={**_AI_HTTP_HEADERS, "Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+    truncated = False
+    with urllib.request.urlopen(req, timeout=180) as r:
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[len("data:"):].strip()
+            if not data:
+                continue
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            candidates = chunk.get("candidates") or []
+            if not candidates:
+                continue
+            parts = (candidates[0].get("content") or {}).get("parts") or []
+            for p in parts:
+                text = p.get("text")
+                if text:
+                    yield text
+            if candidates[0].get("finishReason") == "MAX_TOKENS":
+                truncated = True
+    yield "__done__", truncated
+
+
+def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None, temperature=None):
+    """Generator version of _call_ai. `messages` is a list of
+    {"role": "system"|"user"|"assistant", "content"} turns. Yields text
+    deltas, then a final ("__done__", truncated) sentinel. On failure yields
+    (None, {"error": msg, "status": code}) and stops."""
+    provider = provider or DEFAULT_PROVIDER
+    model = model or DEFAULT_MODEL
+    cfg = PROVIDERS.get(provider)
+    if not cfg:
+        yield None, {"error": f"Proveedor de IA desconocido: {provider}", "status": 400}
+        return
+    api_key = os.environ.get(cfg["env"], "")
+    if not api_key:
+        yield None, {"error": f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...", "status": 503}
+        return
+    try:
+        if cfg["kind"] == "gemini":
+            inner = _stream_gemini(cfg["base_url"], api_key, model, system, messages, max_tokens, temperature)
+        else:
+            inner = _stream_openai_compatible(cfg["base_url"], api_key, model, messages, max_tokens, temperature)
+        for part in inner:
+            yield part
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        yield None, {"error": _clean_ai_error(e.code, err_body), "status": 502}
+    except Exception as e:
+        yield None, {"error": str(e), "status": 500}
+
+
 def _provider_models(pid, cfg):
     return _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
 
@@ -4911,6 +5052,191 @@ def ai_ask():
     # (tables, ordered/unordered lists, fenced code) instead of leaving the
     # frontend to re-parse the reply with a much more limited hand-rolled parser.
     return jsonify({"result": content, "html": render_markdown(content)})
+
+
+_AI_STREAM_ACTION_DIRECTIVES = {
+    "explain":   "Explica a fondo el siguiente contenido, con ejemplos prácticos y casos de uso.",
+    "summarize": "Resume el siguiente contenido de forma concisa, manteniendo las ideas clave.",
+    "improve":   "Mejora la claridad y fluidez del siguiente texto manteniendo su significado e idioma. Devuelve solo el texto mejorado, sin comentarios.",
+    "example":   "Da ejemplos prácticos claros y variados sobre el siguiente tema.",
+}
+
+
+def _stream_user_msg(action, prompt, context):
+    """Build the user turn for the streaming endpoint. The quick-action chips
+    (explain/summarize/improve/example) add their own explicit directive since
+    the shared system prompt is instruction-agnostic about which one fired."""
+    prompt = prompt.strip()
+    context = context.strip()
+    if action in _AI_STREAM_ACTION_DIRECTIVES:
+        directive = _AI_STREAM_ACTION_DIRECTIVES[action]
+        if context:
+            return f"{directive}\n\nContexto:\n```\n{context}\n```"
+        return f"{directive}\n\n{prompt}"
+    if context:
+        return f"Contexto:\n```\n{context}\n```\n\n{prompt}"
+    return prompt
+
+
+@app.route("/api/ai/stream", methods=["POST"])
+def ai_ask_stream():
+    """SSE streaming variant of /api/ai used by the Ask AI panel. Supports a
+    multi-turn `history` (only for the plain "ask" action). Emits frames:
+      - data: {"delta": "..."}          per token fragment
+      - event: done, data: {full, html, truncated}
+      - event: error, data: {error}
+    """
+    data = request.json or {}
+    prompt = (data.get("prompt") or "").strip()
+    context = (data.get("context") or "").strip()
+    action = (data.get("action") or "ask").strip()
+    lesson_context = (data.get("lesson_context") or "").strip()
+    history = data.get("history") or []
+
+    ctx_actual = lesson_context
+    system = _PROJECT_ATLAS_SYSTEM.replace("{CONTEXTO_ACTUAL}", ctx_actual or "")
+    if not ctx_actual:
+        system = system.replace("\n\n\n", "\n\n")
+
+    messages = []
+    if action == "ask":
+        # Carry the conversation so far (only assistant + user turns; the
+        # system prompt stays as the single system message).
+        for item in history:
+            role = "assistant" if (item.get("role") == "assistant") else "user"
+            content = (item.get("content") or "").strip()
+            if content:
+                messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": _stream_user_msg(action, prompt, context)})
+
+    max_tokens = 3500 if action in ("explain", "example", "ask") else 2048
+
+    def generate():
+        full = []
+        for part in _stream_call_ai(
+            system, messages, max_tokens=max_tokens, temperature=0.1,
+            provider=data.get("provider"), model=data.get("model"),
+        ):
+            if isinstance(part, tuple):
+                if part[0] == "__done__":
+                    _, truncated = part
+                    text = "".join(full)
+                    payload = {"full": text, "html": render_markdown(text), "truncated": truncated}
+                    yield f"event: done\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                    return
+                _, err = part
+                yield f"event: error\ndata: {json.dumps({'error': err.get('error', 'Error de IA')}, ensure_ascii=False)}\n\n"
+                return
+            full.append(part)
+            yield f"data: {json.dumps({'delta': part}, ensure_ascii=False)}\n\n"
+
+    resp = Response(stream_with_context(generate()), mimetype="text/event-stream")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+# ── AI conversation persistence (server-side, per entry) ─────────────────────
+# Single-user KB: conversations live in DATA_DIR like every other store here.
+# Each record keeps the entry it belongs to, a title (first user message) and
+# the full multi-turn transcript so reopening a lesson restores the chat.
+AI_CONVERSATIONS_FILE = DATA_DIR / "ai_conversations.json"
+_AI_CONV_MAX_CONVERSATIONS = 100
+_AI_CONV_MAX_MESSAGES = 200
+_AI_CONV_MAX_MSG_CHARS = 100000
+
+
+def load_ai_conversations():
+    if AI_CONVERSATIONS_FILE.exists():
+        try:
+            data = json.loads(AI_CONVERSATIONS_FILE.read_text())
+            if isinstance(data, dict) and isinstance(data.get("conversations"), list):
+                return data
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return {"conversations": []}
+
+
+def save_ai_conversations(data):
+    data["conversations"] = data["conversations"][-_AI_CONV_MAX_CONVERSATIONS:]
+    tmp = AI_CONVERSATIONS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, AI_CONVERSATIONS_FILE)
+
+
+def _sanitize_conversation_messages(messages):
+    out = []
+    for item in (messages or [])[-_AI_CONV_MAX_MESSAGES:]:
+        role = "assistant" if (item.get("role") == "assistant") else "user"
+        content = (item.get("content") or "")[:_AI_CONV_MAX_MSG_CHARS]
+        if not content.strip():
+            continue
+        out.append({"role": role, "content": content})
+    return out
+
+
+@app.route("/api/ai/conversations", methods=["GET"])
+def list_ai_conversations():
+    entry_id = (request.args.get("entry_id") or "").strip()
+    store = load_ai_conversations()
+    items = store["conversations"]
+    if entry_id:
+        items = [c for c in items if c.get("entry_id") == entry_id]
+    items = sorted(items, key=lambda c: c.get("updated_at") or "", reverse=True)
+    return jsonify({"conversations": items})
+
+
+@app.route("/api/ai/conversations", methods=["POST"])
+def save_ai_conversation():
+    data = request.json or {}
+    entry_id = (data.get("entry_id") or "").strip()
+    messages = _sanitize_conversation_messages(data.get("messages"))
+    if not messages:
+        return jsonify({"error": "No hay mensajes para guardar"}), 400
+    index = load_index()
+    meta = index.get(entry_id, {})
+    title = (data.get("title") or "").strip()
+    if not title:
+        first_user = next((m.get("content") for m in messages if m.get("role") == "user"), "")
+        title = (first_user or "Conversación")[:_AI_CONV_MAX_MSG_CHARS]
+    now = datetime.now().isoformat(timespec="seconds")
+    store = load_ai_conversations()
+    convo_id = (data.get("id") or "").strip()
+    record = None
+    if convo_id:
+        record = next((c for c in store["conversations"] if c.get("id") == convo_id), None)
+    if record:
+        record.update({
+            "entry_title": meta.get("title") or record.get("entry_title") or "",
+            "title": title,
+            "messages": messages,
+            "updated_at": now,
+        })
+    else:
+        record = {
+            "id": uuid.uuid4().hex[:10],
+            "entry_id": entry_id,
+            "entry_title": meta.get("title") or "",
+            "title": title,
+            "messages": messages,
+            "created_at": now,
+            "updated_at": now,
+        }
+        store["conversations"].append(record)
+    save_ai_conversations(store)
+    return jsonify(record)
+
+
+@app.route("/api/ai/conversations/<convo_id>", methods=["DELETE"])
+def delete_ai_conversation(convo_id):
+    store = load_ai_conversations()
+    before = len(store["conversations"])
+    store["conversations"] = [c for c in store["conversations"] if c.get("id") != convo_id]
+    if len(store["conversations"]) == before:
+        return jsonify({"error": "No encontrada"}), 404
+    save_ai_conversations(store)
+    return jsonify({"ok": True})
 
 
 # ── Quiz generation (structured, multiple-choice) ──────────────────────────────

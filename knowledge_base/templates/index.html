@@ -29,6 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/pygments.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/kanban.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/mindmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
@@ -633,11 +634,18 @@
     <div class="ai-inline-loading hidden" id="aiInlineLoading">✦ procesando…</div>
   </div>
 
-  <!-- AI PANEL -->
-  <div class="ai-panel hidden" id="aiPanel">
+  <!-- AI PANEL (ChatGPT/Claude-style side drawer) -->
+  <aside class="ai-panel hidden" id="aiPanel">
     <div class="ai-panel-header">
       <span class="ai-panel-title">✦ Ask AI</span>
-      <button class="ai-panel-close" id="aiPanelClose">×</button>
+      <div class="ai-panel-header-actions">
+        <button class="ai-new-chat-btn" id="aiNewChatBtn" title="Nueva conversación">＋ Nueva</button>
+        <button class="ai-panel-close" id="aiPanelClose">×</button>
+      </div>
+    </div>
+    <!-- Model selector pinned at top -->
+    <div class="ai-panel-toolbar">
+      <div class="practice-cselect" id="aiModelCSelect"></div>
     </div>
     <!-- Selected text context strip (visible only when triggered from a selection) -->
     <div class="ai-sel-ctx hidden" id="aiSelCtx">
@@ -645,28 +653,31 @@
       <div class="ai-sel-ctx-text" id="aiSelCtxText"></div>
       <button class="ai-sel-ctx-clear" id="aiSelCtxClear">× usar entrada completa</button>
     </div>
+    <!-- Quick actions -->
     <div class="ai-actions">
       <button class="ai-action-btn" data-action="explain">Explicar</button>
       <button class="ai-action-btn" data-action="summarize">Resumir</button>
       <button class="ai-action-btn" data-action="improve">Mejorar</button>
       <button class="ai-action-btn" data-action="example">Ejemplo</button>
     </div>
-    <div class="practice-cselect" id="aiModelCSelect"></div>
-    <div class="ai-input-row">
-      <input type="text" class="ai-input" id="aiInput" placeholder="Pregunta algo sobre este contenido…" autocomplete="off" />
-      <button class="ai-send-btn" id="aiSendBtn">→</button>
+    <!-- Scrollable transcript -->
+    <div class="ai-transcript" id="aiTranscript">
+      <div class="ai-loading hidden" id="aiLoading"><span class="ai-dots">✦ pensando</span></div>
+      <div class="ai-error hidden" id="aiError"></div>
     </div>
-    <div class="ai-response hidden" id="aiResponse">
-      <div class="ai-response-body" id="aiResponseBody"></div>
-      <div class="ai-response-actions">
+    <!-- Static footer: last-answer actions + composer -->
+    <div class="ai-footer">
+      <div class="ai-response-actions hidden" id="aiResponseActions">
         <button class="ai-copy-btn" id="aiCopyBtn">⎘ copiar</button>
         <button class="ai-insert-btn" id="aiInsertBtn">↓ insertar</button>
         <button class="ai-save-page-btn" id="aiSavePageBtn">＋ guardar como página nueva</button>
       </div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" id="aiInput" rows="1" placeholder="Pregunta algo sobre este contenido…" autocomplete="off"></textarea>
+        <button class="ai-send-btn" id="aiSendBtn" title="Enviar (Enter)">→</button>
+      </div>
     </div>
-    <div class="ai-loading hidden" id="aiLoading"><span class="ai-dots">✦ pensando</span></div>
-    <div class="ai-error hidden" id="aiError"></div>
-  </div>
+  </aside>
 
   <!-- FOCUS MODE EXIT BUTTON -->
   <button class="focus-exit hidden" id="focusExit">× exit</button>

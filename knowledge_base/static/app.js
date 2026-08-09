@@ -8352,26 +8352,34 @@ function _mdToHtml(md) {
 
 // ── Ask AI panel ─────────────────────────────────────────────────────────────
 function initAIPanel() {
-  const panel      = $('aiPanel');
-  const btn        = $('aiBtn');
-  const closeBtn   = $('aiPanelClose');
-  const input      = $('aiInput');
-  const sendBtn    = $('aiSendBtn');
-  const responseEl   = $('aiResponse');
-  const responseBody = $('aiResponseBody');
-  const loadingEl    = $('aiLoading');
-  const errorEl      = $('aiError');
-  const copyBtn      = $('aiCopyBtn');
-  const insertBtn    = $('aiInsertBtn');
-  const selBubble    = null; // replaced by #aiInlineBar
-  const selCtx       = $('aiSelCtx');
-  const selCtxText   = $('aiSelCtxText');
-  const selCtxClear  = $('aiSelCtxClear');
+  const panel       = $('aiPanel');
+  const btn         = $('aiBtn');
+  const closeBtn    = $('aiPanelClose');
+  const newChatBtn  = $('aiNewChatBtn');
+  const input       = $('aiInput');
+  const sendBtn     = $('aiSendBtn');
+  const loadingEl   = $('aiLoading');
+  const errorEl     = $('aiError');
+  const copyBtn     = $('aiCopyBtn');
+  const insertBtn   = $('aiInsertBtn');
+  const selCtx      = $('aiSelCtx');
+  const selCtxText  = $('aiSelCtxText');
+  const selCtxClear = $('aiSelCtxClear');
+  const transcript  = $('aiTranscript');
+  const respActions = $('aiResponseActions');
+  const savePageBtn = $('aiSavePageBtn');
   if (!panel || !btn) return;
 
-  let lastResult   = '';
-  let _selContext  = '';  // text pinned from a selection
+  // ── State ────────────────────────────────────────────────
+  let lastResult    = '';
+  let _selContext   = '';   // text pinned from a selection
   let aiModelChoice = null;
+  let _chatLog      = [];   // [{role:'user'|'assistant', content}]
+  let _convoId      = null; // server conversation id
+  let _streaming    = false;
+  let _lastAction   = 'ask';
+  let _pendingSave  = null;
+
   // Mounted once (this panel is static in the DOM, not rebuilt like
   // Práctica's body) — shared "ask" context with the inline selection
   // popover below, so picking a model here also applies there.
@@ -8381,8 +8389,208 @@ function initAIPanel() {
     onChange: choice => { aiModelChoice = choice; },
   });
 
+  // ── Composer autosize ────────────────────────────────────
+  function _autosize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+  }
+  input.addEventListener('input', _autosize);
+
+  // ── Transcript rendering ─────────────────────────────────
+  function scrollBottom() {
+    requestAnimationFrame(() => { transcript.scrollTop = transcript.scrollHeight; });
+  }
+
+  function appendUser(text) {
+    transcript.querySelectorAll('.ai-empty-hint').forEach(h => h.remove());
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-bubble ai-bubble-user';
+    wrap.textContent = text;
+    transcript.appendChild(wrap);
+  }
+
+  function appendAssistant(content, html) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-bubble ai-bubble-assistant';
+    const body = document.createElement('div');
+    body.className = 'ai-response-body';
+    if (html) {
+      body.innerHTML = html;
+      _enhanceCodeBlocks(body);
+    } else if (content) {
+      body.innerHTML = _mdToHtml2(content);
+    }
+    wrap.appendChild(body);
+    transcript.appendChild(wrap);
+    scrollBottom();
+    return { wrap, body };
+  }
+
+  function renderTranscript() {
+    transcript.querySelectorAll('.ai-bubble, .ai-empty-hint').forEach(b => b.remove());
+    if (!_chatLog.length) {
+      const hint = document.createElement('div');
+      hint.className = 'ai-empty-hint';
+      hint.textContent = 'Preguntá sobre esta lección. El código y las tablas se muestran con formato completo.';
+      transcript.appendChild(hint);
+    } else {
+      _chatLog.forEach(m => {
+        if (m.role === 'user') appendUser(m.content);
+        else appendAssistant(m.content, null);
+      });
+    }
+    scrollBottom();
+  }
+
+  function updateFooter() {
+    if (lastResult) respActions.classList.remove('hidden');
+    else respActions.classList.add('hidden');
+  }
+
+  // ── Code blocks: language header + copy button ────────────
+  function _enhanceCodeBlocks(root) {
+    if (!root) return;
+    root.querySelectorAll('pre:not(.ai-code-enhanced)').forEach(pre => {
+      pre.classList.add('ai-code-enhanced');
+      const codeEl = pre.querySelector('code');
+      const lang = pre.getAttribute('data-lang')
+        || (codeEl && (codeEl.className.match(/language-([\w-]+)/) || [])[1]) || '';
+      const head = document.createElement('div');
+      head.className = 'ai-code-header';
+      const label = document.createElement('span');
+      label.className = 'ai-code-lang';
+      label.textContent = lang || 'code';
+      const cp = document.createElement('button');
+      cp.type = 'button';
+      cp.className = 'ai-code-copy';
+      cp.textContent = '⎘ copiar';
+      cp.setAttribute('data-copy', codeEl ? codeEl.textContent : '');
+      head.appendChild(label);
+      head.appendChild(cp);
+      pre.parentNode.insertBefore(head, pre);
+    });
+  }
+
+  // ── Streaming preview Markdown → HTML (final render is server-side) ──
+  function _renderTables(html) {
+    const lines = html.split('\n');
+    const out = [];
+    let i = 0;
+    while (i < lines.length) {
+      const cur = lines[i];
+      const nxt = lines[i + 1] || '';
+      if (cur.trim().startsWith('|') && /^\|?[\s:|-]+\|?\s*$/.test(nxt) && nxt.includes('|')) {
+        const head = cur.split('|').map(s => s.trim()).filter(s => s !== '');
+        i += 2;
+        const rows = [];
+        while (i < lines.length && lines[i].trim().startsWith('|')) {
+          rows.push(lines[i].split('|').map(s => s.trim()).filter(s => s !== ''));
+          i++;
+        }
+        out.push('<table><thead><tr>' + head.map(h => `<th>${h}</th>`).join('')
+          + '</tr></thead><tbody>'
+          + rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('')
+          + '</tbody></table>');
+        continue;
+      }
+      out.push(cur);
+      i++;
+    }
+    return out.join('\n');
+  }
+
+  function _mdToHtml2(md) {
+    let html = md
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const blocks = [];
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      const l = (lang || '').trim();
+      const c = (code || '').trim();
+      const cls = l ? ` class="language-${l}"` : '';
+      const dl = l ? ` data-lang="${l}"` : '';
+      blocks.push(`<pre${cls}${dl}><code${cls}>${c}</code></pre>`);
+      return `\u0000BLOCK${blocks.length - 1}\u0000`;
+    });
+    html = _renderTables(html);
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    html = html.replace(/^\s*(---|\*\*\*|___)\s*$/gm, '<hr>');
+    html = html.replace(/^\s*> ?(.*)$/gm, '<blockquote>$1</blockquote>');
+    html = html.replace(/<\/blockquote>\s*<blockquote>/g, '</blockquote><blockquote>');
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    html = html.replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^\s*\d+\. (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>[\s\S]*?<\/li>)(\n<li>[\s\S]*?<\/li>)*/g, m => `<ul>${m}</ul>`);
+    html = html.replace(/\n{2,}/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    html = `<p>${html}</p>`;
+    blocks.forEach((b, i) => { html = html.replace(`\u0000BLOCK${i}\u0000`, b); });
+    return html;
+  }
+
+  transcript.addEventListener('click', e => {
+    const cp = e.target.closest('.ai-code-copy');
+    if (!cp) return;
+    navigator.clipboard.writeText(cp.getAttribute('data-copy') || '').then(() => {
+      cp.textContent = '✓';
+      setTimeout(() => { cp.textContent = '⎘ copiar'; }, 1200);
+    });
+  });
+
+  // ── Persistence (server-side) ────────────────────────────
+  function _lastAssistantContent() {
+    for (let i = _chatLog.length - 1; i >= 0; i--) {
+      if (_chatLog[i].role === 'assistant') return _chatLog[i].content;
+    }
+    return '';
+  }
+
+  async function loadConversations() {
+    if (!currentEntryId) return;
+    try {
+      const res = await fetch('/api/ai/conversations?entry_id=' + encodeURIComponent(currentEntryId));
+      const data = await res.json();
+      const list = data.conversations || [];
+      if (list.length) {
+        const c = list[0];
+        _convoId = c.id;
+        _chatLog = (c.messages || []).map(m => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+        }));
+        lastResult = _lastAssistantContent();
+      }
+    } catch (err) { /* persistence is best-effort */ }
+  }
+
+  function saveConversation() {
+    if (!_chatLog.length || _streaming || !currentEntryId) return;
+    clearTimeout(_pendingSave);
+    _pendingSave = setTimeout(async () => {
+      try {
+        const firstUser = _chatLog.find(m => m.role === 'user');
+        const res = await fetch('/api/ai/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: _convoId || null,
+            entry_id: currentEntryId,
+            title: ((firstUser && firstUser.content) || 'Conversación').slice(0, 120),
+            messages: _chatLog,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.id) _convoId = data.id;
+      } catch (err) { /* persistence is best-effort */ }
+    }, 600);
+  }
+
   // ── Open / close ──────────────────────────────────────────
-  function openPanel(selText) {
+  async function openPanel(selText) {
     if (selText) {
       _selContext = selText;
       selCtxText.textContent = selText.length > 200 ? selText.slice(0, 200) + '…' : selText;
@@ -8395,12 +8603,19 @@ function initAIPanel() {
     }
     panel.classList.remove('hidden');
     btn.classList.add('active');
-    responseEl.classList.add('hidden');
     errorEl.classList.add('hidden');
+    loadingEl.classList.add('hidden');
+    // Restore the latest server-saved conversation for this entry
+    if (currentEntryId && !_chatLog.length && !_streaming) {
+      await loadConversations();
+      renderTranscript();
+      updateFooter();
+    }
     setTimeout(() => input.focus(), 50);
   }
 
   function closePanel() {
+    saveConversation();
     panel.classList.add('hidden');
     btn.classList.remove('active');
     _selContext = '';
@@ -8412,8 +8627,24 @@ function initAIPanel() {
     else closePanel();
   }
 
+  function newChat() {
+    if (_streaming) return;
+    saveConversation();
+    _chatLog = [];
+    _convoId = null;
+    lastResult = '';
+    errorEl.classList.add('hidden');
+    loadingEl.classList.add('hidden');
+    input.value = '';
+    _autosize();
+    renderTranscript();
+    updateFooter();
+    input.focus();
+  }
+
   btn.addEventListener('click', togglePanel);
   closeBtn.addEventListener('click', closePanel);
+  newChatBtn.addEventListener('click', newChat);
   selCtxClear.addEventListener('click', () => {
     _selContext = '';
     selCtx.classList.add('hidden');
@@ -8425,12 +8656,8 @@ function initAIPanel() {
     b.addEventListener('click', () => sendAI(b.dataset.action, ''));
   });
 
-  function sendAI(action, prompt) {
-    // Use pinned selection as context when available, otherwise full entry
-    const ctx = _selContext || (currentEntryId ? (_inlineEditor.getMarkdown() || '') : '');
-    const userPrompt = (prompt || input.value || '').trim();
-
-    // Build structured context: CONTEXTO ACTUAL: Curso de ... > Módulo: ... > Lección: ...
+  // ── Send / stream ─────────────────────────────────────────
+  function buildLessonContext() {
     let lessonCtx = '';
     const m = currentEntryMeta;
     if (m) {
@@ -8443,45 +8670,110 @@ function initAIPanel() {
         lessonCtx = `CONTEXTO ACTUAL: Curso de ${courseName} > Módulo: ${moduleName} > Lección: ${lessonName}`;
       }
     }
+    return lessonCtx;
+  }
 
-    responseEl.classList.add('hidden');
+  const QUICK_LABELS = { explain: 'Explicar', summarize: 'Resumir', improve: 'Mejorar', example: 'Ejemplo' };
+
+  async function sendAI(action, prompt) {
+    if (_streaming) return;
+    const ctx = _selContext || (currentEntryId ? (_inlineEditor.getMarkdown() || '') : '');
+    const userPrompt = (prompt || input.value || '').trim();
+    const lessonCtx = buildLessonContext();
+
+    // Surface the user's turn as a bubble (quick actions label it)
+    const display = userPrompt || (QUICK_LABELS[action] || 'Consulta');
+    if (action !== 'ask' && !userPrompt && _selContext) {
+      _chatLog.push({ role: 'user', content: `${display}:\n${_selContext.slice(0, 400)}` });
+      appendUser(`${display}:\n${_selContext.length > 120 ? _selContext.slice(0, 120) + '…' : _selContext}`);
+    } else {
+      _chatLog.push({ role: 'user', content: display });
+      appendUser(display);
+    }
+
+    const bubble = appendAssistant('', null);
+    const bodyEl = bubble.body;
+    bodyEl.innerHTML = '<div class="ai-dots">✦ pensando</div>';
     errorEl.classList.add('hidden');
-    loadingEl.classList.remove('hidden');
+    respActions.classList.add('hidden');
+    _lastAction = action;
+    _streaming = true;
 
-    fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        prompt: userPrompt,
-        context: ctx,
-        lesson_context: lessonCtx,
-        provider: aiModelChoice?.provider,
-        model: aiModelChoice?.model,
-      }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        loadingEl.classList.add('hidden');
-        if (data.error) {
-          errorEl.textContent = data.error;
-          errorEl.classList.remove('hidden');
-          return;
-        }
-        lastResult = data.result || '';
-        responseBody.innerHTML = data.html || _mdToHtml(lastResult);
-        responseEl.classList.remove('hidden');
-      })
-      .catch(err => {
-        loadingEl.classList.add('hidden');
-        errorEl.textContent = 'Error de red: ' + err.message;
-        errorEl.classList.remove('hidden');
+    let md = '';
+    let raf = 0;
+    const paint = () => {
+      raf = 0;
+      if (bodyEl) bodyEl.innerHTML = md ? _mdToHtml2(md) : '<div class="ai-dots">✦ pensando</div>';
+      scrollBottom();
+    };
+    const schedulePaint = () => { if (!raf) raf = requestAnimationFrame(paint); };
+
+    try {
+      const res = await fetch('/api/ai/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          prompt: userPrompt,
+          context: ctx,
+          lesson_context: lessonCtx,
+          provider: aiModelChoice?.provider,
+          model: aiModelChoice?.model,
+          history: _chatLog.slice(0, -1),
+        }),
       });
+      if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let doneEvent = null;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf('\n\n')) !== -1) {
+          const block = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          let evt = 'message', data = '';
+          block.split('\n').forEach(line => {
+            if (line.startsWith('event:')) evt = line.slice(6).trim();
+            else if (line.startsWith('data:')) data += line.slice(5).trim();
+          });
+          if (!data) continue;
+          let obj;
+          try { obj = JSON.parse(data); } catch (err) { continue; }
+          if (evt === 'done') doneEvent = obj;
+          else if (evt === 'error') throw new Error(obj.error || 'Error de IA');
+          else if (obj.delta) { md += obj.delta; schedulePaint(); }
+        }
+      }
+
+      _streaming = false;
+      loadingEl.classList.add('hidden');
+      lastResult = doneEvent && doneEvent.full ? doneEvent.full : md;
+      _chatLog.push({ role: 'assistant', content: lastResult });
+      // Swap in the server-side render (Pygments colors + real tables)
+      const html = (doneEvent && doneEvent.html) ? doneEvent.html : _mdToHtml2(lastResult);
+      bodyEl.innerHTML = html;
+      _enhanceCodeBlocks(bodyEl);
+      updateFooter();
+      saveConversation();
+      scrollBottom();
+    } catch (err) {
+      _streaming = false;
+      loadingEl.classList.add('hidden');
+      bodyEl.innerHTML = `<div class="ai-error-inline">Error: ${escapeHtml(err.message || String(err))}</div>`;
+      scrollBottom();
+    }
   }
 
   sendBtn.addEventListener('click', () => {
     const q = input.value.trim();
     if (!q) return;
+    input.value = '';
+    _autosize();
     sendAI('ask', q);
   });
 
@@ -8500,12 +8792,11 @@ function initAIPanel() {
     if (!lastResult || !currentEntryId) return;
     if (_selContext) {
       // Insert after the paragraph containing the selection (not at the bottom)
-      _inlineInsert('explain', _selContext, lastResult);
+      _inlineInsert(_lastAction === 'ask' ? 'explain' : _lastAction, _selContext, lastResult);
     } else {
       const md = _inlineEditor.getMarkdown();
       _inlineEditor.load(md + '\n\n' + _sanitizeMarkdownForEditor(lastResult));
     }
-    closePanel();
     showToast('Respuesta insertada', 'success');
   });
 
@@ -8513,7 +8804,6 @@ function initAIPanel() {
   // ask (e.g. "genérame un roadmap completo de JS") doesn't always belong
   // inside whatever entry happened to be open — this saves it as its own
   // new page instead, same shape "＋ Nueva página" already uses.
-  const savePageBtn = $('aiSavePageBtn');
   savePageBtn?.addEventListener('click', async () => {
     if (!lastResult) return;
     // A response that opens with its own "# Heading" is the AI's own title
