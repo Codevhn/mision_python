@@ -1559,6 +1559,28 @@ button.link-btn:hover { opacity: 0.75; }
 #entryBody .code-block-terminal .code-block-term-title {
   color: #9aa0b4;
 }
+/* Boton de cerrar: ya estaba cableado en el bundle (onClick cierra el
+   terminal) pero oculto por display:none. Ahora es un X redondo a la
+   derecha de la barra; al hacer hover se vuelve rojo como una ventana real. */
+#entryBody .code-block-terminal .code-block-term-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  color: #9aa0b4;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+#entryBody .code-block-terminal .code-block-term-close:hover {
+  background: #ff5f57;
+  color: #fff;
+}
 #entryBody .code-block-terminal .code-block-term-body {
   background: #0d0f12;
   color: #d5d8dc;
@@ -6067,6 +6089,10 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   transition: background .12s;
 }
 .course-list-item:hover { background: var(--bg-hover); }
+/* Curso desplegado (active): el arbol de modulos/lecciones vive DENTRO del
+   item, asi que el hover pintaba todo el bloque de gris. Ahora solo resaltan
+   las entradas del arbol (modulos/lecciones); el contenedor queda limpio. */
+.course-list-item.active:hover { background: transparent; }
 .course-list-item.active {
   border-left: 2px solid var(--accent);
   padding-left: 10px;
