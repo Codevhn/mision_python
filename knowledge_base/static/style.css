@@ -1519,6 +1519,15 @@ button.link-btn:hover { opacity: 0.75; }
   outline: none !important;
   border-radius: inherit;
 }
+/* .bn-block-content is display:flex, so its direct child .code-block-native
+   shrink-wraps to the code's content width by default — leaving the header,
+   the pre and the terminal narrower than the block's full-width background.
+   Force it to stretch across the whole block. */
+#entryBody .bn-block-content[data-content-type="codeBlock"] > .code-block-native {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
 #entryBody .code-block-term-body {
   background: var(--bg-code, #212121);
 }
