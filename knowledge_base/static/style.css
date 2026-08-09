@@ -1528,17 +1528,69 @@ button.link-btn:hover { opacity: 0.75; }
   min-width: 0;
   flex: 1 1 auto;
 }
-#entryBody .code-block-term-body {
-  background: var(--bg-code, #212121);
+/* ── Terminal / output: caja de consola real (oscura en ambos temas) ──
+   Antes el body usaba el mismo fondo que el bloque de código (#212121 en dark,
+   #f6f8fa en light) y el output se confundía con el editor. Ahora es una
+   consola clásica: fondo casi negro, luces de tráfico estilo macOS, barra de
+   título y salida verde — idéntica en claro y oscuro. */
+#entryBody .code-block-terminal {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
 }
-[data-theme="light"] #entryBody .code-block-term-body {
-  background: #f6f8fa;
-}
-/* The "TERMINAL" header row above the output reads as a fake, inert input
-   (its close button is display:none anyway). Drop it — the output body alone
-   is the result panel. */
 #entryBody .code-block-terminal .code-block-term-bar {
-  display: none;
+  display: flex;
+  align-items: center;
+  padding: 7px 12px;
+  background: #1b1d21;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+/* luces de tráfico macOS */
+#entryBody .code-block-terminal .code-block-term-bar::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 14px;
+  background: #ff5f57;
+  box-shadow: 18px 0 0 #febc2e, 36px 0 0 #28c840;
+}
+#entryBody .code-block-terminal .code-block-term-title {
+  color: #9aa0b4;
+}
+#entryBody .code-block-terminal .code-block-term-body {
+  background: #0d0f12;
+  color: #d5d8dc;
+  padding: 12px 16px;
+  max-height: 360px;
+}
+#entryBody .code-block-terminal .code-block-term-out {
+  color: #98c379;
+}
+#entryBody .code-block-terminal .code-block-term-err,
+#entryBody .code-block-terminal .code-block-term-error {
+  color: #e06c75;
+}
+#entryBody .code-block-terminal .code-block-term-err {
+  border-top-color: rgba(224, 108, 117, 0.25);
+}
+#entryBody .code-block-terminal .code-block-term-meta {
+  color: #7d8590;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] #entryBody .code-block-terminal .code-block-term-body {
+  background: #0d0f12;
+}
+[data-theme="light"] #entryBody .code-block-terminal .code-block-term-out {
+  color: #98c379;
+}
+[data-theme="light"] #entryBody .code-block-terminal .code-block-term-err,
+[data-theme="light"] #entryBody .code-block-terminal .code-block-term-error {
+  color: #e06c75;
+}
+[data-theme="light"] #entryBody .code-block-terminal .code-block-term-meta {
+  color: #7d8590;
 }
 .entry-body pre code {
   background: transparent;
