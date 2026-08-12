@@ -158,6 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (_openParam) loadEntry(_openParam);
   _refreshReminderBadges();
   initBlockTypeIndicator();
+  initDragHandleConvert();
   // Back navigation button
   const _navBackBtn = $('navBackBtn');
   if (_navBackBtn) _navBackBtn.addEventListener('click', _navBack);
@@ -8317,6 +8318,111 @@ function initBlockTypeIndicator() {
     });
   });
 
+  _obs.observe(document.body, { childList: true, subtree: true });
+}
+
+// ── "Convertir a…" en el menú del drag handle (::) ───────────────────────────
+function initDragHandleConvert() {
+  const CONVERT_OPTIONS = [
+    { type: "paragraph",        label: "Párrafo" },
+    { type: "heading",          label: "Título 1", props: { level: 1 } },
+    { type: "heading",          label: "Título 2", props: { level: 2 } },
+    { type: "heading",          label: "Título 3", props: { level: 3 } },
+    { type: "bulletListItem",   label: "Lista con viñetas" },
+    { type: "numberedListItem", label: "Lista numerada" },
+    { type: "checkListItem",    label: "Lista de tareas" },
+    { type: "quote",            label: "Cita" },
+    { type: "codeBlock",        label: "Bloque de código" },
+  ];
+
+  function _editorInstanceFor(blockId) {
+    const holders = [
+      ["entryBody", _inlineEditor],
+      ["blockEditor", window._modalBlockEditor],
+      ["pagePeekEditor", _peekEditor],
+    ];
+    for (const [cid, inst] of holders) {
+      const el = document.getElementById(cid);
+      if (el && inst && inst.editor &&
+          el.querySelector(`[data-id="${blockId}"][data-node-type="blockContainer"]`)) {
+        return inst;
+      }
+    }
+    return null;
+  }
+
+  function _currentTypeKey(menuEl) {
+    const menuId = menuEl.id;
+    const trigger = menuId && document.querySelector(`[aria-controls="${menuId}"]`);
+    const side = trigger && trigger.closest(".bn-side-menu");
+    if (!side) return null;
+    const t = side.dataset.blockType;
+    if (!t) return null;
+    return side.dataset.level ? `${t}:${side.dataset.level}` : t;
+  }
+
+  function _optionKey(opt) {
+    return opt.type === "heading" ? `heading:${opt.props.level}` : opt.type;
+  }
+
+  function _convertTo(blockId, opt) {
+    const inst = _editorInstanceFor(blockId);
+    if (!inst || !inst.editor) return;
+    const update = { type: opt.type };
+    if (opt.type === "codeBlock") {
+      const current = inst.editor.getBlock(blockId);
+      const lang = current && current.props && current.props.language;
+      update.props = { language: lang || "text" };
+    } else if (opt.props) {
+      update.props = { ...opt.props };
+    }
+    inst.editor.updateBlock(blockId, update);
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Escape", bubbles: true, cancelable: true,
+    }));
+  }
+
+  function _ensureConvertGroup(menuEl) {
+    const currentKey = _currentTypeKey(menuEl);
+    const existing = menuEl.querySelector(".bn-convert-group");
+    if (existing) {
+      if (existing.dataset.bnCurrentKey === (currentKey || "")) return;
+      existing.remove();
+    }
+
+    const group = document.createElement("div");
+    group.className = "bn-convert-group";
+    group.dataset.bnCurrentKey = currentKey || "";
+
+    const label = document.createElement("div");
+    label.className = "bn-convert-label";
+    label.textContent = "Convertir a";
+    group.appendChild(label);
+
+    for (const opt of CONVERT_OPTIONS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "menuitem");
+      btn.className = "bn-menu-item bn-convert-item";
+      btn.textContent = opt.label;
+      const key = _optionKey(opt);
+      if (key === currentKey) btn.dataset.bnCurrent = "true";
+      btn.addEventListener("click", () => {
+        const menuId = menuEl.id;
+        const trigger = menuId && document.querySelector(`[aria-controls="${menuId}"]`);
+        const side = trigger && trigger.closest(".bn-side-menu");
+        const blockId = side && side.dataset.blockId;
+        if (blockId) _convertTo(blockId, opt);
+      });
+      group.appendChild(btn);
+    }
+
+    menuEl.prepend(group);
+  }
+
+  const _obs = new MutationObserver(() => {
+    document.querySelectorAll(".bn-drag-handle-menu").forEach(_ensureConvertGroup);
+  });
   _obs.observe(document.body, { childList: true, subtree: true });
 }
 
