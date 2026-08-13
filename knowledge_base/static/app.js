@@ -8029,7 +8029,7 @@ function _irLessonNode(lesson) {
 function _irModuleNode(mod) {
   const el = document.createElement('div');
   el.className = 'ir-module';
-  el.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;background:var(--bg-elevated)';
+  el.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;background:var(--panel-bg-2, var(--layer-3))';
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <input type="text" class="ir-module-title" placeholder="Título del módulo"
