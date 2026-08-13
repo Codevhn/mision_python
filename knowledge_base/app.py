@@ -2233,7 +2233,6 @@ def pages_related(entry_id):
     meta = index[entry_id]
     title_tokens = _title_keywords(meta.get("title", ""))
     tags = set(meta.get("tags", []))
-    parent_id = meta.get("parent_id")
     results = []
     for eid, m in index.items():
         if eid == entry_id:
@@ -2241,24 +2240,29 @@ def pages_related(entry_id):
         etype = m.get("type")
         if etype in ("course", "teamspace") or m.get("db_row"):
             continue
-        score = 0
-        # Hierarchy: direct sub-pages and sibling pages are inherently related
-        if m.get("parent_id") == entry_id:
-            score += 10
-        elif parent_id and m.get("parent_id") == parent_id:
-            score += 8
+        m_parent = m.get("parent_id")
         shared = tags & set(m.get("tags", []))
-        score += len(shared) * 4
         m_title = (m.get("title") or "").lower()
-        for tok in title_tokens:
-            if tok in m_title:
-                score += 2
+        title_hits = [t for t in title_tokens if t in m_title]
+        # Only tightly-related entries qualify: a direct sub-page, a shared
+        # tag, or two+ title keywords. A plain sibling or a stray mention of
+        # a keyword in the body is NOT enough on its own.
+        is_subpage = m_parent == entry_id
+        if not (is_subpage or shared or len(title_hits) >= 2):
+            continue
+        score = 0
+        if is_subpage:
+            score += 15
+        score += len(shared) * 8
+        score += len(title_hits) * 5
+        # Body content is only a tiebreaker, and only when a keyword really
+        # shows up repeatedly (>=2), not as a one-off casual mention.
         path = _entry_path(eid, m)
         if path.exists():
             content = path.read_text().lower()
-            hits = sum(1 for tok in title_tokens if tok in content)
-            score += min(hits, 3)
-        if score <= 0:
+            hits = sum(1 for tok in title_tokens if content.count(tok) >= 2)
+            score += min(hits, 2)
+        if score < 12:
             continue
         results.append({
             "id": eid,
