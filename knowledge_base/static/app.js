@@ -8322,16 +8322,28 @@ function initBlockTypeIndicator() {
 }
 
 // ── "Convertir a…" en el menú del drag handle (::) ───────────────────────────
+// Reutiliza la funcionalidad nativa del editor: cambia de tipo con
+// updateBlock (igual que el selector de bloques del toolbar) y convierte
+// code block <-> bloques nativos con el mismo motor de markdown del editor
+// (tryParseMarkdownToBlocks / blocksToMarkdownLossy). Los items se clonan de
+// los items nativos del propio menú para que luzcan idénticos.
 function initDragHandleConvert() {
+  // Misma lista de tipos que el selector de bloques nativo del editor
+  // (blockTypeSelect / pre(n.dictionary)) + Bloque de código (vía los mismos
+  // motores de markdown del editor).
   const CONVERT_OPTIONS = [
     { type: "paragraph",        label: "Párrafo" },
     { type: "heading",          label: "Título 1", props: { level: 1 } },
     { type: "heading",          label: "Título 2", props: { level: 2 } },
     { type: "heading",          label: "Título 3", props: { level: 3 } },
+    { type: "heading",          label: "Título 4", props: { level: 4 } },
+    { type: "heading",          label: "Título 5", props: { level: 5 } },
+    { type: "heading",          label: "Título 6", props: { level: 6 } },
+    { type: "quote",            label: "Cita" },
+    { type: "toggleListItem",   label: "Lista desplegable" },
     { type: "bulletListItem",   label: "Lista con viñetas" },
     { type: "numberedListItem", label: "Lista numerada" },
     { type: "checkListItem",    label: "Lista de tareas" },
-    { type: "quote",            label: "Cita" },
     { type: "codeBlock",        label: "Bloque de código" },
   ];
 
@@ -8365,58 +8377,115 @@ function initDragHandleConvert() {
     return opt.type === "heading" ? `heading:${opt.props.level}` : opt.type;
   }
 
-  function _convertTo(blockId, opt) {
-    const inst = _editorInstanceFor(blockId);
-    if (!inst || !inst.editor) return;
-    const update = { type: opt.type };
-    if (opt.type === "codeBlock") {
-      const current = inst.editor.getBlock(blockId);
-      const lang = current && current.props && current.props.language;
-      update.props = { language: lang || "text" };
-    } else if (opt.props) {
-      update.props = { ...opt.props };
-    }
-    inst.editor.updateBlock(blockId, update);
-    document.dispatchEvent(new KeyboardEvent("keydown", {
-      key: "Escape", bubbles: true, cancelable: true,
-    }));
+  function _inlineText(block) {
+    return (block.content || [])
+      .map(i => (i && i.type === "text" ? i.text : ""))
+      .join("");
   }
 
-  function _ensureConvertGroup(menuEl) {
-    const currentKey = _currentTypeKey(menuEl);
-    const existing = menuEl.querySelector(".bn-convert-group");
-    if (existing) {
-      if (existing.dataset.bnCurrentKey === (currentKey || "")) return;
-      existing.remove();
+  // Conversión nativa vía el motor del editor.
+  function _convertTo(blockId, opt, editor) {
+    const update = { type: opt.type };
+
+    if (opt.type === "codeBlock") {
+      // Bloques seleccionados (o el actual) -> texto markdown -> code block.
+      const sel = editor.getSelection();
+      const blocks = sel && sel.blocks && sel.blocks.length ? sel.blocks : [editor.getBlock(blockId)];
+      const md = editor.blocksToMarkdownLossy(blocks);
+      const current = editor.getBlock(blockId);
+      const lang = current && current.props && current.props.language
+        ? current.props.language : "text";
+      if (blocks.length === 1 && blocks[0].id === blockId) {
+        editor.updateBlock(blockId, {
+          type: "codeBlock",
+          props: { language: lang },
+          content: [{ type: "text", text: md }],
+        });
+      } else {
+        editor.replaceBlocks(blocks.map(b => b.id), [{
+          type: "codeBlock",
+          props: { language: lang },
+          content: [{ type: "text", text: md }],
+        }]);
+      }
+      return;
     }
 
+    const current = editor.getBlock(blockId);
+    if (current && current.type === "codeBlock") {
+      // code block con contenido markdown -> bloques nativos equivalentes
+      // (usa el mismo motor que el pegado nativo de markdown del editor).
+      // Solo descompone si el contenido produce varios bloques; si es un único
+      // bloque se aplica updateBlock normal (respeta la opción elegida).
+      const text = _inlineText(current);
+      const parsed = text ? editor.tryParseMarkdownToBlocks(text) : null;
+      if (parsed && parsed.length > 1) {
+        editor.replaceBlocks([blockId], parsed);
+        return;
+      }
+    }
+
+    if (opt.props) update.props = { ...opt.props };
+    editor.updateBlock(blockId, update);
+  }
+
+  function _buildGroup(menuEl) {
     const group = document.createElement("div");
     group.className = "bn-convert-group";
-    group.dataset.bnCurrentKey = currentKey || "";
 
     const label = document.createElement("div");
     label.className = "bn-convert-label";
     label.textContent = "Convertir a";
     group.appendChild(label);
 
+    const currentKey = _currentTypeKey(menuEl);
+    let cloned = 0;
     for (const opt of CONVERT_OPTIONS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.setAttribute("role", "menuitem");
-      btn.className = "bn-menu-item bn-convert-item";
-      btn.textContent = opt.label;
       const key = _optionKey(opt);
-      if (key === currentKey) btn.dataset.bnCurrent = "true";
+      const btn = _cloneNativeItem(menuEl);
+      if (!btn) continue;
+      cloned++;
+      btn.textContent = opt.label;
+      if (key === currentKey) btn.dataset.bnConvertCurrent = "true";
       btn.addEventListener("click", () => {
         const menuId = menuEl.id;
         const trigger = menuId && document.querySelector(`[aria-controls="${menuId}"]`);
         const side = trigger && trigger.closest(".bn-side-menu");
         const blockId = side && side.dataset.blockId;
-        if (blockId) _convertTo(blockId, opt);
+        if (!blockId) return;
+        const inst = _editorInstanceFor(blockId);
+        if (inst && inst.editor) _convertTo(blockId, opt, inst.editor);
+        document.dispatchEvent(new KeyboardEvent("keydown", {
+          key: "Escape", bubbles: true, cancelable: true,
+        }));
       });
       group.appendChild(btn);
     }
+    if (!cloned) return null;
+    return group;
+  }
 
+  // Clona un item nativo del menú para heredar el mismo estilo Mantine.
+  function _cloneNativeItem(menuEl) {
+    const proto = menuEl.querySelector(".mantine-Menu-item");
+    if (!proto) return null;
+    const btn = proto.cloneNode(false);
+    btn.removeAttribute("aria-selected");
+    btn.removeAttribute("aria-checked");
+    btn.setAttribute("role", "menuitem");
+    return btn;
+  }
+
+  function _ensureConvertGroup(menuEl) {
+    const existing = menuEl.querySelector(".bn-convert-group");
+    const currentKey = _currentTypeKey(menuEl) || "";
+    if (existing) {
+      if (existing.dataset.bnCurrentKey === currentKey) return;
+      existing.remove();
+    }
+    const group = _buildGroup(menuEl);
+    if (!group) return;
+    group.dataset.bnCurrentKey = currentKey;
     menuEl.prepend(group);
   }
 
