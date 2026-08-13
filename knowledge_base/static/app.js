@@ -2281,11 +2281,62 @@ async function loadEntry(id, opts = {}) {
   // Relations panel
   loadRelations(m.uid || id);
 
+  // Related pages right-hand nav sidebar (only for Pages)
+  loadRelatedSidebar(id, m);
+
   // Prev/next navigation for course lessons
   _updateCourseNav(id, m);
 
   // Post-process entry: code execution buttons, Mermaid, KaTeX
   setTimeout(postProcessEntry, 250);
+}
+
+// ── Related pages right-hand nav sidebar (Pages only) ──────────────────────
+async function loadRelatedSidebar(id, meta) {
+  const view = $("entryView");
+  const sb = $("relatedSidebar");
+  const isPage = meta?.type === "page";
+  if (view) view.classList.toggle("has-related-sidebar", isPage);
+  if (!sb) return;
+  const countEl = $("relatedSidebarCount");
+  const bodyEl = $("relatedSidebarBody");
+  if (!isPage) {
+    sb.classList.add("hidden");
+    if (bodyEl) bodyEl.innerHTML = "";
+    return;
+  }
+  sb.classList.remove("hidden");
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '<div class="related-empty">Cargando…</div>';
+  if (countEl) countEl.textContent = "";
+  try {
+    const res = await fetch(`/api/pages/related/${id}?_=${Date.now()}`);
+    const items = await res.json();
+    if (!Array.isArray(items) || !items.length) {
+      bodyEl.innerHTML = '<div class="related-empty">Sin entradas relacionadas aún.</div>';
+      return;
+    }
+    if (countEl) countEl.textContent = `(${items.length})`;
+    bodyEl.innerHTML = items.map(it => {
+      const active = String(it.id) === String(id) ? " active" : "";
+      const icon = renderIconMarkup(it.icon, "related-item-icon", ENTRY_ICON_DEFAULTS.page);
+      const tags = (it.shared_tags && it.shared_tags.length)
+        ? `<span class="related-item-tags">#${escapeHtml(it.shared_tags.slice(0, 2).join(" #"))}</span>`
+        : "";
+      return `<button type="button" class="related-item${active}" data-id="${escapeHtml(it.id)}">
+        ${icon}<span class="related-item-title">${escapeHtml(it.title)}</span>${tags}
+      </button>`;
+    }).join("");
+    bodyEl.querySelectorAll(".related-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rid = btn.dataset.id;
+        if (!rid || rid === String(id)) return;
+        loadEntry(rid);
+      });
+    });
+  } catch (e) {
+    bodyEl.innerHTML = '<div class="related-empty">Error al cargar relacionadas.</div>';
+  }
 }
 
 // ── Course lesson prev/next navigation ───────────────────────────────────

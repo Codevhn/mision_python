@@ -832,6 +832,101 @@ button.link-btn:hover { opacity: 0.75; }
 /* Entry view */
 .entry-view { max-width: 1280px; margin: 0 auto; padding: 0 0 80px; position: relative; }
 
+/* ---- Related pages nav sidebar (right) — shown for Pages ---- */
+.entry-view.has-related-sidebar {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  max-width: 1460px;
+}
+.entry-view.has-related-sidebar .entry-main {
+  flex: 1;
+  min-width: 0;
+}
+.related-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  padding: 12px 10px;
+}
+.related-sidebar-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 8px 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.related-sidebar-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.related-sidebar-count {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+.related-sidebar-body {
+  padding: 8px 0 0;
+}
+.related-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  transition: background 0.15s, color 0.15s;
+}
+.related-item:hover { background: var(--accent-light); color: var(--text); }
+.related-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.related-item-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.related-item-tags {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+.related-empty {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  padding: 10px 8px;
+}
+body.focus-mode .related-sidebar { display: none; }
+@media (max-width: 768px) {
+  .entry-view.has-related-sidebar { flex-direction: column; gap: 16px; }
+  .related-sidebar {
+    position: static;
+    width: 100%;
+    max-height: none;
+  }
+}
+
+
 /* ---- Entry cover ---- */
 .entry-cover {
   width: 100%;

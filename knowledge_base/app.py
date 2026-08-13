@@ -2213,6 +2213,65 @@ def get_backlinks(entry_id):
     return jsonify(results)
 
 
+_STOPWORDS = set("""
+de la el en y a los del las un una por con para no se su es lo como mas
+más que al si pero ya sobre este esta entre esta sin desde hasta cuando muy
+the of and to in for on with is at a an or be from it as this that was were
+""".split())
+
+
+def _title_keywords(title):
+    words = re.findall(r"[a-záéíóúñü0-9]+", (title or "").lower())
+    return [w for w in words if len(w) > 2 and w not in _STOPWORDS]
+
+
+@app.route("/api/pages/related/<entry_id>")
+def pages_related(entry_id):
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    title_tokens = _title_keywords(meta.get("title", ""))
+    tags = set(meta.get("tags", []))
+    parent_id = meta.get("parent_id")
+    results = []
+    for eid, m in index.items():
+        if eid == entry_id:
+            continue
+        etype = m.get("type")
+        if etype in ("course", "teamspace") or m.get("db_row"):
+            continue
+        score = 0
+        # Hierarchy: direct sub-pages and sibling pages are inherently related
+        if m.get("parent_id") == entry_id:
+            score += 10
+        elif parent_id and m.get("parent_id") == parent_id:
+            score += 8
+        shared = tags & set(m.get("tags", []))
+        score += len(shared) * 4
+        m_title = (m.get("title") or "").lower()
+        for tok in title_tokens:
+            if tok in m_title:
+                score += 2
+        path = _entry_path(eid, m)
+        if path.exists():
+            content = path.read_text().lower()
+            hits = sum(1 for tok in title_tokens if tok in content)
+            score += min(hits, 3)
+        if score <= 0:
+            continue
+        results.append({
+            "id": eid,
+            "title": m.get("title", ""),
+            "icon": m.get("icon", ""),
+            "type": etype or "page",
+            "score": score,
+            "shared_tags": sorted(shared)[:6],
+        })
+    results.sort(key=lambda r: -r["score"])
+    return jsonify(results[:24])
+
+
 # ── FEATURE: Duplicate Entry ────────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/duplicate", methods=["POST"])
 def duplicate_entry(entry_id):
