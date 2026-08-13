@@ -8332,19 +8332,19 @@ function initDragHandleConvert() {
   // (blockTypeSelect / pre(n.dictionary)) + Bloque de código (vía los mismos
   // motores de markdown del editor).
   const CONVERT_OPTIONS = [
-    { type: "paragraph",        label: "Párrafo" },
-    { type: "heading",          label: "Título 1", props: { level: 1 } },
-    { type: "heading",          label: "Título 2", props: { level: 2 } },
-    { type: "heading",          label: "Título 3", props: { level: 3 } },
-    { type: "heading",          label: "Título 4", props: { level: 4 } },
-    { type: "heading",          label: "Título 5", props: { level: 5 } },
-    { type: "heading",          label: "Título 6", props: { level: 6 } },
-    { type: "quote",            label: "Cita" },
-    { type: "toggleListItem",   label: "Lista desplegable" },
-    { type: "bulletListItem",   label: "Lista con viñetas" },
-    { type: "numberedListItem", label: "Lista numerada" },
-    { type: "checkListItem",    label: "Lista de tareas" },
-    { type: "codeBlock",        label: "Bloque de código" },
+    { type: "paragraph",        label: "Paragraph" },
+    { type: "heading",          label: "Heading 1", props: { level: 1 } },
+    { type: "heading",          label: "Heading 2", props: { level: 2 } },
+    { type: "heading",          label: "Heading 3", props: { level: 3 } },
+    { type: "heading",          label: "Heading 4", props: { level: 4 } },
+    { type: "heading",          label: "Heading 5", props: { level: 5 } },
+    { type: "heading",          label: "Heading 6", props: { level: 6 } },
+    { type: "quote",            label: "Quote" },
+    { type: "toggleListItem",   label: "Toggle List" },
+    { type: "bulletListItem",   label: "Bullet List" },
+    { type: "numberedListItem", label: "Numbered List" },
+    { type: "checkListItem",    label: "Check List" },
+    { type: "codeBlock",        label: "Code Block" },
   ];
 
   function _editorInstanceFor(blockId) {
@@ -8435,7 +8435,7 @@ function initDragHandleConvert() {
 
     const label = document.createElement("div");
     label.className = "bn-convert-label";
-    label.textContent = "Convertir a";
+    label.textContent = "Convert to";
     group.appendChild(label);
 
     const currentKey = _currentTypeKey(menuEl);
