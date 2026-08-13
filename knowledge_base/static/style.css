@@ -1718,6 +1718,14 @@ body.focus-mode .related-sidebar { display: none; }
 [data-theme="light"] #entryBody .code-block-terminal .code-block-term-meta {
   color: #7d8590;
 }
+#entryBody .code-block-lang-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#entryBody .code-block-lang-item-icon iconify-icon {
+  display: inline-block;
+}
 .entry-body pre code {
   background: transparent;
   border: 0;
