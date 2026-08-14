@@ -4289,12 +4289,12 @@ function initTemplates() {
 let _pendingPageBlockId = null;
 
 function initPageNameModal() {
-  $("pageNameClose").addEventListener("click", closePageNameModal);
-  $("pageNameCancel").addEventListener("click", closePageNameModal);
+  $("pageNameClose").addEventListener("click", cancelPageNameModal);
+  $("pageNameCancel").addEventListener("click", cancelPageNameModal);
   $("pageNameConfirm").addEventListener("click", confirmPageCreate);
   $("pageNameInput").addEventListener("keydown", e => {
     if (e.key === "Enter") confirmPageCreate();
-    if (e.key === "Escape") closePageNameModal();
+    if (e.key === "Escape") cancelPageNameModal();
   });
 
   window._promptPageName = (blockId) => {
@@ -4311,6 +4311,16 @@ function closePageNameModal() {
   _pendingPageBlockId = null;
 }
 
+function cancelPageNameModal() {
+  // Remove the pending placeholder pageLink block (inserted by the "/" menu)
+  // when the user cancels, so no orphan "Nueva página" chip is left behind.
+  const pendingId = _pendingPageBlockId;
+  const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
+  window._activeEditorForPageCreate = null;
+  closePageNameModal();
+  if (pendingId && targetEditor && targetEditor.removeBlock) targetEditor.removeBlock(pendingId);
+}
+
 async function confirmPageCreate() {
   const name = $("pageNameInput").value.trim();
   if (!name) return;
@@ -4325,9 +4335,8 @@ async function confirmPageCreate() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      entry_type: "page",
       title: name,
-      category: "pages",
-      topic: "subpages",
       raw_text: "# " + name + "\n\n",
       parent_id: parentId || null,
       icon,

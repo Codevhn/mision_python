@@ -18,6 +18,24 @@ import { detectPastedCode } from "./pasteCode.js";
 function getCustomSlashMenuItems(editor) {
   return [
     {
+      title: "Página",
+      subtext: "Nueva sub-página enlazada",
+      aliases: ["page", "pagina", "subpagina", "sub-página"],
+      group: "Básico",
+      icon: <span style={{ fontSize: "18px" }}>📄</span>,
+      onItemClick: () => {
+        // Insert a placeholder pageLink at the cursor, then open the page-name
+        // modal. On confirm, confirmPageCreate (app.js) calls updatePageBlock
+        // to fill this placeholder with the real title/id in place.
+        // Remember WHICH editor holds the placeholder so confirmPageCreate
+        // targets the same instance (it defaults to the inline editor).
+        window._activeEditorForPageCreate = editor;
+        const block = insertOrUpdateBlockForSlashMenu(editor, { type: "pageLink", props: { title: "Nueva página", pageId: "" } });
+        const id = block && block.id;
+        if (id && window._promptPageName) window._promptPageName(id);
+      },
+    },
+    {
       title: "Base de datos",
       subtext: "Tabla en vivo de sub-páginas, con propiedades por fila",
       aliases: ["database", "db", "tabla", "base de datos"],
@@ -215,6 +233,18 @@ function createInstance(opts) {
       const last = blocks[blocks.length - 1];
       if (last) ed.insertBlocks([{ type: "pageLink", props: { title, pageId } }], last.id, "after");
       else ed.insertBlocks([{ type: "pageLink", props: { title, pageId } }], ed.document[0].id, "before");
+    },
+    updatePageBlock(blockId, title, pageId) {
+      const ed = instanceRef.editor;
+      if (!ed || !blockId) return;
+      const target = ed.document.find((b) => b.id === blockId);
+      if (target) ed.updateBlock(target, { props: { title, pageId } });
+    },
+    removeBlock(blockId) {
+      const ed = instanceRef.editor;
+      if (!ed || !blockId) return;
+      const target = ed.document.find((b) => b.id === blockId);
+      if (target) ed.removeBlocks([target]);
     },
     findText(query) {
       if (!instanceRef.editor || !query) return 0;
