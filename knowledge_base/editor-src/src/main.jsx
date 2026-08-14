@@ -26,10 +26,9 @@ function getCustomSlashMenuItems(editor) {
       onItemClick: () => {
         // Insert a placeholder pageLink at the cursor, then open the page-name
         // modal. On confirm, confirmPageCreate (app.js) calls updatePageBlock
-        // to fill this placeholder with the real title/id in place.
-        // Remember WHICH editor holds the placeholder so confirmPageCreate
-        // targets the same instance (it defaults to the inline editor).
-        window._activeEditorForPageCreate = editor;
+        // on every known editor API wrapper (inline + modal) to fill this
+        // placeholder with the real title/id in place — updatePageBlock is a
+        // no-op on the wrapper that doesn't hold the block.
         const block = insertOrUpdateBlockForSlashMenu(editor, { type: "pageLink", props: { title: "Nueva página", pageId: "" } });
         const id = block && block.id;
         if (id && window._promptPageName) window._promptPageName(id);

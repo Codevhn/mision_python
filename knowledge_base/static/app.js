@@ -4314,11 +4314,15 @@ function closePageNameModal() {
 function cancelPageNameModal() {
   // Remove the pending placeholder pageLink block (inserted by the "/" menu)
   // when the user cancels, so no orphan "Nueva página" chip is left behind.
+  // The placeholder lives in whichever editor had the "/" menu open (the
+  // inline page editor or the modal new-entry editor), so we target the API
+  // wrapper(s) that actually expose removeBlock.
   const pendingId = _pendingPageBlockId;
-  const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
-  window._activeEditorForPageCreate = null;
   closePageNameModal();
-  if (pendingId && targetEditor && targetEditor.removeBlock) targetEditor.removeBlock(pendingId);
+  if (pendingId) {
+    const editors = [window._modalBlockEditor, _inlineEditor].filter((e) => e && typeof e.removeBlock === "function");
+    for (const ed of editors) ed.removeBlock(pendingId);
+  }
 }
 
 async function confirmPageCreate() {
@@ -4345,13 +4349,15 @@ async function confirmPageCreate() {
   });
   if (res.ok) {
     const d = await res.json();
-    const targetEditor = window._activeEditorForPageCreate || _inlineEditor;
-    window._activeEditorForPageCreate = null;
-    // If we have the placeholder block's ID, update it in place; otherwise append
-    if (savedBlockId && targetEditor.updatePageBlock) {
-      targetEditor.updatePageBlock(savedBlockId, name, d.id);
-    } else {
-      targetEditor.addPageBlock(name, d.id);
+    // The placeholder pageLink lives in whichever editor had the "/" menu
+    // open (inline page editor or modal new-entry editor). Update the block
+    // in place on the API wrapper that actually holds it (updatePageBlock
+    // is a no-op on the one that doesn't); fall back to appending.
+    const editors = [window._modalBlockEditor, _inlineEditor].filter((e) => e && typeof e.updatePageBlock === "function");
+    if (savedBlockId) {
+      for (const ed of editors) ed.updatePageBlock(savedBlockId, name, d.id);
+    } else if (_inlineEditor && _inlineEditor.addPageBlock) {
+      _inlineEditor.addPageBlock(name, d.id);
     }
     await loadTree();
     showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
