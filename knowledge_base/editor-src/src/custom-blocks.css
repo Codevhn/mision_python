@@ -373,14 +373,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid var(--bn-colors-border, #e3e2e0);
-  border-radius: 6px;
+  padding: 2px 4px;
+  border-radius: 4px;
   cursor: pointer;
-  background: var(--bn-colors-side-menu, rgba(0, 0, 0, 0.03));
+  color: var(--bn-colors-link, var(--accent, #1793d1));
+  text-decoration: none;
   width: fit-content;
 }
 .bn-pagelink-chip:hover {
+  text-decoration: underline;
   background: var(--bn-colors-hovered, rgba(0, 0, 0, 0.06));
 }
 .bn-pagelink-icon { font-size: 1em; }
