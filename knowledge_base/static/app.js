@@ -550,6 +550,7 @@ function closeSidebarMobile() {
 
 // ---- TREE ----
 let _index = [];
+let _entriesById = {};
 
 // ---- Navigation stack ----
 let _navStack = [];  // [{ type, id, label, space }]
@@ -575,6 +576,7 @@ async function loadTree() {
     cover:    c.cover || "",
   }));
   _index = [...entries, ...courseIndexEntries];
+  _entriesById = Object.fromEntries(entries.map(e => [e.id, e]));
   _coursesTreeData = coursesTree; // cache for course detail view
   renderTree(knowledgeTree);
   renderTeamspaceTree(teamspaceTree);
@@ -4987,16 +4989,37 @@ function buildBreadcrumb(meta) {
   if (isTeamspace) { spaceLabel = "Team";     spaceSpace = "teamspace"; }
   if (isPage)      { spaceLabel = "Páginas";  spaceSpace = "pages"; }
 
-  const catLabelRaw   = isCourse ? (_coursesTreeData[meta.course]?.label || meta.course_label || meta.course) : isTeamspace ? "Teamspace" : isPage ? "" : (meta.category_label || meta.category);
-  const topicLabelRaw = isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : isPage ? "" : (meta.topic_label || meta.topic);
+  // Pages can be nested (parent_id chain) or live inside a teamspace whose
+  // home page is the real top of the breadcrumb — e.g. Team › Teamspace ›
+  // Obsidian › Obsidian › Sub-página. Reconstruct that chain from the flat
+  // _entriesById index so the breadcrumb matches where the page actually
+  // sits instead of always showing a bare "Páginas › título".
+  const pageAncestors = [];
+  if (isPage && meta.parent_id) {
+    const seen = new Set();
+    let pid = meta.parent_id;
+    while (pid && _entriesById[pid] && !seen.has(pid)) {
+      seen.add(pid);
+      pageAncestors.unshift(_entriesById[pid]);
+      pid = _entriesById[pid].parent_id;
+    }
+  }
+
+  const isPageInTeam = isPage && pageAncestors.some(a => a.type === "teamspace" || a.teamspace || a.teamspace_label || a.is_teamspace_home);
+  if (isPageInTeam) { spaceLabel = "Team"; spaceSpace = "teamspace"; }
+  const pageTop = pageAncestors.find(a => a.type === "teamspace" || a.teamspace || a.teamspace_label || a.is_teamspace_home);
+  const pageTeamLabel = pageTop ? (pageTop.teamspace_label || pageTop.teamspace || pageTop.title) : "";
+
+  const catLabelRaw   = isCourse ? (_coursesTreeData[meta.course]?.label || meta.course_label || meta.course) : isTeamspace ? "Teamspace" : isPage ? (isPageInTeam ? "Teamspace" : "") : (meta.category_label || meta.category);
+  const topicLabelRaw = isCourse ? (meta.module_label || meta.module)    : isTeamspace ? (meta.teamspace_label || meta.teamspace) : isPage ? (isPageInTeam ? pageTeamLabel : "") : (meta.topic_label || meta.topic);
   const catLabel   = catLabelRaw   ? escapeHtml(catLabelRaw)   : "";
   const topicLabel = topicLabelRaw ? escapeHtml(topicLabelRaw) : "";
   const entryTitle = escapeHtml(meta.title || "Sin título");
 
-  const hasIntermediates = !!(catLabel || topicLabel);
+  const hasIntermediates = !!(catLabel || topicLabel || pageAncestors.length);
   let breadcrumbHTML;
   if ((isMobile() || isCompact()) && hasIntermediates) {
-    const fullPath = [spaceLabel, catLabel, topicLabel].filter(Boolean).join(" › ");
+    const fullPath = [spaceLabel, catLabel, topicLabel, ...pageAncestors.map(a => escapeHtml(a.title))].filter(Boolean).join(" › ");
     breadcrumbHTML =
       `<span class="breadcrumb-collapse" data-space="${spaceSpace}" title="${fullPath}">···</span>` +
       `<span class="breadcrumb-sep">›</span>` +
@@ -5006,6 +5029,9 @@ function buildBreadcrumb(meta) {
       `<span class="breadcrumb-seg breadcrumb-space" data-space="${spaceSpace}">${spaceLabel}</span>`,
       catLabel   ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg" data-cat="${escapeHtml(meta.category || meta.course || "")}">${catLabel}</span>` : "",
       topicLabel ? `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg">${topicLabel}</span>` : "",
+      ...(pageAncestors.map(a =>
+        `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg" data-id="${escapeHtml(a.id)}">${escapeHtml(a.title)}</span>`
+      )),
       `<span class="breadcrumb-sep">›</span><span class="breadcrumb-seg breadcrumb-current">${entryTitle}</span>`,
     ];
     breadcrumbHTML = segs.join("");
@@ -5015,6 +5041,11 @@ function buildBreadcrumb(meta) {
   // Space / collapse click → switch sidebar space
   $("breadcrumb").querySelector(".breadcrumb-space, .breadcrumb-collapse")?.addEventListener("click", () => {
     if (typeof switchSpace === "function") switchSpace(spaceSpace);
+  });
+
+  // Page-ancestor click → navigate to that page
+  $("breadcrumb").querySelectorAll(".breadcrumb-seg[data-id]").forEach(seg => {
+    seg.addEventListener("click", () => loadEntry(seg.dataset.id));
   });
 
   // Category click → expand + scroll to category in sidebar

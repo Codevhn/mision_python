@@ -938,6 +938,10 @@ def get_all_entries():
             "topic":    meta.get("topic_label", meta.get("topic", "")),
             "icon":     meta.get("icon", ""),
             "cover":    meta.get("cover", ""),
+            "parent_id": meta.get("parent_id"),
+            "teamspace": meta.get("teamspace"),
+            "teamspace_label": meta.get("teamspace_label", ""),
+            "is_teamspace_home": bool(meta.get("is_teamspace_home")),
         })
     return jsonify(entries)
 

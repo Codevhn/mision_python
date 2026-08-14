@@ -4426,11 +4426,13 @@ body.sidebar-open .layout {
   font-weight: 600;
 }
 
-.breadcrumb-seg[data-cat] {
+.breadcrumb-seg[data-cat],
+.breadcrumb-seg[data-id] {
   cursor: pointer;
 }
 
 .breadcrumb-seg[data-cat]:hover,
+.breadcrumb-seg[data-id]:hover,
 .breadcrumb-space:hover {
   color: var(--text);
   text-decoration: underline;
