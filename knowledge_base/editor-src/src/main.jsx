@@ -233,7 +233,7 @@ function createInstance(opts) {
       if (last) ed.insertBlocks([{ type: "pageLink", props: { title, pageId } }], last.id, "after");
       else ed.insertBlocks([{ type: "pageLink", props: { title, pageId } }], ed.document[0].id, "before");
     },
-    updatePageBlock(blockId, title, pageId) {
+updatePageBlock(blockId, title, pageId) {
       const ed = instanceRef.editor;
       if (!ed || !blockId) return;
       const target = ed.document.find((b) => b.id === blockId);
@@ -244,6 +244,27 @@ function createInstance(opts) {
       if (!ed || !blockId) return;
       const target = ed.document.find((b) => b.id === blockId);
       if (target) ed.removeBlocks([target]);
+    },
+    // Insert generated markdown (Ask AI / inline AI results) as real editor
+    // blocks immediately AFTER the block under the current cursor, instead
+    // of appending a raw markdown string at the end of the document. Uses
+    // BlockNote's official markdown importer so h1/h2/h3, bullet lists,
+    // code blocks and paragraphs become independent editor nodes.
+    insertMarkdownAfterCursor(markdown) {
+      return whenReady().then(() => {
+        const editor = instanceRef.editor;
+        if (!editor || !markdown) return false;
+        let parsedBlocks;
+        try { parsedBlocks = editor.tryParseMarkdownToBlocks(markdown); } catch (_) { parsedBlocks = []; }
+        if (!Array.isArray(parsedBlocks) || parsedBlocks.length === 0) return false;
+        let currentBlock = null;
+        try { currentBlock = editor.getTextCursorPosition().block; } catch (_) {}
+        const target = currentBlock || editor.document[editor.document.length - 1];
+        if (target) {
+          return editor.insertBlocks(parsedBlocks, target.id, "after").then(() => true);
+        }
+        return editor.replaceBlocks(editor.document, parsedBlocks).then(() => true);
+      });
     },
     findText(query) {
       if (!instanceRef.editor || !query) return 0;

@@ -244,7 +244,16 @@ function CodeBlockComponent({ block, editor, contentRef }) {
       body: JSON.stringify({ code, language: "python" }),
     })
       .then((r) => r.json())
-      .then((data) => setOutput(data))
+      .then((data) => {
+        // /api/execute returns {output, stderr, returncode} (same shape the
+        // Práctica checker consumes); normalize it to the terminal's
+        // {stdout, stderr, returncode} shape so stdout actually renders.
+        const normalized =
+          data && "output" in data && !("stdout" in data)
+            ? { ...data, stdout: data.output }
+            : data;
+        setOutput(normalized);
+      })
       .catch((err) => setOutput({ error: "Error de red: " + err.message }))
       .finally(() => setRunning(false));
   };
@@ -338,17 +347,27 @@ function CodeBlockComponent({ block, editor, contentRef }) {
             contentEditable={false}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <span className="code-block-term-title">TERMINAL</span>
+            <span className="code-block-term-dots" aria-hidden="true">
+              <i className="code-block-term-dot code-block-term-dot--red" />
+              <i className="code-block-term-dot code-block-term-dot--yellow" />
+              <i className="code-block-term-dot code-block-term-dot--green" />
+            </span>
+            <span className="code-block-term-title">$ TERMINAL</span>
             <button
               type="button"
               className="code-block-term-close"
-              title="Cerrar terminal"
+              title="Limpiar output"
+              aria-label="Limpiar output"
               onClick={() => setOutput(null)}
             >
               ✕
             </button>
           </div>
-          <div className="code-block-term-body" contentEditable={false}>
+          <div
+            className="code-block-term-body"
+            contentEditable={false}
+            style={{ backgroundColor: "#0f172a", color: "#4ade80", borderRadius: "6px", padding: "12px" }}
+          >
             {output.error ? (
               <pre className="code-block-term-error">{output.error}</pre>
             ) : (

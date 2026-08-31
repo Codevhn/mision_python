@@ -759,7 +759,10 @@ button.link-btn:hover { opacity: 0.75; }
 }
 /* Remove old visibility toggle rules — cover always visible now */
 
-/* Gradient placeholder via ::before (behind the cover; real covers sit above it) */
+/* Gradient placeholder via ::before (behind the cover; real covers sit above it).
+   Course cards no longer get a greenish fallback gradient: their cover is
+   resolved from the course/module chain in app.js (cardHtml), so the inherited
+   cover image always shows instead of a default color gradient. */
 .home-card { position: relative; }
 .home-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 72px;
@@ -767,14 +770,8 @@ button.link-btn:hover { opacity: 0.75; }
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   z-index: 0; pointer-events: none;
 }
-.home-card:has(.hcm-type--course)::before {
-  background: linear-gradient(150deg, #0a3256 0%, #052e16 100%);
-}
 [data-theme="light"] .home-card::before {
   background: linear-gradient(150deg, #ede9fe 0%, #dbeafe 100%);
-}
-[data-theme="light"] .home-card:has(.hcm-type--course)::before {
-  background: linear-gradient(150deg, #dcfce7 0%, #cffafe 100%);
 }
 .home-card-body {
   padding: 12px 14px 12px;
@@ -1204,6 +1201,10 @@ body.focus-mode .related-sidebar { display: none; }
   cursor: default;
   user-select: none;
   width: fit-content;
+  /* fit-content never clamps below the label's min-content (white-space:
+     nowrap), so long labels would overflow past the right edge. Cap it to the
+     container minus the 20px side margins; short labels still shrink-wrap. */
+  max-width: calc(100% - 40px);
   min-width: 0;
 }
 .entry-module-label .eml-num {
@@ -4337,8 +4338,8 @@ body.sidebar-open .layout {
   .layout { padding-left: 0 !important; }
 }
 
-/* ── Compact (769–1024px): sidebar is an overlay drawer, layout never pushed ── */
-@media (min-width: 769px) and (max-width: 1024px) {
+/* ── Compact (769–1100px): sidebar is an overlay drawer, layout never pushed ── */
+@media (min-width: 769px) and (max-width: 1100px) {
   /* Sidebar behaves like mobile drawer but sits to the right of the activity bar */
   .sidebar {
     position: fixed;
@@ -5902,6 +5903,55 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 .cv-empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px 0; }
 .cv-empty-state .cv-empty { color: var(--text-muted); margin: 0; }
 
+/* Skeleton loader for the course view body — shown while the backend answers
+   after a deploy / Fly.io cold start, so the panel never collapses to 0px and
+   the user sees the roadmap's structure (module headers + lessons) immediately. */
+.cv-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 20px 4px 40px;
+  animation: cv-skel-fade 0.3s ease;
+}
+.cv-skel-section { display: flex; flex-direction: column; gap: 10px; }
+.cv-skel-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 2px; }
+.cv-skel-block {
+  position: relative;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 6px;
+}
+.cv-skel-mod-name { width: 38%; height: 18px; }
+.cv-skel-mod-name--sm { width: 30%; }
+.cv-skel-mod-count { width: 84px; height: 12px; }
+.cv-skel-lesson {
+  position: relative;
+  overflow: hidden;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--border);
+  opacity: 0.55;
+}
+.cv-skel-lesson--short { width: 70%; }
+.cv-skel-block::after,
+.cv-skel-lesson::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+  transform: translateX(-100%);
+  animation: cv-skel-shimmer 1.4s infinite;
+}
+[data-theme="light"] .cv-skel-block::after,
+[data-theme="light"] .cv-skel-lesson::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+}
+@keyframes cv-skel-shimmer { 100% { transform: translateX(100%); } }
+@keyframes cv-skel-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cv-skel-block::after, .cv-skel-lesson::after { animation: none; }
+}
+
 .cv-empty-icon { font-size: 2.2rem; line-height: 1; opacity: 0.85; margin-bottom: -4px; }
 .cv-empty-title { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0; }
 .cv-empty-sub { font-size: 0.82rem; color: var(--text-muted); margin: -10px 0 4px; }
@@ -7182,6 +7232,8 @@ body.home-ambient .home-hero { overflow: visible; }
     margin-right: 12px;
     padding: 8px 14px;
     font-size: 0.72rem;
+    /* match the tighter mobile side margins so the badge never overflows */
+    max-width: calc(100% - 24px);
   }
   .inline-title { font-size: 1.35rem !important; }
   .entry-page-icon-btn iconify-icon,
@@ -7210,10 +7262,15 @@ body.home-ambient .home-hero { overflow: visible; }
 /* ── Mobile: tight editor margins + kanban fixes ── */
 @media (max-width: 768px) {
   /* Block editor: minimal side padding so content fills screen */
-  #blockEditorWrap { padding: 6px 2px !important; }
+  #blockEditorWrap { padding: 10px 12px !important; }
 
   /* Inline title: reduce padding to match tight layout */
   .inline-title-wrap { padding: 8px 8px 0 !important; gap: 6px; }
+
+  /* Modal body: the mobile padding override at line ~2014 is dead because a
+     later `!important` rule (22px 24px) wins on every screen — enforce the
+     compact mobile padding here so the block editor isn't squeezed to 2px. */
+  .modal-body { padding: 14px 16px !important; }
 
   /* Kanban board columns: near-full-width so they're readable without scrolling */
   .kb-col { width: calc(100vw - 28px) !important; flex-shrink: 0; }
@@ -7375,8 +7432,8 @@ body.focus-mode .layout { height: 100dvh; }
   }
 }
 
-/* ── Compact (769–1024px): content + breadcrumb improvements ── */
-@media (min-width: 769px) and (max-width: 1024px) {
+/* ── Compact (769–1100px): content + breadcrumb improvements ── */
+@media (min-width: 769px) and (max-width: 1100px) {
   /* Entry body: fill available width without huge side margins */
   .entry-view { max-width: 100%; padding: 0 0 80px; }
   .entry-body { padding: 0 20px !important; }
@@ -7502,7 +7559,7 @@ body {
   .inline-title-wrap { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1100px) {
   /* AI drawer: don't swallow the whole tablet viewport */
   .ai-panel { width: min(560px, 82vw); }
 
@@ -7519,8 +7576,30 @@ body {
 }
 
 /* ============================================================
-   FEATURE: ASK AI PANEL
+   FEATURE: ASK AI PANEL — right-side drawer
    ============================================================ */
+.ai-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 190;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.ai-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+/* Wide screens push the content left instead of overlaying it — the
+   drawer and the padded layout animate together. */
+@media (min-width: 1024px) {
+  .layout { transition: padding-right 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+  body.ai-sidebar-open .layout { padding-right: 420px; }
+  .ai-backdrop { display: none; }
+}
+
 .ai-panel {
   position: fixed;
   top: 0;
@@ -7541,6 +7620,13 @@ body {
   from { transform: translateX(20px); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
 }
+.ai-panel.open { transform: translateX(0); }
+
+/* < 1024px: the drawer slides over the content (right-edge overlay). */
+@media (max-width: 1023.98px) {
+  .ai-panel { width: min(420px, 92vw); }
+}
+
 .ai-panel-header {
   display: flex;
   align-items: center;
@@ -7603,13 +7689,13 @@ body {
   font-family: var(--font-ui);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .ai-action-btn:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: rgba(59,130,246,0.2);
+  border-color: rgba(59,130,246,0.45);
+  color: #dbeafe;
 }
-
 /* ── Transcript (chat history) ── */
 .ai-transcript {
   flex: 1;
@@ -7765,6 +7851,9 @@ body {
   padding: 8px 14px 10px;
 }
 .ai-response-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -7775,13 +7864,26 @@ body {
   border: 1px solid var(--border);
   color: var(--text-muted);
   border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.72rem;
+  padding: 6px 12px;
+  font-size: 0.74rem;
   font-family: var(--font-ui);
   cursor: pointer;
   transition: color 0.1s, border-color 0.1s;
 }
-.ai-copy-btn:hover, .ai-insert-btn:hover, .ai-save-page-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.ai-copy-btn:hover, .ai-save-page-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.ai-insert-btn {
+  background: #2563eb;
+  border: 1px solid #2563eb;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ai-insert-btn:hover { background: #1d4ed8; border-color: #1d4ed8; }
 .ai-save-page-btn:disabled { opacity: 0.6; cursor: default; }
 .ai-input-row {
   display: flex;
@@ -7826,14 +7928,25 @@ body {
 .ai-send-btn:disabled { opacity: 0.5; cursor: default; }
 
 .ai-loading {
-  padding: 16px 14px;
-  font-size: 0.82rem;
+  order: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 14px 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
-  text-align: center;
+  text-align: left;
 }
 .ai-dots { animation: aiPulse 1.4s ease-in-out infinite; }
+.ai-loading::after {
+  content: '…';
+  margin-left: 1px;
+  letter-spacing: 1px;
+  animation: aiPulse 1.4s ease-in-out infinite;
+}
 @keyframes aiPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
 .ai-error {
+  order: 7;
   padding: 10px 14px;
   font-size: 0.78rem;
   color: var(--danger);

@@ -4432,6 +4432,106 @@ def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mo
     return candidate["content"]["parts"][0]["text"], candidate.get("finishReason") == "MAX_TOKENS"
 
 
+def _call_openai_compatible_stream(base_url, api_key, model, system, user_msg, max_tokens, temperature=None):
+    """Streaming twin of _call_openai_compatible. Yields the assistant's
+    content delta by delta as it arrives from the provider (urllib's HTTP
+    response object iterates line-by-line, so SSE `data:` frames come through
+    as they are sent — no full-response buffering)."""
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "stream": True,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    if temperature is not None:
+        payload["temperature"] = temperature
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        base_url,
+        data=body,
+        headers={
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=180) as r:
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                obj = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            choices = obj.get("choices") or []
+            if not choices:
+                continue
+            delta = (choices[0].get("delta") or {}).get("content")
+            if delta:
+                yield delta
+
+
+def _call_gemini_stream(base_url, api_key, model, system, user_msg, max_tokens, temperature=None):
+    """Streaming twin of _call_gemini, using streamGenerateContent with the
+    `alt=sse` flag so the provider emits the same `data:` SSE frames the
+    OpenAI-compatible path produces (uniform parsing server- and client-side)."""
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+        "systemInstruction": {"parts": [{"text": system}]},
+        "generationConfig": {"maxOutputTokens": max_tokens},
+    }
+    if temperature is not None:
+        payload["generationConfig"]["temperature"] = temperature
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/{model}:streamGenerateContent?alt=sse",
+        data=body,
+        headers={**_AI_HTTP_HEADERS, "Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+    with urllib.request.urlopen(req, timeout=180) as r:
+        for raw in r:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            try:
+                obj = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            candidates = obj.get("candidates") or []
+            if not candidates:
+                continue
+            for part in (candidates[0].get("content") or {}).get("parts") or []:
+                text = part.get("text")
+                if text:
+                    yield text
+
+
+def _stream_ai(system, user_msg, max_tokens=2048, provider=None, model=None, temperature=None):
+    """Streaming entry point, mirroring _call_ai's provider/kind dispatch.
+    Generator that yields the raw assistant text chunk by chunk. Provider or
+    key configuration errors raise (the route validates before starting the
+    generator and translates the exception into an SSE error event)."""
+    provider = provider or DEFAULT_PROVIDER
+    model = model or DEFAULT_MODEL
+    cfg = PROVIDERS.get(provider)
+    if not cfg:
+        raise RuntimeError(f"Proveedor de IA desconocido: {provider}")
+    api_key = os.environ.get(cfg["env"], "")
+    if not api_key:
+        raise RuntimeError(f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...")
+    if cfg["kind"] == "gemini":
+        yield from _call_gemini_stream(cfg["base_url"], api_key, model, system, user_msg, max_tokens, temperature)
+    else:
+        yield from _call_openai_compatible_stream(cfg["base_url"], api_key, model, system, user_msg, max_tokens, temperature)
+
+
 def _clean_ai_error(code, err_body):
     """Provider error bodies range from a one-line edge-block message to
     several KB of quota-metric JSON (seen from Gemini's 429s) — never dump
@@ -5112,6 +5212,43 @@ def ai_ask():
     # short explanation and would truncate that. Editing/translation actions
     # don't need the extra room; keep them at the original budget.
     max_tokens = 3500 if action in ("explain", "example", "ask") else 2048
+    if data.get("stream"):
+        # Validate provider/key BEFORE handing control to the generator, so a
+        # misconfiguration fails fast as a normal JSON error instead of the
+        # first SSE frame. After that, stream the reply as server-sent events:
+        #   data: {"delta": "..."}   — partial text, rendered live client-side
+        #   data: {"done": true, "result": "..."} — completion
+        #   data: {"error": "..."}   — terminal error frame
+        try:
+            stream_cfg = PROVIDERS.get(data.get("provider") or DEFAULT_PROVIDER)
+            if not stream_cfg:
+                return jsonify({"error": f"Proveedor de IA desconocido: {data.get('provider')}"}), 400
+            if not os.environ.get(stream_cfg["env"]):
+                return jsonify({
+                    "error": f"{stream_cfg['env']} no configurada. Añádela con: fly secrets set {stream_cfg['env']}=...",
+                }), 503
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        def generate():
+            acc = []
+            try:
+                for chunk in _stream_ai(system, user_msg, max_tokens=max_tokens, temperature=0.1, provider=data.get("provider"), model=data.get("model")):
+                    acc.append(chunk)
+                    yield f"data: {json.dumps({'delta': chunk}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'done': True, 'result': ''.join(acc)}, ensure_ascii=False)}\n\n"
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="replace")
+                yield f"data: {json.dumps({'error': _clean_ai_error(e.code, err_body)}, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+        resp = Response(generate(), mimetype="text/event-stream")
+        resp.headers["Cache-Control"] = "no-cache"
+        resp.headers["X-Accel-Buffering"] = "no"
+        resp.headers["Connection"] = "keep-alive"
+        return resp
+
     content, err = _call_ai(system, user_msg, max_tokens=max_tokens, temperature=0.1, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
