@@ -8473,27 +8473,36 @@ function initDragHandleConvert() {
   // El `.bn-side-menu` de BlockNote se renderiza en un portal flotante y NO
   // expone el id del bloque (solo `data-block-type`/`data-level`). El menú se
   // posiciona en `left-start` justo a la izquierda del bloque, así que se
-  // resuelve el `data-id` del contenedor del bloque muestreando un punto
-  // dentro del propio bloque (ocultando momentáneamente el dropdown abierto
-  // para que `elementFromPoint` no lo intercepte).
-  function _resolveBlockId(side, menuEl) {
+  // resuelve el `data-id` del bloque correlacionando por geometría: de entre
+  // todos los blockContainers del editor, el que mejor se solape verticalmente
+  // con el side menu (y quede a su derecha) es el bloque apuntado.
+  function _resolveBlockId(side) {
     if (!side) return null;
-    const prev = menuEl ? menuEl.style.display : "";
-    if (menuEl) menuEl.style.display = "none";
-    try {
-      const r = side.getBoundingClientRect();
-      const y = Math.min(window.innerHeight - 4, Math.max(4, r.top + r.height / 2));
-      for (let dx = 2; dx <= 24; dx += 3) {
-        const x = r.right + dx;
-        if (x < 0 || x > window.innerWidth) continue;
-        const el = document.elementFromPoint(x, y);
-        const outer = el && el.closest('[data-node-type="blockContainer"]');
-        const id = outer && outer.getAttribute("data-id");
-        if (id) return id;
+    const sr = side.getBoundingClientRect();
+    const holders = [
+      ["entryBody", _inlineEditor],
+      ["blockEditor", window._modalBlockEditor],
+      ["pagePeekEditor", _peekEditor],
+    ];
+    for (const [cid, inst] of holders) {
+      const el = document.getElementById(cid);
+      if (!el || !inst || !inst.editor) continue;
+      const containers = el.querySelectorAll('[data-node-type="blockContainer"]');
+      let best = null;
+      let bestScore = -1;
+      for (const c of containers) {
+        const id = c.getAttribute("data-id");
+        if (!id) continue;
+        const cr = c.getBoundingClientRect();
+        const overlap = Math.min(sr.bottom, cr.bottom) - Math.max(sr.top, cr.top);
+        if (overlap <= 0) continue;
+        // El bloque debe estar a la derecha (o sobre) el menú lateral.
+        const gap = Math.max(0, sr.right - cr.left);
+        if (gap > 80) continue;
+        const score = overlap - gap * 0.5 - Math.abs(cr.top - sr.top) * 0.2;
+        if (score > bestScore) { bestScore = score; best = id; }
       }
-    } catch (_) { /* noop */ }
-    finally {
-      if (menuEl) menuEl.style.display = prev;
+      if (best) return best;
     }
     return null;
   }
@@ -8576,7 +8585,7 @@ function initDragHandleConvert() {
         const menuId = menuEl.id;
         const trigger = menuId && document.querySelector(`[aria-controls="${menuId}"]`);
         const side = trigger && trigger.closest(".bn-side-menu");
-        const blockId = _resolveBlockId(side, menuEl);
+        const blockId = _resolveBlockId(side);
         if (!blockId) return;
         const inst = _editorInstanceFor(blockId);
         if (inst && inst.editor) _convertTo(blockId, opt, inst.editor);
@@ -8590,14 +8599,24 @@ function initDragHandleConvert() {
     return group;
   }
 
-  // Clona un item nativo del menú para heredar el mismo estilo Mantine.
+  // Clona un item nativo del menú para heredar el mismo estilo.
+  // Los items del menú drag-handle de este bundle usan la clase `bn-menu-item`
+  // (el Generic.Menu de @blocknote/react), NO `mantine-Menu-item` — por eso hay
+  // que intentar ambas.
   function _cloneNativeItem(menuEl) {
-    const proto = menuEl.querySelector(".mantine-Menu-item");
+    const proto = menuEl.querySelector(".bn-menu-item, .mantine-Menu-item");
     if (!proto) return null;
     const btn = proto.cloneNode(false);
     btn.removeAttribute("aria-selected");
     btn.removeAttribute("aria-checked");
     btn.setAttribute("role", "menuitem");
+    // Limpia tabindex/aria-controls del prototipo para que el ítem clonado no
+    // abra ningún submenú nativo al hacer clic.
+    btn.removeAttribute("tabindex");
+    btn.removeAttribute("aria-controls");
+    btn.removeAttribute("aria-haspopup");
+    btn.removeAttribute("data-radix-collection-item");
+    btn.classList.add("bn-convert-item");
     return btn;
   }
 
