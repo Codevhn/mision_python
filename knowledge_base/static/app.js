@@ -8470,6 +8470,34 @@ function initDragHandleConvert() {
     return side.dataset.level ? `${t}:${side.dataset.level}` : t;
   }
 
+  // El `.bn-side-menu` de BlockNote se renderiza en un portal flotante y NO
+  // expone el id del bloque (solo `data-block-type`/`data-level`). El menú se
+  // posiciona en `left-start` justo a la izquierda del bloque, así que se
+  // resuelve el `data-id` del contenedor del bloque muestreando un punto
+  // dentro del propio bloque (ocultando momentáneamente el dropdown abierto
+  // para que `elementFromPoint` no lo intercepte).
+  function _resolveBlockId(side, menuEl) {
+    if (!side) return null;
+    const prev = menuEl ? menuEl.style.display : "";
+    if (menuEl) menuEl.style.display = "none";
+    try {
+      const r = side.getBoundingClientRect();
+      const y = Math.min(window.innerHeight - 4, Math.max(4, r.top + r.height / 2));
+      for (let dx = 2; dx <= 24; dx += 3) {
+        const x = r.right + dx;
+        if (x < 0 || x > window.innerWidth) continue;
+        const el = document.elementFromPoint(x, y);
+        const outer = el && el.closest('[data-node-type="blockContainer"]');
+        const id = outer && outer.getAttribute("data-id");
+        if (id) return id;
+      }
+    } catch (_) { /* noop */ }
+    finally {
+      if (menuEl) menuEl.style.display = prev;
+    }
+    return null;
+  }
+
   function _optionKey(opt) {
     return opt.type === "heading" ? `heading:${opt.props.level}` : opt.type;
   }
@@ -8548,7 +8576,7 @@ function initDragHandleConvert() {
         const menuId = menuEl.id;
         const trigger = menuId && document.querySelector(`[aria-controls="${menuId}"]`);
         const side = trigger && trigger.closest(".bn-side-menu");
-        const blockId = side && side.dataset.blockId;
+        const blockId = _resolveBlockId(side, menuEl);
         if (!blockId) return;
         const inst = _editorInstanceFor(blockId);
         if (inst && inst.editor) _convertTo(blockId, opt, inst.editor);
