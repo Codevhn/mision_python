@@ -1,13 +1,14 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
+import { useCreateBlockNote, SuggestionMenuController, SideMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
 import "@blocknote/mantine/style.css";
 import "./custom-blocks.css";
 import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
 import { detectPastedCode } from "./pasteCode.js";
+import { CustomSideMenu } from "./dragHandleMenu.jsx";
 
 // The "database" block type is registered in schema.js (so old content still
 // renders), but BlockNote's built-in slash menu only auto-lists its own
@@ -92,11 +93,13 @@ function EditorView({ instanceRef, onChange, onReady }) {
       editor={editor}
       theme={theme}
       slashMenu={false}
+      sideMenu={false}
       onChange={() => {
         if (instanceRef.suppressChange) return;
         if (onChange) onChange(blocksToMd(editor.document));
       }}
     >
+      <SideMenuController sideMenu={CustomSideMenu} />
       <SuggestionMenuController
         triggerCharacter="/"
         getItems={async (query) =>
