@@ -1737,28 +1737,6 @@ body.focus-mode .related-sidebar { display: none; }
   white-space: pre;
 }
 
-/* "Convertir a…" group injected into the drag-handle menu.
-   Items are DOM clones of the native Mantine menu items, so they inherit the
-   native look; only the group/label and the "current type" marker are styled. */
-.bn-convert-group {
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-  padding-bottom: 4px;
-}
-.bn-convert-label {
-  color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 4px 8px 3px;
-  text-transform: uppercase;
-}
-.bn-convert-group .bn-menu-item[data-bn-convert-current="true"] {
-  color: var(--accent);
-  font-weight: 600;
-  pointer-events: none;
-}
-
 
 
 .entry-body blockquote {
