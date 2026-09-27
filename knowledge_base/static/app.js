@@ -7752,31 +7752,11 @@ function initCoursesSpace() {
   }
 }
 
-// ── Sidebar expand toggle — explicit click, not accidental hover ────────
+// ── Activity bar: brand click goes home ──────────────────────────────────
 (function initSidebarToggle() {
   function init() {
     const bar = document.getElementById('activityBar');
     if (!bar) return;
-
-    const toggleBtn = document.getElementById('abToggleExpand');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.body.classList.toggle('sidebar-expanded');
-      });
-    }
-    // Clicking a nav item while expanded collapses the rail back down,
-    // same as picking a destination closes any other nav flyout.
-    bar.addEventListener('click', (e) => {
-      if (e.target.closest('.ab-item') && e.target.closest('#abToggleExpand') === null) {
-        document.body.classList.remove('sidebar-expanded');
-      }
-    });
-    document.addEventListener('click', (e) => {
-      if (document.body.classList.contains('sidebar-expanded') && !bar.contains(e.target)) {
-        document.body.classList.remove('sidebar-expanded');
-      }
-    });
 
     // ⌂ Brand: go to home (show welcome, switch to knowledge space)
     const abBrand = document.getElementById('abBrand');

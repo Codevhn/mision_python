@@ -4238,10 +4238,13 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
    PHASE B — Activity Bar + Contextual Sidebar
    ============================================= */
 
-/* ── Layout tokens ── */
+/* ── Layout tokens ──
+   The rail is always labeled (icon + name) — no more collapsed/expand-on-click
+   state to guess your way through. --activity-bar-w is the one width used
+   everywhere via --ab-total-w, so widening it here is enough to keep the
+   sidebar/layout offsets in sync. */
 :root {
-  --activity-bar-w: 48px;
-  --activity-bar-expanded-w: 200px;
+  --activity-bar-w: 200px;
   /* Floating-island gap (desktop only — see the 769px+ rule below that keeps
      it at 0 for the mobile/compact drawer, where the rail must stay flush). */
   --ab-gap: 10px;
@@ -4278,12 +4281,21 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .activity-bar-bottom {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
+  width: 100%;
 }
 
-/* ab-label hidden — icon-only 48px bar */
-.ab-label { display: none; }
+/* Labels are always on — the rail reads like a normal named nav list, not
+   an icon rail you have to memorize or click-to-reveal. */
+.ab-label {
+  display: block;
+  font-size: 0.72rem;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .ab-icon {
   font-size: 1rem;
@@ -4291,15 +4303,17 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
   flex-shrink: 0;
 }
 
 .ab-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
+  justify-content: flex-start;
+  width: calc(100% - 16px);
   height: 36px;
+  margin: 0 8px;
   border-radius: var(--radius-md);
   background: transparent;
   border: none;
@@ -4307,7 +4321,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   cursor: pointer;
   transition: background 0.16s var(--ease-out, ease), color 0.16s var(--ease-out, ease), transform 0.16s var(--ease-out, ease), box-shadow 0.16s var(--ease-out, ease);
   position: relative;
-  padding: 0;
+  padding: 0 14px;
+  gap: 10px;
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -4325,17 +4340,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 .ab-item--active {
   color: var(--accent);
   background: var(--accent-light);
-}
-
-.ab-item--active::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
 }
 
 .ab-item--brand {
@@ -4358,58 +4362,6 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   background: var(--accent-light) !important;
 }
 
-
-/* ── Expanded state — toggled by an explicit click on #abToggleExpand,
-   not by hovering the rail (that used to auto-expand and cover content
-   just by passing the mouse over it). ── */
-#abToggleExpand { margin-bottom: 2px; }
-body.sidebar-expanded #abToggleExpand {
-  color: var(--accent);
-  background: var(--accent-light);
-}
-body.sidebar-expanded .activity-bar {
-  width: var(--activity-bar-expanded-w);
-}
-/* Expanded activity bar is an overlay — content does not shift */
-body.sidebar-expanded .sidebar {
-  left: calc(var(--ab-gap) + var(--activity-bar-expanded-w));
-}
-body.sidebar-expanded .ab-label {
-  display: block;
-  opacity: 0;
-  transform: translateX(-8px);
-  animation: ab-label-in 0.2s ease forwards;
-  font-size: 0.72rem;
-  font-family: var(--font-ui);
-  white-space: nowrap;
-  overflow: hidden;
-}
-body.sidebar-expanded .ab-icon {
-  width: 20px;
-  justify-content: center;
-}
-@keyframes ab-label-in {
-  to { opacity: 1; transform: translateX(0); }
-}
-
-body.sidebar-expanded .activity-bar-top,
-body.sidebar-expanded .activity-bar-bottom {
-  align-items: flex-start;
-}
-
-/* Text color/weight for these is owned by the .ab-item !important rules further
-   down (dark baseline + [data-theme="light"] override) — this block only handles
-   the expanded-sidebar layout, so it doesn't need to touch color here at all. */
-body.sidebar-expanded .ab-item {
-  width: calc(var(--activity-bar-expanded-w) - 16px);
-  justify-content: flex-start;
-  padding: 0 14px;
-  gap: 10px;
-}
-
-body.sidebar-expanded .ab-item--active::before {
-  display: none;
-}
 
 /* ── Topbar transition ── */
 .topbar {
@@ -4453,39 +4405,11 @@ body.sidebar-open .layout {
   .layout { padding-left: 0 !important; }
 }
 
-/* ── Compact (769–1100px): sidebar is an overlay drawer, layout never pushed ── */
-@media (min-width: 769px) and (max-width: 1100px) {
-  /* Sidebar behaves like mobile drawer but sits to the right of the activity bar */
-  .sidebar {
-    position: fixed;
-    top: var(--topbar-h);
-    left: var(--ab-total-w);
-    height: calc(100dvh - var(--topbar-h));
-    z-index: 90;
-    width: 260px;
-    transform: translateX(-100%);
-    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 4px 0 24px rgba(0,0,0,0.45);
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .sidebar.mobile-open { transform: translateX(0); }
-
-  /* Overlay dims content when sidebar is open */
-  .sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    top: var(--topbar-h);
-    background: rgba(0,0,0,0.45);
-    z-index: 89;
-  }
-  .sidebar-overlay.active { display: block; }
-
-  /* Layout pushes right when sidebar is open (same as desktop) */
-  .layout { padding-left: var(--ab-total-w); }
-  body.sidebar-open .layout { padding-left: calc(var(--ab-total-w) + var(--sidebar-w)); }
-}
+/* Compact widths (769–1100px) used to show this panel as a floating overlay
+   drawer with a dimming scrim — confusing together with the rest of the
+   chrome. It now docks the same way it does on full desktop (base .sidebar/
+   .layout rules above already handle the width math via --ab-total-w), so
+   there's nothing left to override here. */
 
 /* =============================================
    PHASE D — Breadcrumb + Context Toolbar
@@ -6586,6 +6510,7 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
 }
 /* Legibility overlay — flat scrim (no gradient) so greeting text stays readable
    over the animated weather canvas */
@@ -6595,16 +6520,6 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   background: rgba(0,0,0,0.12);
   pointer-events: none;
   z-index: 1;
-}
-/* Bottom fade — blends hero into the page background */
-.home-hero::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 70px;
-  background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
-  pointer-events: none;
-  z-index: 4;
 }
 /* Canvas overlay — transparent, only draws animated particles */
 .home-hero-canvas {
@@ -6704,10 +6619,6 @@ html { background-color: var(--bg, #14161f); }
   background-color: #1b1a18;
   background-image: none;
 }
-/* Soften the bottom fade to the light page background */
-[data-theme="light"] .home-hero::after {
-  background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
-}
 /* Ambient mode: hero is transparent in both themes — canvas takes over.
    !important needed to override inline style set by _applyWeatherBackground() */
 body.home-ambient .home-hero {
@@ -6738,13 +6649,12 @@ body.home-ambient .welcome      { background: transparent; }
 /* Ensure content-area stacks ABOVE the z-index:0 ambient canvas */
 body.home-ambient .content-area { position: relative; z-index: 1; }
 
-/* Hero: remove its own asset copy (ambient canvas covers full viewport)   */
-/* and collapse the bottom fade so hero merges into the ambient canvas     */
+/* Hero: remove its own asset copy (ambient canvas covers full viewport) */
 body.home-ambient .home-hero {
   background-image: none;
   background-color: transparent;
+  border-bottom: none;
 }
-body.home-ambient .home-hero::after  { opacity: 0; }
 body.home-ambient .home-hero::before { opacity: 0; }
 body.home-ambient .home-hero { overflow: visible; }
 
