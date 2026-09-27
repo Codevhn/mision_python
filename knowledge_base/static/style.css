@@ -93,7 +93,7 @@
   --bg-surface:  var(--layer-2);
   --bg-elevated: var(--layer-3);
   --bg-hover:    rgba(250, 249, 245, 0.06);
-  --bg-code:     #2a2927;
+  --bg-code:     #1b1a18;
 
   --panel-bg:    var(--layer-2);
   --panel-bg-2:  var(--layer-3);
@@ -1714,6 +1714,17 @@ body.focus-mode .related-sidebar { display: none; }
   padding: 12px 14px;
   tab-size: 2;
 }
+
+/* ── BlockNote editor background — match the surrounding surface ──
+   The bundle hardcodes .bn-editor's background to --bn-colors-editor-background,
+   which .bn-container maps to var(--bg) (the app's darkest base tone, used for
+   the sidebar/shell chrome). .content-area sits on --bg-elevated instead, so in
+   dark theme the editor rendered as a visibly darker floating rounded "card" on
+   top of the content area. Realign it to --bg-elevated so the reading surface
+   is uniform with the page (light theme already matched, so it gets its own
+   override back to --bg to stay unchanged). */
+.bn-editor { background-color: var(--bg-elevated) !important; }
+[data-theme="light"] .bn-editor { background-color: var(--bg) !important; }
 
 /* ── BlockNote custom code blocks (code-block-native) — warm + no box ──
    These overrides only touch the editor's own code-block component. The
@@ -4753,7 +4764,7 @@ body.sidebar-open .layout {
   --layer-3: #2a2927; --layer-4: #333130;
   --bg: var(--layer-0); --bg-sidebar: #1b1a18;
   --bg-surface: #222120; --bg-elevated: #333130;
-  --bg-hover: rgba(250,249,245,0.06); --bg-code: #2a2927;
+  --bg-hover: rgba(250,249,245,0.06); --bg-code: #1b1a18;
   --border: rgba(250,249,245,0.10); --border-light: rgba(250,249,245,0.06);
   --text: #faf9f5; --text-muted: #b0aea5; --text-faint: #7a776d;
   --glass-blur:   none;
