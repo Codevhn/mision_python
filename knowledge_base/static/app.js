@@ -5625,9 +5625,25 @@ function setSidebarVisible(visible) {
   }
 
   function init() {
-    // Wire space buttons
+    // Wire space buttons. Re-clicking the space you're already in just
+    // tucks its floating panel away instead of re-running switchSpace —
+    // the panel now floats over the content instead of pushing it, so this
+    // is how you get it out of the way without losing your place (closing
+    // doesn't reset the tree: same course/module stays expanded when you
+    // click the icon again to bring the panel back).
     document.querySelectorAll('.ab-item[data-space]').forEach(btn => {
-      btn.addEventListener('click', () => switchSpace(btn.dataset.space));
+      btn.addEventListener('click', () => {
+        const space = btn.dataset.space;
+        const isActive = btn.classList.contains('ab-item--active');
+        const panelOpen = document.body.classList.contains('sidebar-open');
+        if (isActive && panelOpen && space !== 'home') {
+          setSidebarVisible(false);
+        } else if (isActive && !panelOpen && space !== 'home') {
+          setSidebarVisible(true);
+        } else {
+          switchSpace(space);
+        }
+      });
     });
 
     // Mobile drawer space nav — switch space; for spaces with their own tree,
