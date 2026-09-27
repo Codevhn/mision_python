@@ -581,9 +581,29 @@ input, textarea, select { font-family: inherit; }
   scrollbar-color: var(--border) transparent;
   background-image: var(--grad-sidebar);
   box-shadow: var(--shadow-lg);
-  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  visibility: visible;
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0s;
 }
 .sidebar.collapsed { display: none; }
+/* Tucked away — picking a lesson/entry, or clicking the content behind it,
+   dismisses the floating panel with a soft slide+fade instead of an abrupt
+   display:none. Re-opening (same rail icon, or picking a new space) always
+   restores it exactly as it was: this only ever toggles visibility. */
+.sidebar.sidebar--tucked {
+  opacity: 0;
+  transform: translateX(-16px) scale(0.97);
+  pointer-events: none;
+  visibility: hidden;
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0.18s;
+}
 
 .tree { padding: 8px 0; }
 #teamspaceTree { padding-bottom: 4px; }

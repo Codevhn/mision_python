@@ -5438,7 +5438,11 @@ function setSidebarVisible(visible) {
       document.body.classList.remove('sidebar-open');
     }
   } else {
-    s.style.display = visible ? '' : 'none';
+    // Desktop: always in the DOM at its floating position — toggle a class
+    // so hiding it animates (slide+fade) instead of an abrupt display:none.
+    // Never destroys scroll/expand state underneath.
+    s.style.display = '';
+    s.classList.toggle('sidebar--tucked', !visible);
     document.body.classList.toggle('sidebar-open', visible);
   }
 }
@@ -5679,6 +5683,21 @@ function setSidebarVisible(visible) {
     initLessonModal();
     initEditCourseModal();
     initMoveLessonModal();
+
+    // Auto-tuck the floating panel: picking a lesson/entry, or clicking into
+    // the content behind it, dismisses it with the slide+fade defined in
+    // style.css (.sidebar--tucked) instead of requiring a second click on
+    // the rail icon. The rail icon (or picking another space) still brings
+    // it right back exactly as it was — this only ever toggles visibility,
+    // never resets which course/module was expanded.
+    function _tuckSidebarIfOpen() {
+      if (isMobile() || isCompact()) return; // those close via their own drawer/overlay
+      if (document.body.classList.contains('sidebar-open')) setSidebarVisible(false);
+    }
+    document.getElementById('sidebar')?.addEventListener('click', e => {
+      if (e.target.closest('.tree-entry, .ts-item, .tree-page-row')) _tuckSidebarIfOpen();
+    });
+    document.querySelector('.content-area')?.addEventListener('click', _tuckSidebarIfOpen);
 
     // Start at Home — all spaces load on demand
     switchSpace('home');
