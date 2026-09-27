@@ -562,23 +562,25 @@ input, textarea, select { font-family: inherit; }
   height: calc(100vh - var(--topbar-h));
 }
 
-/* ---- SIDEBAR — fixed overlay, does not push content ---- */
+/* ---- SIDEBAR — floating panel, overlays the content area instead of
+   pushing it (matches the activity bar's floating-island treatment) ---- */
 .sidebar {
   position: fixed;
-  left: var(--ab-total-w, var(--activity-bar-w));
-  top: var(--topbar-h);
-  height: calc(100vh - var(--topbar-h));
+  left: calc(var(--ab-total-w) + var(--ab-gap));
+  top: calc(var(--topbar-h) + var(--ab-gap));
+  bottom: var(--ab-gap);
   width: var(--sidebar-w);
   z-index: 88;
   background: var(--bg-sidebar);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-right: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   background-image: var(--grad-sidebar);
-  box-shadow: 6px 0 28px rgba(0,0,0,0.22);
+  box-shadow: var(--shadow-lg);
   transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sidebar.collapsed { display: none; }
@@ -4423,13 +4425,12 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 /* ── Hide #newEntryBtn from topbar ── */
 #newEntryBtn { display: none !important; }
 
-/* ── Push layout right of activity bar; expand further when sidebar is open ── */
+/* ── Push layout right of the activity bar only. The contextual sidebar
+   (Cursos/Tableros/Team/...) floats on top of the content area instead of
+   widening this padding, so opening it never shifts the main content. ── */
 .layout {
   padding-left: var(--ab-total-w);
   transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
-body.sidebar-open .layout {
-  padding-left: calc(var(--ab-total-w) + var(--sidebar-w));
 }
 
 /* ── Sidebar Space panels ── */
