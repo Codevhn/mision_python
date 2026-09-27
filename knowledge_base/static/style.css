@@ -2199,6 +2199,27 @@ body.focus-mode .related-sidebar { display: none; }
 .ss-item[data-value^="+ "] { color: var(--text-muted); font-style: italic; }
 .ss-item[data-value^="+ "]:hover { color: var(--accent); background: var(--bg-hover); }
 
+/* "nueva categoría" / "nuevo tema" — persistent confirmation that what's
+   typed doesn't match anything that already exists and will be created on
+   save, whether it got there by picking "+ Nueva/Nuevo: ..." from the
+   dropdown or just typing and moving on (both look identical otherwise). */
+.ss-new-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-dim);
+  border-radius: 20px;
+  vertical-align: middle;
+}
+.ss-new-badge.hidden { display: none; }
+
 .cat-suggest {
   display: flex;
   flex-wrap: wrap;

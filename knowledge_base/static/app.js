@@ -3363,26 +3363,106 @@ function initSmartSelects() {
 // to pick from instead of a blank slate or (worse) topics from unrelated
 // categories. It's just a starting point — merged with whatever real
 // categories/topics you've already created, and you can still type anything
-// that isn't in this list at all. Add to it any time.
+// that isn't in this list at all. Add to it any time — it's plain data.
 const _TAXONOMY = {
-  "Python": ["Sintaxis básica", "Estructuras de datos", "Programación orientada a objetos", "Manejo de errores", "Entornos virtuales", "Librerías y paquetes", "Testing", "Concurrencia y async"],
-  "Linux": ["Automatización", "Administración del sistema", "Permisos y usuarios", "Shell scripting", "Procesos y servicios", "Redes"],
-  "Desarrollo Web": ["HTML", "CSS", "JavaScript", "React", "Angular", "Vue", "Node.js", "APIs REST", "Frameworks backend"],
-  "Bases de Datos": ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Modelado de datos", "Índices y rendimiento"],
-  "Git y Control de Versiones": ["GitHub", "Ramas y merges", "Git avanzado", "Flujos de trabajo (Git Flow)"],
-  "DevOps y Automatización": ["Docker", "CI/CD", "GitHub Actions", "Kubernetes", "Infraestructura como código", "Monitoreo"],
-  "Ciberseguridad": ["Hacking ético", "Pentesting", "OWASP Top 10", "Criptografía básica", "Google Dorking"],
-  "Estructuras de Datos y Algoritmos": ["Arrays y listas", "Árboles", "Grafos", "Complejidad (Big O)", "Ordenamiento y búsqueda"],
-  "Redes": ["TCP/IP", "HTTP y HTTPS", "DNS", "Protocolos comunes"],
-  "Entornos Virtuales Python": ["Poetry", "venv", "pip y dependencias"],
-  "Programación": ["Programación orientada a objetos", "Patrones de diseño", "Buenas prácticas", "Paradigmas de programación"],
-  "Herramientas y Entorno": ["Terminal", "Editores e IDEs", "Gestión de paquetes"],
+  "Python": ["Sintaxis básica", "Estructuras de datos", "Programación orientada a objetos", "Manejo de errores", "Entornos virtuales", "Librerías y paquetes", "Testing", "Concurrencia y async", "Decoradores y generadores"],
+  "Linux": ["Automatización", "Administración del sistema", "Permisos y usuarios", "Shell scripting", "Procesos y servicios", "Redes", "Systemd y servicios", "Gestión de paquetes (apt/pacman/dnf)"],
+  "Shell y Terminal": ["Bash", "Zsh", "Pipes y redirecciones", "Expresiones regulares", "Scripts de automatización"],
+  "Desarrollo Web": ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Angular", "Vue", "Node.js", "APIs REST", "Frameworks backend", "Responsive design", "Accesibilidad web"],
+  "Backend y APIs": ["REST", "GraphQL", "Autenticación (JWT/OAuth)", "FastAPI", "Django", "Flask", "Express", "Websockets", "Rate limiting"],
+  "Bases de Datos": ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Modelado de datos", "Índices y rendimiento", "Transacciones", "ORMs"],
+  "Git y Control de Versiones": ["GitHub", "Ramas y merges", "Git avanzado", "Flujos de trabajo (Git Flow)", "Rebase e historial", "Pull requests y code review"],
+  "DevOps y Automatización": ["Docker", "CI/CD", "GitHub Actions", "Kubernetes", "Infraestructura como código", "Monitoreo", "Terraform", "Logging y observabilidad"],
+  "Cloud y Contenedores": ["AWS", "Azure", "Google Cloud", "Serverless", "Kubernetes", "Contenedores vs VMs", "Balanceo de carga"],
+  "Ciberseguridad": ["Hacking ético", "Pentesting", "OWASP Top 10", "Criptografía básica", "Google Dorking", "Seguridad de redes", "Análisis de vulnerabilidades", "Ingeniería social"],
+  "Estructuras de Datos y Algoritmos": ["Arrays y listas", "Árboles", "Grafos", "Complejidad (Big O)", "Ordenamiento y búsqueda", "Recursividad", "Programación dinámica", "Hash tables"],
+  "Arquitectura de Software": ["Patrones de diseño", "SOLID", "Microservicios vs monolitos", "Clean Architecture", "Domain-Driven Design", "Escalabilidad"],
+  "Testing y Calidad": ["Pruebas unitarias", "TDD", "Pruebas de integración", "Mocking", "Cobertura de código", "Testing end-to-end"],
+  "Sistemas Operativos": ["Procesos y memoria", "Sistemas de archivos", "Concurrencia", "Virtualización", "Planificación de procesos"],
+  "Redes": ["TCP/IP", "HTTP y HTTPS", "DNS", "Protocolos comunes", "VPN", "Firewalls", "Modelo OSI"],
+  "Inteligencia Artificial y ML": ["Fundamentos de Machine Learning", "Redes neuronales", "NLP", "Modelos de lenguaje (LLMs)", "Scikit-learn", "Prompt engineering"],
+  "Entornos Virtuales Python": ["Poetry", "venv", "pip y dependencias", "Conda"],
+  "Programación": ["Programación orientada a objetos", "Patrones de diseño", "Buenas prácticas", "Paradigmas de programación", "Clean Code", "Refactorización"],
+  "Herramientas y Entorno": ["Terminal", "Editores e IDEs", "Gestión de paquetes", "Atajos y productividad", "Extensiones útiles"],
+  "Desarrollo Móvil": ["Android", "iOS", "React Native", "Flutter", "Publicación en tiendas"],
+  "Matemáticas para Programadores": ["Álgebra lineal", "Probabilidad y estadística", "Lógica y conjuntos", "Notación Big O"],
+  "Técnicas de Estudio": ["Método SMART", "Repetición espaciada", "Técnica Pomodoro", "Mapas mentales", "Toma de notas (Zettelkasten)"],
+  "Carrera y Productividad": ["Entrevistas técnicas", "Currículum técnico", "Gestión del tiempo", "Freelance", "Trabajo remoto"],
 };
+
+function _categoryExists(label) {
+  const v = (label || "").trim().toLowerCase();
+  if (!v) return true; // nothing typed yet — not "new"
+  if (_allCategories.some(c => c.label.toLowerCase() === v)) return true;
+  return Object.keys(_TAXONOMY).some(k => k.toLowerCase() === v);
+}
+
+// Real topics already filed under `catVal`, plus the curated ones typical of
+// it (if `catVal` matches a taxonomy entry) — shared by the dropdown and the
+// "new" badge so both agree on what counts as an existing topic.
+function _topicsForCategory(catVal) {
+  const v = (catVal || "").trim().toLowerCase();
+  const real = [];
+  if (v && _treeCache) {
+    for (const [catKey, catData] of Object.entries(_treeCache)) {
+      const label = (catData._label || catKey).toLowerCase();
+      if (label === v || catKey.toLowerCase() === v) {
+        const topicsMap = catData._topics || catData;
+        for (const [k, td] of Object.entries(topicsMap)) {
+          if (!k.startsWith("_")) real.push(td._label || k);
+        }
+        break;
+      }
+    }
+  }
+  const taxKey = v ? Object.keys(_TAXONOMY).find(k => k.toLowerCase() === v) : null;
+  const curated = taxKey ? _TAXONOMY[taxKey] : [];
+  return { real, curated };
+}
+
+function _topicExists(catVal, topicVal) {
+  const v = (topicVal || "").trim().toLowerCase();
+  if (!v) return true; // nothing typed yet — not "new"
+  const { real, curated } = _topicsForCategory(catVal);
+  return [...real, ...curated].some(t => t.toLowerCase() === v);
+}
+
+// Small "nueva categoría" / "nuevo tema" pill, injected right after the
+// input so every place that calls _wireCategoryTopicSmartSelects gets it for
+// free. Clicking "+ Nueva/Nuevo: ..." (or just typing a name and moving on)
+// looked like it did nothing — the field ends up holding the same plain text
+// either way, with no confirmation anything will actually be created. This
+// badge gives that confirmation persistently, however the text got there.
+const _NOOP_BADGE = { classList: { toggle() {} } };
+function _ensureNewBadge(inputEl, text) {
+  // Lives next to the field's <label> when there is one (the two modal-style
+  // forms). The compact "Guardar en Conocimiento" strip has no <label> (just
+  // a tiny inline caption in a flex row with no room for this) — skip it
+  // there rather than cramming it in.
+  const label = inputEl.closest(".form-group")?.querySelector("label");
+  if (!label) return _NOOP_BADGE;
+  const existing = label.querySelector(".ss-new-badge");
+  if (existing) return existing;
+  const badge = document.createElement("span");
+  badge.className = "ss-new-badge hidden";
+  badge.textContent = text;
+  label.appendChild(badge);
+  return badge;
+}
 
 // Shared by the "Nueva entrada" modal and any other place (e.g. "Guardar en
 // Conocimiento") that needs the same category/tema autocomplete + "+ Nueva:"
 // create-on-the-fly behavior, backed by the same _allCategories/_treeCache data.
 function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop) {
+  const catBadge = _ensureNewBadge(catInput, "nueva categoría");
+  const topicBadge = _ensureNewBadge(topicInput, "nuevo tema");
+
+  function refreshBadges() {
+    catBadge.classList.toggle("hidden", _categoryExists(catInput.value));
+    topicBadge.classList.toggle("hidden", _topicExists(catInput.value, topicInput.value));
+  }
+  refreshBadges();
+
   _buildSmartSelect(catInput, catDrop,
     filter => {
       const f = filter.toLowerCase();
@@ -3402,36 +3482,18 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
       // Category changed — clear the topic pick so it isn't stale
       topicInput.value = "";
       topicInput.placeholder = "Escribe o elige uno…";
+      refreshBadges();
     }
   );
 
   _buildSmartSelect(topicInput, topicDrop,
     filter => {
       const f = filter.toLowerCase();
-      const catVal = catInput.value.trim().toLowerCase();
+      const catVal = catInput.value.trim();
       if (!catVal) return []; // nothing to scope suggestions to yet
-
-      // Topics already filed under this exact category…
-      const realTopics = [];
-      if (_treeCache) {
-        for (const [catKey, catData] of Object.entries(_treeCache)) {
-          const label = (catData._label || catKey).toLowerCase();
-          if (label === catVal || catKey.toLowerCase() === catVal) {
-            const topicsMap = catData._topics || catData;
-            for (const [k, td] of Object.entries(topicsMap)) {
-              if (!k.startsWith("_")) realTopics.push(td._label || k);
-            }
-            break;
-          }
-        }
-      }
-      // …plus the curated topics typical of that category (if it matches
-      // one), so a category with no entries yet still suggests something
-      // relevant instead of nothing (or, as before, everyone else's topics).
-      const taxKey = Object.keys(_TAXONOMY).find(k => k.toLowerCase() === catVal);
-      const curatedTopics = taxKey ? _TAXONOMY[taxKey] : [];
-      const seen = new Set(realTopics.map(t => t.toLowerCase()));
-      const pool = [...realTopics, ...curatedTopics.filter(t => !seen.has(t.toLowerCase()))];
+      const { real, curated } = _topicsForCategory(catVal);
+      const seen = new Set(real.map(t => t.toLowerCase()));
+      const pool = [...real, ...curated.filter(t => !seen.has(t.toLowerCase()))];
 
       const matches = pool.filter(t => !f || t.toLowerCase().includes(f));
       if (filter.trim() && !matches.find(t => t.toLowerCase() === f)) {
@@ -3441,6 +3503,7 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
     },
     val => {
       topicInput.value = val.startsWith('+ Nuevo: "') ? val.slice(10, -1) : val;
+      refreshBadges();
     }
   );
 
@@ -3451,6 +3514,11 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
       ? "Escribe o elige uno…"
       : "Elige primero una categoría…";
   });
+
+  // Typing directly (no dropdown click at all) must also update the badges —
+  // this is the case that looked the most like "nothing happened".
+  catInput.addEventListener("input", refreshBadges);
+  topicInput.addEventListener("input", refreshBadges);
 }
 
 let _coursesTree = {};
