@@ -93,7 +93,7 @@
   --bg-surface:  var(--layer-2);
   --bg-elevated: var(--layer-3);
   --bg-hover:    rgba(250, 249, 245, 0.06);
-  --bg-code:     #1b1a18;
+  --bg-code:     #2a2927;
 
   --panel-bg:    var(--layer-2);
   --panel-bg-2:  var(--layer-3);
@@ -4753,7 +4753,7 @@ body.sidebar-open .layout {
   --layer-3: #2a2927; --layer-4: #333130;
   --bg: var(--layer-0); --bg-sidebar: #1b1a18;
   --bg-surface: #222120; --bg-elevated: #333130;
-  --bg-hover: rgba(250,249,245,0.06); --bg-code: #1b1a18;
+  --bg-hover: rgba(250,249,245,0.06); --bg-code: #2a2927;
   --border: rgba(250,249,245,0.10); --border-light: rgba(250,249,245,0.06);
   --text: #faf9f5; --text-muted: #b0aea5; --text-faint: #7a776d;
   --glass-blur:   none;
