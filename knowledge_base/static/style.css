@@ -4,38 +4,13 @@
    + Glassmorphism · Gradients · Modern tokens
    ============================================= */
 
-/* ── Self-hosted display/serif fonts (Claude-style pairing) ──
-   Served from /static/fonts instead of Google's CDN so they don't depend
-   on an external request succeeding — Inter/JetBrains Mono still load via
-   the Google Fonts <link> in index.html, unchanged. */
-@font-face {
-  font-family: "Poppins";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/static/fonts/Poppins-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Poppins";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/static/fonts/Poppins-Medium.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Poppins";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/static/fonts/Poppins-SemiBold.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Poppins";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/static/fonts/Poppins-Bold.woff2") format("woff2");
-}
+/* ── Self-hosted serif (Claude-style pairing) ──
+   Claude's own product uses a literary serif (Tiempos, proprietary) for
+   titles/headings and a clean sans for UI chrome — not a second geometric
+   sans. Lora is the closest openly-licensed match, self-hosted from
+   /static/fonts so it never depends on an external request succeeding.
+   Inter/JetBrains Mono still load via the Google Fonts <link> in
+   index.html, unchanged. */
 @font-face {
   font-family: "Lora";
   font-style: normal;
@@ -50,13 +25,27 @@
   font-display: swap;
   src: url("/static/fonts/Lora-Italic.woff2") format("woff2");
 }
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/fonts/Lora-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/fonts/Lora-Bold.woff2") format("woff2");
+}
 
 :root {
   /* ── Typography ── */
   --font-ui:      "Inter", "Segoe UI", system-ui, sans-serif;
   --font-body:    "Inter", "Segoe UI", system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
-  --font-display: "Poppins", "Inter", system-ui, sans-serif;
+  --font-display: "Lora", Georgia, serif;
   --font-serif:   "Lora", Georgia, serif;
 
   /* ── Layout ── */
