@@ -1713,13 +1713,16 @@ function renderHome() {
     const timeAgo     = _relTimeAgo(r.ts);
     return `
       <div class="home-study-featured" data-id="${r.id}">
-        <div class="hsf-header">
-          <span class="hsf-course">🎓 ${escapeHtml(courseLabel)}</span>
-          ${timeAgo ? `<span class="hsf-time">${timeAgo}</span>` : ''}
+        <div class="hsf-icon">🎓</div>
+        <div class="hsf-body">
+          <div class="hsf-header">
+            <span class="hsf-course">${escapeHtml(courseLabel)}</span>
+            ${timeAgo ? `<span class="hsf-time">${timeAgo}</span>` : ''}
+          </div>
+          ${moduleLabel ? `<div class="hsf-module">${escapeHtml(moduleLabel)}</div>` : ''}
+          <div class="hsf-title">${escapeHtml(r.title || 'Sin título')}</div>
         </div>
-        ${moduleLabel ? `<div class="hsf-module">${escapeHtml(moduleLabel)}</div>` : ''}
-        <div class="hsf-title">${escapeHtml(r.title || 'Sin título')}</div>
-        <span class="hsf-cta">Continuar →</span>
+        <span class="hsf-cta">Continuar<span class="hsf-cta-arrow">→</span></span>
       </div>`;
   }
 
@@ -1728,6 +1731,7 @@ function renderHome() {
     const timeAgo     = _relTimeAgo(r.ts);
     return `
       <div class="home-study-compact" data-id="${r.id}">
+        <span class="hsc-icon">📘</span>
         ${courseLabel ? `<div class="hsc-course">${escapeHtml(courseLabel)}</div>` : ''}
         <div class="hsc-title">${escapeHtml(r.title || 'Sin título')}</div>
         ${timeAgo ? `<span class="hsc-time">${timeAgo}</span>` : ''}
@@ -1747,40 +1751,40 @@ function renderHome() {
         ${chipHtml}
       </div>
 
-      <div class="home-stats-row">
-        <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div>
-        <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div>
-        <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div>
-        <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div>
+      <div class="home-stats-strip">
+        <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-icon">📖</span><div class="home-stat-text"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div></div>
+        <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-icon">🎓</span><div class="home-stat-text"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div></div>
+        <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-icon">🗂</span><div class="home-stat-text"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div></div>
+        <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-icon">★</span><div class="home-stat-text"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div></div>
       </div>
 
       ${studying.length ? `
       <section class="home-section home-section--studying">
         <div class="home-section-header">
-          <div class="home-section-label">▶ Continuar estudiando</div>
+          <div class="home-section-label">Continuar estudiando</div>
           <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
         </div>
         ${studyFeaturedHtml(studying[0])}
-        ${studying.length > 1 ? `<div class="home-study-grid">${studying.slice(1, 4).map(studyCompactHtml).join('')}</div>` : ''}
+        ${studying.length > 1 ? `<div class="home-study-scroll">${studying.slice(1, 6).map(studyCompactHtml).join('')}</div>` : ''}
       </section>` : ''}
 
       <section class="home-section home-section--domain" id="homeDomainSection"></section>
 
       ${pinned.length ? `
       <section class="home-section">
-        <div class="home-section-label">⊞ Fijadas</div>
+        <div class="home-section-label"><span class="hsl-icon">⊞</span>Fijadas</div>
         <div class="home-recent-grid">${pinned.slice(0,6).map(cardHtml).join("")}</div>
       </section>` : ''}
 
       ${starred.length ? `
       <section class="home-section">
-        <div class="home-section-label">☆ Destacadas</div>
+        <div class="home-section-label"><span class="hsl-icon">☆</span>Destacadas</div>
         <div class="home-recent-grid">${starred.slice(0,6).map(cardHtml).join("")}</div>
       </section>` : ''}
 
       ${recent.length ? `
       <section class="home-section">
-        <div class="home-section-label">⟳ Visitados recientemente</div>
+        <div class="home-section-label"><span class="hsl-icon">⟳</span>Visitados recientemente</div>
         <div class="home-recent-grid">${recent.slice(0, 6).map(cardHtml).join("")}</div>
       </section>` : `
       <div class="home-empty">
@@ -1888,22 +1892,23 @@ async function _renderHomeDomain() {
         </div>`;
     }
 
-    const barsHtml = courses.length ? courses
+    const ringsHtml = courses.length ? courses
       .sort((a, b) => a[1].domain - b[1].domain)
       .slice(0, 5)
       .map(([slug, c]) => `
-        <div class="home-domain-row">
-          <span class="hdr-label">${escapeHtml(c.label)}</span>
-          <div class="hdr-bar"><div class="hdr-bar-fill" style="width:${c.domain}%"></div></div>
-          <span class="hdr-pct">${c.domain}%</span>
+        <div class="home-domain-ring-item">
+          <div class="home-domain-ring" style="--pct:${c.domain}">
+            <span class="hdr-ring-val">${c.domain}%</span>
+          </div>
+          <span class="hdr-ring-label">${escapeHtml(c.label)}</span>
         </div>`).join('') : '';
 
     container.innerHTML = `
       <div class="home-section-header">
-        <div class="home-section-label">🎯 Tu dominio</div>
+        <div class="home-section-label"><span class="hsl-icon">🎯</span>Tu dominio</div>
       </div>
       ${reminderHtml}
-      ${barsHtml ? `<div class="home-domain-bars">${barsHtml}</div>` : ''}`;
+      ${ringsHtml ? `<div class="home-domain-rings">${ringsHtml}</div>` : ''}`;
 
     $('homeReminderGoBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
     $('homeReminderPracticeBtn')?.addEventListener('click', () => _openPracticeSpace(reminder.concept_name));
