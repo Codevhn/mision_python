@@ -480,7 +480,7 @@ input, textarea, select { font-family: inherit; }
 /* ---- SIDEBAR — fixed overlay, does not push content ---- */
 .sidebar {
   position: fixed;
-  left: var(--activity-bar-w);
+  left: var(--ab-total-w, var(--activity-bar-w));
   top: var(--topbar-h);
   height: calc(100vh - var(--topbar-h));
   width: var(--sidebar-w);
@@ -708,20 +708,61 @@ button.link-btn:hover { opacity: 0.75; }
   max-width: 100%;
   padding: 0 0 80px;
 }
-/* All sections below the hero get horizontal padding + max-width */
-.home-stats-strip,
-.home-section,
-.home-empty,
-.home-radar-teaser {
-  max-width: 860px;
+
+/* ── Dashboard composition: main column (study/recent/pinned) + a persistent
+   side rail (stats + domain mastery), instead of one long stacked column. ── */
+.home-dash-grid {
+  max-width: 1160px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding-left: 44px;
   padding-right: 44px;
   box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 32px;
+  align-items: start;
 }
-.home-section { margin-bottom: 40px; }
+.home-dash-main {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+.home-dash-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  position: sticky;
+  top: 20px;
+}
+@media (max-width: 900px) {
+  .home-dash-grid { grid-template-columns: 1fr; gap: 28px; }
+  .home-dash-side { position: static; }
+}
+
+/* Sections no longer need their own max-width/centering — they're already
+   constrained by the .home-dash-grid column that holds them. */
+.home-section,
+.home-empty,
+.home-radar-teaser {
+  width: 100%;
+  box-sizing: border-box;
+}
+.home-section { margin-bottom: 0; }
+/* Side rail: stats strip becomes a vertical list of rows, not a horizontal
+   segmented bar — 4 columns would be far too cramped at 300px wide. */
+.home-dash-side .home-stats-strip {
+  flex-direction: column;
+  margin: 0;
+}
+.home-dash-side .home-stat {
+  border-right: none;
+  border-bottom: 1px solid var(--border-light);
+}
+.home-dash-side .home-stat:last-child { border-bottom: none; }
 .home-section-label {
   font-family: var(--font-ui);
   font-size: 0.72rem;
@@ -746,19 +787,23 @@ button.link-btn:hover { opacity: 0.75; }
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.home-wrap > * {
+.home-wrap > *,
+.home-dash-main > *,
+.home-dash-side > * {
   animation: homeFadeUp 0.5s var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 .home-wrap > *:nth-child(1) { animation-delay: 0s; }
-.home-wrap > *:nth-child(2) { animation-delay: .05s; }
-.home-wrap > *:nth-child(3) { animation-delay: .10s; }
-.home-wrap > *:nth-child(4) { animation-delay: .15s; }
-.home-wrap > *:nth-child(5) { animation-delay: .20s; }
-.home-wrap > *:nth-child(6) { animation-delay: .25s; }
-.home-wrap > *:nth-child(7) { animation-delay: .30s; }
-.home-wrap > *:nth-child(n+8) { animation-delay: .34s; }
+.home-wrap > *:nth-child(2),
+.home-dash-main > *:nth-child(1),
+.home-dash-side > *:nth-child(1) { animation-delay: .05s; }
+.home-dash-main > *:nth-child(2),
+.home-dash-side > *:nth-child(2) { animation-delay: .10s; }
+.home-dash-main > *:nth-child(3) { animation-delay: .15s; }
+.home-dash-main > *:nth-child(4) { animation-delay: .20s; }
+.home-dash-main > *:nth-child(5) { animation-delay: .25s; }
+.home-dash-main > *:nth-child(n+6) { animation-delay: .30s; }
 @media (prefers-reduced-motion: reduce) {
-  .home-wrap > * { animation: none; }
+  .home-wrap > *, .home-dash-main > *, .home-dash-side > * { animation: none; }
 }
 .home-recent-grid {
   display: grid;
@@ -858,10 +903,7 @@ button.link-btn:hover { opacity: 0.75; }
   .home-wrap { padding: 0 0 60px; }
   .home-hero { min-height: 160px; }
   .home-hero-content { padding: 18px 18px 42px; }
-  .home-stats-strip,
-  .home-section,
-  .home-empty,
-  .home-radar-teaser { padding-left: 16px; padding-right: 16px; }
+  .home-dash-grid { padding-left: 16px; padding-right: 16px; }
   .home-recent-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
   .home-stat { padding: 12px 10px; }
   .home-stat-num { font-size: 1.4rem; }
@@ -4160,24 +4202,34 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 :root {
   --activity-bar-w: 48px;
   --activity-bar-expanded-w: 200px;
+  /* Floating-island gap (desktop only — see the 769px+ rule below that keeps
+     it at 0 for the mobile/compact drawer, where the rail must stay flush). */
+  --ab-gap: 10px;
+  --ab-total-w: calc(var(--activity-bar-w) + (var(--ab-gap) * 2));
 }
 
-/* ── Activity Bar — fixed left strip ── */
+/* ── Activity Bar — floating rounded island, inset from the viewport edge
+   (Raycast/Arc-style chrome) instead of a flush full-height strip. Its own
+   width/left/top/bottom keep the gap; every OTHER rule that needs "how much
+   horizontal space does the rail column occupy" reads --ab-total-w instead
+   of --activity-bar-w, so nothing else has to know about the inset. ── */
 .activity-bar {
   position: fixed;
-  top: var(--topbar-h);
-  left: 0;
-  bottom: 0;
+  top: calc(var(--topbar-h) + var(--ab-gap));
+  left: var(--ab-gap);
+  bottom: var(--ab-gap);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: var(--activity-bar-w);
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
   padding: var(--space-2) 0;
   z-index: 95;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -4208,16 +4260,21 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.16s var(--ease-out, ease), color 0.16s var(--ease-out, ease), transform 0.16s var(--ease-out, ease), box-shadow 0.16s var(--ease-out, ease);
   position: relative;
   padding: 0;
   text-decoration: none;
   flex-shrink: 0;
+}
+.ab-item:hover { transform: translateY(-1px) scale(1.06); }
+.ab-item:active { transform: scale(0.96); }
+.ab-item--active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent), 0 4px 14px -3px currentColor;
 }
 
 .ab-item:hover {
@@ -4279,7 +4336,7 @@ body.sidebar-expanded .activity-bar {
 }
 /* Expanded activity bar is an overlay — content does not shift */
 body.sidebar-expanded .sidebar {
-  left: var(--activity-bar-expanded-w);
+  left: calc(var(--ab-gap) + var(--activity-bar-expanded-w));
 }
 body.sidebar-expanded .ab-label {
   display: block;
@@ -4328,11 +4385,11 @@ body.sidebar-expanded .ab-item--active::before {
 
 /* ── Push layout right of activity bar; expand further when sidebar is open ── */
 .layout {
-  padding-left: var(--activity-bar-w);
+  padding-left: var(--ab-total-w);
   transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.sidebar-open .layout {
-  padding-left: calc(var(--activity-bar-w) + var(--sidebar-w));
+  padding-left: calc(var(--ab-total-w) + var(--sidebar-w));
 }
 
 /* ── Sidebar Space panels ── */
@@ -4355,7 +4412,7 @@ body.sidebar-open .layout {
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  :root { --activity-bar-w: 0px; }
+  :root { --activity-bar-w: 0px; --ab-gap: 0px; }
   .activity-bar { display: none; }
   .layout { padding-left: 0 !important; }
 }
@@ -4366,7 +4423,7 @@ body.sidebar-open .layout {
   .sidebar {
     position: fixed;
     top: var(--topbar-h);
-    left: var(--activity-bar-w);
+    left: var(--ab-total-w);
     height: calc(100dvh - var(--topbar-h));
     z-index: 90;
     width: 260px;
@@ -4390,8 +4447,8 @@ body.sidebar-open .layout {
   .sidebar-overlay.active { display: block; }
 
   /* Layout pushes right when sidebar is open (same as desktop) */
-  .layout { padding-left: var(--activity-bar-w); }
-  body.sidebar-open .layout { padding-left: calc(var(--activity-bar-w) + var(--sidebar-w)); }
+  .layout { padding-left: var(--ab-total-w); }
+  body.sidebar-open .layout { padding-left: calc(var(--ab-total-w) + var(--sidebar-w)); }
 }
 
 /* =============================================
@@ -4725,17 +4782,18 @@ body {
   }
 }
 
-/* ── ACTIVITY BAR ── */
+/* ── ACTIVITY BAR — floating rounded island ── */
 .activity-bar {
   background: rgba(25,28,40,0.92) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border-right: 1px solid rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
 }
-.ab-item { color: #b6bad0 !important; border-radius: var(--radius-sm) !important; font-weight: 600 !important; }
-.ab-item:hover { background: rgba(255,255,255,0.07) !important; color: #f4f5f7 !important; }
+.ab-item { color: #b6bad0 !important; border-radius: var(--radius-md) !important; font-weight: 600 !important; }
+.ab-item:hover { background: rgba(255,255,255,0.08) !important; color: #f4f5f7 !important; }
 .ab-item--active { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--accent) !important; font-weight: 700 !important; }
-.ab-item--active::before { background: var(--accent) !important; }
+/* Thin left indicator bar retired in favor of the pill + glow shadow above */
+.ab-item--active::before { display: none !important; }
 .ab-item--brand { color: var(--accent) !important; font-weight: 700 !important; }
 
 /* ── HOME ── */
@@ -7398,11 +7456,9 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Content: greeting + date below weather */
   .home-hero-content { padding: 8px 16px 14px !important; flex: unset !important; }
 
-  /* Stats strip: wrap into a 2×2 grid of segments on narrow screens */
-  .home-stats-strip { flex-wrap: wrap !important; margin-top: -10px !important; }
-  .home-stat { flex: 1 1 50% !important; min-width: 0 !important; padding: 10px 12px !important; }
-  .home-stat:nth-child(odd)  { border-right: 1px solid var(--border-light) !important; }
-  .home-stat:nth-child(-n+2) { border-bottom: 1px solid var(--border-light) !important; }
+  /* Stats strip lives in the vertical side rail on mobile — just tighten it up */
+  .home-stats-strip { margin-top: -10px !important; }
+  .home-stat { min-width: 0 !important; padding: 10px 12px !important; }
   .home-stat-num { font-size: 1.3rem !important; }
 }
 

@@ -1751,51 +1751,57 @@ function renderHome() {
         ${chipHtml}
       </div>
 
-      <div class="home-stats-strip">
-        <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-icon">📖</span><div class="home-stat-text"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div></div>
-        <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-icon">🎓</span><div class="home-stat-text"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div></div>
-        <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-icon">🗂</span><div class="home-stat-text"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div></div>
-        <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-icon">★</span><div class="home-stat-text"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div></div>
-      </div>
+      <div class="home-dash-grid">
+        <div class="home-dash-main">
+          ${studying.length ? `
+          <section class="home-section home-section--studying">
+            <div class="home-section-header">
+              <div class="home-section-label">Continuar estudiando</div>
+              <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
+            </div>
+            ${studyFeaturedHtml(studying[0])}
+            ${studying.length > 1 ? `<div class="home-study-scroll">${studying.slice(1, 6).map(studyCompactHtml).join('')}</div>` : ''}
+          </section>` : ''}
 
-      ${studying.length ? `
-      <section class="home-section home-section--studying">
-        <div class="home-section-header">
-          <div class="home-section-label">Continuar estudiando</div>
-          <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
+          ${pinned.length ? `
+          <section class="home-section">
+            <div class="home-section-label"><span class="hsl-icon">⊞</span>Fijadas</div>
+            <div class="home-recent-grid">${pinned.slice(0,6).map(cardHtml).join("")}</div>
+          </section>` : ''}
+
+          ${starred.length ? `
+          <section class="home-section">
+            <div class="home-section-label"><span class="hsl-icon">☆</span>Destacadas</div>
+            <div class="home-recent-grid">${starred.slice(0,6).map(cardHtml).join("")}</div>
+          </section>` : ''}
+
+          ${recent.length ? `
+          <section class="home-section">
+            <div class="home-section-label"><span class="hsl-icon">⟳</span>Visitados recientemente</div>
+            <div class="home-recent-grid">${recent.slice(0, 6).map(cardHtml).join("")}</div>
+          </section>` : `
+          <div class="home-empty">
+            <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
+            <button class="btn-primary large" id="welcomeNewBtn2">+ nueva entrada</button>
+          </div>`}
+
+          <div class="home-radar-teaser">
+            <span class="hrt-icon">⦿</span>
+            <span class="hrt-text">Consulta el <strong>Radar Tech</strong> para mantenerte al día con noticias de IA, Dev y Tech.</span>
+            <button class="hrt-btn" id="homeRadarBtn">Abrir Radar →</button>
+          </div>
         </div>
-        ${studyFeaturedHtml(studying[0])}
-        ${studying.length > 1 ? `<div class="home-study-scroll">${studying.slice(1, 6).map(studyCompactHtml).join('')}</div>` : ''}
-      </section>` : ''}
 
-      <section class="home-section home-section--domain" id="homeDomainSection"></section>
+        <aside class="home-dash-side">
+          <div class="home-stats-strip">
+            <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-icon">📖</span><div class="home-stat-text"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div></div>
+            <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-icon">🎓</span><div class="home-stat-text"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div></div>
+            <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-icon">🗂</span><div class="home-stat-text"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div></div>
+            <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-icon">★</span><div class="home-stat-text"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div></div>
+          </div>
 
-      ${pinned.length ? `
-      <section class="home-section">
-        <div class="home-section-label"><span class="hsl-icon">⊞</span>Fijadas</div>
-        <div class="home-recent-grid">${pinned.slice(0,6).map(cardHtml).join("")}</div>
-      </section>` : ''}
-
-      ${starred.length ? `
-      <section class="home-section">
-        <div class="home-section-label"><span class="hsl-icon">☆</span>Destacadas</div>
-        <div class="home-recent-grid">${starred.slice(0,6).map(cardHtml).join("")}</div>
-      </section>` : ''}
-
-      ${recent.length ? `
-      <section class="home-section">
-        <div class="home-section-label"><span class="hsl-icon">⟳</span>Visitados recientemente</div>
-        <div class="home-recent-grid">${recent.slice(0, 6).map(cardHtml).join("")}</div>
-      </section>` : `
-      <div class="home-empty">
-        <p>Selecciona una entrada del panel izquierdo o crea una nueva.</p>
-        <button class="btn-primary large" id="welcomeNewBtn2">+ nueva entrada</button>
-      </div>`}
-
-      <div class="home-radar-teaser">
-        <span class="hrt-icon">⦿</span>
-        <span class="hrt-text">Consulta el <strong>Radar Tech</strong> para mantenerte al día con noticias de IA, Dev y Tech.</span>
-        <button class="hrt-btn" id="homeRadarBtn">Abrir Radar →</button>
+          <section class="home-section home-section--domain" id="homeDomainSection"></section>
+        </aside>
       </div>
     </div>
   `;
