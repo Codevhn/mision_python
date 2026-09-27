@@ -605,7 +605,7 @@ function renderTree(tree) {
     const catLabel = catData._label || cat;
     const topicsMap = catData._topics || catData;
 
-    if (!treeState[cat]) treeState[cat] = { open: true, topics: {} };
+    if (!treeState[cat]) treeState[cat] = { open: false, topics: {} };
     const catEl = document.createElement("div");
     catEl.className = "tree-category" + (treeState[cat].open ? " open" : "");
     catEl.dataset.cat = cat;
@@ -630,7 +630,7 @@ function renderTree(tree) {
       const topicLabel = topicData._label || topic;
       const entries = topicData._entries || topicData;
 
-      if (!treeState[cat].topics[topic]) treeState[cat].topics[topic] = { open: true };
+      if (!treeState[cat].topics[topic]) treeState[cat].topics[topic] = { open: false };
       const topicEl = document.createElement("div");
       topicEl.className = "tree-topic" + (treeState[cat].topics[topic].open ? " open" : "");
       topicEl.dataset.topic = topic;
