@@ -7752,20 +7752,30 @@ function initCoursesSpace() {
   }
 }
 
-// ── Sidebar auto-expand on hover ─────────────────────────────────────────
+// ── Sidebar expand toggle — explicit click, not accidental hover ────────
 (function initSidebarToggle() {
   function init() {
     const bar = document.getElementById('activityBar');
     if (!bar) return;
-    let leaveTimer = null;
-    bar.addEventListener('mouseenter', () => {
-      clearTimeout(leaveTimer);
-      document.body.classList.add('sidebar-expanded');
-    });
-    bar.addEventListener('mouseleave', () => {
-      leaveTimer = setTimeout(() => {
+
+    const toggleBtn = document.getElementById('abToggleExpand');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.body.classList.toggle('sidebar-expanded');
+      });
+    }
+    // Clicking a nav item while expanded collapses the rail back down,
+    // same as picking a destination closes any other nav flyout.
+    bar.addEventListener('click', (e) => {
+      if (e.target.closest('.ab-item') && e.target.closest('#abToggleExpand') === null) {
         document.body.classList.remove('sidebar-expanded');
-      }, 120);
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (document.body.classList.contains('sidebar-expanded') && !bar.contains(e.target)) {
+        document.body.classList.remove('sidebar-expanded');
+      }
     });
 
     // ⌂ Brand: go to home (show welcome, switch to knowledge space)

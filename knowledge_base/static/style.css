@@ -4348,7 +4348,14 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 
-/* ── Expanded state ── */
+/* ── Expanded state — toggled by an explicit click on #abToggleExpand,
+   not by hovering the rail (that used to auto-expand and cover content
+   just by passing the mouse over it). ── */
+#abToggleExpand { margin-bottom: 2px; }
+body.sidebar-expanded #abToggleExpand {
+  color: var(--accent);
+  background: var(--accent-light);
+}
 body.sidebar-expanded .activity-bar {
   width: var(--activity-bar-expanded-w);
 }
@@ -4742,15 +4749,15 @@ body.sidebar-open .layout {
   --radius: 9px; --radius-sm: 7px; --radius-md: 12px;
   --radius-lg: 16px; --radius-xl: 20px;
 
-  --layer-0: #14161f; --layer-1: #191c28; --layer-2: #1f2330;
-  --layer-3: #262b3a; --layer-4: #2f3547;
+  --layer-0: #141413; --layer-1: #1b1a18; --layer-2: #222120;
+  --layer-3: #2a2927; --layer-4: #333130;
   --bg: var(--layer-0); --bg-sidebar: #1b1a18;
   --bg-surface: #222120; --bg-elevated: #333130;
-  --bg-hover: rgba(255,255,255,0.055); --bg-code: #10121a;
-  --border: rgba(255,255,255,0.09); --border-light: rgba(255,255,255,0.05);
-  --text: #e7e8f0; --text-muted: #9a9fb5; --text-faint: #666c85;
+  --bg-hover: rgba(250,249,245,0.06); --bg-code: #1b1a18;
+  --border: rgba(250,249,245,0.10); --border-light: rgba(250,249,245,0.06);
+  --text: #faf9f5; --text-muted: #b0aea5; --text-faint: #7a776d;
   --glass-blur:   none;
-  --glass-border: rgba(91,140,255,0.12);
+  --glass-border: rgba(250,249,245,0.10);
   --glass-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.06) inset;
 }
 
@@ -5112,7 +5119,11 @@ body {
 .status-dot.status-bloqueado  { background: var(--danger) !important; }
 
 /* ── CONTENT & TITLE ── */
-.content-area { background: transparent !important; }
+/* NOTE: content-area must stay OPAQUE outside the home space — it only goes
+   transparent in ambient mode (body.home-ambient, scoped separately below)
+   so the starfield canvas shows through. An earlier, unscoped version of
+   this rule made every space (Cursos, Team, entries...) transparent too,
+   letting the dark ambient canvas/backdrop bleed through everywhere. */
 .inline-title {
   font-family: var(--font-display) !important; font-size: 2.2rem !important;
   font-weight: 600 !important; letter-spacing: -0.02em !important; color: #faf9f5 !important;
@@ -5173,20 +5184,22 @@ body {
 
 /* ── LIGHT MODE ── */
 [data-theme="light"] {
-  /* Same neutral-grayscale rule as the base light theme above — this block
-     loads later and wins the cascade for these tokens, so it was the one
-     actually producing the tinted look; kept in lockstep with the values
-     above rather than removed, since something later in the file may still
-     rely on this block existing. */
-  --layer-0: #f8f9fc; --layer-1: #f0f2f8; --layer-2: #e9ecf3;
-  --layer-3: #dfe3ee; --layer-4: #d2d7e5;
+  /* This block loads later and wins the cascade for these tokens, so it must
+     be kept in lockstep with the base light theme above (Anthropic brand
+     neutrals) rather than removed, since other rules later in the file
+     still rely on this block existing. It had drifted out of sync with the
+     Claude-style palette above (stale blue-tinted values, and --bg-elevated
+     was literally the DARK theme's hex by copy-paste mistake), which is why
+     course/module views stayed dark even in light mode. */
+  --layer-0: #faf9f5; --layer-1: #f3f1ea; --layer-2: #e8e6dc;
+  --layer-3: #ded9cb; --layer-4: #d3cdbb;
   --bg: var(--layer-0); --bg-sidebar: #f3f1ea;
-  --bg-surface: #f3f1ea; --bg-elevated: #333130;
-  --bg-hover: rgba(20,25,50,0.045); --bg-code: #f1f3f9;
-  --border: rgba(20,25,50,0.10); --border-light: rgba(20,25,50,0.06); --glass-border: rgba(54,103,224,0.10);
-  --text: #12131c; --text-muted: #565b70; --text-faint: #8b90a3;
+  --bg-surface: #e8e6dc; --bg-elevated: #ded9cb;
+  --bg-hover: rgba(20,20,19,0.05); --bg-code: #f1efe6;
+  --border: rgba(20,20,19,0.13); --border-light: rgba(20,20,19,0.08); --glass-border: rgba(20,20,19,0.10);
+  --text: #141413; --text-muted: #6f6d63; --text-faint: #9c9a8d;
   --glass-blur:   none;
-  --glass-shadow: 0 4px 24px rgba(20,25,50,0.10), 0 1px 0 rgba(255,255,255,0.7) inset;
+  --glass-shadow: 0 4px 24px rgba(20,20,19,0.10), 0 1px 0 rgba(255,255,255,0.7) inset;
 }
 [data-theme="light"] body {
   background-color: var(--layer-0) !important;
