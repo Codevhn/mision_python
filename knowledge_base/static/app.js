@@ -3357,6 +3357,28 @@ function initSmartSelects() {
   _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop);
 }
 
+// Curated category → typical-topics reference. Solves "no sé a qué categoría
+// pertenece esto, ni qué tema ponerle": these show up as suggestions even for
+// a category you've never used yet, so there's always something meaningful
+// to pick from instead of a blank slate or (worse) topics from unrelated
+// categories. It's just a starting point — merged with whatever real
+// categories/topics you've already created, and you can still type anything
+// that isn't in this list at all. Add to it any time.
+const _TAXONOMY = {
+  "Python": ["Sintaxis básica", "Estructuras de datos", "Programación orientada a objetos", "Manejo de errores", "Entornos virtuales", "Librerías y paquetes", "Testing", "Concurrencia y async"],
+  "Linux": ["Automatización", "Administración del sistema", "Permisos y usuarios", "Shell scripting", "Procesos y servicios", "Redes"],
+  "Desarrollo Web": ["HTML", "CSS", "JavaScript", "React", "Angular", "Vue", "Node.js", "APIs REST", "Frameworks backend"],
+  "Bases de Datos": ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Modelado de datos", "Índices y rendimiento"],
+  "Git y Control de Versiones": ["GitHub", "Ramas y merges", "Git avanzado", "Flujos de trabajo (Git Flow)"],
+  "DevOps y Automatización": ["Docker", "CI/CD", "GitHub Actions", "Kubernetes", "Infraestructura como código", "Monitoreo"],
+  "Ciberseguridad": ["Hacking ético", "Pentesting", "OWASP Top 10", "Criptografía básica", "Google Dorking"],
+  "Estructuras de Datos y Algoritmos": ["Arrays y listas", "Árboles", "Grafos", "Complejidad (Big O)", "Ordenamiento y búsqueda"],
+  "Redes": ["TCP/IP", "HTTP y HTTPS", "DNS", "Protocolos comunes"],
+  "Entornos Virtuales Python": ["Poetry", "venv", "pip y dependencias"],
+  "Programación": ["Programación orientada a objetos", "Patrones de diseño", "Buenas prácticas", "Paradigmas de programación"],
+  "Herramientas y Entorno": ["Terminal", "Editores e IDEs", "Gestión de paquetes"],
+};
+
 // Shared by the "Nueva entrada" modal and any other place (e.g. "Guardar en
 // Conocimiento") that needs the same category/tema autocomplete + "+ Nueva:"
 // create-on-the-fly behavior, backed by the same _allCategories/_treeCache data.
@@ -3364,9 +3386,12 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
   _buildSmartSelect(catInput, catDrop,
     filter => {
       const f = filter.toLowerCase();
-      const matches = _allCategories
-        .map(c => c.label)
-        .filter(l => !f || l.toLowerCase().includes(f));
+      // Real categories you've already used, plus curated ones you haven't
+      // (so there's always something to browse, not just a blank field).
+      const real = _allCategories.map(c => c.label);
+      const realLower = new Set(real.map(l => l.toLowerCase()));
+      const curated = Object.keys(_TAXONOMY).filter(l => !realLower.has(l.toLowerCase()));
+      const matches = [...real, ...curated].filter(l => !f || l.toLowerCase().includes(f));
       if (filter.trim() && !matches.find(l => l.toLowerCase() === f)) {
         matches.push(`+ Nueva: "${filter.trim()}"`);
       }
@@ -3376,28 +3401,38 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
       catInput.value = val.startsWith('+ Nueva: "') ? val.slice(10, -1) : val;
       // Category changed — clear the topic pick so it isn't stale
       topicInput.value = "";
+      topicInput.placeholder = "Escribe o elige uno…";
     }
   );
 
   _buildSmartSelect(topicInput, topicDrop,
     filter => {
       const f = filter.toLowerCase();
-      // First try topics from selected category
       const catVal = catInput.value.trim().toLowerCase();
-      let catTopics = [];
+      if (!catVal) return []; // nothing to scope suggestions to yet
+
+      // Topics already filed under this exact category…
+      const realTopics = [];
       if (_treeCache) {
         for (const [catKey, catData] of Object.entries(_treeCache)) {
           const label = (catData._label || catKey).toLowerCase();
           if (label === catVal || catKey.toLowerCase() === catVal) {
             const topicsMap = catData._topics || catData;
             for (const [k, td] of Object.entries(topicsMap)) {
-              if (!k.startsWith("_")) catTopics.push(td._label || k);
+              if (!k.startsWith("_")) realTopics.push(td._label || k);
             }
             break;
           }
         }
       }
-      const pool = catTopics.length ? catTopics : _allTopics;
+      // …plus the curated topics typical of that category (if it matches
+      // one), so a category with no entries yet still suggests something
+      // relevant instead of nothing (or, as before, everyone else's topics).
+      const taxKey = Object.keys(_TAXONOMY).find(k => k.toLowerCase() === catVal);
+      const curatedTopics = taxKey ? _TAXONOMY[taxKey] : [];
+      const seen = new Set(realTopics.map(t => t.toLowerCase()));
+      const pool = [...realTopics, ...curatedTopics.filter(t => !seen.has(t.toLowerCase()))];
+
       const matches = pool.filter(t => !f || t.toLowerCase().includes(f));
       if (filter.trim() && !matches.find(t => t.toLowerCase() === f)) {
         matches.push(`+ Nuevo: "${filter.trim()}"`);
@@ -3408,6 +3443,14 @@ function _wireCategoryTopicSmartSelects(catInput, catDrop, topicInput, topicDrop
       topicInput.value = val.startsWith('+ Nuevo: "') ? val.slice(10, -1) : val;
     }
   );
+
+  // No category yet → say so in the topic field instead of silently doing
+  // nothing when it's clicked.
+  topicInput.addEventListener("focus", () => {
+    topicInput.placeholder = catInput.value.trim()
+      ? "Escribe o elige uno…"
+      : "Elige primero una categoría…";
+  });
 }
 
 let _coursesTree = {};
