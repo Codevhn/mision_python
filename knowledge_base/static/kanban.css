@@ -2246,7 +2246,7 @@ kbd {
 .kb-tbl {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(10,12,18,0.82);
+  background: rgba(20,22,31,0.82);
 }
 .kb-tbl thead tr {
   background: rgba(255,255,255,0.08);
@@ -2359,7 +2359,7 @@ kbd {
   backdrop-filter: blur(6px);
 }
 .kb-cal-cell--empty { background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.05); }
-.kb-cal-cell--today { border-color: var(--accent) !important; background: rgba(23,147,209,0.22); }
+.kb-cal-cell--today { border-color: var(--accent) !important; background: rgba(91,140,255,0.22); }
 .kb-cal-cell--dragover { border-color: #fff !important; background: rgba(255,255,255,0.15) !important; outline: 2px dashed rgba(255,255,255,0.5); }
 .kb-cal-card-chip[draggable="true"] { cursor: grab; }
 .kb-cal-card-chip[draggable="true"]:active { cursor: grabbing; }
