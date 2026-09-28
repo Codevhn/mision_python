@@ -2892,7 +2892,7 @@ function openNewModal() {
     iconBtn.dataset.userPicked = "false";
     setIconButtonValue(iconBtn, ENTRY_ICON_DEFAULTS.knowledge, ENTRY_ICON_DEFAULTS.knowledge);
   }
-  setTimeout(() => $("fieldCategory").focus(), 60);
+  setTimeout(() => { _suppressNextSmartSelectDropdown = true; $("fieldCategory").focus(); }, 60);
 }
 
 async function openEditModal() {
@@ -2972,9 +2972,12 @@ function _modalHasUnsavedDraft() {
   }
 }
 
-function requestCloseModal() {
+async function requestCloseModal() {
   if ($("modalOverlay").classList.contains("hidden")) return;
-  if (_modalHasUnsavedDraft() && !confirm("¿Descartar esta entrada? Se perderá lo que escribiste.")) return;
+  if (_modalHasUnsavedDraft()) {
+    const ok = await showConfirm("Descartar entrada", "¿Descartar esta entrada? Se perderá lo que escribiste.", "descartar");
+    if (!ok) return;
+  }
   closeModal();
 }
 
@@ -3173,10 +3176,11 @@ async function deleteEntry() {
   }
 }
 
-function showConfirm(title, msg) {
+function showConfirm(title, msg, okLabel) {
   return new Promise(resolve => {
     $("confirmTitle").textContent = title;
     $("confirmMsg").textContent = msg;
+    $("confirmOk").textContent = okLabel || "eliminar";
     $("confirmOverlay").classList.remove("hidden");
     const cleanup = (result) => {
       $("confirmOverlay").classList.add("hidden");
@@ -3572,6 +3576,12 @@ function _wireTagsInput(inputEl, dropdownEl) {
   inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
 }
 
+// Set right before a programmatic .focus() call (e.g. auto-focusing the
+// category field when a modal opens) so that focus doesn't also pop the
+// dropdown open — only a real click/keyboard focus from the user should do
+// that. Cleared by the very next focus event, whichever field it lands on.
+let _suppressNextSmartSelectDropdown = false;
+
 function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
   function showDropdown(filter) {
     const items = getItems(filter);
@@ -3595,7 +3605,11 @@ function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
   // away to fix instead of having to erase it by hand first. Typing still
   // filters live via the "input" listener below.
   inputEl.addEventListener("click", () => { inputEl.select(); showDropdown(""); });
-  inputEl.addEventListener("focus", () => { inputEl.select(); showDropdown(""); });
+  inputEl.addEventListener("focus", () => {
+    if (_suppressNextSmartSelectDropdown) { _suppressNextSmartSelectDropdown = false; return; }
+    inputEl.select();
+    showDropdown("");
+  });
   inputEl.addEventListener("input", () => showDropdown(inputEl.value));
   inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
   inputEl.addEventListener("keydown", e => {
@@ -4604,7 +4618,7 @@ function openReorgModal({ scope, category, categoryLabel, topic, topicLabel }) {
     topicGroup.classList.remove("hidden");
   }
   $("reorgModalOverlay").classList.remove("hidden");
-  setTimeout(() => $("reorgCategory").focus(), 60);
+  setTimeout(() => { _suppressNextSmartSelectDropdown = true; $("reorgCategory").focus(); }, 60);
 }
 
 function closeReorgModal() {
