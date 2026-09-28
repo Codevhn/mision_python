@@ -3645,30 +3645,85 @@ function initSmartSelects() {
 // categories/topics you've already created, and you can still type anything
 // that isn't in this list at all. Add to it any time — it's plain data.
 const _TAXONOMY = {
-  "Python": ["Sintaxis básica", "Estructuras de datos", "Programación orientada a objetos", "Manejo de errores", "Entornos virtuales", "Librerías y paquetes", "Testing", "Concurrencia y async", "Decoradores y generadores"],
-  "Linux": ["Automatización", "Administración del sistema", "Permisos y usuarios", "Shell scripting", "Procesos y servicios", "Redes", "Systemd y servicios", "Gestión de paquetes (apt/pacman/dnf)"],
-  "Shell y Terminal": ["Bash", "Zsh", "Pipes y redirecciones", "Expresiones regulares", "Scripts de automatización"],
-  "Desarrollo Web": ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Angular", "Vue", "Node.js", "APIs REST", "Frameworks backend", "Responsive design", "Accesibilidad web"],
-  "Backend y APIs": ["REST", "GraphQL", "Autenticación (JWT/OAuth)", "FastAPI", "Django", "Flask", "Express", "Websockets", "Rate limiting"],
-  "Bases de Datos": ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Modelado de datos", "Índices y rendimiento", "Transacciones", "ORMs"],
-  "Git y Control de Versiones": ["GitHub", "Ramas y merges", "Git avanzado", "Flujos de trabajo (Git Flow)", "Rebase e historial", "Pull requests y code review"],
-  "DevOps y Automatización": ["Docker", "CI/CD", "GitHub Actions", "Kubernetes", "Infraestructura como código", "Monitoreo", "Terraform", "Logging y observabilidad"],
-  "Cloud y Contenedores": ["AWS", "Azure", "Google Cloud", "Serverless", "Kubernetes", "Contenedores vs VMs", "Balanceo de carga"],
-  "Ciberseguridad": ["Hacking ético", "Pentesting", "OWASP Top 10", "Criptografía básica", "Google Dorking", "Seguridad de redes", "Análisis de vulnerabilidades", "Ingeniería social"],
-  "Estructuras de Datos y Algoritmos": ["Arrays y listas", "Árboles", "Grafos", "Complejidad (Big O)", "Ordenamiento y búsqueda", "Recursividad", "Programación dinámica", "Hash tables"],
-  "Arquitectura de Software": ["Patrones de diseño", "SOLID", "Microservicios vs monolitos", "Clean Architecture", "Domain-Driven Design", "Escalabilidad"],
-  "Testing y Calidad": ["Pruebas unitarias", "TDD", "Pruebas de integración", "Mocking", "Cobertura de código", "Testing end-to-end"],
-  "Sistemas Operativos": ["Procesos y memoria", "Sistemas de archivos", "Concurrencia", "Virtualización", "Planificación de procesos"],
-  "Redes": ["TCP/IP", "HTTP y HTTPS", "DNS", "Protocolos comunes", "VPN", "Firewalls", "Modelo OSI"],
-  "Inteligencia Artificial y ML": ["Fundamentos de Machine Learning", "Redes neuronales", "NLP", "Modelos de lenguaje (LLMs)", "Scikit-learn", "Prompt engineering"],
-  "Entornos Virtuales Python": ["Poetry", "venv", "pip y dependencias", "Conda"],
-  "Programación": ["Programación orientada a objetos", "Patrones de diseño", "Buenas prácticas", "Paradigmas de programación", "Clean Code", "Refactorización"],
-  "Herramientas y Entorno": ["Terminal", "Editores e IDEs", "Gestión de paquetes", "Atajos y productividad", "Extensiones útiles"],
-  "Desarrollo Móvil": ["Android", "iOS", "React Native", "Flutter", "Publicación en tiendas"],
-  "Matemáticas para Programadores": ["Álgebra lineal", "Probabilidad y estadística", "Lógica y conjuntos", "Notación Big O"],
-  "Técnicas de Estudio": ["Método SMART", "Repetición espaciada", "Técnica Pomodoro", "Mapas mentales", "Toma de notas (Zettelkasten)"],
-  "Carrera y Productividad": ["Entrevistas técnicas", "Currículum técnico", "Gestión del tiempo", "Freelance", "Trabajo remoto"],
+  "Python": ["Sintaxis básica", "Tipos de datos", "Estructuras de datos", "Comprehensions", "Funciones y argumentos", "Programación orientada a objetos", "Herencia y polimorfismo", "Manejo de errores", "Módulos y paquetes", "Entornos virtuales", "Gestión de dependencias (pip/poetry)", "Testing (pytest/unittest)", "Concurrencia y async", "Multiprocessing y threading", "Decoradores", "Generadores e iteradores", "Context managers", "Type hints", "Manejo de archivos e I/O", "Expresiones regulares", "Serialización (JSON/pickle)", "Logging", "Debugging", "Metaclases", "NumPy y Pandas", "Web scraping", "APIs con Python (Flask/FastAPI/Django)", "CLI con argparse/click", "Empaquetado y distribución"],
+  "Linux": ["Automatización", "Administración del sistema", "Permisos y usuarios", "Shell scripting", "Procesos y servicios", "Gestión de paquetes (apt/pacman/dnf)", "Systemd y unidades", "Redes en Linux", "Firewall (iptables/ufw)", "Logs del sistema (journalctl/syslog)", "Compilación desde código fuente", "Sistemas de archivos (ext4/btrfs)", "Montaje de discos y particiones", "LVM", "Kernel y módulos", "SSH y acceso remoto", "Variables de entorno", "Gestión de usuarios y grupos", "Cron y at", "Backup y rsync", "Contenedores en Linux", "Distribuciones (Ubuntu/Arch/Debian/Fedora)", "Recuperación ante fallos", "Monitoreo de recursos (top/htop)"],
+  "Shell y Terminal": ["Bash", "Zsh", "Fish shell", "Pipes y redirecciones", "Expresiones regulares", "Scripts de automatización", "Variables y arrays en Bash", "Funciones en shell scripts", "Alias y configuración (.bashrc/.zshrc)", "Herramientas CLI (grep/sed/awk)", "Manejo de procesos en terminal", "Multiplexores (tmux/screen)", "Personalización del prompt", "Historial de comandos", "Autocompletado", "Comandos de red desde terminal"],
+  "Desarrollo Web": ["HTML", "CSS", "JavaScript", "TypeScript", "DOM y eventos", "React", "Angular", "Vue", "Svelte", "Next.js", "Node.js", "APIs REST", "GraphQL en frontend", "Frameworks CSS (Tailwind/Bootstrap)", "Preprocesadores CSS (Sass/Less)", "Responsive design", "Accesibilidad web", "SEO técnico", "PWA (Progressive Web Apps)", "WebSockets", "Autenticación en frontend", "Gestión de estado (Redux/Zustand/Context)", "Renderizado SSR/SSG", "Web Components", "Animaciones CSS/JS", "Testing frontend (Jest/Cypress)", "Bundlers (Webpack/Vite)", "Optimización de rendimiento web", "Formularios y validación", "Fetch/Axios y consumo de APIs", "Internacionalización (i18n)"],
+  "Backend y APIs": ["REST", "GraphQL", "gRPC", "Autenticación (JWT/OAuth)", "Autorización y roles", "FastAPI", "Django", "Flask", "Express", "NestJS", "Spring Boot", "Websockets", "Rate limiting", "Versionado de APIs", "Documentación de APIs (Swagger/OpenAPI)", "Validación de datos", "Middlewares", "Manejo de sesiones", "Colas de mensajes (RabbitMQ/Kafka)", "Caché (Redis)", "Arquitectura de microservicios", "Webhooks", "Paginación y filtrado", "Seguridad en APIs", "Testing de APIs", "CORS", "Background jobs y tareas asíncronas"],
+  "Bases de Datos": ["SQL", "PostgreSQL", "MySQL", "SQLite", "MongoDB", "Redis", "Cassandra", "Modelado de datos", "Normalización", "Índices y rendimiento", "Transacciones y ACID", "ORMs (SQLAlchemy/Prisma/Sequelize)", "Migraciones de esquema", "Consultas avanzadas (joins/subqueries)", "Procedimientos almacenados", "Backup y recuperación", "Replicación", "Sharding", "Bases de datos NoSQL vs SQL", "Vistas y triggers", "Optimización de queries", "Seguridad en bases de datos", "Bases de datos en la nube (RDS/Firestore)", "Data warehousing", "Bases de datos orientadas a grafos (Neo4j)", "Pool de conexiones"],
+  "Git y Control de Versiones": ["GitHub", "GitLab", "Bitbucket", "Ramas y merges", "Git avanzado", "Flujos de trabajo (Git Flow/Trunk-based)", "Rebase e historial", "Pull requests y code review", "Resolución de conflictos", "Cherry-pick", "Git hooks", "Submódulos", "Tags y releases", ".gitignore y buenas prácticas", "Git stash", "Bisect para depurar", "Monorepos", "Firma de commits (GPG)"],
+  "DevOps y Automatización": ["Docker", "Docker Compose", "CI/CD", "GitHub Actions", "GitLab CI", "Jenkins", "Kubernetes", "Helm", "Infraestructura como código (Terraform)", "Ansible", "Monitoreo (Prometheus/Grafana)", "Logging centralizado (ELK)", "Observabilidad", "Despliegues blue-green", "Despliegues canary", "Gestión de secretos", "Automatización de pruebas en pipelines", "Escalado automático", "Service mesh (Istio)", "Configuración de entornos (dev/staging/prod)", "Rollbacks", "Feature flags", "GitOps", "Artefactos y registries", "SRE (Site Reliability Engineering)"],
+  "Cloud y Contenedores": ["AWS", "Azure", "Google Cloud", "Serverless", "Kubernetes", "Contenedores vs VMs", "Balanceo de carga", "Lambda / Functions as a Service", "Almacenamiento en la nube (S3/Blob)", "Redes en la nube (VPC)", "IAM y permisos en la nube", "Costos y optimización cloud", "CDN", "Auto-scaling", "Multi-cloud", "Orquestación de contenedores", "Registries de contenedores", "Seguridad en la nube", "Bases de datos gestionadas", "Disaster recovery en la nube", "Edge computing"],
+  "Ciberseguridad": ["Hacking ético", "Pentesting", "OWASP Top 10", "Criptografía básica", "Google Dorking", "Seguridad de redes", "Análisis de vulnerabilidades", "Ingeniería social", "Footprinting y reconocimiento", "Escaneo de puertos (Nmap)", "Explotación de vulnerabilidades", "Metasploit", "Seguridad web (XSS/CSRF/SQLi)", "Seguridad en APIs", "Hardening de sistemas", "Análisis forense digital", "Malware y análisis de malware", "Criptografía aplicada (hashing/cifrado)", "Gestión de contraseñas y autenticación", "Seguridad en redes inalámbricas", "Auditorías de seguridad", "CTF (Capture The Flag)", "Bug bounty", "Herramientas de pentesting (Burp Suite)", "Seguridad en la nube", "Zero-day y CVEs", "Phishing y concientización", "Frameworks de seguridad (NIST/ISO 27001)", "Respuesta a incidentes", "Privacidad y protección de datos"],
+  "Estructuras de Datos y Algoritmos": ["Arrays y listas", "Árboles", "Árboles binarios de búsqueda", "Grafos", "Complejidad (Big O)", "Ordenamiento y búsqueda", "Recursividad", "Programación dinámica", "Hash tables", "Pilas y colas", "Listas enlazadas", "Heaps y colas de prioridad", "Algoritmos greedy", "Backtracking", "Divide y vencerás", "Algoritmos de grafos (BFS/DFS/Dijkstra)", "Tries", "Union-Find", "Algoritmos de strings", "Two pointers", "Sliding window", "Bit manipulation", "Entrevistas técnicas de algoritmos", "Segment trees"],
+  "Arquitectura de Software": ["Patrones de diseño", "SOLID", "Microservicios vs monolitos", "Clean Architecture", "Domain-Driven Design", "Escalabilidad", "Arquitectura hexagonal", "Event-driven architecture", "CQRS", "Event sourcing", "Patrones de integración", "Diseño de APIs", "Acoplamiento y cohesión", "Diagramas UML", "Arquitectura en capas", "Diseño para la resiliencia", "Circuit breakers", "Arquitectura de sistemas distribuidos", "Documentación de arquitectura (ADRs)", "Arquitectura serverless"],
+  "Testing y Calidad": ["Pruebas unitarias", "TDD", "Pruebas de integración", "Mocking", "Cobertura de código", "Testing end-to-end", "BDD (Behavior Driven Development)", "Testing de APIs", "Testing de UI", "Frameworks de testing (pytest/Jest/JUnit)", "Pruebas de regresión", "Pruebas de carga y rendimiento", "Pruebas de seguridad", "Automatización de pruebas", "Test doubles (stubs/spies/fakes)", "Debugging efectivo", "Code review", "Linters y análisis estático", "Control de calidad (QA manual)", "Property-based testing"],
+  "Sistemas Operativos": ["Procesos y memoria", "Sistemas de archivos", "Concurrencia", "Virtualización", "Planificación de procesos", "Gestión de memoria (paginación/segmentación)", "Interbloqueos (deadlocks)", "Llamadas al sistema", "Sincronización (semáforos/mutex)", "Sistemas de archivos distribuidos", "Drivers y controladores", "Arranque del sistema (bootloader)", "Windows internals", "macOS internals", "Kernels (monolítico vs microkernel)", "Hilos y multihilo"],
+  "Redes": ["TCP/IP", "HTTP y HTTPS", "DNS", "Protocolos comunes", "VPN", "Firewalls", "Modelo OSI", "Subnetting", "Routing (enrutamiento)", "Switching", "IPv4 vs IPv6", "DHCP", "Proxies y reverse proxies", "Balanceo de carga de red", "Redes inalámbricas (WiFi)", "Seguridad de redes", "Monitoreo de redes", "Análisis de tráfico (Wireshark)", "CDN y distribución de contenido", "Latencia y ancho de banda", "NAT", "Protocolos de aplicación (FTP/SMTP/SSH)"],
+  "Inteligencia Artificial y ML": ["Fundamentos de Machine Learning", "Redes neuronales", "NLP", "Modelos de lenguaje (LLMs)", "Scikit-learn", "Prompt engineering", "Deep learning", "Visión por computadora", "Aprendizaje supervisado", "Aprendizaje no supervisado", "Aprendizaje por refuerzo", "Regresión y clasificación", "Feature engineering", "Overfitting y regularización", "Frameworks de ML (TensorFlow/PyTorch)", "Fine-tuning de modelos", "Embeddings vectoriales", "RAG (retrieval-augmented generation)", "Agentes de IA", "Ética en IA", "MLOps", "Modelos generativos", "Transformers", "Series temporales", "Clustering", "Evaluación de modelos"],
+  "Entornos Virtuales Python": ["Poetry", "venv", "pip y dependencias", "Conda", "virtualenv", "pipenv", "Requirements.txt", "Gestión de versiones de Python (pyenv)", "Empaquetado de proyectos", "Aislamiento de dependencias", "Reproducibilidad de entornos"],
+  "Programación": ["Programación orientada a objetos", "Patrones de diseño", "Buenas prácticas", "Paradigmas de programación", "Clean Code", "Refactorización", "Programación funcional", "Programación declarativa vs imperativa", "Principios DRY/KISS/YAGNI", "Manejo de errores", "Depuración (debugging)", "Complejidad ciclomática", "Nomenclatura y legibilidad", "Documentación de código", "Revisión de código entre pares", "Programación concurrente", "Convenciones de estilo", "Pseudocódigo", "Lógica de programación"],
+  "Herramientas y Entorno": ["Terminal", "Editores e IDEs (VS Code/JetBrains/Vim)", "Gestión de paquetes", "Atajos y productividad", "Extensiones útiles", "Configuración de entorno de desarrollo", "Dotfiles", "Gestores de versiones (nvm/pyenv/rbenv)", "Herramientas de línea de comandos", "Automatización de tareas repetitivas", "Snippets de código", "Debugging tools", "Linters y formateadores (ESLint/Prettier/Black)", "Gestión de proyectos multi-lenguaje", "Temas y personalización del editor"],
+  "Desarrollo Móvil": ["Android", "iOS", "React Native", "Flutter", "Publicación en tiendas (Play Store/App Store)", "Kotlin para Android", "Swift para iOS", "Diseño de interfaces móviles", "Notificaciones push", "Almacenamiento local en apps móviles", "Consumo de APIs desde apps móviles", "Testing de apps móviles", "Rendimiento en apps móviles", "Ciclo de vida de una app", "Permisos y seguridad móvil", "Multiplataforma vs nativo", "Distribución beta (TestFlight/Firebase)"],
+  "Matemáticas para Programadores": ["Álgebra lineal", "Probabilidad y estadística", "Lógica y conjuntos", "Notación Big O", "Combinatoria", "Cálculo básico", "Teoría de grafos", "Matemáticas discretas", "Números y sistemas de numeración (binario/hex)", "Geometría computacional", "Optimización matemática", "Álgebra booleana", "Matrices y vectores aplicados a ML"],
+  "Técnicas de Estudio": ["Método SMART", "Repetición espaciada", "Técnica Pomodoro", "Mapas mentales", "Toma de notas (Zettelkasten)", "Aprendizaje activo", "Método Feynman", "Gestión de la atención", "Planificación de metas de estudio", "Curva del olvido", "Aprendizaje basado en proyectos", "Autoevaluación", "Organización de apuntes", "Lectura técnica efectiva", "Práctica deliberada"],
+  "Carrera y Productividad": ["Entrevistas técnicas", "Currículum técnico", "Gestión del tiempo", "Freelance", "Trabajo remoto", "Negociación salarial", "LinkedIn y marca personal", "Portafolio de proyectos", "Networking profesional", "Certificaciones técnicas", "Soft skills", "Productividad con metodologías ágiles", "Balance vida-trabajo", "Mentoría y crecimiento profesional", "Búsqueda de empleo tech", "Contribución a open source", "Comunicación técnica escrita"],
+  "Diseño UI/UX": ["Principios de diseño visual", "Wireframing", "Prototipado (Figma)", "Diseño centrado en el usuario", "Sistemas de diseño (design systems)", "Tipografía", "Teoría del color", "Usabilidad", "Investigación de usuarios", "Accesibilidad en diseño", "Diseño responsive", "Microinteracciones", "Diseño de flujos de usuario", "Testing de usabilidad", "Diseño de componentes UI"],
+  "Ingeniería de Datos y Big Data": ["ETL y pipelines de datos", "Apache Spark", "Apache Kafka", "Data warehousing", "Data lakes", "Procesamiento por lotes vs streaming", "Airflow y orquestación", "Modelado dimensional", "Calidad de datos", "Bases de datos columnares", "Hadoop", "Ingesta de datos", "Gobernanza de datos"],
+  "Desarrollo de Videojuegos": ["Unity", "Unreal Engine", "Game design", "Física de videojuegos", "Programación de gráficos", "Diseño de niveles", "Inteligencia artificial en videojuegos", "Multijugador y redes en juegos", "Optimización de rendimiento en juegos", "Shaders", "Audio en videojuegos", "Publicación de videojuegos"],
+  "Blockchain y Web3": ["Fundamentos de blockchain", "Smart contracts", "Solidity", "Ethereum", "Criptomonedas", "NFTs", "DeFi (finanzas descentralizadas)", "Wallets y seguridad cripto", "Auditoría de contratos inteligentes", "Consenso (Proof of Work/Stake)"],
+  "Electrónica e IoT": ["Arduino", "Raspberry Pi", "Sensores y actuadores", "Protocolos IoT (MQTT)", "Microcontroladores", "Circuitos básicos", "Domótica", "Comunicación inalámbrica (Bluetooth/Zigbee)", "Prototipado electrónico"],
+  "Otros Lenguajes de Programación": ["Java", "C", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Kotlin", "Swift", "Scala", "Perl", "Lua", "Elixir"],
 };
+
+// Alternate real-world spellings mapped to their canonical taxonomy key —
+// e.g. a category literally named "Hacking" in your own base won't match
+// the "Ciberseguridad" key by exact text, so without this it would never
+// pick up any of its curated topics (only whatever real topics you already
+// filed there). Keys here are pre-normalized (lowercase, no accents).
+const _TAXONOMY_ALIASES = {
+  "hacking": "Ciberseguridad", "hacking etico": "Ciberseguridad", "seguridad": "Ciberseguridad",
+  "seguridad informatica": "Ciberseguridad", "pentesting": "Ciberseguridad", "ciberseguridad": "Ciberseguridad",
+  "bd": "Bases de Datos", "base de datos": "Bases de Datos", "bbdd": "Bases de Datos", "sql": "Bases de Datos",
+  "js": "Desarrollo Web", "javascript": "Desarrollo Web", "frontend": "Desarrollo Web", "front end": "Desarrollo Web", "web": "Desarrollo Web",
+  "backend": "Backend y APIs", "back end": "Backend y APIs", "apis": "Backend y APIs", "api": "Backend y APIs",
+  "devops": "DevOps y Automatización", "ci/cd": "DevOps y Automatización", "cicd": "DevOps y Automatización",
+  "cloud": "Cloud y Contenedores", "contenedores": "Cloud y Contenedores", "docker": "Cloud y Contenedores",
+  "algoritmos": "Estructuras de Datos y Algoritmos", "estructuras de datos": "Estructuras de Datos y Algoritmos", "dsa": "Estructuras de Datos y Algoritmos",
+  "arquitectura": "Arquitectura de Software", "patrones de diseno": "Arquitectura de Software",
+  "testing": "Testing y Calidad", "qa": "Testing y Calidad",
+  "so": "Sistemas Operativos", "sistemas operativos": "Sistemas Operativos",
+  "redes de computadoras": "Redes", "networking": "Redes",
+  "ia": "Inteligencia Artificial y ML", "inteligencia artificial": "Inteligencia Artificial y ML", "machine learning": "Inteligencia Artificial y ML", "ml": "Inteligencia Artificial y ML",
+  "entornos virtuales": "Entornos Virtuales Python", "venv": "Entornos Virtuales Python",
+  "movil": "Desarrollo Móvil", "apps moviles": "Desarrollo Móvil",
+  "matematicas": "Matemáticas para Programadores",
+  "estudio": "Técnicas de Estudio",
+  "productividad": "Carrera y Productividad", "carrera": "Carrera y Productividad",
+  "diseno": "Diseño UI/UX", "ui": "Diseño UI/UX", "ux": "Diseño UI/UX", "ui/ux": "Diseño UI/UX", "uiux": "Diseño UI/UX",
+  "big data": "Ingeniería de Datos y Big Data", "data engineering": "Ingeniería de Datos y Big Data", "ingenieria de datos": "Ingeniería de Datos y Big Data",
+  "videojuegos": "Desarrollo de Videojuegos", "game dev": "Desarrollo de Videojuegos", "juegos": "Desarrollo de Videojuegos",
+  "blockchain": "Blockchain y Web3", "web3": "Blockchain y Web3", "criptomonedas": "Blockchain y Web3",
+  "iot": "Electrónica e IoT", "electronica": "Electrónica e IoT", "hardware": "Electrónica e IoT",
+  "java": "Otros Lenguajes de Programación", "c++": "Otros Lenguajes de Programación", "c#": "Otros Lenguajes de Programación",
+  "go": "Otros Lenguajes de Programación", "golang": "Otros Lenguajes de Programación", "rust": "Otros Lenguajes de Programación",
+  "php": "Otros Lenguajes de Programación", "ruby": "Otros Lenguajes de Programación", "kotlin": "Otros Lenguajes de Programación", "swift": "Otros Lenguajes de Programación",
+};
+
+function _normalizeCatKey(s) {
+  return (s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Resolves any real category name (however it's actually spelled/labeled in
+// your base) to its canonical taxonomy key, via exact match first and the
+// alias table second. Returns null when nothing curated applies.
+function _resolveTaxonomyKey(catVal) {
+  const v = _normalizeCatKey(catVal);
+  if (!v) return null;
+  const exact = Object.keys(_TAXONOMY).find(k => _normalizeCatKey(k) === v);
+  if (exact) return exact;
+  return _TAXONOMY_ALIASES[v] || null;
+}
 
 // Matches the curated taxonomy's topic (and category) names against a
 // title/content string, whole-word so "css" doesn't fire on "processing".
@@ -3695,12 +3750,13 @@ function _categoryExists(label) {
   const v = (label || "").trim().toLowerCase();
   if (!v) return true; // nothing typed yet — not "new"
   if (_allCategories.some(c => c.label.toLowerCase() === v)) return true;
-  return Object.keys(_TAXONOMY).some(k => k.toLowerCase() === v);
+  return !!_resolveTaxonomyKey(label);
 }
 
 // Real topics already filed under `catVal`, plus the curated ones typical of
-// it (if `catVal` matches a taxonomy entry) — shared by the dropdown and the
-// "new" badge so both agree on what counts as an existing topic.
+// it (matched via _resolveTaxonomyKey, so aliases like "Hacking" still find
+// "Ciberseguridad"'s list) — shared by the dropdown and the "new" badge so
+// both agree on what counts as an existing topic.
 function _topicsForCategory(catVal) {
   const v = (catVal || "").trim().toLowerCase();
   const real = [];
@@ -3716,7 +3772,7 @@ function _topicsForCategory(catVal) {
       }
     }
   }
-  const taxKey = v ? Object.keys(_TAXONOMY).find(k => k.toLowerCase() === v) : null;
+  const taxKey = _resolveTaxonomyKey(catVal);
   const curated = taxKey ? _TAXONOMY[taxKey] : [];
   return { real, curated };
 }
