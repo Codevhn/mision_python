@@ -5841,9 +5841,7 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 [data-theme="light"] .course-inline-tree .tree-entry.active,
 [data-theme="light"] .course-inline-tree .tree-entry:hover { color: #0c0c1e !important; opacity: 1 !important; }
 [data-theme="light"] .course-list-name { color: #0c0c1e !important; }
-[data-theme="light"] .cv-roadmap-entry-title { color: #0c0c1e !important; }
 [data-theme="light"] .cv-roadmap-mod-label  { color: #0c0c1e !important; }
-[data-theme="light"] .cv-roadmap-entry { background: var(--bg-elevated) !important; }
 [data-theme="light"] .cv-outline-item { color: #374151 !important; }
 
 /* ── Fase G: Graph View ──────────────────────────────────────────────── */
@@ -6109,7 +6107,7 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 12px;
   padding: 10px 14px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--bg-surface);
   border-left: 3px solid var(--accent);
   border-radius: 0 6px 6px 0;
 }
@@ -6130,14 +6128,14 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   padding: 6px 10px; border-radius: var(--radius-xs);
   cursor: pointer; transition: background 0.12s;
   border: 1px solid var(--border);
-  background: rgba(60,63,65,0.92);
+  background: var(--bg-elevated);
 }
 .cv-roadmap-entry:hover { background: var(--bg-hover); border-color: var(--accent); }
 .cv-roadmap-entry--completado .cv-roadmap-status { color: #22c55e; }
 .cv-roadmap-entry--en_progreso .cv-roadmap-status { color: var(--accent); }
 .cv-roadmap-entry--pendiente .cv-roadmap-status { color: var(--text-muted); }
 .cv-roadmap-status { font-size: 0.8rem; flex-shrink: 0; width: 14px; text-align: center; }
-.cv-roadmap-entry-title { font-size: 0.80rem; color: rgba(255,255,255,0.88); font-weight: 600; }
+.cv-roadmap-entry-title { font-size: 0.80rem; color: var(--text); font-weight: 600; }
 
 /* Stats tab */
 .cv-stats-grid {
