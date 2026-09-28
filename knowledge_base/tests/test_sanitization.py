@@ -36,7 +36,7 @@ def test_wikilink_kept():
 
 def test_code_block_kept():
     html = app_module.render_markdown("```python\nprint(1)\n```")
-    assert 'class="language-python"' in html
+    assert 'class="language-python highlight"' in html
 
 
 def test_table_kept():
