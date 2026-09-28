@@ -1006,6 +1006,7 @@ def get_all_entries():
             "type":     meta.get("type") or "page",
             "category": meta.get("category_label", meta.get("category", "")),
             "topic":    meta.get("topic_label", meta.get("topic", "")),
+            "tags":     meta.get("tags", []),
             "icon":     meta.get("icon", ""),
             "cover":    meta.get("cover", ""),
             "parent_id": meta.get("parent_id"),
@@ -1564,6 +1565,9 @@ def update_entry(entry_id):
         index[entry_id]["topic_label"] = topic
     if icon is not None:
         index[entry_id]["icon"] = icon.strip()
+    if "tags" in data:
+        raw_tags = data.get("tags") or ""
+        index[entry_id]["tags"] = [t.strip().lower() for t in raw_tags.split(",") if t.strip()]
 
     save_index(index)
     return jsonify({"message": "Updated"})

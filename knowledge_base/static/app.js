@@ -304,6 +304,12 @@ function bindEvents() {
   // Warn about a possibly-duplicate entry while typing the title
   $("fieldTitle").addEventListener("input", scheduleDuplicateCheck);
 
+  // Tag autocomplete — wired once, unlike category/topic this field only
+  // exists in this one modal, no need to re-wire per modal-mode switch.
+  if ($("fieldTags") && $("tagsDropdown")) {
+    _wireTagsInput($("fieldTags"), $("tagsDropdown"));
+  }
+
   // Topic custom input toggle
 
   // Kanban sidebar button
@@ -2851,6 +2857,7 @@ function openNewModal() {
   $("fieldTeamspace").value = "";
   $("fieldCourse").value = "";
   $("fieldModule").value = "";
+  if ($("fieldTags")) $("fieldTags").value = "";
   BlockEditor.loadMarkdown("");
   $("previewPane").innerHTML = "";
   $("dupSuggestBox")?.classList.add("hidden");
@@ -2936,6 +2943,7 @@ async function openEditModal() {
     $("courseFields").classList.add("hidden");
     $("fieldCategory").value = m.category_label || m.category;
     $("fieldTopic").value = m.topic_label || m.topic || "";
+    if ($("fieldTags")) $("fieldTags").value = (m.tags || []).join(", ");
   }
 }
 
@@ -3011,6 +3019,7 @@ async function saveEntry() {
   const category = $("fieldCategory").value.trim();
   const topic = getTopicValue();
   const raw_text = content;
+  const tags = $("fieldTags")?.value.trim() || "";
 
   if (mode === "edit") {
     // Metadata-only update — content is auto-saved inline
@@ -3065,7 +3074,7 @@ async function saveEntry() {
     const res = await fetch(`/api/entry/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, category, topic, icon }),
+      body: JSON.stringify({ title, category, topic, icon, tags }),
     });
     if (res.ok) {
       closeModal();
@@ -3080,6 +3089,9 @@ async function saveEntry() {
         currentEntryMeta.topic_label = topic;
         currentEntryMeta.icon = icon;
       }
+      // Re-render (tags bar in particular changes shape — easiest to just
+      // re-fetch the canonical metadata rather than hand-patch the DOM).
+      loadEntry(id, { force: true });
     } else {
       showToast("Error al actualizar", "error");
     }
@@ -3116,7 +3128,7 @@ async function saveEntry() {
     const res = await fetch("/api/entry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, topic, title, raw_text, icon, already_markdown: true }),
+      body: JSON.stringify({ category, topic, title, raw_text, icon, tags, already_markdown: true }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -3401,6 +3413,49 @@ async function loadTopicSuggestions() {
     }
     _allTopics = [...topics].sort();
   } catch {}
+}
+
+// Tag autocomplete — a comma-separated multi-value field, so it can't reuse
+// _buildSmartSelect as-is (that replaces the whole input value on pick;
+// here only the segment after the last comma should be replaced). Pool of
+// suggestions is every tag already used anywhere, pulled from _index
+// (populated by loadTree() from /api/entries, which now includes tags).
+function _tagsAlreadyEntered(value) {
+  return value.split(",").slice(0, -1).map(t => t.trim()).filter(Boolean);
+}
+function _tagsCurrentSegment(value) {
+  const parts = value.split(",");
+  return parts[parts.length - 1].trim();
+}
+function _wireTagsInput(inputEl, dropdownEl) {
+  function allKnownTags() {
+    const set = new Set();
+    if (Array.isArray(_index)) {
+      for (const entry of _index) (entry.tags || []).forEach(t => set.add(t));
+    }
+    return [...set].sort();
+  }
+  function showDropdown() {
+    const already = new Set(_tagsAlreadyEntered(inputEl.value).map(t => t.toLowerCase()));
+    const seg = _tagsCurrentSegment(inputEl.value).toLowerCase();
+    const items = allKnownTags().filter(t => !already.has(t.toLowerCase()) && (!seg || t.toLowerCase().includes(seg)));
+    if (!items.length) { dropdownEl.classList.add("hidden"); return; }
+    dropdownEl.innerHTML = items.map(t => `<div class="ss-item" data-value="${escapeHtml(t)}">${escapeHtml(t)}</div>`).join("");
+    dropdownEl.querySelectorAll(".ss-item").forEach(el => {
+      el.addEventListener("mousedown", e => {
+        e.preventDefault();
+        const before = _tagsAlreadyEntered(inputEl.value);
+        inputEl.value = [...before, el.dataset.value].join(", ") + ", ";
+        dropdownEl.classList.add("hidden");
+        inputEl.focus();
+      });
+    });
+    dropdownEl.classList.remove("hidden");
+  }
+  inputEl.addEventListener("click", showDropdown);
+  inputEl.addEventListener("focus", showDropdown);
+  inputEl.addEventListener("input", showDropdown);
+  inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
 }
 
 function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
