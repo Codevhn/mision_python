@@ -2821,6 +2821,10 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   padding: 32px 40px;
   font-family: var(--font-ui);
 }
+.stats-body-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
 .stats-loading {
   color: var(--text-muted);
   font-size: 0.8rem;

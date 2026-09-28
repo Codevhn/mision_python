@@ -4494,6 +4494,7 @@ async function openStats() {
   }).join("");
 
   $("statsBody").innerHTML = `
+    <div class="stats-body-inner">
     <div class="stats-grid">
       <div class="stats-card">
         <div class="stats-card-label">Total Entries</div>
@@ -4547,6 +4548,7 @@ async function openStats() {
         </div>
       `).join("")}
     </div>` : ""}
+    </div>
   `;
 }
 
