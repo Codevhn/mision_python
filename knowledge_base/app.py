@@ -1745,30 +1745,18 @@ def get_categories():
     return jsonify(cats)
 
 
-@app.route("/api/reorganize-category", methods=["POST"])
-def reorganize_category():
-    """Bulk-reassign category/tema across every matching entry — the single
-    primitive behind the sidebar's 'renombrar/fusionar' tools. Renaming a
-    category, merging two categories, renaming a tema, or moving a tema to a
-    different category are all the same operation: reassign every entry
-    matching (category[, tema]) to a new category/tema label.
-    - match_topic omitted/empty → matches (and moves) the whole category,
-      each entry keeps its own current tema.
-    - new_topic_label omitted/empty → tema is left untouched per entry.
+def _reassign_category_topic(index, match_category, match_topic, new_category_label, new_topic_label, vacated_folders):
+    """Reassign every entry matching (category[, tema]) to a new category/tema
+    label — the single primitive behind renaming a category, merging two
+    categories, renaming a tema, moving a tema to a different category, and
+    merging several categories/temas into one target at once. Mutates `index`
+    and `vacated_folders` in place; returns how many entries moved.
+    - match_topic None → matches (and moves) the whole category, each entry
+      keeps its own current tema.
+    - new_topic_label None → tema is left untouched per entry.
     """
-    data = request.json or {}
-    match_category    = (data.get("match_category") or "").strip()
-    match_topic       = (data.get("match_topic") or "").strip() or None
-    new_category_label = (data.get("new_category_label") or "").strip()
-    new_topic_label    = (data.get("new_topic_label") or "").strip() or None
-
-    if not match_category or not new_category_label:
-        return jsonify({"error": "Faltan campos"}), 400
-
-    index = load_index()
     new_category_slug = slugify(new_category_label)
     moved = 0
-    vacated_folders = set()
 
     for entry_id in list(index.keys()):
         meta = index[entry_id]
@@ -1809,9 +1797,11 @@ def reorganize_category():
         m["topic_label"] = topic_label
         moved += 1
 
-    save_index(index)
+    return moved
 
-    # Best-effort cleanup: remove tema/categoría folders left empty by the move.
+
+def _cleanup_vacated_folders(vacated_folders):
+    # Best-effort cleanup: remove tema/categoría folders left empty by a move.
     # rmdir refuses (and we just ignore it) if anything unexpected is still there.
     for folder in vacated_folders:
         try:
@@ -1819,6 +1809,59 @@ def reorganize_category():
             folder.parent.rmdir()
         except OSError:
             pass
+
+
+@app.route("/api/reorganize-category", methods=["POST"])
+def reorganize_category():
+    """Rename or merge a single category/tema — see _reassign_category_topic."""
+    data = request.json or {}
+    match_category    = (data.get("match_category") or "").strip()
+    match_topic       = (data.get("match_topic") or "").strip() or None
+    new_category_label = (data.get("new_category_label") or "").strip()
+    new_topic_label    = (data.get("new_topic_label") or "").strip() or None
+
+    if not match_category or not new_category_label:
+        return jsonify({"error": "Faltan campos"}), 400
+
+    index = load_index()
+    vacated_folders = set()
+    moved = _reassign_category_topic(index, match_category, match_topic, new_category_label, new_topic_label, vacated_folders)
+    save_index(index)
+    _cleanup_vacated_folders(vacated_folders)
+
+    return jsonify({"moved": moved})
+
+
+@app.route("/api/bulk-merge-categories", methods=["POST"])
+def bulk_merge_categories():
+    """Merge several categories, or several temas within one category, into a
+    single target label in one call — the multi-select version of
+    /api/reorganize-category for cleaning up duplicate/similar labels at once
+    (e.g. "BD", "Bases de datos", "DB" → "Bases de Datos").
+    Body: { sources: [{category, topic?}, ...], new_category_label, new_topic_label? }
+    """
+    data = request.json or {}
+    sources = data.get("sources") or []
+    new_category_label = (data.get("new_category_label") or "").strip()
+    new_topic_label    = (data.get("new_topic_label") or "").strip() or None
+
+    if not isinstance(sources, list) or len(sources) < 2 or not new_category_label:
+        return jsonify({"error": "Faltan campos"}), 400
+
+    index = load_index()
+    vacated_folders = set()
+    moved = 0
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        match_category = (src.get("category") or "").strip()
+        match_topic    = (src.get("topic") or "").strip() or None
+        if not match_category:
+            continue
+        moved += _reassign_category_topic(index, match_category, match_topic, new_category_label, new_topic_label, vacated_folders)
+
+    save_index(index)
+    _cleanup_vacated_folders(vacated_folders)
 
     return jsonify({"moved": moved})
 

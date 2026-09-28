@@ -137,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initStats();
   initContextMenu();
   initReorgModal();
+  initBulkMergeModal();
   initTemplates();
   initHistory();
   initDuplicate();
@@ -4548,6 +4549,185 @@ async function applyReorg() {
   if (currentEntryId) loadEntry(currentEntryId, { force: true });
 }
 
+// ── Fusión masiva de categorías/temas ────────────────────────────────────────
+// "Reorganizar" (arriba) ya fusiona al renombrar UNA categoría/tema hacia una
+// etiqueta ya existente, pero uno a la vez. Esto añade el caso de limpieza:
+// varias categorías o temas duplicados/parecidos (p. ej. "BD", "Bases de
+// datos", "DB") seleccionados a la vez y fusionados en un único destino en
+// una sola llamada, reusando el mismo backend primitivo.
+let _bulkMergeScope = "category"; // "category" | "topic"
+let _bulkMergeSelected = new Set();
+
+function initBulkMergeModal() {
+  $("bulkMergeModalClose")?.addEventListener("click", closeBulkMergeModal);
+  $("bulkMergeCancelBtn")?.addEventListener("click", closeBulkMergeModal);
+  $("bulkMergeModalOverlay")?.addEventListener("click", e => {
+    if (e.target === $("bulkMergeModalOverlay")) closeBulkMergeModal();
+  });
+  $("bulkMergeScopeCategory")?.addEventListener("click", () => _setBulkMergeScope("category"));
+  $("bulkMergeScopeTopic")?.addEventListener("click", () => _setBulkMergeScope("topic"));
+  $("bulkMergeApplyBtn")?.addEventListener("click", applyBulkMerge);
+
+  const catPickerInput = $("bulkMergeCatPicker");
+  const catPickerDrop = $("bulkMergeCatPickerDropdown");
+  if (catPickerInput && catPickerDrop) {
+    _buildSmartSelect(catPickerInput, catPickerDrop,
+      filter => {
+        const f = filter.toLowerCase();
+        return _allCategories.map(c => c.label).filter(l => !f || l.toLowerCase().includes(f));
+      },
+      val => {
+        catPickerInput.value = val;
+        _bulkMergeSelected.clear();
+        $("bulkMergeTarget").value = "";
+        $("bulkMergeTarget").placeholder = "Nombre destino…";
+        _renderBulkMergeSourceList();
+        _refreshBulkMergeApplyState();
+      }
+    );
+    catPickerInput.addEventListener("input", () => {
+      _bulkMergeSelected.clear();
+      _renderBulkMergeSourceList();
+      _refreshBulkMergeApplyState();
+    });
+  }
+
+  const targetInput = $("bulkMergeTarget");
+  const targetDrop = $("bulkMergeTargetDropdown");
+  if (targetInput && targetDrop) {
+    _buildSmartSelect(targetInput, targetDrop,
+      filter => {
+        const f = filter.toLowerCase();
+        const pool = _bulkMergeScope === "category"
+          ? _allCategories.map(c => c.label)
+          : _topicsForCategory(catPickerInput.value).real;
+        const matches = pool.filter(l => !f || l.toLowerCase().includes(f));
+        if (filter.trim() && !matches.find(l => l.toLowerCase() === f)) {
+          matches.push(`+ Nueva: "${filter.trim()}"`);
+        }
+        return matches;
+      },
+      val => {
+        targetInput.value = val.startsWith('+ Nueva: "') ? val.slice(10, -1) : val;
+        _refreshBulkMergeApplyState();
+      }
+    );
+    targetInput.addEventListener("input", _refreshBulkMergeApplyState);
+  }
+}
+
+function _setBulkMergeScope(scope) {
+  _bulkMergeScope = scope;
+  _bulkMergeSelected.clear();
+  $("bulkMergeScopeCategory").classList.toggle("active", scope === "category");
+  $("bulkMergeScopeTopic").classList.toggle("active", scope === "topic");
+  $("bulkMergeCatPickerGroup").classList.toggle("hidden", scope !== "topic");
+  $("bulkMergeTarget").value = "";
+  $("bulkMergeTarget").placeholder = scope === "category" ? "Nombre destino…" : "Elige primero una categoría…";
+  _renderBulkMergeSourceList();
+  _refreshBulkMergeApplyState();
+}
+
+function openBulkMergeModal() {
+  _bulkMergeScope = "category";
+  _bulkMergeSelected = new Set();
+  $("bulkMergeCatPicker").value = "";
+  $("bulkMergeTarget").value = "";
+  $("bulkMergeTarget").placeholder = "Nombre destino…";
+  $("bulkMergeScopeCategory").classList.add("active");
+  $("bulkMergeScopeTopic").classList.remove("active");
+  $("bulkMergeCatPickerGroup").classList.add("hidden");
+  _renderBulkMergeSourceList();
+  _refreshBulkMergeApplyState();
+  $("bulkMergeModalOverlay").classList.remove("hidden");
+}
+
+function closeBulkMergeModal() {
+  $("bulkMergeModalOverlay").classList.add("hidden");
+}
+
+function _bulkMergeSourceItems() {
+  if (!_treeCache) return [];
+  if (_bulkMergeScope === "category") {
+    return Object.entries(_treeCache).map(([slug, catData]) => {
+      const count = Object.values(catData._topics || {}).reduce((sum, t) => sum + (t._entries?.length || 0), 0);
+      return { slug, label: catData._label || slug, count };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+  }
+  const catLabel = $("bulkMergeCatPicker").value.trim().toLowerCase();
+  if (!catLabel) return [];
+  const catEntry = Object.entries(_treeCache).find(([slug, d]) => (d._label || slug).toLowerCase() === catLabel);
+  if (!catEntry) return [];
+  const [, catData] = catEntry;
+  return Object.entries(catData._topics || {}).map(([slug, topicData]) => ({
+    slug, label: topicData._label || slug, count: topicData._entries?.length || 0,
+  })).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function _renderBulkMergeSourceList() {
+  const container = $("bulkMergeSourceList");
+  const items = _bulkMergeSourceItems();
+  if (!items.length) {
+    container.innerHTML = `<p class="text-muted">${_bulkMergeScope === "topic" && !$("bulkMergeCatPicker").value.trim() ? "Elige primero una categoría." : "No hay elementos para fusionar."}</p>`;
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <label class="bulk-merge-item">
+      <input type="checkbox" data-slug="${escapeHtml(item.slug)}" ${_bulkMergeSelected.has(item.slug) ? "checked" : ""} />
+      <span class="bulk-merge-item-label">${escapeHtml(item.label)}</span>
+      <span class="bulk-merge-count">${item.count}</span>
+    </label>
+  `).join("");
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) _bulkMergeSelected.add(cb.dataset.slug);
+      else _bulkMergeSelected.delete(cb.dataset.slug);
+      _refreshBulkMergeApplyState();
+    });
+  });
+}
+
+function _refreshBulkMergeApplyState() {
+  const target = $("bulkMergeTarget").value.trim();
+  const enough = _bulkMergeSelected.size >= 2;
+  const catReady = _bulkMergeScope === "category" || $("bulkMergeCatPicker").value.trim();
+  $("bulkMergeApplyBtn").disabled = !(enough && target && catReady);
+}
+
+async function applyBulkMerge() {
+  const target = $("bulkMergeTarget").value.trim();
+  if (_bulkMergeSelected.size < 2 || !target) return;
+
+  let sources, body;
+  if (_bulkMergeScope === "category") {
+    sources = [..._bulkMergeSelected].map(slug => ({ category: slug }));
+    body = { sources, new_category_label: target };
+  } else {
+    const catLabel = $("bulkMergeCatPicker").value.trim();
+    const catEntry = Object.entries(_treeCache || {}).find(([slug, d]) => (d._label || slug).toLowerCase() === catLabel.toLowerCase());
+    if (!catEntry) return;
+    const [catSlug] = catEntry;
+    sources = [..._bulkMergeSelected].map(slug => ({ category: catSlug, topic: slug }));
+    body = { sources, new_category_label: catLabel, new_topic_label: target };
+  }
+
+  const res = await fetch("/api/bulk-merge-categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    showToast("Error al fusionar", "error");
+    return;
+  }
+  const data = await res.json();
+  closeBulkMergeModal();
+  showToast(`${data.moved} entrada(s) fusionadas`);
+  await loadTree();
+  Promise.all([loadCategorySuggestions(), loadTopicSuggestions()]).then(initSmartSelects);
+  if (currentEntryId) loadEntry(currentEntryId, { force: true });
+}
+
 
 // ============================================================
 // NEW FEATURE: INTERACTIVE CHECKBOXES
@@ -5496,6 +5676,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.getElementById('cmPasteMd')?.click(); } },
     { id: 'act:broken-links', label: 'Buscar enlaces rotos', icon: '🔗', group: 'Herramientas', shortcut: null,
       run: () => { openBrokenLinksModal(); } },
+    { id: 'act:bulk-merge',  label: 'Fusionar categorías/temas', icon: '⊕', group: 'Herramientas', shortcut: null,
+      run: () => { openBulkMergeModal(); } },
     // Sistema
     { id: 'act:theme',       label: 'Cambiar tema',         icon: '◐', group: 'Sistema', shortcut: null,
       run: () => { document.getElementById('themeToggle')?.click(); } },
