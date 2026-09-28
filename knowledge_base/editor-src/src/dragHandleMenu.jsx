@@ -31,6 +31,38 @@ function isMatchingItem(block, item) {
   );
 }
 
+// A code block's raw text, e.g. pasted/written markdown source sitting
+// inside it (`## Título`, `**negrita**`, numbered steps...) rather than real
+// code.
+function inlineText(block) {
+  return (block.content || [])
+    .map((item) => (item && item.type === "text" ? item.text : ""))
+    .join("");
+}
+
+// Converting a codeBlock into some other type used to just relabel it,
+// leaving markdown syntax sitting there as literal text (a "## Título" stays
+// exactly that instead of becoming a real heading). Turning code *into* a
+// code block already runs text through the editor's own markdown engine
+// (pasteCode.js); this is the reverse direction, reusing that same engine
+// (tryParseMarkdownToBlocks) so undoing an accidental/no-longer-wanted code
+// block gets back real headings/bold/lists instead of a wall of raw syntax.
+// Only kicks in when the parse actually finds structure (>1 resulting
+// block) — plain text with no markdown just falls through to the normal
+// single-type conversion below, respecting whatever type was clicked.
+function convertBlock(editor, block, item) {
+  if (block.type === "codeBlock" && item.type !== "codeBlock") {
+    const text = inlineText(block);
+    const parsed = text ? editor.tryParseMarkdownToBlocks(text) : null;
+    if (parsed && parsed.length > 1) {
+      editor.replaceBlocks([block.id], parsed);
+      return;
+    }
+  }
+  const props = item.type === "codeBlock" ? codeBlockPropsFor(block) : item.props;
+  editor.updateBlock(block, { type: item.type, props });
+}
+
 // The list of block types offered by the drag handle: the canonical text
 // blocks (same set and labels as the native "Turn into" selector) plus the
 // app's custom codeBlock.
@@ -89,16 +121,7 @@ export function DragHandleMenu() {
             checked={isCurrent}
             onClick={() => {
               editor.focus();
-              editor.transact(() => {
-                const props =
-                  item.type === "codeBlock"
-                    ? codeBlockPropsFor(block)
-                    : item.props;
-                editor.updateBlock(block, {
-                  type: item.type,
-                  props,
-                });
-              });
+              editor.transact(() => convertBlock(editor, block, item));
             }}
           >
             {item.name}
