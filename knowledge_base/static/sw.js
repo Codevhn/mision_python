@@ -1,4 +1,4 @@
-const CACHE = 'atlas-v2';
+const CACHE = 'atlas-v3';
 const PRECACHE = [
   '/',
   '/static/style.css',
@@ -30,19 +30,22 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Static assets: cache-first (fast loads)
+  // Static assets: network-first, cached copy only as an offline fallback.
+  // Cache-first-forever (the old strategy) meant a deploy that fixed a JS/CSS
+  // bug never actually reached a browser that had already cached the buggy
+  // version — no amount of redeploying helps until that one cache entry
+  // happens to get evicted or the CACHE version above gets bumped. Checking
+  // the network first costs nothing when online (which is the common case)
+  // and still works offline via the fallback.
   if (url.pathname.startsWith('/static/')) {
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(res => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return res;
-        });
-      })
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
     );
     return;
   }
