@@ -1216,6 +1216,28 @@ def share_page(token):
     )
 
 
+def _canonical_category_label(index, category_slug):
+    """If a knowledge entry already files under this category slug, reuse its
+    label instead of whatever casing/spacing was just typed — otherwise
+    "Linux" and "linux " land in the same folder but show a different label
+    in the sidebar depending on which entry happened to be created first."""
+    for meta in index.values():
+        if meta.get("type") in ("course", "teamspace", "page"):
+            continue
+        if meta.get("category") == category_slug and meta.get("category_label"):
+            return meta["category_label"]
+    return None
+
+
+def _canonical_topic_label(index, category_slug, topic_slug):
+    for meta in index.values():
+        if meta.get("type") in ("course", "teamspace", "page"):
+            continue
+        if meta.get("category") == category_slug and meta.get("topic") == topic_slug and meta.get("topic_label"):
+            return meta["topic_label"]
+    return None
+
+
 @app.route("/api/entry", methods=["POST"])
 def create_entry():
     data = request.json
@@ -1307,7 +1329,14 @@ def create_entry():
     if not all([category, topic]):
         return jsonify({"error": "Missing fields"}), 400
 
-    folder = KNOWLEDGE_DIR / slugify(category) / slugify(topic)
+    category_slug = slugify(category)
+    topic_slug = slugify(topic)
+    # Reuse the label already on file for this slug, if any, instead of
+    # whatever casing was just typed (see _canonical_category_label).
+    category = _canonical_category_label(index, category_slug) or category
+    topic = _canonical_topic_label(index, category_slug, topic_slug) or topic
+
+    folder = KNOWLEDGE_DIR / category_slug / topic_slug
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"{entry_id}.md").write_text(md_content)
 
@@ -1315,9 +1344,9 @@ def create_entry():
     index[entry_id] = {
         "uid": new_uid,
         "title": title,
-        "category": slugify(category),
+        "category": category_slug,
         "category_label": category,
-        "topic": slugify(topic),
+        "topic": topic_slug,
         "topic_label": topic,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "status": "pendiente",
@@ -1435,6 +1464,12 @@ def update_entry(entry_id):
     # Knowledge entry — update file if content provided, move if cat/topic changed
     new_category = slugify(category) if category else meta["category"]
     new_topic    = slugify(topic)    if topic    else meta["topic"]
+    # Reuse the label already on file for this slug, if any (see
+    # _canonical_category_label) — same reasoning as create_entry.
+    if category:
+        category = _canonical_category_label(index, new_category) or category
+    if topic:
+        topic = _canonical_topic_label(index, new_category, new_topic) or topic
     new_folder   = KNOWLEDGE_DIR / new_category / new_topic
     new_folder.mkdir(parents=True, exist_ok=True)
     new_path     = new_folder / f"{entry_id}.md"
