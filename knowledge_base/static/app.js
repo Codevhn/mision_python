@@ -4402,9 +4402,13 @@ function initStats() {
 async function openStats() {
   $("statsOverlay").classList.remove("hidden");
   $("statsBody").innerHTML = '<div class="stats-loading">loading stats…</div>';
-  const res = await fetch("/api/stats");
+  const [res, progressRes] = await Promise.all([
+    fetch("/api/stats"),
+    fetch("/api/knowledge/progress").catch(() => null),
+  ]);
   if (!res.ok) { $("statsBody").innerHTML = '<div class="stats-loading">error loading stats</div>'; return; }
   const s = await res.json();
+  const progress = progressRes && progressRes.ok ? await progressRes.json() : null;
 
   const maxCount = s.chart.reduce((m, c) => Math.max(m, c.count), 0) || 1;
   const BAR_MAX = 30;
@@ -4452,6 +4456,27 @@ async function openStats() {
       <div class="stats-section-title">entries per category</div>
       ${chartRows}
     </div>
+    ${progress && progress.categories.length ? `
+    <div class="stats-chart">
+      <div class="stats-section-title">progreso por categoría — ${progress.overall_completion_pct}% completado en total</div>
+      ${progress.categories.map(c => `
+        <div class="progress-row">
+          <div class="progress-row-head">
+            <span class="progress-row-label">${escapeHtml(c.label)}</span>
+            <span class="progress-row-pct">${c.completion_pct}%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:${c.completion_pct}%"></div>
+          </div>
+          <div class="progress-row-sub">
+            ${c.completado} completada${c.completado === 1 ? "" : "s"} ·
+            ${c.en_progreso} en progreso ·
+            ${c.pendiente} pendiente${c.pendiente === 1 ? "" : "s"}
+            ${c.tracked ? ` · ${c.tracked} en repaso` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>` : ""}
   `;
 }
 
@@ -5813,6 +5838,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { openBulkMergeModal(); } },
     { id: 'act:review-queue', label: 'Repasar entradas pendientes', icon: '🔁', group: 'Herramientas', shortcut: null,
       run: () => { openReviewQueueModal(); } },
+    { id: 'act:stats',       label: 'Ver estadísticas y progreso', icon: '📊', group: 'Herramientas', shortcut: null,
+      run: () => { openStats(); } },
     // Sistema
     { id: 'act:theme',       label: 'Cambiar tema',         icon: '◐', group: 'Sistema', shortcut: null,
       run: () => { document.getElementById('themeToggle')?.click(); } },

@@ -2893,6 +2893,42 @@ body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
   text-align: right;
 }
 
+.progress-row { margin-bottom: 16px; }
+.progress-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.progress-row-label {
+  font-size: 0.8rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.progress-row-pct {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--accent);
+}
+.progress-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.progress-row-sub {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
 /* ============================================================
    FEATURE 7 — CONTEXT MENU (category export)
    ============================================================ */

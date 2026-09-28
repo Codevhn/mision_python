@@ -1983,6 +1983,48 @@ def get_stats():
     })
 
 
+@app.route("/api/knowledge/progress")
+def get_knowledge_progress():
+    """Per-category progress dashboard for the Conocimiento base: completion
+    status breakdown (pendiente/en_progreso/completado) plus how many entries
+    are under active spaced-repetition tracking — /api/stats only counts
+    entries per category, this is the "how far along" complement to it."""
+    index = load_index()
+    reviews = load_entry_review()
+    categories = {}
+
+    for entry_id, meta in index.items():
+        if meta.get("type") in ("course", "teamspace", "page"):
+            continue
+        cat = meta["category"]
+        entry = categories.setdefault(cat, {
+            "category": cat,
+            "label": meta.get("category_label", cat),
+            "total": 0, "pendiente": 0, "en_progreso": 0, "completado": 0,
+            "tracked": 0,
+        })
+        entry["total"] += 1
+        status = meta.get("status", "pendiente")
+        if status not in ("pendiente", "en_progreso", "completado"):
+            status = "pendiente"
+        entry[status] += 1
+        if entry_id in reviews:
+            entry["tracked"] += 1
+
+    result = []
+    for entry in categories.values():
+        entry["completion_pct"] = round(entry["completado"] / entry["total"] * 100) if entry["total"] else 0
+        result.append(entry)
+    result.sort(key=lambda c: c["completion_pct"])
+
+    overall_total = sum(c["total"] for c in result)
+    overall_done = sum(c["completado"] for c in result)
+    return jsonify({
+        "categories": result,
+        "overall_completion_pct": round(overall_done / overall_total * 100) if overall_total else 0,
+    })
+
+
 # ── FEATURE 7: Bulk export by category ─────────────────────────────────────
 @app.route("/api/export/category/<category>/md")
 def export_category_md(category):
