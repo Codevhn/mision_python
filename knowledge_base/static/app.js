@@ -265,13 +265,13 @@ function bindEvents() {
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("moreAI").addEventListener("click",        () => $("aiBtn").click());
   $("morePasteMd").addEventListener("click",   () => $("pasteMarkdownBtn").click());
-  $("modalClose").addEventListener("click", closeModal);
-  $("cancelBtn").addEventListener("click", closeModal);
+  $("modalClose").addEventListener("click", requestCloseModal);
+  $("cancelBtn").addEventListener("click", requestCloseModal);
   $("saveBtn").addEventListener("click", saveEntry);
   $("editBtn").addEventListener("click", openEditModal);
   $("deleteBtn").addEventListener("click", deleteEntry);
   $("exportBtn").addEventListener("click", openExportModal);
-  $("modalOverlay").addEventListener("click", e => { if (e.target === $("modalOverlay")) closeModal(); });
+  $("modalOverlay").addEventListener("click", e => { if (e.target === $("modalOverlay")) requestCloseModal(); });
 
   // Search
   let searchTimer;
@@ -2869,6 +2869,27 @@ async function openEditModal() {
   }
 }
 
+// Whether the "Nueva entrada" modal currently holds a draft that would be
+// silently lost if closed — a stray click on the dark overlay used to
+// discard it instantly with zero warning. Only matters for brand-new
+// entries: an "edit" already exists on disk, so closing it loses nothing.
+function _modalHasUnsavedDraft() {
+  if ($("saveBtn")?.dataset.mode !== "new") return false;
+  const fields = ["fieldTitle", "fieldCategory", "fieldTopic", "fieldCourse", "fieldModule", "fieldTeamspace"];
+  if (fields.some(id => $(id)?.value.trim())) return true;
+  try {
+    return !!(window.BlockEditor && BlockEditor.getMarkdown().trim());
+  } catch {
+    return false;
+  }
+}
+
+function requestCloseModal() {
+  if ($("modalOverlay").classList.contains("hidden")) return;
+  if (_modalHasUnsavedDraft() && !confirm("¿Descartar esta entrada? Se perderá lo que escribiste.")) return;
+  closeModal();
+}
+
 function closeModal() {
   $("modalOverlay").classList.add("hidden");
   $("modal").classList.remove("modal--new-mode");
@@ -3329,7 +3350,13 @@ function _buildSmartSelect(inputEl, dropdownEl, getItems, onSelect) {
     dropdownEl.classList.remove("hidden");
   }
 
-  inputEl.addEventListener("click", () => showDropdown(inputEl.value));
+  // Clicking/focusing an already-filled field reopens the FULL list (not
+  // just the one item matching what's already in there) and selects the
+  // text, so picking the wrong option by mistake is one click-and-type
+  // away to fix instead of having to erase it by hand first. Typing still
+  // filters live via the "input" listener below.
+  inputEl.addEventListener("click", () => { inputEl.select(); showDropdown(""); });
+  inputEl.addEventListener("focus", () => { inputEl.select(); showDropdown(""); });
   inputEl.addEventListener("input", () => showDropdown(inputEl.value));
   inputEl.addEventListener("blur", () => setTimeout(() => dropdownEl.classList.add("hidden"), 150));
   inputEl.addEventListener("keydown", e => {
