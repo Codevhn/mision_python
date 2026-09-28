@@ -503,27 +503,36 @@ async function fetchCategorySuggestion() {
   const content = $("fieldContent").value.trim();
   if (!title && !content) { box.classList.add("hidden"); return; }
 
-  let data;
+  let suggestions = [];
   try {
     const res = await fetch("/api/suggest-category", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, content }),
     });
-    if (!res.ok) { box.classList.add("hidden"); return; }
-    data = await res.json();
+    if (res.ok) suggestions = (await res.json()).suggestions || [];
   } catch {
-    box.classList.add("hidden");
-    return;
+    // Keep going — the taxonomy fallback below doesn't need the network.
   }
 
-  const suggestions = data.suggestions || [];
+  // The backend only knows categories/topics you've actually used before —
+  // a brand-new category with zero entries gets nothing from it. Fill any
+  // remaining slots from the curated _TAXONOMY by matching its topic names
+  // against the typed title/content, so a first-time category still gets a
+  // sensible suggestion instead of silence.
+  const seen = new Set(suggestions.map(s => `${s.category}|${s.topic}`.toLowerCase()));
+  for (const s of _taxonomySuggestions(title, content)) {
+    const key = `${s.category}|${s.topic}`.toLowerCase();
+    if (!seen.has(key)) { suggestions.push(s); seen.add(key); }
+  }
+  suggestions = suggestions.slice(0, 3);
+
   if (!suggestions.length) { box.classList.add("hidden"); return; }
 
   box.innerHTML = '<span class="cat-suggest-label">💡 se parece a:</span>' + suggestions.map(s => `
     <button type="button" class="cat-suggest-chip" data-cat="${escapeHtml(s.category)}" data-topic="${escapeHtml(s.topic)}">
       ${escapeHtml(s.category)} › ${escapeHtml(s.topic)}
-      <span class="cat-suggest-why">— por "${escapeHtml(s.example_title)}"</span>
+      <span class="cat-suggest-why">${s.example_title ? `— por "${escapeHtml(s.example_title)}"` : "— sugerido"}</span>
     </button>`).join('');
   box.querySelectorAll(".cat-suggest-chip").forEach(chip => {
     chip.addEventListener("click", () => {
@@ -3477,6 +3486,27 @@ const _TAXONOMY = {
   "Técnicas de Estudio": ["Método SMART", "Repetición espaciada", "Técnica Pomodoro", "Mapas mentales", "Toma de notas (Zettelkasten)"],
   "Carrera y Productividad": ["Entrevistas técnicas", "Currículum técnico", "Gestión del tiempo", "Freelance", "Trabajo remoto"],
 };
+
+// Matches the curated taxonomy's topic (and category) names against a
+// title/content string, whole-word so "css" doesn't fire on "processing".
+// Used to give the 💡 suggestion box something to say for a category you've
+// never used before, which the keyword-overlap-against-real-entries backend
+// endpoint has no way to know about.
+function _taxonomySuggestions(title, content) {
+  const text = `${title} ${content}`.toLowerCase();
+  if (!text.trim()) return [];
+  const results = [];
+  const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const [category, topics] of Object.entries(_TAXONOMY)) {
+    for (const topic of topics) {
+      const re = new RegExp(`\\b${escapeRe(topic.toLowerCase())}\\b`, "i");
+      if (re.test(text)) {
+        results.push({ category, topic, example_title: null });
+      }
+    }
+  }
+  return results;
+}
 
 function _categoryExists(label) {
   const v = (label || "").trim().toLowerCase();
