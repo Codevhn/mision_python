@@ -8,3 +8,6 @@ env/
 
 # Uploaded images (runtime-generated, must never be committed)
 knowledge_base/static/covers/
+
+# Automatic periodic backups (runtime-generated, must never be committed)
+knowledge_base/data/backups/

@@ -11,6 +11,8 @@ import time
 import secrets
 import urllib.request
 import xml.etree.ElementTree as ET
+import zipfile
+import io
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import deque
@@ -120,6 +122,74 @@ else:
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 INDEX_FILE = DATA_DIR / "index.json"
+
+# ---- BACKUPS ----
+# data/*.json (index, courses, kanban, mindmaps, relations) + every knowledge/
+# *.md live only on this instance's disk (or its DATA_ROOT volume, if set) —
+# a bad deploy, a full-disk write, or a stray delete has nothing to fall
+# back on. BACKUP_DIR holds periodic snapshots (auto, pruned to the last
+# BACKUP_KEEP) so an in-app mistake is recoverable; /api/export-all (see
+# below) additionally lets a real download land on the user's own machine,
+# which is the only thing that survives losing the volume itself.
+BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_KEEP = 7
+BACKUP_MIN_INTERVAL = timedelta(hours=24)
+
+
+def _build_backup_zip_bytes():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in DATA_DIR.glob("*.json"):
+            zf.write(path, arcname=f"data/{path.name}")
+        for path in KNOWLEDGE_DIR.rglob("*.md"):
+            zf.write(path, arcname=f"knowledge/{path.relative_to(KNOWLEDGE_DIR)}")
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def _maybe_run_periodic_backup():
+    """Lazy, request-triggered maintenance instead of a background thread —
+    simpler than coordinating a scheduler across gunicorn's worker processes,
+    and "checked once when the app is opened" is plenty for a personal KB.
+    Whichever worker happens to serve the "/" request that crosses the
+    interval does the write; the mtime check on disk is what keeps every
+    other worker/request from also doing it."""
+    try:
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        existing = sorted(BACKUP_DIR.glob("backup-*.zip"))
+        if existing:
+            last_mtime = datetime.fromtimestamp(existing[-1].stat().st_mtime)
+            if datetime.now() - last_mtime < BACKUP_MIN_INTERVAL:
+                return
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        (BACKUP_DIR / f"backup-{stamp}.zip").write_bytes(_build_backup_zip_bytes())
+        # Re-list after writing so the count/order below always reflects
+        # what's actually on disk, rather than reasoning about off-by-ones.
+        all_backups = sorted(BACKUP_DIR.glob("backup-*.zip"))
+        for stale in all_backups[:-BACKUP_KEEP]:
+            stale.unlink(missing_ok=True)
+    except Exception:
+        # Backups are a safety net, not core functionality — never let a
+        # backup failure break the page load that triggered the check.
+        pass
+
+
+@app.before_request
+def _periodic_backup_hook():
+    if request.path == "/":
+        _maybe_run_periodic_backup()
+
+
+@app.route("/api/export-all")
+def export_all():
+    data = _build_backup_zip_bytes()
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return send_file(
+        io.BytesIO(data),
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"atlas-backup-{stamp}.zip",
+    )
 
 
 def load_index():
