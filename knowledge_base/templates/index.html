@@ -311,6 +311,7 @@
               <button class="ctx-more-item" id="cmHistory">Historial</button>
               <button class="ctx-more-item" id="cmDuplicate">Duplicar</button>
               <button class="ctx-more-item" id="cmMove">Mover</button>
+              <button class="ctx-more-item" id="cmSrs">🔁 Repaso (repetición espaciada)</button>
               <button class="ctx-more-item hidden" id="cmSaveKnowledge">★ Guardar en Conocimiento</button>
               <button class="ctx-more-item hidden" id="cmMindmap">✺ Generar mapa mental</button>
               <div class="ctx-menu-sep"></div>
@@ -486,6 +487,7 @@
             <button class="btn-ghost secondary-action" id="pinBtn">⊞ pin</button>
             <button class="btn-ghost secondary-action" id="dupBtn">⎘ dup</button>
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
+            <button class="btn-ghost secondary-action" id="srsBtn">🔁 repaso</button>
             <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ AI</button>
             <button class="btn-ghost secondary-action" id="pasteMarkdownBtn" title="Pegar Markdown">↓ md</button>
@@ -500,6 +502,7 @@
               <button class="btn-ghost" id="morePin">⊞ pin</button>
               <button class="btn-ghost" id="moreDup">⎘ dup</button>
               <button class="btn-ghost" id="moreMove">⇄ move</button>
+              <button class="btn-ghost" id="moreSrs">🔁 repaso</button>
               <button class="btn-ghost hidden" id="moreSaveKnowledge">★ a conocimiento</button>
               <button class="btn-ghost hidden" id="moreMindmap">✺ mapa mental</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
@@ -525,6 +528,16 @@
           <div class="move-panel-actions">
             <button class="btn-ghost" id="moveCancelBtn">cancel</button>
             <button class="btn-primary" id="moveApplyBtn">apply</button>
+          </div>
+        </div>
+
+        <!-- SRS PANEL (repetición espaciada) -->
+        <div class="move-panel hidden" id="srsPanel">
+          <p class="srs-panel-info" id="srsPanelInfo">¿Qué tan bien recordabas esta entrada?</p>
+          <div class="move-panel-actions">
+            <button class="btn-ghost" id="srsAgainBtn">Otra vez</button>
+            <button class="btn-ghost" id="srsGoodBtn">Bien</button>
+            <button class="btn-primary" id="srsEasyBtn">Fácil</button>
           </div>
         </div>
 
@@ -1406,6 +1419,19 @@
         <button class="modal-close" id="brokenLinksModalClose">×</button>
       </div>
       <div class="modal-body" id="brokenLinksBody" style="max-height:60vh;overflow-y:auto">
+        <p class="text-muted" style="padding:8px 0">Buscando…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW QUEUE MODAL (repetición espaciada) -->
+  <div class="modal-overlay hidden" id="reviewQueueModalOverlay">
+    <div class="modal" id="reviewQueueModal" style="max-width:560px">
+      <div class="modal-header">
+        <h2>🔁 Repasar entradas</h2>
+        <button class="modal-close" id="reviewQueueModalClose">×</button>
+      </div>
+      <div class="modal-body" id="reviewQueueBody" style="max-height:60vh;overflow-y:auto">
         <p class="text-muted" style="padding:8px 0">Buscando…</p>
       </div>
     </div>

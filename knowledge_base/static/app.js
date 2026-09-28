@@ -142,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHistory();
   initDuplicate();
   initMove();
+  initSrs();
   initSaveKnowledge();
   initPin();
   initStatus();
@@ -261,6 +262,7 @@ function bindEvents() {
   $("morePin").addEventListener("click",       () => $("pinBtn").click());
   $("moreDup").addEventListener("click",       () => $("dupBtn").click());
   $("moreMove").addEventListener("click",      () => $("moveBtn").click());
+  $("moreSrs")?.addEventListener("click",      () => $("srsBtn").click());
   $("moreSaveKnowledge")?.addEventListener("click", openSaveKnowledgePanel);
   $("moreMindmap")?.addEventListener("click", () => _generateMindmapForCurrentLesson());
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
@@ -2197,6 +2199,13 @@ async function loadEntry(id, opts = {}) {
   const moveBtnEl = $("moveBtn");
   if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
 
+  // "Repaso" (repetición espaciada) only applies to knowledge entries — course
+  // lessons already have their own SM-2 via "Dominio"/conceptos.
+  const srsBtnEl = $("srsBtn");
+  if (srsBtnEl) srsBtnEl.style.display = m.type ? "none" : "";
+  $("cmSrs")?.classList.toggle("hidden", !!m.type);
+  $("srsPanel")?.classList.add("hidden");
+
   // "Guardar en Conocimiento" / "Generar mapa mental" only apply to course lessons
   const isCourseLesson = m.type === "course";
   $("cmSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
@@ -3293,6 +3302,69 @@ async function openBrokenLinksModal() {
     });
   } catch {
     body.innerHTML = '<p class="text-muted" style="padding:8px 0">Error al buscar enlaces rotos.</p>';
+  }
+}
+
+// ---- REVIEW QUEUE (repetición espaciada para entradas de Conocimiento) ----
+async function openReviewQueueModal() {
+  const overlay = $('reviewQueueModalOverlay');
+  const body = $('reviewQueueBody');
+  if (!overlay || !body) return;
+  overlay.classList.remove('hidden');
+  const close = () => overlay.classList.add('hidden');
+  $('reviewQueueModalClose').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+  await _renderReviewQueue();
+}
+
+async function _renderReviewQueue() {
+  const body = $('reviewQueueBody');
+  body.innerHTML = '<p class="text-muted" style="padding:8px 0">Buscando…</p>';
+  try {
+    const res = await fetch('/api/review/due');
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const due = data.due || [];
+    if (!due.length) {
+      body.innerHTML = '<p class="text-muted" style="padding:8px 0">✓ No tienes repasos pendientes por ahora.</p>';
+      return;
+    }
+    body.innerHTML = due.map(d => `
+      <div class="review-queue-row" data-id="${escapeHtml(d.id)}">
+        <div class="review-queue-info">
+          <div class="review-queue-title">${escapeHtml(d.title)}</div>
+          <div class="review-queue-meta">${escapeHtml(d.category)} › ${escapeHtml(d.topic)} · ${d.overdue_days > 0 ? `${d.overdue_days} día(s) de retraso` : 'vence hoy'}</div>
+        </div>
+        <div class="review-queue-actions">
+          <button class="btn-ghost review-queue-open" data-id="${escapeHtml(d.id)}">Ver</button>
+          <button class="btn-ghost review-queue-grade" data-id="${escapeHtml(d.id)}" data-grade="again">Otra vez</button>
+          <button class="btn-ghost review-queue-grade" data-id="${escapeHtml(d.id)}" data-grade="good">Bien</button>
+          <button class="btn-primary review-queue-grade" data-id="${escapeHtml(d.id)}" data-grade="easy">Fácil</button>
+        </div>
+      </div>
+    `).join('');
+    body.querySelectorAll('.review-queue-open').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('reviewQueueModalOverlay').classList.add('hidden');
+        loadEntry(btn.dataset.id);
+      });
+    });
+    body.querySelectorAll('.review-queue-grade').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const res = await fetch(`/api/entry/${btn.dataset.id}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grade: btn.dataset.grade }),
+        });
+        if (!res.ok) { showToast('Error al registrar repaso', 'error'); return; }
+        const state = await res.json();
+        showToast(`Próximo repaso en ${state.interval} día(s)`);
+        await _renderReviewQueue();
+        if (currentEntryId === btn.dataset.id) refreshSrsPanel();
+      });
+    });
+  } catch {
+    body.innerHTML = '<p class="text-muted" style="padding:8px 0">Error al cargar la cola de repaso.</p>';
   }
 }
 
@@ -5115,6 +5187,7 @@ async function loadMoveCatSuggestions() {
 function toggleMovePanel() {
   const panel = $("movePanel");
   if (panel.classList.contains("hidden")) {
+    $("srsPanel")?.classList.add("hidden");
     fetch(`/api/entry/${currentEntryId}`).then(r => r.json()).then(data => {
       const m = data.meta;
       $("moveCat").value = m.category_label || m.category;
@@ -5160,6 +5233,65 @@ async function applyMove() {
   } else {
     showToast("Error al mover", "error");
   }
+}
+
+// ============================================================
+// NEW FEATURE: REPETICIÓN ESPACIADA (entradas de Conocimiento)
+// ============================================================
+// Independiente del SM-2 de "Dominio" (que repasa conceptos de Cursos): esto
+// deja repasar cualquier entrada suelta de Conocimiento. Opt-in — una entrada
+// no entra a la cola de "Repasar" hasta que se califica al menos una vez
+// desde aquí, así no aparecen de golpe entradas viejas sin relación.
+function initSrs() {
+  $("srsBtn")?.addEventListener("click", toggleSrsPanel);
+  $("srsAgainBtn")?.addEventListener("click", () => gradeSrs("again"));
+  $("srsGoodBtn")?.addEventListener("click", () => gradeSrs("good"));
+  $("srsEasyBtn")?.addEventListener("click", () => gradeSrs("easy"));
+}
+
+function toggleSrsPanel() {
+  const panel = $("srsPanel");
+  if (!panel) return;
+  if (panel.classList.contains("hidden")) {
+    closeMovePanel();
+    panel.classList.remove("hidden");
+    refreshSrsPanel();
+  } else {
+    panel.classList.add("hidden");
+  }
+}
+
+async function refreshSrsPanel() {
+  const info = $("srsPanelInfo");
+  if (!info || !currentEntryId) return;
+  try {
+    const res = await fetch(`/api/entry/${currentEntryId}/review`);
+    const state = await res.json();
+    if (!state.next_review_at) {
+      info.textContent = "Aún no programaste repasos para esta entrada. ¿Qué tan bien la recordabas?";
+      return;
+    }
+    const next = new Date(state.next_review_at);
+    const days = Math.max(0, Math.ceil((next - new Date()) / 86400000));
+    info.textContent = days === 0
+      ? "Repaso pendiente para hoy. ¿Qué tan bien la recordabas?"
+      : `Próximo repaso en ${days} día${days === 1 ? "" : "s"}. ¿Cómo te fue esta vez?`;
+  } catch {
+    info.textContent = "¿Qué tan bien recordabas esta entrada?";
+  }
+}
+
+async function gradeSrs(grade) {
+  if (!currentEntryId) return;
+  const res = await fetch(`/api/entry/${currentEntryId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grade }),
+  });
+  if (!res.ok) { showToast("Error al registrar repaso", "error"); return; }
+  const state = await res.json();
+  showToast(`Próximo repaso en ${state.interval} día(s)`);
+  $("srsPanel").classList.add("hidden");
 }
 
 // ============================================================
@@ -5618,6 +5750,7 @@ function buildBreadcrumb(meta) {
   $("cmHistory")?.addEventListener("click",   () => { $("historyBtn")?.click();      _closeCtxMenu(); });
   $("cmDuplicate")?.addEventListener("click", () => { $("dupBtn")?.click();          _closeCtxMenu(); });
   $("cmMove")?.addEventListener("click",      () => { $("moveBtn")?.click();         _closeCtxMenu(); });
+  $("cmSrs")?.addEventListener("click",       () => { $("srsBtn")?.click();          _closeCtxMenu(); });
   $("cmSaveKnowledge")?.addEventListener("click", () => { openSaveKnowledgePanel();   _closeCtxMenu(); });
   $("cmMindmap")?.addEventListener("click",   () => { _generateMindmapForCurrentLesson(); _closeCtxMenu(); });
   $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
@@ -5678,6 +5811,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { openBrokenLinksModal(); } },
     { id: 'act:bulk-merge',  label: 'Fusionar categorías/temas', icon: '⊕', group: 'Herramientas', shortcut: null,
       run: () => { openBulkMergeModal(); } },
+    { id: 'act:review-queue', label: 'Repasar entradas pendientes', icon: '🔁', group: 'Herramientas', shortcut: null,
+      run: () => { openReviewQueueModal(); } },
     // Sistema
     { id: 'act:theme',       label: 'Cambiar tema',         icon: '◐', group: 'Sistema', shortcut: null,
       run: () => { document.getElementById('themeToggle')?.click(); } },

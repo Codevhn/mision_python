@@ -3175,6 +3175,37 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   gap: 8px;
   justify-content: flex-end;
 }
+.srs-panel-info {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 0 0 10px;
+}
+
+.review-queue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+.review-queue-row:last-child { border-bottom: none; }
+.review-queue-title {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.review-queue-meta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.review-queue-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
 
 /* ============================================================
    FEATURE: PIN ENTRIES

@@ -2308,6 +2308,104 @@ def restore_entry_history_snapshot(entry_id, timestamp):
     return jsonify({"ok": True, "markdown": content})
 
 
+# ── FEATURE: Repetición espaciada para entradas de Conocimiento ─────────────
+# Independiente del SM-2 de "Dominio" (que trackea conceptos de Cursos): esto
+# trackea entradas sueltas de la base de Conocimiento que el usuario decide
+# repasar. Un mismo simplified-SM-2 (sin la escala 0-5, solo 3 botones estilo
+# Anki) pero como archivo propio — una entrada nunca entra a la cola de repaso
+# hasta que se califica al menos una vez (opt-in), así no aparecen de golpe
+# cientos de entradas viejas sin relación con "quiero repasar esto".
+ENTRY_REVIEW_FILE = DATA_DIR / "entry_review.json"
+
+
+def load_entry_review():
+    if ENTRY_REVIEW_FILE.exists():
+        return json.loads(ENTRY_REVIEW_FILE.read_text())
+    return {}
+
+
+def save_entry_review(data):
+    tmp = ENTRY_REVIEW_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, ENTRY_REVIEW_FILE)
+
+
+@app.route("/api/entry/<entry_id>/review", methods=["GET"])
+def get_entry_review(entry_id):
+    state = load_entry_review().get(entry_id)
+    return jsonify(state or {})
+
+
+@app.route("/api/entry/<entry_id>/review", methods=["POST"])
+def review_entry(entry_id):
+    """Grade how well the user remembered this entry — 'again' / 'good' /
+    'easy' — and reschedule its next review, same idea as /api/concepts/review
+    but simpler (no quality float, just the three-button grade)."""
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+
+    grade = (request.json or {}).get("grade", "").strip().lower()
+    if grade not in ("again", "good", "easy"):
+        return jsonify({"error": "grade debe ser again/good/easy"}), 400
+
+    reviews = load_entry_review()
+    state = reviews.get(entry_id, {"ease": 2.5, "interval": 0, "reps": 0})
+
+    if grade == "again":
+        state["reps"] = 0
+        state["interval"] = 1
+        state["ease"] = max(1.3, state["ease"] - 0.2)
+    else:
+        state["reps"] += 1
+        if state["reps"] == 1:
+            base_interval = 1
+        elif state["reps"] == 2:
+            base_interval = 3
+        else:
+            base_interval = max(1, round(state["interval"] * state["ease"]))
+        if grade == "easy":
+            state["interval"] = max(1, round(base_interval * 1.3))
+            state["ease"] = min(2.8, state["ease"] + 0.15)
+        else:
+            state["interval"] = base_interval
+            state["ease"] = min(2.8, state["ease"] + 0.05)
+
+    state["last_grade"] = grade
+    state["last_reviewed_at"] = datetime.now().isoformat(timespec="seconds")
+    state["next_review_at"] = (datetime.now() + timedelta(days=state["interval"])).isoformat(timespec="seconds")
+
+    reviews[entry_id] = state
+    save_entry_review(reviews)
+    return jsonify({"entry_id": entry_id, **state})
+
+
+@app.route("/api/review/due", methods=["GET"])
+def get_review_due():
+    """Entries under active spaced-repetition tracking whose next review is
+    due now, most overdue first — the queue behind the 'Repasar' tool."""
+    index = load_index()
+    reviews = load_entry_review()
+    now = datetime.now()
+    due = []
+    for entry_id, state in reviews.items():
+        meta = index.get(entry_id)
+        if not meta or not state.get("next_review_at"):
+            continue
+        next_review = datetime.fromisoformat(state["next_review_at"])
+        if next_review > now:
+            continue
+        due.append({
+            "id": entry_id,
+            "title": meta.get("title", entry_id),
+            "category": meta.get("category_label") or meta.get("category", ""),
+            "topic": meta.get("topic_label") or meta.get("topic", ""),
+            "overdue_days": max(0, (now - next_review).days),
+        })
+    due.sort(key=lambda d: d["overdue_days"], reverse=True)
+    return jsonify({"due": due, "count": len(due)})
+
+
 # ── FEATURE: Backlinks ──────────────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/children")
 def get_children(entry_id):
