@@ -4,6 +4,7 @@ import re
 import difflib
 import subprocess
 import shutil
+import sqlite3
 import unicodedata
 import uuid
 import base64
@@ -121,7 +122,8 @@ else:
     DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
-INDEX_FILE = DATA_DIR / "index.json"
+INDEX_FILE = DATA_DIR / "index.json"  # legacy JSON store — kept only as the one-time migration source, see load_index()
+INDEX_DB_FILE = DATA_DIR / "index.db"
 
 # ---- BACKUPS ----
 # data/*.json (index, courses, kanban, mindmaps, relations) + every knowledge/
@@ -136,11 +138,34 @@ BACKUP_KEEP = 7
 BACKUP_MIN_INTERVAL = timedelta(hours=24)
 
 
+def _snapshot_index_db_bytes():
+    """A raw copy of index.db's file bytes could land mid-write or miss
+    recent commits still sitting in its WAL journal — SQLite's own online
+    backup API instead produces a fully consistent, complete snapshot no
+    matter what a concurrent writer is doing."""
+    if not INDEX_DB_FILE.exists():
+        return None
+    src = sqlite3.connect(INDEX_DB_FILE)
+    tmp_path = DATA_DIR / "_index_snapshot.tmp.db"
+    try:
+        dst = sqlite3.connect(tmp_path)
+        with dst:
+            src.backup(dst)
+        dst.close()
+        return tmp_path.read_bytes()
+    finally:
+        src.close()
+        tmp_path.unlink(missing_ok=True)
+
+
 def _build_backup_zip_bytes():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in DATA_DIR.glob("*.json"):
             zf.write(path, arcname=f"data/{path.name}")
+        index_db_bytes = _snapshot_index_db_bytes()
+        if index_db_bytes is not None:
+            zf.writestr("data/index.db", index_db_bytes)
         for path in KNOWLEDGE_DIR.rglob("*.md"):
             zf.write(path, arcname=f"knowledge/{path.relative_to(KNOWLEDGE_DIR)}")
     buf.seek(0)
@@ -192,11 +217,55 @@ def export_all():
     )
 
 
+def _index_db_connect():
+    conn = sqlite3.connect(INDEX_DB_FILE, timeout=5, isolation_level=None)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("CREATE TABLE IF NOT EXISTS entries (entry_id TEXT PRIMARY KEY, meta TEXT NOT NULL)")
+    return conn
+
+
+def _migrate_index_json_to_sqlite_if_needed(conn):
+    """One-shot: the first time index.db is opened with no rows in it yet,
+    import whatever is in the legacy data/index.json (if any) so switching
+    to SQLite never loses entries that already existed. index.json itself is
+    left on disk untouched afterwards (harmless extra backup) — it's simply
+    never written to again once this has run.
+
+    Production runs 2 gunicorn worker processes, so the very first requests
+    after a deploy can both see an empty table and race to migrate at once —
+    INSERT OR IGNORE makes that harmless (whichever commits first wins, the
+    other's now-redundant insert is silently skipped) instead of raising a
+    primary-key error on the loser."""
+    count = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+    if count > 0 or not INDEX_FILE.exists():
+        return
+    try:
+        legacy = json.loads(INDEX_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+    if not legacy:
+        return
+    conn.execute("BEGIN")
+    try:
+        conn.executemany(
+            "INSERT OR IGNORE INTO entries (entry_id, meta) VALUES (?, ?)",
+            [(entry_id, json.dumps(meta, ensure_ascii=False)) for entry_id, meta in legacy.items()],
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
 def load_index():
-    if INDEX_FILE.exists():
-        index = json.loads(INDEX_FILE.read_text())
-    else:
-        index = {}
+    conn = _index_db_connect()
+    try:
+        _migrate_index_json_to_sqlite_if_needed(conn)
+        rows = conn.execute("SELECT entry_id, meta FROM entries").fetchall()
+    finally:
+        conn.close()
+    index = {entry_id: json.loads(meta) for entry_id, meta in rows}
     # One-shot migration: assign uid to any entry that lacks one
     changed = False
     for meta in index.values():
@@ -209,17 +278,27 @@ def load_index():
 
 
 def save_index(index):
-    # Same atomic write-then-rename pattern already used by save_relations/
-    # save_mindmaps/save_quizzes/etc below — this was the one save function
-    # still writing the target file directly. Two requests that both touch
-    # the index around the same time (e.g. a bulk delete's parallel DELETE
-    # calls) could have a reader land mid-write on the truncated-but-not-
-    # yet-rewritten file and blow up with a JSONDecodeError; os.replace() is
-    # atomic, so a concurrent read always sees either the old or the new
-    # complete file, never a partial one.
-    tmp = INDEX_FILE.with_suffix('.tmp')
-    tmp.write_text(json.dumps(index, indent=2, ensure_ascii=False))
-    os.replace(tmp, INDEX_FILE)
+    # Callers always load the whole dict, mutate it, and save it back whole
+    # (same contract the old JSON file had) — so replacing every row inside
+    # one transaction is behaviorally identical to the previous whole-file
+    # rewrite, just against SQLite instead of a single JSON blob. The
+    # transaction is what os.replace()'s atomic rename used to guarantee for
+    # the JSON file: a crash or a concurrent read mid-save never sees a
+    # half-written state, only the complete old or complete new version.
+    conn = _index_db_connect()
+    try:
+        conn.execute("BEGIN")
+        conn.execute("DELETE FROM entries")
+        conn.executemany(
+            "INSERT INTO entries (entry_id, meta) VALUES (?, ?)",
+            [(entry_id, json.dumps(meta, ensure_ascii=False)) for entry_id, meta in index.items()],
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
 
 
 def slugify(text):

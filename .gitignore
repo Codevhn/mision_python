@@ -11,3 +11,9 @@ knowledge_base/static/covers/
 
 # Automatic periodic backups (runtime-generated, must never be committed)
 knowledge_base/data/backups/
+
+# Entries index (runtime-generated SQLite DB, migrated once from index.json —
+# see load_index() in app.py; index.json itself stays tracked as the seed)
+knowledge_base/data/index.db
+knowledge_base/data/index.db-wal
+knowledge_base/data/index.db-shm

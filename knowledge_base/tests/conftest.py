@@ -26,11 +26,13 @@ def client(tmp_path, monkeypatch):
     knowledge_dir = tmp_path / "knowledge"
     data_dir.mkdir()
     knowledge_dir.mkdir()
-    (data_dir / "index.json").write_text("{}")
 
     monkeypatch.setattr(app_module, "DATA_DIR", data_dir)
     monkeypatch.setattr(app_module, "KNOWLEDGE_DIR", knowledge_dir)
+    # No legacy index.json in the tmp dir, so load_index() starts from an
+    # empty index.db with nothing to migrate — same as a brand new install.
     monkeypatch.setattr(app_module, "INDEX_FILE", data_dir / "index.json")
+    monkeypatch.setattr(app_module, "INDEX_DB_FILE", data_dir / "index.db")
     monkeypatch.setattr(app_module, "BACKUP_DIR", data_dir / "backups")
     monkeypatch.setattr(app_module, "ENTRY_REVIEW_FILE", data_dir / "entry_review.json")
     monkeypatch.setattr(app_module, "COURSES_FILE", data_dir / "courses.json")
