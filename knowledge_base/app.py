@@ -2571,6 +2571,39 @@ def resolve_wikilink():
     return jsonify({"id": None})
 
 
+_WIKILINK_RE = re.compile(r'\[\[(.+?)\]\]')
+
+
+@app.route("/api/broken-links")
+def get_broken_links():
+    """Scan every entry's markdown for [[Title]] wikilinks and report the
+    ones that don't resolve to any existing title — the same check
+    resolve_wikilink does per-link when a page happens to be open, but run
+    proactively across the whole knowledge base instead of one page at a
+    time. Read-only; fixing a broken link is still done by hand in the
+    editor (renaming the link or the target entry)."""
+    index = load_index()
+    known_titles = {meta["title"].strip().lower() for meta in index.values() if meta.get("title")}
+
+    broken = []
+    for entry_id, meta in index.items():
+        if meta.get("type") in ("teamspace",):
+            continue
+        path = _entry_path(entry_id, meta)
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in _WIKILINK_RE.finditer(text):
+            link_text = match.group(1).strip()
+            if link_text.lower() not in known_titles:
+                broken.append({
+                    "source_id": entry_id,
+                    "source_title": meta.get("title", entry_id),
+                    "link_text": link_text,
+                })
+    return jsonify({"broken_links": broken})
+
+
 # ── COURSES ENTITY ─────────────────────────────────────────────────────────
 COURSES_FILE = DATA_DIR / "courses.json"
 

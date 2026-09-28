@@ -4989,6 +4989,36 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Broken wikilinks report */
+.text-muted { color: var(--text-muted); font-size: 0.85rem; }
+.broken-link-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.broken-link-row:last-child { border-bottom: none; }
+.broken-link-row:hover { background: var(--bg-hover); }
+.broken-link-source {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.broken-link-target {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.broken-link-missing {
+  color: var(--danger);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 [data-theme="light"] .export-fmt-btn {
   background: rgba(0,0,0,0.03);
   border-color: rgba(0,0,0,0.12);

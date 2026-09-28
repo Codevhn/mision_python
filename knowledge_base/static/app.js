@@ -3254,6 +3254,47 @@ function openExportModal() {
   };
 }
 
+// ---- BROKEN WIKILINKS REPORT ----
+// processWikilinks() already flags a broken [[...]] when a page happens to
+// be open (per-link, reactive); this scans every entry at once via
+// /api/broken-links so a stale/renamed link doesn't just sit undiscovered
+// on a page nobody's visited in months.
+async function openBrokenLinksModal() {
+  const overlay = $('brokenLinksModalOverlay');
+  const body = $('brokenLinksBody');
+  if (!overlay || !body) return;
+  overlay.classList.remove('hidden');
+  const close = () => overlay.classList.add('hidden');
+  $('brokenLinksModalClose').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  body.innerHTML = '<p class="text-muted" style="padding:8px 0">Buscando…</p>';
+  try {
+    const res = await fetch('/api/broken-links');
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const links = data.broken_links || [];
+    if (!links.length) {
+      body.innerHTML = '<p class="text-muted" style="padding:8px 0">✓ No se encontraron enlaces rotos.</p>';
+      return;
+    }
+    body.innerHTML = links.map(l => `
+      <div class="broken-link-row" data-id="${escapeHtml(l.source_id)}">
+        <div class="broken-link-source">${escapeHtml(l.source_title)}</div>
+        <div class="broken-link-target">→ [[${escapeHtml(l.link_text)}]] <span class="broken-link-missing">no existe</span></div>
+      </div>
+    `).join('');
+    body.querySelectorAll('.broken-link-row').forEach(row => {
+      row.addEventListener('click', () => {
+        close();
+        loadEntry(row.dataset.id);
+      });
+    });
+  } catch {
+    body.innerHTML = '<p class="text-muted" style="padding:8px 0">Error al buscar enlaces rotos.</p>';
+  }
+}
+
 // ---- SHARE (public read-only link, no auth) ----
 function _shareUrlFor(token) {
   return `${location.origin}/share/${token}`;
@@ -5453,6 +5494,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.getElementById('cmToc')?.click(); } },
     { id: 'act:paste-md',    label: 'Pegar Markdown',       icon: '↓', group: 'Herramientas', shortcut: null,
       run: () => { document.getElementById('cmPasteMd')?.click(); } },
+    { id: 'act:broken-links', label: 'Buscar enlaces rotos', icon: '🔗', group: 'Herramientas', shortcut: null,
+      run: () => { openBrokenLinksModal(); } },
     // Sistema
     { id: 'act:theme',       label: 'Cambiar tema',         icon: '◐', group: 'Sistema', shortcut: null,
       run: () => { document.getElementById('themeToggle')?.click(); } },
