@@ -301,6 +301,9 @@ function bindEvents() {
   $("fieldTitle").addEventListener("input", scheduleCategorySuggest);
   $("fieldContent").addEventListener("input", scheduleCategorySuggest);
 
+  // Warn about a possibly-duplicate entry while typing the title
+  $("fieldTitle").addEventListener("input", scheduleDuplicateCheck);
+
   // Topic custom input toggle
 
   // Kanban sidebar button
@@ -411,6 +414,63 @@ function autoExtractTitle() {
   const match = firstLine.match(/^#{1,3}\s+(.+)/);
   if (match) {
     $("fieldTitle").value = match[1].trim();
+  }
+}
+
+// ---- POSSIBLE-DUPLICATE TITLE WARNING (new knowledge entries only) ----
+// Purely client-side (title/category/topic for every entry are already in
+// _index from loadTree()) — no new endpoint needed. Dice's coefficient over
+// letter bigrams: cheap, no dependency, and forgiving of word order/small
+// typos, which is exactly the kind of near-duplicate a straight string
+// comparison would miss (e.g. "CRON planificador" vs "Planificador CRON").
+function _titleBigrams(str) {
+  const s = str.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+  const grams = [];
+  for (let i = 0; i < s.length - 1; i++) grams.push(s.slice(i, i + 2));
+  return grams;
+}
+function _titleSimilarity(a, b) {
+  const ga = _titleBigrams(a), gb = _titleBigrams(b);
+  if (!ga.length || !gb.length) return 0;
+  const counts = new Map();
+  for (const g of ga) counts.set(g, (counts.get(g) || 0) + 1);
+  let matches = 0;
+  for (const g of gb) {
+    const c = counts.get(g) || 0;
+    if (c > 0) { matches++; counts.set(g, c - 1); }
+  }
+  return (2 * matches) / (ga.length + gb.length);
+}
+
+let _dupCheckTimer = null;
+function scheduleDuplicateCheck() {
+  clearTimeout(_dupCheckTimer);
+  _dupCheckTimer = setTimeout(checkPossibleDuplicate, 350);
+}
+
+function checkPossibleDuplicate() {
+  const box = $("dupSuggestBox");
+  if (!box) return;
+  const title = ($("fieldTitle")?.value || "").trim();
+  const editingId = $("saveBtn")?.dataset.mode === "edit" ? $("saveBtn").dataset.id : null;
+
+  if (title.length < 4 || !Array.isArray(_index)) { box.classList.add("hidden"); return; }
+
+  let best = null;
+  let bestScore = 0;
+  for (const entry of _index) {
+    if (!entry.title || entry.id === editingId) continue;
+    const score = _titleSimilarity(title, entry.title);
+    if (score > bestScore) { bestScore = score; best = entry; }
+  }
+
+  if (best && bestScore >= 0.6) {
+    const where = [best.category, best.topic].filter(Boolean).join(" › ");
+    box.innerHTML = `⚠️ Ya existe algo parecido: <strong>${escapeHtml(best.title)}</strong>` +
+      (where ? ` <span class="dup-suggest-where">— ${escapeHtml(where)}</span>` : "");
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
   }
 }
 
@@ -2784,6 +2844,7 @@ function openNewModal() {
   $("fieldModule").value = "";
   BlockEditor.loadMarkdown("");
   $("previewPane").innerHTML = "";
+  $("dupSuggestBox")?.classList.add("hidden");
   switchTab("write");
   $("saveBtn").dataset.mode = "new";
   $("saveBtn").dataset.id = "";
