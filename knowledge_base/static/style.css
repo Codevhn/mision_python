@@ -1801,36 +1801,33 @@ body.focus-mode .related-sidebar { display: none; }
 [data-theme="light"] .bn-editor { background-color: var(--bg) !important; }
 
 /* ── BlockNote block colors (the picker behind "Lunes"/"Martes"-style
-   colored toggles) — mute the dark palette to match light's ──
-   The bundle's own light palette is already muted pastel (red background
-   #fbe4e4, blue #ddebf1, …) but its dark palette for the very same names
-   jumps to fully-saturated colors (red #be3434, blue #0b6e99, …) — the
-   same "red" block looks like two unrelated colors depending on theme,
-   and vivid saturated fills read as jarring against this app's otherwise
-   deliberately muted, low-saturation surfaces. Override the dark palette's
-   CSS custom properties with tints in the same muted family as the light
-   ones, just toned for a dark canvas instead of a light one, so a block's
-   color reads as "the same color" — just inverted lightness — in both
-   themes, same as every other surface in this app already behaves. */
-.bn-root[data-color-scheme=dark] {
-  --bn-colors-highlights-gray-background: #3a3a38 !important;
-  --bn-colors-highlights-gray-text: #b0aea5 !important;
-  --bn-colors-highlights-brown-background: #3d332c !important;
-  --bn-colors-highlights-brown-text: #baa08c !important;
-  --bn-colors-highlights-red-background: #4a2f2f !important;
-  --bn-colors-highlights-red-text: #d99a9a !important;
-  --bn-colors-highlights-orange-background: #493829 !important;
-  --bn-colors-highlights-orange-text: #d9ae82 !important;
-  --bn-colors-highlights-yellow-background: #47402a !important;
-  --bn-colors-highlights-yellow-text: #d9c789 !important;
-  --bn-colors-highlights-green-background: #2f3d38 !important;
-  --bn-colors-highlights-green-text: #9dc2b7 !important;
-  --bn-colors-highlights-blue-background: #2b3a45 !important;
-  --bn-colors-highlights-blue-text: #94bdd6 !important;
-  --bn-colors-highlights-purple-background: #3a3245 !important;
-  --bn-colors-highlights-purple-text: #bcaad9 !important;
-  --bn-colors-highlights-pink-background: #452f3c !important;
-  --bn-colors-highlights-pink-text: #d99cbd !important;
+   colored toggles) — bring light up to dark's vividness ──
+   The bundle's dark palette for these names is rich/saturated (red
+   background #be3434, blue #0b6e99, …) but its light palette for the very
+   same names is a near-white wash (red #fbe4e4, blue #ddebf1, …) — the same
+   "red" block reads as vivid in dark and washed-out in light. Dark was
+   already the one that looked right; override the LIGHT palette's CSS
+   custom properties to match its vividness instead (kept light enough for
+   the editor's default dark text to stay legible on top). */
+.bn-root:not([data-color-scheme=dark]) {
+  --bn-colors-highlights-gray-background: #b0bec5 !important;
+  --bn-colors-highlights-gray-text: #757575 !important;
+  --bn-colors-highlights-brown-background: #bcaaa4 !important;
+  --bn-colors-highlights-brown-text: #6d4c41 !important;
+  --bn-colors-highlights-red-background: #ff8a80 !important;
+  --bn-colors-highlights-red-text: #e53935 !important;
+  --bn-colors-highlights-orange-background: #ffab40 !important;
+  --bn-colors-highlights-orange-text: #fb8c00 !important;
+  --bn-colors-highlights-yellow-background: #ffd740 !important;
+  --bn-colors-highlights-yellow-text: #f9a825 !important;
+  --bn-colors-highlights-green-background: #7cc19c !important;
+  --bn-colors-highlights-green-text: #43a047 !important;
+  --bn-colors-highlights-blue-background: #4fc3f7 !important;
+  --bn-colors-highlights-blue-text: #1e88e5 !important;
+  --bn-colors-highlights-purple-background: #b388ff !important;
+  --bn-colors-highlights-purple-text: #8e24aa !important;
+  --bn-colors-highlights-pink-background: #f48fb1 !important;
+  --bn-colors-highlights-pink-text: #d81b60 !important;
 }
 
 /* ── BlockNote custom code blocks (code-block-native) — warm + no box ──
