@@ -4497,10 +4497,11 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
 }
 
 /* Labels are always on — the rail reads like a normal named nav list, not
-   an icon rail you have to memorize or click-to-reveal. */
+   an icon rail you have to memorize or click-to-reveal. Sized to match
+   Claude's own sidebar item text rather than the original compact 0.72rem. */
 .ab-label {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-family: var(--font-ui);
   white-space: nowrap;
   overflow: hidden;
@@ -4513,16 +4514,17 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: 22px;
   flex-shrink: 0;
 }
+.ab-icon svg { display: block; }
 
 .ab-item {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   width: calc(100% - 16px);
-  height: 36px;
+  height: 40px;
   margin: 0 8px;
   border-radius: var(--radius-md);
   background: transparent;
@@ -4531,8 +4533,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   cursor: pointer;
   transition: background 0.16s var(--ease-out, ease), color 0.16s var(--ease-out, ease), transform 0.16s var(--ease-out, ease), box-shadow 0.16s var(--ease-out, ease);
   position: relative;
-  padding: 0 14px;
-  gap: 10px;
+  padding: 0 12px;
+  gap: 11px;
   text-decoration: none;
   flex-shrink: 0;
 }
