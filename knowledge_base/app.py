@@ -5953,11 +5953,29 @@ def generate_quiz():
             "Genera un quiz de tema libre sobre este tema, sin atarlo a ninguna lección específica."
         )
 
-    content, err = _call_ai(system, user_msg, max_tokens=3500, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    # 8 rigorous questions (4 options + explanation + concept each, more so at
+    # "dificil" with code snippets embedded in the question text) routinely
+    # need more than a short-answer budget — 3500 was tuned for a smaller
+    # question count and left DeepSeek's response cut off mid-JSON often
+    # enough to be the real cause behind "formato inválido" (a truncated
+    # response is syntactically broken JSON, indistinguishable from a
+    # malformed one once it reaches json.loads). fail_on_truncation=True
+    # turns that specific case into its own clear error instead of a
+    # confusing parse failure.
+    content, err = _call_ai(
+        system, user_msg, max_tokens=6000, json_mode=True, fail_on_truncation=True,
+        provider=data.get("provider"), model=data.get("model"),
+    )
     if err:
         return err
+    # Defensive: json_mode is supposed to guarantee pure JSON, but strip a
+    # ```json fence if a provider wraps it anyway rather than fail outright.
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```[a-zA-Z]*\n?", "", stripped)
+        stripped = re.sub(r"\n?```$", "", stripped)
     try:
-        quiz = json.loads(content)
+        quiz = json.loads(stripped)
         # Validate shape — drop malformed questions rather than failing the whole quiz
         clean = []
         for q in quiz.get("questions", []):
@@ -6000,7 +6018,10 @@ def generate_quiz():
         store["quizzes"][record["id"]] = record
         save_quizzes(store)
         return jsonify(record)
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        # Logged so a repeat of this failure shows the actual malformed
+        # content instead of leaving it a mystery a second time.
+        app.logger.warning("Quiz JSON parse failed (%s): %r", e, content[:2000])
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
 
 
