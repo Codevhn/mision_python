@@ -6230,6 +6230,13 @@ function setSidebarVisible(visible) {
 (function() {
   const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
 
+  // practice/quiz have no matching #space* panel (their own controls live in
+  // .practice-rail, inside the content area) — the floating #sidebar must
+  // stay tucked away for them exactly like it does for home, or it ends up
+  // empty and floating on top of that rail (same fixed position, higher
+  // z-index), silently eating every click meant for the rail underneath it.
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz'];
+
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
   // the drawer's height instead of that height being permanently split
@@ -6270,8 +6277,9 @@ function setSidebarVisible(visible) {
       btn.classList.toggle('msn-active', btn.dataset.space === space);
     });
 
-    // Restore sidebar for all spaces except home (home hides it below)
-    setSidebarVisible(true);
+    // Restore sidebar for spaces that actually have a panel to show in it —
+    // home hides it below (kept for clarity); practice/quiz never have one.
+    setSidebarVisible(!NO_SIDEBAR_SPACES.includes(space));
 
     // Show/hide sidebar panels
     SPACES.forEach(s => {
@@ -6383,9 +6391,9 @@ function setSidebarVisible(visible) {
         const space = btn.dataset.space;
         const isActive = btn.classList.contains('ab-item--active');
         const panelOpen = document.body.classList.contains('sidebar-open');
-        if (isActive && panelOpen && space !== 'home') {
+        if (isActive && panelOpen && !NO_SIDEBAR_SPACES.includes(space)) {
           setSidebarVisible(false);
-        } else if (isActive && !panelOpen && space !== 'home') {
+        } else if (isActive && !panelOpen && !NO_SIDEBAR_SPACES.includes(space)) {
           setSidebarVisible(true);
         } else {
           switchSpace(space);
