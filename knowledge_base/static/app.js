@@ -6235,7 +6235,7 @@ function setSidebarVisible(visible) {
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6272,9 +6272,12 @@ function setSidebarVisible(visible) {
       _heroCanvasStop(); _heroCanvasStop = null;
     }
 
-    // Sync mobile drawer nav active state (runs for all spaces including home)
+    // Sync mobile drawer nav active state (runs for all spaces including
+    // home). Same "practice/quiz credit to lab" mapping as the activity bar
+    // below — computed once here since this runs before that block exists.
+    const _navSpaceForMobile = (space === 'practice' || space === 'quiz') ? 'lab' : space;
     document.querySelectorAll('.msn-item[data-space]').forEach(btn => {
-      btn.classList.toggle('msn-active', btn.dataset.space === space);
+      btn.classList.toggle('msn-active', btn.dataset.space === _navSpaceForMobile);
     });
 
     // Restore sidebar for spaces that actually have a panel to show in it —
@@ -6303,11 +6306,13 @@ function setSidebarVisible(visible) {
     const radarView    = document.getElementById('radarView');
     const practiceView = document.getElementById('practiceView');
     const quizView      = document.getElementById('quizView');
+    const labView       = document.getElementById('labView');
 
     if (graphView)      graphView.classList.add('hidden');
     if (radarView)      radarView.classList.add('hidden');
     if (practiceView)   practiceView.classList.add('hidden');
     if (quizView)       quizView.classList.add('hidden');
+    if (labView)        labView.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -6363,6 +6368,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'quiz') {
       if (quizView) quizView.classList.remove('hidden');
       if (typeof _renderQuizSpace === 'function') _renderQuizSpace();
+    } else if (space === 'lab') {
+      if (labView) labView.classList.remove('hidden');
+      if (typeof _renderLabSpace === 'function') _renderLabSpace();
     } else {
       // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
@@ -6370,9 +6378,13 @@ function setSidebarVisible(visible) {
       if (currentEntryId && ctxBarEl) ctxBarEl.classList.remove('hidden');
     }
 
-    // Update active state on activity bar buttons
+    // Update active state on activity bar buttons. quiz/practice have no nav
+    // icon of their own anymore (reached FROM the lab dashboard) — credit
+    // their time to "lab" so it doesn't look like nothing is selected while
+    // you're two screens into generating something from it.
+    const navSpace = (space === 'practice' || space === 'quiz') ? 'lab' : space;
     document.querySelectorAll('.ab-item[data-space]').forEach(btn => {
-      btn.classList.toggle('ab-item--active', btn.dataset.space === space);
+      btn.classList.toggle('ab-item--active', btn.dataset.space === navSpace);
     });
 
     // Store current space
@@ -6420,6 +6432,12 @@ function setSidebarVisible(visible) {
     document.getElementById('msnBackHeader')?.addEventListener('click', () => {
       _setMobileDrawerMode('list');
     });
+
+    // Quiz/Práctica are reached FROM the Centro de Práctica dashboard now
+    // (their own nav icon is gone) — give them a way back to it instead of
+    // stranding the user with no visible path except the activity bar.
+    document.getElementById('practiceBackToLab')?.addEventListener('click', () => switchSpace('lab'));
+    document.getElementById('quizBackToLab')?.addEventListener('click', () => switchSpace('lab'));
 
     // Search icon → Command Palette
     const abSearch = document.getElementById('abSearch');
@@ -9930,6 +9948,352 @@ function _inlineInsert(action, selText, result) {
   _inlineEditor.load(md.slice(0, insertAt) + '\n\n' + result + md.slice(insertAt));
 }
 
+// ── FEATURE: Centro de Práctica — docked dashboard space (switchSpace('lab')),
+// the front door that replaced separate Quiz/Práctica nav icons. It builds no
+// new generation logic of its own: the radar and the session queue are read
+// straight from data these features already produce (/api/domain,
+// /api/domain/weakest, /api/review/due, both history endpoints), and every
+// action here hands off into the SAME Quiz/Práctica screens as before —
+// _openConceptHub / _quizConceptPreset just seed their state and switch
+// space, exactly like the existing Home "Practicar ahora" card already did. ──
+
+// mastery -> distance from center, piecewise so the boundary matches the
+// <40 / 40-75 / >75 bands drawn as the radar's three rings (64 / 127 / 190).
+function _labMasteryRadius(m) {
+  m = Math.max(0, Math.min(100, m || 0));
+  if (m <= 40) return (m / 40) * 64;
+  if (m <= 75) return 64 + ((m - 40) / 35) * 63;
+  return 127 + ((m - 75) / 25) * 63;
+}
+function _labMasteryBand(m) {
+  if (m < 40) return 'critical';
+  if (m < 75) return 'progress';
+  return 'solid';
+}
+// Center + label radius live here once so the polar math, the SVG's own
+// viewBox and the anchor-flipping threshold all agree — the earlier version
+// hardcoded 240/220/260 in three different places, which is exactly how the
+// rim label ("Python Avanzado") ended up clipped past the viewBox edge.
+const _LAB_R_CENTER = 280;
+const _LAB_R_LABEL = 205;
+
+// angleDeg: 0 = top, increasing clockwise (not the usual math convention) —
+// matches how the course sectors and their rim labels are laid out below.
+function _labPolar(angleDeg, r) {
+  const t = (angleDeg * Math.PI) / 180;
+  return { x: _LAB_R_CENTER + r * Math.sin(t), y: _LAB_R_CENTER - r * Math.cos(t) };
+}
+
+function _labBuildRadar(coursesArr) {
+  const n = coursesArr.length;
+  const sectorSpan = 360 / n;
+  const points = [];
+  const labels = [];
+  coursesArr.forEach(([slug, info], i) => {
+    const sectorStart = i * sectorSpan;
+    const concepts = info.concepts || [];
+    const margin = Math.min(sectorSpan * 0.18, 22);
+    concepts.forEach((c, j) => {
+      const frac = concepts.length > 1 ? j / (concepts.length - 1) : 0.5;
+      const angle = concepts.length > 1
+        ? sectorStart + margin + frac * (sectorSpan - 2 * margin)
+        : sectorStart + sectorSpan / 2;
+      const p = _labPolar(angle, _labMasteryRadius(c.mastery));
+      points.push({
+        id: c.id, name: c.name, pareto: !!c.pareto, mastery: c.mastery,
+        course: slug, courseLabel: info.label,
+        x: p.x, y: p.y, band: _labMasteryBand(c.mastery),
+      });
+    });
+    const lp = _labPolar(sectorStart + sectorSpan / 2, _LAB_R_LABEL);
+    const label = info.label.length > 16 ? info.label.slice(0, 15) + '…' : info.label;
+    labels.push({ x: lp.x, y: lp.y, text: label });
+  });
+  return { points, labels };
+}
+
+function _labRadarSvgHtml(points, labels, topConceptId) {
+  const size = _LAB_R_CENTER * 2;
+  const circles = points.map(p => {
+    const r = p.pareto ? 8 : 6;
+    const pulse = p.id === topConceptId
+      ? `<animate attributeName="r" values="${r};${r + 4};${r}" dur="2.2s" repeatCount="indefinite"/>`
+        + `<animate attributeName="opacity" values="0.95;0.45;0.95" dur="2.2s" repeatCount="indefinite"/>`
+      : '';
+    return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" `
+      + `class="lab-radar-point lab-radar-point--${p.band}" `
+      + `data-course="${escapeHtml(p.course)}" data-concept="${escapeHtml(p.id)}">`
+      + `<title>${escapeHtml(p.name)} — ${p.mastery}% (${escapeHtml(p.courseLabel)})</title>${pulse}</circle>`;
+  }).join('');
+  const labelEls = labels.map(l => {
+    const anchor = l.x < _LAB_R_CENTER - 25 ? 'end' : (l.x > _LAB_R_CENTER + 25 ? 'start' : 'middle');
+    return `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="${anchor}" class="lab-radar-course-label">${escapeHtml(l.text)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:460px" class="lab-radar-svg">
+      <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="190" class="lab-radar-ring lab-radar-ring--solid"/>
+      <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="127" class="lab-radar-ring lab-radar-ring--progress"/>
+      <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="64" class="lab-radar-ring lab-radar-ring--critical"/>
+      ${labelEls}${circles}
+    </svg>`;
+}
+
+// The single top-priority pick (weakest, weighted by pareto) is the ONLY one
+// with a callout line — the same one /api/domain/weakest and "Reto sorpresa"
+// already use. Everything else in the queue is picked the same way client-
+// side from the full concept list /api/domain already returned, so no extra
+// request is needed just to fill a 2nd/3rd slot.
+function _labBuildQueue(coursesArr, weakest, due) {
+  const items = [];
+  if (due && due.length) {
+    const d = due[0];
+    items.push({
+      kind: 'review', icon: '🔁', title: `Repasar: ${d.title}`,
+      tag: d.overdue_days > 0 ? `repetición espaciada · ${d.overdue_days} día(s) de retraso` : 'repetición espaciada · vence hoy',
+      action: () => openReviewQueueModal(),
+    });
+  }
+
+  const used = new Set();
+  if (weakest) {
+    used.add(weakest.concept_id);
+    const isQuiz = weakest.missing_modality === 'quiz';
+    const label = isQuiz ? 'Quiz' : (weakest.missing_modality === 'explain' ? 'Explícamelo' : 'Reto');
+    items.push({
+      kind: isQuiz ? 'quiz' : 'practice', icon: isQuiz ? '✦' : '⚙',
+      title: `${label}: ${weakest.concept_name}`,
+      tag: `${weakest.course_label} · tu punto más débil`,
+      action: () => (isQuiz
+        ? _quizConceptPreset(weakest.concept_name, weakest.course, weakest.concept_id)
+        : _openConceptHub(weakest.course, weakest.concept_id)),
+    });
+  }
+
+  const rest = [];
+  coursesArr.forEach(([slug, info]) => {
+    (info.concepts || []).forEach(c => {
+      if (used.has(c.id)) return;
+      const weight = c.pareto ? 2 : 1;
+      rest.push({ ...c, course: slug, courseLabel: info.label, priority: weight * (100 - c.mastery) });
+    });
+  });
+  rest.sort((a, b) => b.priority - a.priority);
+  const second = rest.find(c => c.priority > 0);
+  if (second) {
+    items.push({
+      kind: 'practice', icon: '⚙',
+      title: `Reto: ${second.name}`,
+      tag: `${second.courseLabel} · mantener el ritmo`,
+      action: () => _openConceptHub(second.course, second.id),
+    });
+  }
+  return items.slice(0, 3);
+}
+
+function _labQueueHtml(items) {
+  if (!items.length) {
+    return `<div class="practice-empty-note">Sin pendientes urgentes ahora — mirá la bitácora o generá algo nuevo desde el mapa.</div>`;
+  }
+  return items.map((it, i) => `
+    <div class="lab-qitem lab-qitem--${it.kind}" data-idx="${i}">
+      <span class="lab-qnum">${i + 1}</span>
+      <div class="lab-qic">${it.icon}</div>
+      <div class="lab-qbody">
+        <div class="lab-qtitle">${escapeHtml(it.title)}</div>
+        <div class="lab-qtag">${escapeHtml(it.tag)}</div>
+      </div>
+      <span class="lab-qgo">Ir →</span>
+    </div>`).join('');
+}
+
+function _labMergeHistory(quizzes, challenges) {
+  const items = [
+    ...quizzes.map(q => ({
+      type: 'quiz', id: q.id, title: q.title, status: q.status, difficulty: q.difficulty,
+      frac: `${Math.min(q.current_step + 1, q.question_count)}/${q.question_count} preguntas`,
+      updated_at: q.updated_at,
+    })),
+    ...challenges.map(c => ({
+      type: 'practice', id: c.id, title: c.title, status: c.status, difficulty: c.difficulty,
+      frac: `${Math.min(c.current_step + 1, c.step_count)}/${c.step_count} pasos`,
+      updated_at: c.updated_at,
+    })),
+  ];
+  items.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  return items.slice(0, 10);
+}
+
+const _LAB_STATUS_LABEL = { in_progress: 'en progreso', completed: 'completado', abandoned: 'abandonado' };
+
+function _labHistoryHtml(items) {
+  if (!items.length) {
+    return `<div class="practice-history-empty">Todavía no generaste ningún quiz ni reto.<br>Los que generes se guardan acá automáticamente.</div>`;
+  }
+  return `<div class="lab-hist-list">${items.map(it => `
+    <div class="lab-hist-row" data-type="${it.type}" data-id="${escapeHtml(it.id)}">
+      <div class="lab-hist-type lab-hist-type--${it.type}">${it.type === 'quiz' ? '✦' : '⚙'}</div>
+      <div class="lab-hist-main">
+        <div class="lab-hist-title">${escapeHtml(it.title)}</div>
+        <div class="lab-hist-meta">${it.type === 'quiz' ? 'Quiz' : 'Reto'} · ${escapeHtml(it.difficulty || '')} · ${escapeHtml(it.frac)}</div>
+      </div>
+      <span class="lab-hist-status lab-hist-status--${it.status}">${_LAB_STATUS_LABEL[it.status] || it.status}</span>
+      <span class="lab-hist-time">${_relTimeAgo(new Date(it.updated_at).getTime())}</span>
+    </div>`).join('')}</div>`;
+}
+
+// Approximate, derived straight from real activity timestamps (not a
+// dedicated backend counter) — consecutive calendar days up to today with at
+// least one quiz/reto touched. Only looks at the recent history page already
+// fetched for the dashboard, so a streak longer than that page undercounts;
+// good enough for "días seguidos" at a glance, not a precise ledger.
+function _labComputeStreak(items) {
+  const days = new Set(items.map(it => new Date(it.updated_at).toISOString().slice(0, 10)));
+  let streak = 0;
+  const cur = new Date();
+  while (days.has(cur.toISOString().slice(0, 10))) {
+    streak++;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return streak;
+}
+
+async function _renderLabSpace() {
+  const body = $('labBody');
+  if (!body) return;
+  body.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> Cargando tu Centro de Práctica…</div>`;
+
+  let domainData, weakestData, dueData, quizHistData, practiceHistData;
+  try {
+    [domainData, weakestData, dueData, quizHistData, practiceHistData] = await Promise.all([
+      fetch('/api/domain').then(r => r.json()),
+      fetch('/api/domain/weakest').then(r => r.json()),
+      fetch('/api/review/due').then(r => r.json()),
+      fetch('/api/quiz/history?limit=8').then(r => r.json()),
+      fetch('/api/practice/history?limit=8').then(r => r.json()),
+    ]);
+  } catch (err) {
+    body.innerHTML = `<div class="quiz-error">Error de red: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+  if ($('labBody') !== body) return; // navigated away while loading
+
+  const coursesArr = Object.entries(domainData.courses || {});
+  const weakest = weakestData.weakest || null;
+  const due = dueData.due || [];
+  const quizzes = quizHistData.quizzes || [];
+  const challenges = practiceHistData.challenges || [];
+
+  if (!coursesArr.length) {
+    body.innerHTML = `
+      <div class="lab-empty">
+        <div class="lab-empty-icon">🎯</div>
+        <h3>Todavía no hay mapa de dominio</h3>
+        <p>Generá el mapa de conceptos de un curso para ver tu radar acá — desde Cursos, o abriendo "Por tema" en un reto.</p>
+        <button class="btn-primary" id="labGoCoursesBtn">Ir a Cursos →</button>
+      </div>`;
+    $('labGoCoursesBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
+    return;
+  }
+
+  const { points, labels } = _labBuildRadar(coursesArr);
+  const criticalCount = points.filter(p => p.band === 'critical').length;
+  const queueItems = _labBuildQueue(coursesArr, weakest, due);
+  const historyItems = _labMergeHistory(quizzes, challenges);
+  const streak = _labComputeStreak([...quizzes, ...challenges]);
+  const domainAvg = Math.round(coursesArr.reduce((s, [, v]) => s + v.domain, 0) / coursesArr.length);
+
+  body.innerHTML = `
+    <div class="lab-hdr">
+      <div class="lab-hdr-stat"><div class="lab-hdr-v">${domainAvg}%</div><div class="lab-hdr-k">dominio global</div></div>
+      <div class="lab-hdr-stat"><div class="lab-hdr-v">${streak}</div><div class="lab-hdr-k">racha de días</div></div>
+      <div class="lab-hdr-stat${due.length ? ' lab-hdr-stat--warn' : ''}"><div class="lab-hdr-v">${due.length}</div><div class="lab-hdr-k">repasos vencidos</div></div>
+    </div>
+    <div class="lab-grid">
+      <section class="lab-panel lab-radar-panel">
+        <div class="lab-panel-head">
+          <h2>Mapa de dominio</h2>
+          <span class="lab-hint">centro = débil · borde = sólido · clic para practicar</span>
+        </div>
+        <div class="lab-radar-wrap">
+          ${weakest ? `
+            <div class="lab-callout">
+              <div class="lab-callout-eyebrow">Prioridad más alta</div>
+              <div class="lab-callout-name">${escapeHtml(weakest.concept_name)}</div>
+              <div class="lab-callout-sub">${escapeHtml(weakest.course_label)} · ${weakest.mastery}% dominado</div>
+              ${criticalCount > 1 ? `<span class="lab-callout-badge">⚠ ${criticalCount} puntos críticos en total</span>` : ''}
+              <button class="btn-primary" id="labCalloutBtn">Practicar este primero →</button>
+            </div>` : ''}
+          ${_labRadarSvgHtml(points, labels, weakest?.concept_id)}
+        </div>
+        <div class="lab-radar-legend">
+          <span><i class="lab-dot lab-dot--critical"></i> crítico (&lt;40%)</span>
+          <span><i class="lab-dot lab-dot--progress"></i> en progreso (40–75%)</span>
+          <span><i class="lab-dot lab-dot--solid"></i> sólido (&gt;75%)</span>
+        </div>
+      </section>
+
+      <aside class="lab-panel lab-queue-panel">
+        <div class="lab-panel-head">
+          <h2>Sesión sugerida hoy</h2>
+          <span class="lab-hint">armada según tu dominio real</span>
+        </div>
+        <div class="lab-queue-list">${_labQueueHtml(queueItems)}</div>
+        <div class="lab-model-row">
+          <span class="lab-model-label">Modelo</span>
+          <div class="practice-cselect" id="labModelCSelect"></div>
+        </div>
+        <select id="labConceptJump" class="lab-jump-select">
+          <option value="">Practicar un concepto puntual…</option>
+          ${coursesArr.map(([slug, info]) => `<optgroup label="${escapeHtml(info.label)}">${
+            (info.concepts || []).map(c => `<option value="${escapeHtml(slug)}::${escapeHtml(c.id)}">${escapeHtml(c.name)} (${c.mastery}%)</option>`).join('')
+          }</optgroup>`).join('')}
+        </select>
+        <div class="lab-ask-hint">elegís de tus cursos/conceptos reales — no interpreta texto libre suelto</div>
+      </aside>
+    </div>
+
+    <section class="lab-log-panel">
+      <div class="lab-log-head"><h3>Bitácora reciente</h3></div>
+      ${_labHistoryHtml(historyItems)}
+    </section>`;
+
+  if (weakest) {
+    $('labCalloutBtn')?.addEventListener('click', () => {
+      if (weakest.missing_modality === 'quiz') _quizConceptPreset(weakest.concept_name, weakest.course, weakest.concept_id);
+      else _openConceptHub(weakest.course, weakest.concept_id);
+    });
+  }
+  body.querySelector('.lab-radar-svg')?.addEventListener('click', e => {
+    const pt = e.target.closest('.lab-radar-point');
+    if (pt) _openConceptHub(pt.dataset.course, pt.dataset.concept);
+  });
+  body.querySelectorAll('.lab-qitem').forEach(el => {
+    el.addEventListener('click', () => queueItems[Number(el.dataset.idx)]?.action());
+  });
+  body.querySelectorAll('.lab-hist-row').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.dataset.type === 'quiz') _labResumeQuiz(el.dataset.id);
+      else _labResumePractice(el.dataset.id);
+    });
+  });
+  $('labConceptJump')?.addEventListener('change', e => {
+    const v = e.target.value;
+    if (!v) return;
+    const [course, conceptId] = v.split('::');
+    _openConceptHub(course, conceptId);
+  });
+
+  _mountModelSelector($('labModelCSelect'), { context: 'practice', value: null, onChange: () => {} });
+}
+
+function _labResumeQuiz(id) {
+  window.switchSpace?.('quiz');
+  _resumeQuizFromHistory(id);
+}
+function _labResumePractice(id) {
+  window.switchSpace?.('practice');
+  _resumePracticeFromHistory(id);
+}
+
 // ── FEATURE: Quiz — docked dashboard space (switchSpace('quiz')), same
 // pattern as Práctica: a persistent rail (modo, dificultad, modelo,
 // navegación a Historial) plus a main area that dispatches on state
@@ -9954,6 +10318,14 @@ function _openQuizSpace(selText) {
   window.switchSpace?.('quiz');
 }
 
+// Same preset handoff, but for a bare concept name with no lesson text
+// behind it (Centro de Práctica's radar/queue) — generates a topic-only quiz
+// instead of the "review this selection" shape _openQuizSpace above builds.
+function _quizConceptPreset(conceptName, course, conceptId) {
+  _quizPresetContext = { title: conceptName, text: '', course, conceptId, conceptName, mode: 'topic' };
+  window.switchSpace?.('quiz');
+}
+
 function _renderQuizSpace() {
   if (!_quizState) {
     _quizState = {
@@ -9964,7 +10336,7 @@ function _renderQuizSpace() {
   if (_quizPresetContext && !_quizState.viewingHistory && _quizState.screen === 'empty') {
     const preset = _quizPresetContext;
     _quizPresetContext = null;
-    _quizState.mode = 'review';
+    _quizState.mode = preset.mode || 'review';
     _renderQuizRail();
     _startQuizGeneration({
       topic: preset.title, context: preset.text, course: preset.course,
@@ -10550,6 +10922,28 @@ let _practicePresetTopic = null;
 // domain-reminder card's "Practicar ahora" button.
 function _openPracticeSpace(presetTopic) {
   if (typeof presetTopic === 'string' && presetTopic) _practicePresetTopic = presetTopic;
+  window.switchSpace?.('practice');
+}
+
+// Jump straight into the existing "concept hub" screen (theory + Feynman
+// explain + generate-a-reto, all in one) for one specific concept — used by
+// the Centro de Práctica radar/queue, same destination "Por tema" already
+// reaches, just skipping the curso/categoría/concepto picker since the
+// caller already knows exactly which concept it wants.
+function _openConceptHub(course, conceptId) {
+  if (!_practiceState) {
+    _practiceState = {
+      screen: 'empty', viewingHistory: false, mode: 'concept', difficulty: 'medio',
+      topic: '', entryId: '', reviewCourse: '', contextText: '', startNudge: null,
+    };
+  } else {
+    _practiceState.viewingHistory = false;
+    _practiceState.screen = 'empty';
+    _practiceState.mode = 'concept';
+  }
+  _practiceState.conceptCourse = course;
+  _practiceState.conceptCategory = '';
+  _practiceState.conceptId = conceptId;
   window.switchSpace?.('practice');
 }
 

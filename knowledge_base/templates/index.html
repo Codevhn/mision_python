@@ -111,14 +111,10 @@
           <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.2"/><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg></span>
           <span class="ab-label">Radar</span>
         </button>
-        <button class="ab-item" id="abPractice" data-space="practice" title="Práctica">
+        <button class="ab-item" id="abLab" data-space="lab" title="Centro de Práctica">
           <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 2v2.4M8 11.6V14M2 8h2.4M11.6 8H14"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/></svg></span>
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
-        </button>
-        <button class="ab-item" id="abQuiz" data-space="quiz" title="Quiz">
-          <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5.8c.3-1 1.1-1.6 2.1-1.6 1.2 0 2.1.8 2.1 1.9 0 1.6-2.1 1.5-2.1 3.1"/><circle cx="8" cy="11.4" r="0.2" stroke-width="1.8"/></svg></span>
-          <span class="ab-label">Quiz</span>
         </button>
       </div>
       <div class="activity-bar-bottom">
@@ -169,8 +165,7 @@
         <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
-        <button class="msn-item" id="msnPractice" data-space="practice"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
-        <button class="msn-item" id="msnQuiz" data-space="quiz"><span class="msn-icon">✦</span><span class="msn-label">Quiz</span></button>
+        <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
       </nav>
       <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
         <span class="msn-back-icon">←</span>
@@ -418,6 +413,7 @@
            actual reto/resultados/historial in the main area on the right. -->
       <div class="practice-view hidden" id="practiceView">
         <div class="practice-view-header">
+          <button class="practice-view-back" id="practiceBackToLab" title="Volver al Centro de Práctica">← Centro de Práctica</button>
           <h2 class="practice-view-title">🎯 Práctica</h2>
         </div>
         <div class="practice-view-body">
@@ -433,12 +429,26 @@
            docked-space layout are all literally the same primitives. -->
       <div class="practice-view hidden" id="quizView">
         <div class="practice-view-header">
+          <button class="practice-view-back" id="quizBackToLab" title="Volver al Centro de Práctica">← Centro de Práctica</button>
           <h2 class="practice-view-title">✦ Quiz</h2>
         </div>
         <div class="practice-view-body">
           <aside class="practice-rail" id="quizRail"></aside>
           <div class="practice-main" id="quizMain"></div>
         </div>
+      </div>
+
+      <!-- CENTRO DE PRÁCTICA — el "laboratorio": mapa de dominio (radar),
+           sesión sugerida por IA y bitácora unificada de Quiz + Práctica.
+           Reemplaza a los dos espacios de arriba como punto de entrada;
+           Quiz/Práctica siguen existiendo como pantallas a las que este
+           dashboard te lleva (generar, responder, ver resultados), no se
+           duplicó nada de esa lógica. -->
+      <div class="lab-view hidden" id="labView">
+        <div class="practice-view-header">
+          <h2 class="practice-view-title">🎯 Centro de Práctica</h2>
+        </div>
+        <div class="lab-body" id="labBody"></div>
       </div>
 
       <!-- Entry cover banner (outside entry-view for full-width) -->

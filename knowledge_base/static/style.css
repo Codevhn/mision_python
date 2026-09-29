@@ -8816,6 +8816,150 @@ body {
   }
 }
 
+/* ── Centro de Práctica ("Laboratorio") — the dashboard that replaced
+   separate Quiz/Práctica nav icons. Reuses .practice-view's chrome tokens
+   (border/spacing rhythm) but its own body is a single scrolling column,
+   not a rail+main split — there's no config form here, the dashboard IS
+   the content. */
+.lab-view {
+  display: flex; flex-direction: column;
+  height: 100%; overflow: hidden;
+}
+.lab-view.hidden { display: none !important; }
+.lab-body { flex: 1; overflow-y: auto; padding: 22px 32px 60px; }
+
+.practice-view-back {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  padding: 4px 8px 4px 0; margin-right: 10px;
+}
+.practice-view-back:hover { color: var(--accent); }
+
+.lab-hdr {
+  display: flex; gap: 28px; padding-bottom: 16px; margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.lab-hdr-stat { }
+.lab-hdr-v { font-size: 1.15rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.lab-hdr-k { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); }
+.lab-hdr-stat--warn .lab-hdr-v { color: var(--danger); }
+
+.lab-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .lab-grid { grid-template-columns: 1fr; } }
+
+.lab-panel {
+  background: var(--bg-surface); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); padding: 18px 20px 20px;
+}
+.lab-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.lab-panel-head h2 { margin: 0; font-size: 0.94rem; font-weight: 700; color: var(--text); }
+.lab-hint { font-size: 0.72rem; color: var(--text-faint); }
+
+/* radar */
+.lab-radar-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lab-radar-svg { display: block; }
+.lab-radar-ring { fill: none; stroke: var(--border); stroke-width: 1.2; }
+.lab-radar-ring--critical { stroke: color-mix(in srgb, var(--danger) 45%, transparent); }
+.lab-radar-ring--progress { stroke: color-mix(in srgb, var(--accent-amber) 40%, transparent); }
+.lab-radar-ring--solid    { stroke: color-mix(in srgb, var(--success) 40%, transparent); }
+.lab-radar-course-label { fill: var(--text-muted); font-family: var(--font-ui); font-size: 11px; font-weight: 600; }
+.lab-radar-point { cursor: pointer; opacity: 0.95; transition: opacity 0.15s ease; }
+.lab-radar-point:hover { opacity: 1; }
+.lab-radar-point--critical { fill: var(--danger); }
+.lab-radar-point--progress { fill: var(--accent-amber); }
+.lab-radar-point--solid    { fill: var(--success); }
+
+.lab-callout {
+  width: 100%; max-width: 380px; box-sizing: border-box;
+  background: var(--bg-elevated); border: 1px solid var(--danger);
+  border-radius: var(--radius-md); padding: 12px 14px;
+}
+.lab-callout-eyebrow { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--danger); margin-bottom: 3px; }
+.lab-callout-name { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.lab-callout-sub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 8px; }
+.lab-callout-badge {
+  display: inline-block; font-size: 0.68rem; font-weight: 700;
+  color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
+  padding: 3px 9px; border-radius: 999px; margin-bottom: 8px;
+}
+.lab-callout button { width: 100%; font-size: 0.78rem; padding: 8px 0; }
+
+.lab-radar-legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.lab-radar-legend span { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); }
+.lab-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.lab-dot--critical { background: var(--danger); }
+.lab-dot--progress { background: var(--accent-amber); }
+.lab-dot--solid { background: var(--success); }
+
+/* session queue */
+.lab-queue-panel { display: flex; flex-direction: column; gap: 12px; }
+.lab-queue-list { display: flex; flex-direction: column; gap: 8px; }
+.lab-qitem {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-elevated); border: 1px solid var(--border-light);
+  border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.lab-qitem:hover { border-color: var(--accent-dim, var(--accent)); transform: translateY(-1px); }
+.lab-qnum { font-size: 0.7rem; color: var(--text-faint); width: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.lab-qic {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 0.84rem;
+}
+.lab-qitem--review .lab-qic  { background: color-mix(in srgb, var(--accent-amber) 18%, transparent); color: var(--accent-amber); }
+.lab-qitem--quiz .lab-qic    { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.lab-qitem--practice .lab-qic{ background: var(--accent-light); color: var(--accent); }
+.lab-qbody { flex: 1; min-width: 0; }
+.lab-qtitle { font-size: 0.82rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lab-qtag { font-size: 0.68rem; color: var(--text-faint); }
+.lab-qgo { font-size: 0.7rem; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+.lab-model-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lab-model-label { font-size: 0.76rem; color: var(--text-muted); }
+.lab-jump-select {
+  width: 100%; padding: 9px 10px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-light); background: var(--bg-elevated);
+  color: var(--text); font-size: 0.8rem; font-family: var(--font-ui);
+}
+.lab-ask-hint { font-size: 0.68rem; color: var(--text-faint); }
+
+/* merged history */
+.lab-log-panel { margin-top: 22px; }
+.lab-log-head { margin-bottom: 8px; }
+.lab-log-head h3 { margin: 0; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.lab-hist-list { display: flex; flex-direction: column; }
+.lab-hist-row {
+  display: flex; align-items: center; gap: 12px; padding: 11px 4px;
+  border-bottom: 1px solid var(--border-light); cursor: pointer;
+}
+.lab-hist-row:last-child { border-bottom: 0; }
+.lab-hist-row:hover { background: var(--bg-hover); }
+.lab-hist-type {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
+}
+.lab-hist-type--quiz     { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.lab-hist-type--practice { background: var(--accent-light); color: var(--accent); }
+.lab-hist-main { flex: 1; min-width: 0; }
+.lab-hist-title { font-size: 0.84rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lab-hist-meta { font-size: 0.72rem; color: var(--text-faint); }
+.lab-hist-status { font-size: 0.66rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; flex-shrink: 0; }
+.lab-hist-status--completed  { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+.lab-hist-status--in_progress{ background: color-mix(in srgb, var(--accent-amber) 16%, transparent); color: var(--accent-amber); }
+.lab-hist-status--abandoned  { background: color-mix(in srgb, var(--text-faint) 20%, transparent); color: var(--text-faint); }
+.lab-hist-time { font-size: 0.72rem; color: var(--text-faint); width: 60px; text-align: right; flex-shrink: 0; }
+
+.lab-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.lab-empty-icon { font-size: 2rem; margin-bottom: 10px; }
+.lab-empty h3 { margin: 0 0 8px; color: var(--text); font-size: 1.05rem; }
+.lab-empty p { max-width: 420px; margin: 0 auto 18px; font-size: 0.86rem; }
+
+@media (max-width: 640px) {
+  .lab-body { padding: 16px 16px 40px; }
+  .lab-hdr { gap: 18px; }
+  .lab-hist-meta { display: none; }
+}
+
 .practice-rail-nav { display: flex; flex-direction: column; gap: 4px; }
 .practice-rail-nav-btn {
   display: flex; align-items: center; gap: 8px;
