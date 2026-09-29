@@ -4811,7 +4811,7 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
     with urllib.request.urlopen(req, timeout=60) as r:
         result = json.loads(r.read())
     choice = result["choices"][0]
-    return choice["message"]["content"], choice.get("finish_reason") == "length"
+    return choice["message"]["content"], choice.get("finish_reason") == "length", result.get("usage")
 
 
 def _call_gemini(base_url, api_key, model, system, user_msg, max_tokens, json_mode, temperature=None):
@@ -4968,7 +4968,7 @@ def _clean_ai_error(code, err_body):
     return f"Error de la API ({code}): {detail}"
 
 
-def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False, temperature=None):
+def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False, temperature=None, return_usage=False):
     """Single entry point for every AI-backed feature. `provider`/`model`
     come from the frontend's model selector (a request body field on every
     generation endpoint); left unset, every pre-existing call site keeps
@@ -4985,32 +4985,43 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
     truncated response into an error instead, which _call_ai_with_fallback
     then treats like any other failure and retries on the next model
     (useful here specifically: a different model may have more output
-    headroom for the same request)."""
+    headroom for the same request).
+
+    `return_usage` defaults to False and keeps the 2-tuple return shape every
+    pre-existing call site already unpacks. Opt in to get a 3rd element —
+    the provider's raw usage object (None for Gemini, or when the call
+    errors before a response comes back) — meant to be run through
+    _extract_cache_stats() for display, same as the streaming Ask AI path."""
     provider = provider or DEFAULT_PROVIDER
     model = model or DEFAULT_MODEL
+
+    def _ret(content, err, usage):
+        return (content, err, usage) if return_usage else (content, err)
+
     cfg = PROVIDERS.get(provider)
     if not cfg:
-        return None, (jsonify({"error": f"Proveedor de IA desconocido: {provider}"}), 400)
+        return _ret(None, (jsonify({"error": f"Proveedor de IA desconocido: {provider}"}), 400), None)
     api_key = os.environ.get(cfg["env"], "")
     if not api_key:
-        return None, (jsonify({
+        return _ret(None, (jsonify({
             "error": f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...",
-        }), 503)
+        }), 503), None)
     try:
         if cfg["kind"] == "gemini":
             content, truncated = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
+            usage = None
         else:
-            content, truncated = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
+            content, truncated, usage = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
         if truncated and fail_on_truncation:
-            return None, (jsonify({
+            return _ret(None, (jsonify({
                 "error": f"La respuesta de {cfg['label']} se cortó por el límite de tokens antes de terminar.",
-            }), 502)
-        return content, None
+            }), 502), None)
+        return _ret(content, None, usage)
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
-        return None, (jsonify({"error": _clean_ai_error(e.code, err_body)}), 502)
+        return _ret(None, (jsonify({"error": _clean_ai_error(e.code, err_body)}), 502), None)
     except Exception as e:
-        return None, (jsonify({"error": str(e)}), 500)
+        return _ret(None, (jsonify({"error": str(e)}), 500), None)
 
 
 def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
@@ -5962,12 +5973,13 @@ def generate_quiz():
     # malformed one once it reaches json.loads). fail_on_truncation=True
     # turns that specific case into its own clear error instead of a
     # confusing parse failure.
-    content, err = _call_ai(
+    content, err, usage = _call_ai(
         system, user_msg, max_tokens=6000, json_mode=True, fail_on_truncation=True,
-        provider=data.get("provider"), model=data.get("model"),
+        provider=data.get("provider"), model=data.get("model"), return_usage=True,
     )
     if err:
         return err
+    cache_stats = _extract_cache_stats(usage)
     # Defensive: json_mode is supposed to guarantee pure JSON, but strip a
     # ```json fence if a provider wraps it anyway rather than fail outright.
     stripped = content.strip()
@@ -6011,6 +6023,7 @@ def generate_quiz():
             "status": "in_progress",
             "current_step": 0,
             "answers": [None] * len(clean),
+            "cache": cache_stats,
             "created_at": now,
             "updated_at": now,
         }
@@ -6369,9 +6382,13 @@ def generate_practice_challenge():
             f"{concept_note}"
         )
 
-    content, err = _call_ai(_PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    content, err, usage = _call_ai(
+        _PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True,
+        provider=data.get("provider"), model=data.get("model"), return_usage=True,
+    )
     if err:
         return err
+    cache_stats = _extract_cache_stats(usage)
 
     try:
         challenge = json.loads(content)
@@ -6450,6 +6467,7 @@ def generate_practice_challenge():
         "status": "in_progress",
         "current_step": 0,
         "step_results": [],
+        "cache": cache_stats,
         "created_at": now,
         "updated_at": now,
     }

@@ -10286,8 +10286,14 @@ function _answerQuiz(idx) {
 // plain reviewable list (a badge + divider per row, not individually
 // bordered/left-accent-striped cards) with a "Solo errores" filter so a
 // long run doesn't force scrolling past everything you already got right.
-function _buildEvalSummaryHtml(pct, fracLabel, gradeMsg) {
+function _buildEvalSummaryHtml(pct, fracLabel, gradeMsg, cache) {
   const grade = pct >= 80 ? 'great' : pct >= 50 ? 'ok' : 'low';
+  // Diagnostic only — DeepSeek's cache-hit ratio for the generation call
+  // that produced this quiz/reto, when the provider reports it (see
+  // _extract_cache_stats in app.py). Same idea as the Ask AI panel badge.
+  const cacheHtml = cache
+    ? `<div class="ai-cache-meta">🔵 caché: ${cache.hit}/${cache.total} tokens (${cache.pct}%)</div>`
+    : '';
   return `
     <div class="eval-summary eval-summary--${grade}">
       <div class="eval-ring" style="--pct:${pct}">
@@ -10296,6 +10302,7 @@ function _buildEvalSummaryHtml(pct, fracLabel, gradeMsg) {
       <div class="eval-summary-info">
         <span class="eval-summary-frac">${escapeHtml(fracLabel)}</span>
         <span class="eval-summary-msg">${escapeHtml(gradeMsg)}</span>
+        ${cacheHtml}
       </div>
     </div>`;
 }
@@ -10351,7 +10358,7 @@ function _renderQuizResults() {
   $('quizMain').innerHTML = `
     <h3 class="practice-challenge-title">${escapeHtml(quiz.title)} — Resultados</h3>
     <div class="eval-results">
-      ${_buildEvalSummaryHtml(pct, `${correct}/${total} correctas`, gradeMsg)}
+      ${_buildEvalSummaryHtml(pct, `${correct}/${total} correctas`, gradeMsg, quiz.cache)}
       <div id="quizReview"></div>
     </div>
     <div class="practice-main-actions" id="quizMainActions"></div>`;
@@ -11816,7 +11823,7 @@ function _renderPracticeResultsScreen(st) {
   $('practiceMain').innerHTML = `
     <h3 class="practice-challenge-title">${escapeHtml(ch.title)} — Resultados</h3>
     <div class="eval-results">
-      ${_buildEvalSummaryHtml(pct, `${passed}/${total} pasos resueltos`, gradeMsg)}
+      ${_buildEvalSummaryHtml(pct, `${passed}/${total} pasos resueltos`, gradeMsg, ch.cache)}
       <div id="practiceReview"></div>
     </div>
     <div class="practice-main-actions" id="practiceMainActions"></div>`;
