@@ -6382,17 +6382,27 @@ def generate_practice_challenge():
             f"{concept_note}"
         )
 
+    # Same root cause as the quiz generator (see its comment): 3-5 steps,
+    # each potentially carrying instruction + starter_code/html_snippet +
+    # up to 4 asserts/css_asserts + exactly 3 hints + a full solution, adds
+    # up to well past a 3000-token budget — DeepSeek cutting that off
+    # mid-JSON is what "formato inválido" actually was.
     content, err, usage = _call_ai(
-        _PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=3000, json_mode=True,
+        _PRACTICE_SYSTEM_PROMPT, user_msg, max_tokens=6000, json_mode=True, fail_on_truncation=True,
         provider=data.get("provider"), model=data.get("model"), return_usage=True,
     )
     if err:
         return err
     cache_stats = _extract_cache_stats(usage)
 
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```[a-zA-Z]*\n?", "", stripped)
+        stripped = re.sub(r"\n?```$", "", stripped)
     try:
-        challenge = json.loads(content)
-    except json.JSONDecodeError:
+        challenge = json.loads(stripped)
+    except json.JSONDecodeError as e:
+        app.logger.warning("Practice JSON parse failed (%s): %r", e, content[:2000])
         return jsonify({"error": "La IA devolvió una respuesta con formato inválido. Intenta de nuevo."}), 502
 
     clean_steps = []
