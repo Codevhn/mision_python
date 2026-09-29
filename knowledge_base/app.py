@@ -5023,8 +5023,11 @@ def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
 # ── Streaming (SSE) ──────────────────────────────────────────────────────────
 # The Ask AI panel streams deltas for a ChatGPT/Claude feel. Inner generators
 # yield plain text deltas; after the stream ends they yield a sentinel tuple
-# ("__done__", truncated). Errors are raised as HTTPError/Exception and caught
-# in _stream_call_ai, which yields (None, {"error", "status"}) instead.
+# ("__done__", truncated, usage) — usage is the provider's raw usage object
+# (or None when the provider doesn't return one), turned into cache-hit
+# stats by _extract_cache_stats() below. Errors are raised as
+# HTTPError/Exception and caught in _stream_call_ai, which yields
+# (None, {"error", "status"}) instead.
 
 def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, temperature=None):
     payload = {
@@ -5032,6 +5035,12 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
         "max_tokens": max_tokens,
         "messages": messages,
         "stream": True,
+        # Asks the provider to emit one extra final chunk carrying a `usage`
+        # object (choices: [] on that chunk) instead of the usual bare
+        # [DONE]. DeepSeek's usage block is where prompt_cache_hit_tokens/
+        # prompt_cache_miss_tokens live — the only way to see, per request,
+        # how much of it actually hit DeepSeek's automatic disk cache.
+        "stream_options": {"include_usage": True},
     }
     if temperature is not None:
         payload["temperature"] = temperature
@@ -5045,6 +5054,7 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
         },
     )
     truncated = False
+    usage = None
     with urllib.request.urlopen(req, timeout=180) as r:
         for raw in r:
             line = raw.decode("utf-8", errors="replace").strip()
@@ -5057,6 +5067,8 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
                 chunk = json.loads(data)
             except json.JSONDecodeError:
                 continue
+            if chunk.get("usage"):
+                usage = chunk["usage"]
             choices = chunk.get("choices") or []
             if not choices:
                 continue
@@ -5066,7 +5078,7 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
                 yield frag
             if choices[0].get("finish_reason") == "length":
                 truncated = True
-    yield "__done__", truncated
+    yield "__done__", truncated, usage
 
 
 def _stream_gemini(base_url, api_key, model, system, messages, max_tokens, temperature=None):
@@ -5112,14 +5124,17 @@ def _stream_gemini(base_url, api_key, model, system, messages, max_tokens, tempe
                     yield text
             if candidates[0].get("finishReason") == "MAX_TOKENS":
                 truncated = True
-    yield "__done__", truncated
+    # Gemini's REST API doesn't expose an equivalent disk-cache hit/miss
+    # breakdown in this response shape, so usage stays None here — the
+    # frontend only shows the cache badge when it's actually present.
+    yield "__done__", truncated, None
 
 
 def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None, temperature=None):
     """Generator version of _call_ai. `messages` is a list of
     {"role": "system"|"user"|"assistant", "content"} turns. Yields text
-    deltas, then a final ("__done__", truncated) sentinel. On failure yields
-    (None, {"error": msg, "status": code}) and stops."""
+    deltas, then a final ("__done__", truncated, usage) sentinel. On failure
+    yields (None, {"error": msg, "status": code}) and stops."""
     provider = provider or DEFAULT_PROVIDER
     model = model or DEFAULT_MODEL
     cfg = PROVIDERS.get(provider)
@@ -5662,6 +5677,25 @@ def ai_ask():
     return jsonify({"result": content, "html": render_markdown(content)})
 
 
+def _extract_cache_stats(usage):
+    """DeepSeek's OpenAI-compatible usage object exposes
+    prompt_cache_hit_tokens/prompt_cache_miss_tokens — its automatic,
+    server-side, disk-based context cache (no opt-in needed; it just matches
+    a request's prefix against one it recently served). Other
+    OpenAI-compatible providers wired up here (Groq, OpenRouter) return
+    usage without those two fields, so this returns None for them rather
+    than fabricate a 0% — the frontend only shows the cache badge when a
+    real figure exists."""
+    if not usage:
+        return None
+    hit = usage.get("prompt_cache_hit_tokens")
+    miss = usage.get("prompt_cache_miss_tokens")
+    if hit is None or miss is None:
+        return None
+    total = hit + miss
+    return {"hit": hit, "miss": miss, "total": total, "pct": round(hit / total * 100) if total else 0}
+
+
 _AI_STREAM_ACTION_DIRECTIVES = {
     "explain":   "Explica a fondo el siguiente contenido, con ejemplos prácticos y casos de uso.",
     "summarize": "Resume el siguiente contenido de forma concisa, manteniendo las ideas clave.",
@@ -5691,7 +5725,9 @@ def ai_ask_stream():
     """SSE streaming variant of /api/ai used by the Ask AI panel. Supports a
     multi-turn `history` (only for the plain "ask" action). Emits frames:
       - data: {"delta": "..."}          per token fragment
-      - event: done, data: {full, html, truncated}
+      - event: done, data: {full, html, truncated, cache}
+        `cache` is {hit, miss, total, pct} tokens when the provider reports
+        a cache-hit breakdown (DeepSeek), else null.
       - event: error, data: {error}
     """
     data = request.json or {}
@@ -5727,9 +5763,12 @@ def ai_ask_stream():
         ):
             if isinstance(part, tuple):
                 if part[0] == "__done__":
-                    _, truncated = part
+                    _, truncated, usage = part
                     text = "".join(full)
-                    payload = {"full": text, "html": render_markdown(text), "truncated": truncated}
+                    payload = {
+                        "full": text, "html": render_markdown(text), "truncated": truncated,
+                        "cache": _extract_cache_stats(usage),
+                    }
                     yield f"event: done\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
                     return
                 _, err = part

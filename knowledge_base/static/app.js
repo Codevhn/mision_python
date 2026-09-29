@@ -9561,6 +9561,16 @@ function initAIPanel() {
       const html = (doneEvent && doneEvent.html) ? doneEvent.html : _mdToHtml2(lastResult);
       bodyEl.innerHTML = html;
       _enhanceCodeBlocks(bodyEl);
+      // Diagnostic only — DeepSeek's automatic disk cache hit/miss for THIS
+      // request's input tokens, when the provider reports it. Not persisted
+      // with the conversation; it's about watching live usage, not history.
+      if (doneEvent && doneEvent.cache) {
+        const c = doneEvent.cache;
+        const meta = document.createElement('div');
+        meta.className = 'ai-cache-meta';
+        meta.textContent = `🔵 caché: ${c.hit}/${c.total} tokens (${c.pct}%)`;
+        bubble.wrap.appendChild(meta);
+      }
       updateFooter();
       saveConversation();
       scrollBottom();
