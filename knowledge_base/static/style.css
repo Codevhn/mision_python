@@ -1800,6 +1800,39 @@ body.focus-mode .related-sidebar { display: none; }
 .bn-editor { background-color: var(--bg-elevated) !important; }
 [data-theme="light"] .bn-editor { background-color: var(--bg) !important; }
 
+/* ── BlockNote block colors (the picker behind "Lunes"/"Martes"-style
+   colored toggles) — mute the dark palette to match light's ──
+   The bundle's own light palette is already muted pastel (red background
+   #fbe4e4, blue #ddebf1, …) but its dark palette for the very same names
+   jumps to fully-saturated colors (red #be3434, blue #0b6e99, …) — the
+   same "red" block looks like two unrelated colors depending on theme,
+   and vivid saturated fills read as jarring against this app's otherwise
+   deliberately muted, low-saturation surfaces. Override the dark palette's
+   CSS custom properties with tints in the same muted family as the light
+   ones, just toned for a dark canvas instead of a light one, so a block's
+   color reads as "the same color" — just inverted lightness — in both
+   themes, same as every other surface in this app already behaves. */
+.bn-root[data-color-scheme=dark] {
+  --bn-colors-highlights-gray-background: #3a3a38 !important;
+  --bn-colors-highlights-gray-text: #b0aea5 !important;
+  --bn-colors-highlights-brown-background: #3d332c !important;
+  --bn-colors-highlights-brown-text: #baa08c !important;
+  --bn-colors-highlights-red-background: #4a2f2f !important;
+  --bn-colors-highlights-red-text: #d99a9a !important;
+  --bn-colors-highlights-orange-background: #493829 !important;
+  --bn-colors-highlights-orange-text: #d9ae82 !important;
+  --bn-colors-highlights-yellow-background: #47402a !important;
+  --bn-colors-highlights-yellow-text: #d9c789 !important;
+  --bn-colors-highlights-green-background: #2f3d38 !important;
+  --bn-colors-highlights-green-text: #9dc2b7 !important;
+  --bn-colors-highlights-blue-background: #2b3a45 !important;
+  --bn-colors-highlights-blue-text: #94bdd6 !important;
+  --bn-colors-highlights-purple-background: #3a3245 !important;
+  --bn-colors-highlights-purple-text: #bcaad9 !important;
+  --bn-colors-highlights-pink-background: #452f3c !important;
+  --bn-colors-highlights-pink-text: #d99cbd !important;
+}
+
 /* ── BlockNote custom code blocks (code-block-native) — warm + no box ──
    These overrides only touch the editor's own code-block component. The
    bundle (editor.bundle.css) loads AFTER style.css, so every rule here needs
