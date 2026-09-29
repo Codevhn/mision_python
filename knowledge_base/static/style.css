@@ -8097,13 +8097,16 @@ body {
 .ai-bubble-assistant .ai-response-body { font-size: 0.82rem; }
 
 /* Diagnostic footer: DeepSeek's cache-hit ratio for this one request, when
-   the provider reports it (see _extract_cache_stats in app.py). */
+   the provider reports it (see _extract_cache_stats in app.py). Was
+   --text-faint at 0.68rem — the system's lowest-contrast text token, meant
+   for placeholders, not something meant to actually be read every time. */
 .ai-cache-meta {
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px solid var(--border-light);
-  font-size: 0.68rem;
-  color: var(--text-faint);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 /* ── Response content typography ── */
