@@ -14,6 +14,10 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 import io
+import threading
+import pymupdf
+import pytesseract
+from PIL import Image
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import deque
@@ -56,7 +60,7 @@ CODE_EXECUTION_ENABLED = os.environ.get("ENABLE_CODE_EXECUTION", "").lower() in 
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB request cap (uploads, JSON bodies)
+app.config["MAX_CONTENT_LENGTH"] = 220 * 1024 * 1024  # 220MB request cap — raised from 16MB for library book uploads (scanned PDFs run large); JSON bodies never get near this
 _secure_cookies_default = "false" if _ALLOW_INSECURE else "true"
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -7303,6 +7307,499 @@ def cleanup_injected_text():
             path.write_text(cleaned)
             fixed.append({"id": entry_id, "title": meta.get("title", "")})
     return jsonify({"fixed": len(fixed), "entries": fixed})
+
+
+# ── FEATURE: Biblioteca — lector de PDF/EPUB con progreso, marcadores,
+# resaltados/notas y OCR bajo demanda para escaneos. MuPDF (pymupdf) es el
+# único motor server-side: entiende PDF y EPUB de forma nativa, así que la
+# misma función sirve para detectar capa de texto, leer metadata y renderizar
+# la portada de ambos formatos. La lectura interactiva en sí (paginación,
+# selección de texto, CFI) la hace el cliente con pdf.js/epub.js — el
+# servidor solo almacena y sirve los archivos. ───────────────────────────────
+LIBRARY_DIR = DATA_DIR / "library"
+LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+LIBRARY_FILE = DATA_DIR / "library.json"
+LIBRARY_PROGRESS_FILE = DATA_DIR / "library_progress.json"
+LIBRARY_BOOKMARKS_FILE = DATA_DIR / "library_bookmarks.json"
+LIBRARY_NOTES_FILE = DATA_DIR / "library_notes.json"
+LIBRARY_COVERS_DIR = Path(app.root_path) / "static" / "covers" / "library"
+LIBRARY_COVERS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Fly.io's free volume allowance is 10GB/org (see fly.toml's kb_data mount) —
+# this is informational only, shown as a meter so the cost stays visible
+# instead of a surprise bill; it never blocks an upload.
+LIBRARY_FREE_CAP_BYTES = 10 * 1024 * 1024 * 1024
+LIBRARY_ALLOWED_EXTS = {"pdf", "epub"}
+_LIBRARY_MIMETYPES = {"pdf": "application/pdf", "epub": "application/epub+zip"}
+
+
+def load_library():
+    if LIBRARY_FILE.exists():
+        return json.loads(LIBRARY_FILE.read_text())
+    return {"books": {}}
+
+
+def save_library(data):
+    tmp = LIBRARY_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, LIBRARY_FILE)
+
+
+def load_library_progress():
+    if LIBRARY_PROGRESS_FILE.exists():
+        return json.loads(LIBRARY_PROGRESS_FILE.read_text())
+    return {}
+
+
+def save_library_progress(data):
+    tmp = LIBRARY_PROGRESS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, LIBRARY_PROGRESS_FILE)
+
+
+def load_library_bookmarks():
+    if LIBRARY_BOOKMARKS_FILE.exists():
+        return json.loads(LIBRARY_BOOKMARKS_FILE.read_text())
+    return {}
+
+
+def save_library_bookmarks(data):
+    tmp = LIBRARY_BOOKMARKS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, LIBRARY_BOOKMARKS_FILE)
+
+
+def load_library_notes():
+    if LIBRARY_NOTES_FILE.exists():
+        return json.loads(LIBRARY_NOTES_FILE.read_text())
+    return {}
+
+
+def save_library_notes(data):
+    tmp = LIBRARY_NOTES_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, LIBRARY_NOTES_FILE)
+
+
+def _pdf_has_text_layer(path, sample_pages=6, min_chars=40):
+    """Distingue un PDF con texto real de un escaneo de imágenes: si el texto
+    extraído de una muestra de páginas es casi vacío, cada página es una foto,
+    no texto seleccionable."""
+    try:
+        doc = pymupdf.open(path)
+    except Exception:
+        return None
+    try:
+        n = doc.page_count
+        if n == 0:
+            return False
+        step = max(1, n // sample_pages)
+        idxs = sorted(set([0, n // 2, n - 1] + list(range(0, n, step))))[:sample_pages]
+        total_chars = sum(len(doc[i].get_text().strip()) for i in idxs)
+        return (total_chars / max(1, len(idxs))) >= min_chars
+    finally:
+        doc.close()
+
+
+def _extract_book_metadata(path):
+    """Título/autor/nº de páginas desde el propio archivo — MuPDF lee PDF y
+    EPUB de forma nativa, un solo motor cubre ambos formatos."""
+    title, author, pages = None, None, 0
+    try:
+        doc = pymupdf.open(path)
+        meta = doc.metadata or {}
+        title = (meta.get("title") or "").strip() or None
+        author = (meta.get("author") or "").strip() or None
+        pages = doc.page_count
+        doc.close()
+    except Exception:
+        pass
+    return title, author, pages
+
+
+def _render_library_cover(path, book_id):
+    """Portada = render de la primera página. Funciona igual para PDF y EPUB
+    porque MuPDF pagina el EPUB internamente como si fuera de layout fijo."""
+    try:
+        doc = pymupdf.open(path)
+        if doc.page_count == 0:
+            doc.close()
+            return None
+        page = doc[0]
+        zoom = max(0.5, min(300 / max(page.rect.width, 1), 4))
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
+        cover_name = f"{book_id}.jpg"
+        pix.save(str(LIBRARY_COVERS_DIR / cover_name), jpg_quality=82)
+        doc.close()
+        return f"/static/covers/library/{cover_name}"
+    except Exception:
+        return None
+
+
+def _library_storage_used_bytes():
+    return sum(p.stat().st_size for p in LIBRARY_DIR.rglob("*") if p.is_file())
+
+
+@app.route("/api/library", methods=["GET"])
+def list_library():
+    lib = load_library()
+    progress = load_library_progress()
+    books = list(lib["books"].values())
+    for b in books:
+        b["progress"] = progress.get(b["id"])
+    books.sort(key=lambda b: b.get("updated_at", ""), reverse=True)
+    return jsonify({"books": books})
+
+
+@app.route("/api/library/storage", methods=["GET"])
+def library_storage():
+    used = _library_storage_used_bytes()
+    return jsonify({
+        "used_bytes": used,
+        "free_cap_bytes": LIBRARY_FREE_CAP_BYTES,
+        "pct": round(min(100, used / LIBRARY_FREE_CAP_BYTES * 100), 1),
+        "book_count": len(load_library()["books"]),
+    })
+
+
+@app.route("/api/library/upload", methods=["POST"])
+def upload_library_book():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "Falta el archivo"}), 400
+    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+    if ext not in LIBRARY_ALLOWED_EXTS:
+        return jsonify({"error": "Solo se admiten archivos PDF o EPUB"}), 400
+
+    raw = f.read()
+    if not raw:
+        return jsonify({"error": "El archivo está vacío"}), 400
+    if ext == "pdf" and not raw.startswith(b"%PDF"):
+        return jsonify({"error": "El archivo no es un PDF válido"}), 400
+    if ext == "epub" and not (raw[:4] == b"PK\x03\x04" and zipfile.is_zipfile(io.BytesIO(raw))):
+        return jsonify({"error": "El archivo no es un EPUB válido"}), 400
+
+    lib = load_library()
+    book_id = (request.form.get("book_id") or "").strip()
+    is_new = book_id not in lib["books"]
+    if is_new:
+        book_id = uuid.uuid4().hex[:12]
+
+    book_dir = LIBRARY_DIR / book_id
+    book_dir.mkdir(parents=True, exist_ok=True)
+    dest = book_dir / f"original.{ext}"
+    dest.write_bytes(raw)
+
+    has_text = _pdf_has_text_layer(dest) if ext == "pdf" else True
+    meta_title, meta_author, pages = _extract_book_metadata(dest)
+    now = datetime.now().isoformat(timespec="seconds")
+
+    if is_new:
+        book = {
+            "id": book_id,
+            "title": (request.form.get("title") or "").strip() or meta_title or f.filename.rsplit(".", 1)[0],
+            "author": (request.form.get("author") or "").strip() or meta_author or "",
+            "cover_url": _render_library_cover(dest, book_id),
+            "formats": {},
+            "created_at": now,
+            "updated_at": now,
+        }
+    else:
+        book = lib["books"][book_id]
+        if not book.get("cover_url"):
+            book["cover_url"] = _render_library_cover(dest, book_id)
+        book["updated_at"] = now
+
+    book["formats"][ext] = {
+        "filename": dest.name,
+        "size": len(raw),
+        "pages": pages,
+        "has_text_layer": has_text,
+        "ocr_applied": False,
+        "ocr_status": "idle",
+        "ocr_progress": 0,
+    }
+    lib["books"][book_id] = book
+    save_library(lib)
+    return jsonify(book), 201
+
+
+@app.route("/api/library/<book_id>", methods=["GET"])
+def get_library_book(book_id):
+    lib = load_library()
+    book = lib["books"].get(book_id)
+    if not book:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    book = dict(book)
+    book["progress"] = load_library_progress().get(book_id)
+    return jsonify(book)
+
+
+@app.route("/api/library/<book_id>", methods=["DELETE"])
+def delete_library_book(book_id):
+    lib = load_library()
+    if book_id not in lib["books"]:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    del lib["books"][book_id]
+    save_library(lib)
+    shutil.rmtree(LIBRARY_DIR / book_id, ignore_errors=True)
+    (LIBRARY_COVERS_DIR / f"{book_id}.jpg").unlink(missing_ok=True)
+    for loader, saver in (
+        (load_library_progress, save_library_progress),
+        (load_library_bookmarks, save_library_bookmarks),
+        (load_library_notes, save_library_notes),
+    ):
+        d = loader()
+        if book_id in d:
+            del d[book_id]
+            saver(d)
+    _OCR_JOBS.pop(book_id, None)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/library/<book_id>/file/<fmt>", methods=["GET"])
+def get_library_file(book_id, fmt):
+    lib = load_library()
+    book = lib["books"].get(book_id)
+    if not book or fmt not in book.get("formats", {}):
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    path = LIBRARY_DIR / book_id / book["formats"][fmt]["filename"]
+    if not path.exists():
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    return send_file(path, mimetype=_LIBRARY_MIMETYPES.get(fmt, "application/octet-stream"), conditional=True)
+
+
+@app.route("/api/library/<book_id>/progress", methods=["POST"])
+def save_library_book_progress(book_id):
+    lib = load_library()
+    if book_id not in lib["books"]:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    body = request.json or {}
+    try:
+        percent = max(0, min(100, float(body.get("percent") or 0)))
+    except (TypeError, ValueError):
+        percent = 0
+    progress = load_library_progress()
+    progress[book_id] = {
+        "format": body.get("format"),
+        "location": body.get("location"),
+        "percent": percent,
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    save_library_progress(progress)
+    return jsonify({"ok": True})
+
+
+# ── Marcadores ──
+@app.route("/api/library/<book_id>/bookmarks", methods=["GET"])
+def list_library_bookmarks(book_id):
+    return jsonify({"bookmarks": load_library_bookmarks().get(book_id, [])})
+
+
+@app.route("/api/library/<book_id>/bookmarks", methods=["POST"])
+def add_library_bookmark(book_id):
+    lib = load_library()
+    if book_id not in lib["books"]:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    body = request.json or {}
+    bookmark = {
+        "id": uuid.uuid4().hex[:8],
+        "format": body.get("format"),
+        "location": body.get("location"),
+        "label": (body.get("label") or "").strip() or "Marcador",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    all_bm = load_library_bookmarks()
+    all_bm.setdefault(book_id, []).append(bookmark)
+    save_library_bookmarks(all_bm)
+    return jsonify(bookmark), 201
+
+
+@app.route("/api/library/<book_id>/bookmarks/<bookmark_id>", methods=["DELETE"])
+def delete_library_bookmark(book_id, bookmark_id):
+    all_bm = load_library_bookmarks()
+    all_bm[book_id] = [b for b in all_bm.get(book_id, []) if b["id"] != bookmark_id]
+    save_library_bookmarks(all_bm)
+    return jsonify({"ok": True})
+
+
+# ── Resaltados y notas ──
+@app.route("/api/library/notes", methods=["GET"])
+def list_all_library_notes():
+    """Vista global de Apuntes — todos los resaltados/notas de toda la
+    biblioteca, más recientes primero."""
+    lib = load_library()
+    flat = []
+    for book_id, items in load_library_notes().items():
+        book = lib["books"].get(book_id)
+        for n in items:
+            entry = dict(n)
+            entry["book_id"] = book_id
+            entry["book_title"] = book["title"] if book else "(libro eliminado)"
+            flat.append(entry)
+    flat.sort(key=lambda n: n.get("created_at", ""), reverse=True)
+    return jsonify({"notes": flat})
+
+
+@app.route("/api/library/<book_id>/notes", methods=["GET"])
+def list_library_notes(book_id):
+    return jsonify({"notes": load_library_notes().get(book_id, [])})
+
+
+@app.route("/api/library/<book_id>/notes", methods=["POST"])
+def add_library_note(book_id):
+    lib = load_library()
+    if book_id not in lib["books"]:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    body = request.json or {}
+    quote = (body.get("quote_text") or "").strip()
+    if not quote:
+        return jsonify({"error": "Falta el texto resaltado"}), 400
+    note = {
+        "id": uuid.uuid4().hex[:8],
+        "format": body.get("format"),
+        "location": body.get("location"),
+        "chapter_title": (body.get("chapter_title") or "").strip(),
+        "quote_text": quote,
+        "note_text": (body.get("note_text") or "").strip(),
+        "color": body.get("color") or "yellow",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    all_notes = load_library_notes()
+    all_notes.setdefault(book_id, []).append(note)
+    save_library_notes(all_notes)
+    return jsonify(note), 201
+
+
+@app.route("/api/library/<book_id>/notes/<note_id>", methods=["PATCH"])
+def update_library_note(book_id, note_id):
+    all_notes = load_library_notes()
+    body = request.json or {}
+    for n in all_notes.get(book_id, []):
+        if n["id"] == note_id:
+            if "note_text" in body:
+                n["note_text"] = (body.get("note_text") or "").strip()
+            if "color" in body:
+                n["color"] = body.get("color")
+            save_library_notes(all_notes)
+            return jsonify(n)
+    return jsonify({"error": "Nota no encontrada"}), 404
+
+
+@app.route("/api/library/<book_id>/notes/<note_id>", methods=["DELETE"])
+def delete_library_note(book_id, note_id):
+    all_notes = load_library_notes()
+    all_notes[book_id] = [n for n in all_notes.get(book_id, []) if n["id"] != note_id]
+    save_library_notes(all_notes)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/library/<book_id>/notes/<note_id>/to-concept", methods=["POST"])
+def library_note_to_concept(book_id, note_id):
+    """Convierte un resaltado/nota en un concepto real del curso elegido, para
+    que entre al mismo sistema de mastery/repetición espaciada que ya usan
+    los cursos, en vez de quedar aislado como una nota muerta."""
+    body = request.json or {}
+    course = (body.get("course") or "").strip()
+    if not course:
+        return jsonify({"error": "Falta el curso destino"}), 400
+
+    note = next((n for n in load_library_notes().get(book_id, []) if n["id"] == note_id), None)
+    if not note:
+        return jsonify({"error": "Nota no encontrada"}), 404
+
+    name = re.sub(r"\s+", " ", note.get("note_text") or note["quote_text"]).strip()[:80]
+    data = load_concepts()
+    entry = data["courses"].setdefault(course, {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "concepts": [],
+    })
+    concept = {
+        "id": uuid.uuid4().hex[:8],
+        "name": name,
+        "category": "Desde Biblioteca",
+        "description": note["quote_text"][:300],
+        "pareto": False,
+    }
+    entry["concepts"].append(concept)
+    save_concepts(data)
+    return jsonify(concept), 201
+
+
+# ── OCR bajo demanda — corre en un hilo aparte porque una tanda de 300+
+# páginas puede tardar varios minutos, y la VM comparte 1 CPU (fly.toml);
+# bloquear el worker de gunicorn con esto tumbaría el resto de la app. El
+# estado vive en memoria (_OCR_JOBS): con un solo proceso/instancia esto
+# basta, y se refleja también en library.json para sobrevivir un reinicio
+# a medias (el estado "running" quedaría huérfano, pero el usuario puede
+# simplemente reintentar). ───────────────────────────────────────────────
+_OCR_JOBS = {}
+_OCR_LOCK = threading.Lock()
+
+
+def _run_library_ocr(book_id):
+    lib = load_library()
+    book = lib["books"].get(book_id)
+    if not book or "pdf" not in book.get("formats", {}):
+        _OCR_JOBS[book_id] = {"status": "error", "progress": 0, "error": "No hay PDF para este libro"}
+        return
+    path = LIBRARY_DIR / book_id / book["formats"]["pdf"]["filename"]
+    try:
+        src = pymupdf.open(path)
+        n = src.page_count
+        out = pymupdf.open()
+        for i in range(n):
+            pix = src[i].get_pixmap(matrix=pymupdf.Matrix(2, 2))
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
+            page_pdf_bytes = pytesseract.image_to_pdf_or_hocr(img, lang="spa+eng", extension="pdf")
+            page_doc = pymupdf.open("pdf", page_pdf_bytes)
+            out.insert_pdf(page_doc)
+            page_doc.close()
+            _OCR_JOBS[book_id]["progress"] = round((i + 1) / max(1, n) * 100)
+        src.close()
+        out_path = LIBRARY_DIR / book_id / "ocr.pdf"
+        out.save(str(out_path))
+        out.close()
+
+        lib = load_library()
+        book = lib["books"][book_id]
+        book["formats"]["pdf"]["filename"] = "ocr.pdf"
+        book["formats"]["pdf"]["has_text_layer"] = True
+        book["formats"]["pdf"]["ocr_applied"] = True
+        book["formats"]["pdf"]["ocr_status"] = "done"
+        book["formats"]["pdf"]["ocr_progress"] = 100
+        book["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        save_library(lib)
+        _OCR_JOBS[book_id] = {"status": "done", "progress": 100, "error": None}
+    except Exception as e:
+        app.logger.exception("OCR falló para el libro %s", book_id)
+        _OCR_JOBS[book_id] = {"status": "error", "progress": 0, "error": str(e)}
+        lib = load_library()
+        if book_id in lib["books"] and "pdf" in lib["books"][book_id].get("formats", {}):
+            lib["books"][book_id]["formats"]["pdf"]["ocr_status"] = "error"
+            save_library(lib)
+
+
+@app.route("/api/library/<book_id>/ocr", methods=["POST"])
+def start_library_ocr(book_id):
+    lib = load_library()
+    book = lib["books"].get(book_id)
+    if not book or "pdf" not in book.get("formats", {}):
+        return jsonify({"error": "Este libro no tiene un PDF"}), 404
+    with _OCR_LOCK:
+        if _OCR_JOBS.get(book_id, {}).get("status") == "running":
+            return jsonify({"error": "Ya se está aplicando OCR a este libro"}), 409
+        _OCR_JOBS[book_id] = {"status": "running", "progress": 0, "error": None}
+        book["formats"]["pdf"]["ocr_status"] = "running"
+        book["formats"]["pdf"]["ocr_progress"] = 0
+        save_library(lib)
+        threading.Thread(target=_run_library_ocr, args=(book_id,), daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/library/<book_id>/ocr/status", methods=["GET"])
+def library_ocr_status(book_id):
+    return jsonify(_OCR_JOBS.get(book_id, {"status": "idle", "progress": 0, "error": None}))
 
 
 if __name__ == "__main__":

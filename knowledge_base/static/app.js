@@ -6235,7 +6235,7 @@ function setSidebarVisible(visible) {
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6307,12 +6307,16 @@ function setSidebarVisible(visible) {
     const practiceView = document.getElementById('practiceView');
     const quizView      = document.getElementById('quizView');
     const labView       = document.getElementById('labView');
+    const libraryView       = document.getElementById('libraryView');
+    const libraryReaderView = document.getElementById('libraryReaderView');
 
     if (graphView)      graphView.classList.add('hidden');
     if (radarView)      radarView.classList.add('hidden');
     if (practiceView)   practiceView.classList.add('hidden');
     if (quizView)       quizView.classList.add('hidden');
     if (labView)        labView.classList.add('hidden');
+    if (libraryView)        libraryView.classList.add('hidden');
+    if (libraryReaderView)  libraryReaderView.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -6371,6 +6375,14 @@ function setSidebarVisible(visible) {
     } else if (space === 'lab') {
       if (labView) labView.classList.remove('hidden');
       if (typeof _renderLabSpace === 'function') _renderLabSpace();
+    } else if (space === 'library') {
+      if (window._activeLibraryBookId && libraryReaderView) {
+        libraryReaderView.classList.remove('hidden');
+        if (typeof window._reopenLibraryReader === 'function') window._reopenLibraryReader();
+      } else if (libraryView) {
+        libraryView.classList.remove('hidden');
+        if (typeof window._renderLibrarySpace === 'function') window._renderLibrarySpace();
+      }
     } else {
       // knowledge, teamspace, boards, pages — show welcome unless entry open
       if (!currentEntryId && welcome) welcome.style.display = '';
@@ -9443,6 +9455,11 @@ function initAIPanel() {
     setTimeout(() => input.focus(), 50);
   }
 
+  // Exposed so features outside this closure (the Biblioteca reader's
+  // "Preguntar a la IA" selection action, which has no currentEntryId to
+  // hook into) can still open this same panel prefilled with selected text.
+  window._openAiAskPanel = (selText) => openPanel(selText || null);
+
   function closePanel() {
     saveConversation();
     panel.classList.add('hidden');
@@ -10325,6 +10342,15 @@ function _quizConceptPreset(conceptName, course, conceptId) {
   _quizPresetContext = { title: conceptName, text: '', course, conceptId, conceptName, mode: 'topic' };
   window.switchSpace?.('quiz');
 }
+
+// Same preset handoff, for arbitrary text from outside this feature entirely
+// (the Biblioteca reader's "Generar quiz de esto" on a chapter or a resaltado
+// — real book content, not a lesson already in the knowledge base).
+function _quizFromLibraryText(title, text, course) {
+  _quizPresetContext = { title: title || 'este pasaje', text: text || '', course: course || '', mode: 'topic' };
+  window.switchSpace?.('quiz');
+}
+window._quizFromLibraryText = _quizFromLibraryText;
 
 function _renderQuizSpace() {
   if (!_quizState) {

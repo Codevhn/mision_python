@@ -116,6 +116,10 @@
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
         </button>
+        <button class="ab-item" id="abLibrary" data-space="library" title="Biblioteca">
+          <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2.8h4.2a1.6 1.6 0 0 1 1.6 1.6v9.4A1.4 1.4 0 0 0 6.4 12.4H2z"/><path d="M14 2.8H9.8a1.6 1.6 0 0 0-1.6 1.6v9.4a1.4 1.4 0 0 1 1.4-1.4H14z"/></svg></span>
+          <span class="ab-label">Biblioteca</span>
+        </button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -166,6 +170,7 @@
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
         <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
+        <button class="msn-item" id="msnLibrary" data-space="library"><span class="msn-icon">📚</span><span class="msn-label">Biblioteca</span></button>
       </nav>
       <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
         <span class="msn-back-icon">←</span>
@@ -449,6 +454,48 @@
           <h2 class="practice-view-title">🎯 Centro de Práctica</h2>
         </div>
         <div class="lab-body" id="labBody"></div>
+      </div>
+
+      <!-- BIBLIOTECA — grid de libros (PDF/EPUB) + medidor de almacenamiento
+           + pestaña de Apuntes global. Misma familia visual que Centro de
+           Práctica (lab-view/lab-body), contenido propio. -->
+      <div class="lab-view hidden" id="libraryView">
+        <div class="practice-view-header">
+          <h2 class="practice-view-title">📚 Biblioteca</h2>
+          <input type="file" id="libraryUploadInput" accept=".pdf,.epub" multiple hidden>
+          <button class="practice-view-back" id="libraryUploadBtn" style="margin-left:auto">↑ Subir libro</button>
+        </div>
+        <div class="lab-body" id="libraryBody"></div>
+      </div>
+
+      <!-- LECTOR — pantalla de lectura sin ninguna UI de edición visible.
+           pdf.js/epub.js vendorizados en /static/vendor, sin CDN. -->
+      <div class="reader-shell hidden" id="libraryReaderView">
+        <div class="reader-bar">
+          <div class="r-back" id="readerBackBtn">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg> Biblioteca
+          </div>
+          <div class="r-title" id="readerTitle">—</div>
+          <div class="r-tools">
+            <span id="readerTocBtn" title="Índice"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h8"/></svg></span>
+            <span id="readerBookmarkBtn" title="Marcador"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-2.6-4 2.6z"/></svg></span>
+            <span id="readerFontBtn" title="Tipografía" style="font-weight:700;">Aa</span>
+          </div>
+        </div>
+        <div class="scan-banner hidden" id="readerScanBanner">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5 15 14H1z"/><path d="M8 6.5v3.2M8 12v.1"/></svg>
+          <span>Este PDF es un escaneo de imágenes — no tiene texto seleccionable, así que no puedes resaltar, tomar notas ni buscar aquí.</span>
+          <b id="readerOcrBtn">Aplicar OCR a este libro</b>
+        </div>
+        <div class="reader-body">
+          <aside class="reader-toc-panel hidden" id="readerTocPanel"></aside>
+          <div class="reader-page" id="readerPage"></div>
+        </div>
+        <div class="reader-footer">
+          <span id="readerLocLabel">—</span>
+          <div class="r-progress-bar"><div class="r-progress-fill" id="readerProgressFill" style="width:0%"></div></div>
+          <span id="readerPctLabel">0%</span>
+        </div>
       </div>
 
       <!-- Entry cover banner (outside entry-view for full-width) -->
@@ -1390,6 +1437,17 @@
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
+  <!-- Biblioteca: pdf.js/epub.js vendorizados en /static/vendor (sin CDN).
+       pdf.js 4.x se distribuye como módulo ES; se expone en window.pdfjsLib
+       para que library.js (script clásico) pueda usarlo igual que el resto. -->
+  <script src="/static/vendor/epubjs/jszip.min.js"></script>
+  <script src="/static/vendor/epubjs/epub.min.js"></script>
+  <script type="module">
+    import * as pdfjsLib from '/static/vendor/pdfjs/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.mjs';
+    window.pdfjsLib = pdfjsLib;
+  </script>
+  <script src="/static/library.js?v={{ v }}"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
