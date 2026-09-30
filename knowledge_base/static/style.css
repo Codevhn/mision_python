@@ -8853,7 +8853,7 @@ body {
 }
 .lab-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .lab-panel-head h2 { margin: 0; font-size: 0.94rem; font-weight: 700; color: var(--text); }
-.lab-hint { font-size: 0.72rem; color: var(--text-faint); }
+.lab-hint { font-size: 0.78rem; color: var(--text-muted); }
 
 /* radar */
 .lab-radar-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -8863,7 +8863,7 @@ body {
 .lab-radar-ring--progress { stroke: color-mix(in srgb, var(--accent-amber) 40%, transparent); }
 .lab-radar-ring--solid    { stroke: color-mix(in srgb, var(--success) 40%, transparent); }
 .lab-radar-course-label { fill: var(--text-muted); font-family: var(--font-ui); font-size: 11px; font-weight: 600; }
-.lab-radar-line { stroke: var(--danger); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: 0.55; pointer-events: none; }
+.lab-radar-line { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; opacity: 0.8; pointer-events: none; }
 .lab-radar-point { cursor: pointer; opacity: 0.95; transition: opacity 0.15s ease; }
 .lab-radar-point:hover { opacity: 1; }
 .lab-radar-point--critical { fill: var(--danger); }
@@ -8915,8 +8915,13 @@ body {
 .lab-qtag { font-size: 0.68rem; color: var(--text-faint); }
 .lab-qgo { font-size: 0.7rem; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
-.lab-model-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.lab-model-label { font-size: 0.76rem; color: var(--text-muted); }
+/* Stacked, not side-by-side: model names/hints run long ("DeepSeek V4
+   Flash (DeepSeek) — Más rápido, ideal para respuestas cortas") and this
+   panel's column is narrow — a space-between row squeezed the select down
+   to a truncated little pill. Same stacked pattern the Quiz/Práctica rail
+   already uses for its own "Modelo" row (.practice-diff-row--col). */
+.lab-model-row { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.lab-model-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
 .lab-jump-select {
   width: 100%; padding: 9px 10px; border-radius: var(--radius-md);
   border: 1px solid var(--border-light); background: var(--bg-elevated);
@@ -9011,7 +9016,7 @@ body {
    screens), but prose read poorly stretched edge-to-edge on a wide
    monitor — capping just this wrapper keeps line length readable without
    touching the rail/header layout. */
-.practice-concept-hub { max-width: 760px; margin: 0 auto; }
+.practice-concept-hub { max-width: 920px; margin: 0 auto; }
 .practice-concept-hub-category {
   display: inline-block;
   padding: 2px 10px;

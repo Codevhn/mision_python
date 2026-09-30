@@ -10019,7 +10019,7 @@ function _labBuildRadar(coursesArr) {
       points.push({
         id: c.id, name: c.name, pareto: !!c.pareto, mastery: c.mastery,
         course: slug, courseLabel: info.label,
-        x: p.x, y: p.y, band: _labMasteryBand(c.mastery),
+        x: p.x, y: p.y, angle, band: _labMasteryBand(c.mastery),
       });
     });
     const lp = _labPolar(sectorStart + sectorSpan / 2, _LAB_R_LABEL);
@@ -10047,13 +10047,23 @@ function _labRadarSvgHtml(points, labels, topConceptId) {
     return `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="${anchor}" class="lab-radar-course-label">${escapeHtml(l.text)}</text>`;
   }).join('');
   // Same single top-priority point the pulse animation above already
-  // singles out — a dashed line from the center to it makes that "this is
-  // the one to fix first" reading immediate instead of needing to spot
-  // which dot is pulsing.
+  // singles out. A line from the exact center is barely visible for this
+  // one on purpose, though — the critical band sits closest to the center
+  // by definition, so "weakest point" and "short line" go together. A
+  // spoke from just past the outer ring inward to the point instead stays
+  // a consistent, clearly visible length regardless of how close to
+  // center that point actually is.
   const topPoint = points.find(p => p.id === topConceptId);
-  const line = topPoint
-    ? `<line x1="${_LAB_R_CENTER}" y1="${_LAB_R_CENTER}" x2="${topPoint.x.toFixed(1)}" y2="${topPoint.y.toFixed(1)}" class="lab-radar-line"/>`
-    : '';
+  let line = '';
+  if (topPoint) {
+    // Using the point's own assigned angle (not derived from x/y relative
+    // to center) matters specifically at 0% mastery, where the point sits
+    // exactly on the center — (x - center, y - center) is then (0, 0),
+    // which has no direction to point a line along at all.
+    const edgeR = 196; // between the outer ring (190) and the course labels (_LAB_R_LABEL=205) — clears both
+    const edge = _labPolar(topPoint.angle, edgeR);
+    line = `<line x1="${edge.x.toFixed(1)}" y1="${edge.y.toFixed(1)}" x2="${topPoint.x.toFixed(1)}" y2="${topPoint.y.toFixed(1)}" class="lab-radar-line"/>`;
+  }
   return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:460px" class="lab-radar-svg">
       <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="190" class="lab-radar-ring lab-radar-ring--solid"/>
       <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="127" class="lab-radar-ring lab-radar-ring--progress"/>
