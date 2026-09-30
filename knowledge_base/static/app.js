@@ -10400,11 +10400,13 @@ function _renderQuizRail() {
   if (!st) return;
   _sweepStaleCselectPortals($('practiceView'));
 
-  $('quizRail').innerHTML = `
-    <div class="practice-rail-nav">
-      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="quizNavNew">✏️ Nuevo quiz</button>
-      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="quizNavHistory">🕘 Historial</button>
-    </div>
+  // Same reasoning as _renderPracticeRail: an unanswered question sitting
+  // next to an always-live "Generar quiz" button is one misclick away from
+  // silently discarding it.
+  const midProgress = st.screen === 'question' && !st.viewingHistory;
+  const showForm = !midProgress || st.newFormOpen;
+
+  const formHtml = showForm ? `
     <div class="practice-mode-tabs">
       <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
       <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
@@ -10422,13 +10424,26 @@ function _renderQuizRail() {
       <span class="practice-diff-label">Modelo</span>
       <div class="practice-cselect" id="quizModelCSelect"></div>
     </div>
-    <button class="btn-primary practice-generate-btn" id="quizGenerateBtn">✦ Generar quiz</button>`;
+    <button class="btn-primary practice-generate-btn" id="quizGenerateBtn">✦ Generar quiz</button>
+  ` : `
+    <div class="practice-rail-collapsed-hint">Tienes un quiz en curso. Usa <b>✏️ Nuevo quiz</b> arriba para configurar otro.</div>
+  `;
+
+  $('quizRail').innerHTML = `
+    <div class="practice-rail-nav">
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="quizNavNew">✏️ Nuevo quiz</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="quizNavHistory">🕘 Historial</button>
+    </div>
+    ${formHtml}`;
 
   $('quizNavNew').addEventListener('click', () => {
-    if (!st.viewingHistory) return;
-    st.viewingHistory = false;
-    _renderQuizRail();
-    _renderQuizMain();
+    if (st.viewingHistory) {
+      st.viewingHistory = false;
+      _renderQuizRail();
+      _renderQuizMain();
+      return;
+    }
+    if (midProgress && !st.newFormOpen) { st.newFormOpen = true; _renderQuizRail(); }
   });
   $('quizNavHistory').addEventListener('click', () => {
     if (st.viewingHistory) return;
@@ -10436,6 +10451,8 @@ function _renderQuizRail() {
     _renderQuizRail();
     _renderQuizMain();
   });
+
+  if (!showForm) return;
 
   document.querySelectorAll('#quizRail .practice-mode-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -10538,6 +10555,18 @@ function _renderQuizError(msg) {
 
 async function _startQuizGeneration(override) {
   const st = _quizState;
+  // override-driven calls are the preset handoff into a brand-new Quiz space
+  // (always arrives with screen still 'empty' — see _renderQuizSpace), so
+  // there's never actually anything of the user's to lose there; only the
+  // manual "Generar quiz" button click can land on a real mid-quiz screen.
+  if (!override && st.screen === 'question') {
+    const ok = await showConfirm(
+      '¿Generar un quiz nuevo?',
+      'El quiz que tienes abierto no está terminado — se perderá tu progreso en él.',
+      'Generar de todas formas',
+    );
+    if (!ok) return;
+  }
   if (st.viewingHistory) { st.viewingHistory = false; _renderQuizRail(); }
   let topic = '', context = '', entryId = '', course = '', conceptId = '', conceptName = '';
 
@@ -10588,6 +10617,8 @@ async function _startQuizGeneration(override) {
     st.quiz = data;
     st.current = 0;
     st.screen = 'question';
+    st.newFormOpen = false;
+    _renderQuizRail();
     _renderQuizQuestion(0);
   } catch (err) {
     if (_quizState !== st) return;
@@ -10933,6 +10964,8 @@ async function _resumeQuizFromHistory(quizId) {
 
   if (data.status === 'in_progress') {
     st.screen = 'question';
+    st.newFormOpen = false;
+    _renderQuizRail();
     _renderQuizQuestion(st.current);
   } else {
     st.screen = 'results';
@@ -11085,11 +11118,16 @@ function _renderPracticeRail() {
       <button class="practice-nudge-btn" id="practiceNudgeGoBtn">Ir a Cursos →</button>
     </div>` : '';
 
-  $('practiceRail').innerHTML = `
-    <div class="practice-rail-nav">
-      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="practiceNavNew">✏️ Nuevo reto</button>
-      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="practiceNavHistory">🕘 Historial</button>
-    </div>
+  // While a reto is actually in progress, the full "nuevo reto" form (with
+  // its always-armed "Generar reto" button) sitting right there in the rail
+  // is one misclick away from silently discarding it — no confirmation, no
+  // undo. Collapse it behind the existing "✏️ Nuevo reto" nav button instead
+  // of removing it, so starting a new one is still one click away, just not
+  // the SAME click you'd make to, say, scroll the reto text.
+  const midProgress = st.screen === 'challenge' && !st.viewingHistory;
+  const showForm = !midProgress || st.newFormOpen;
+
+  const formHtml = showForm ? `
     ${nudgeHtml}
     <div class="practice-mode-tabs">
       <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
@@ -11110,15 +11148,28 @@ function _renderPracticeRail() {
       <span class="practice-diff-label">Modelo</span>
       <div class="practice-cselect" id="practiceModelCSelect"></div>
     </div>
-    <button class="btn-primary practice-generate-btn" id="practiceGenerateBtn">✦ Generar reto</button>`;
+    <button class="btn-primary practice-generate-btn" id="practiceGenerateBtn">✦ Generar reto</button>
+  ` : `
+    <div class="practice-rail-collapsed-hint">Tienes un reto en curso. Usa <b>✏️ Nuevo reto</b> arriba para configurar otro.</div>
+  `;
+
+  $('practiceRail').innerHTML = `
+    <div class="practice-rail-nav">
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="practiceNavNew">✏️ Nuevo reto</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="practiceNavHistory">🕘 Historial</button>
+    </div>
+    ${formHtml}`;
 
   $('practiceNudgeGoBtn')?.addEventListener('click', () => window.switchSpace?.('courses'));
 
   $('practiceNavNew').addEventListener('click', () => {
-    if (!st.viewingHistory) return;
-    st.viewingHistory = false;
-    _renderPracticeRail();
-    _renderPracticeMain();
+    if (st.viewingHistory) {
+      st.viewingHistory = false;
+      _renderPracticeRail();
+      _renderPracticeMain();
+      return;
+    }
+    if (midProgress && !st.newFormOpen) { st.newFormOpen = true; _renderPracticeRail(); }
   });
   $('practiceNavHistory').addEventListener('click', () => {
     if (st.viewingHistory) return;
@@ -11126,6 +11177,8 @@ function _renderPracticeRail() {
     _renderPracticeRail();
     _renderPracticeMain();
   });
+
+  if (!showForm) return; // nothing below exists to wire up in the collapsed state
 
   document.querySelectorAll('.practice-mode-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -12093,6 +12146,14 @@ function _savePracticeProgress(st) {
 
 async function _startPracticeGeneration() {
   const st = _practiceState;
+  if (st.screen === 'challenge') {
+    const ok = await showConfirm(
+      '¿Generar un reto nuevo?',
+      'El reto que tienes abierto no está terminado — se perderá tu progreso en él.',
+      'Generar de todas formas',
+    );
+    if (!ok) return;
+  }
   if (st.viewingHistory) { st.viewingHistory = false; _renderPracticeRail(); }
   let topic = '', context = '', entryId = '', course = '', forceConceptId = '', weakestPick = null;
 
@@ -12210,6 +12271,8 @@ async function _startPracticeGeneration() {
     st.current = 0;
     st.stepResults = data.steps.map(() => ({ passed: false, revealed: false, hintsShown: 0 }));
     st.screen = 'challenge';
+    st.newFormOpen = false;
+    _renderPracticeRail();
     _renderPracticeChallenge();
     if (weakestPick) {
       showToast(`Reto sobre tu punto más débil: "${weakestPick.concept_name}" (${weakestPick.course_label})`, 'success');
@@ -12424,6 +12487,8 @@ async function _resumePracticeFromHistory(challengeId) {
 
   if (data.status === 'in_progress') {
     st.screen = 'challenge';
+    st.newFormOpen = false;
+    _renderPracticeRail();
     _renderPracticeChallenge();
   } else {
     st.screen = 'results';

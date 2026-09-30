@@ -444,6 +444,8 @@
     $('readerTocPanel').classList.add('hidden');
     $('readerTocPanel').innerHTML = '';
     $('readerPage').innerHTML = '<div class="lab-hint">Cargando libro…</div>';
+    $('readerPrevBtn').disabled = true;
+    $('readerNextBtn').disabled = true;
     _wireReaderChrome();
     await _loadReaderNotesAndBookmarks(book.id);
     if (_reader.format === 'epub') await _loadEpubReader(book);
@@ -513,6 +515,25 @@
     const showZoom = _reader.format === 'pdf';
     [zoomOut, $('readerZoomLabel'), zoomIn].forEach(el => { if (el) el.classList.toggle('hidden', !showZoom); });
     if (showZoom) _updateZoomLabel();
+
+    // Página anterior/siguiente vive en el pie fijo del lector (visible sin
+    // scrollear) en vez de junto al contenido — antes había que bajar hasta
+    // el final de la página para ver "‹ Anterior / Siguiente ›".
+    const prevBtn = $('readerPrevBtn'), nextBtn = $('readerNextBtn');
+    if (prevBtn && !prevBtn._wired) {
+      prevBtn._wired = true;
+      prevBtn.addEventListener('click', () => {
+        if (_reader.format === 'epub') _reader.epubRendition?.prev();
+        else _pdfGoTo(_reader.pdfPage - 1);
+      });
+    }
+    if (nextBtn && !nextBtn._wired) {
+      nextBtn._wired = true;
+      nextBtn.addEventListener('click', () => {
+        if (_reader.format === 'epub') _reader.epubRendition?.next();
+        else _pdfGoTo(_reader.pdfPage + 1);
+      });
+    }
   }
 
   async function _loadReaderNotesAndBookmarks(bookId) {
@@ -789,14 +810,10 @@
     scroller.appendChild(wrap);
     pageEl.appendChild(scroller);
 
-    const nav = document.createElement('div');
-    nav.className = 'pdf-page-nav';
-    nav.innerHTML = `<button id="pdfPrevPage" ${_reader.pdfPage <= 1 ? 'disabled' : ''}>‹ Anterior</button><span>Página ${_reader.pdfPage} de ${_reader.pdfPageCount}</span><button id="pdfNextPage" ${_reader.pdfPage >= _reader.pdfPageCount ? 'disabled' : ''}>Siguiente ›</button>`;
-    pageEl.appendChild(nav);
-    $('pdfPrevPage').onclick = () => _pdfGoTo(_reader.pdfPage - 1);
-    $('pdfNextPage').onclick = () => _pdfGoTo(_reader.pdfPage + 1);
-
     if (!scanned) _applyPdfHighlightsForPage(_reader.pdfPage);
+
+    $('readerPrevBtn').disabled = _reader.pdfPage <= 1;
+    $('readerNextBtn').disabled = _reader.pdfPage >= _reader.pdfPageCount;
 
     const pct = Math.round((_reader.pdfPage / _reader.pdfPageCount) * 100);
     _updateReaderFooter(`Página ${_reader.pdfPage} de ${_reader.pdfPageCount}`, pct);
@@ -870,6 +887,8 @@
       const pct = Math.round((location.start.percentage || 0) * 100);
       const pageLabel = location.start.displayed ? `Ubicación ${location.start.displayed.page} de ${location.start.displayed.total}` : '';
       _updateReaderFooter(pageLabel || 'Leyendo…', pct);
+      $('readerPrevBtn').disabled = !!location.atStart;
+      $('readerNextBtn').disabled = !!location.atEnd;
       _saveProgressThrottled('epub', location.start.cfi, pct);
       const chapterItem = _reader.tocItems.find(t => t.href && location.start.href && location.start.href.includes(t.href.split('#')[0]));
       _reader._epubCurrentChapter = chapterItem ? chapterItem.title : '';
