@@ -197,8 +197,13 @@
 
   function _bookCardHtml(b) {
     const pct = b.progress ? Math.round(b.progress.percent) : 0;
+    // The backend always hands back the /cover route (it self-heals a
+    // missing file server-side), but a book that genuinely has no
+    // renderable cover still 404s — onerror swaps in the same spine-title
+    // placeholder used when there's no cover_url at all, instead of a
+    // broken-image icon.
     const cover = b.cover_url
-      ? `<img src="${b.cover_url}" alt="" loading="lazy">`
+      ? `<img src="${b.cover_url}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;spine-title&quot;>${_escHtml(b.title)}</span>'">`
       : `<span class="spine-title">${_escHtml(b.title)}</span>`;
     const ring = pct > 0 ? `<div class="book-progress-ring" style="--bp:${pct}"></div>` : '';
     let meta = _escHtml(b.author || '');

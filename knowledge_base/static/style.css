@@ -9005,7 +9005,12 @@ body {
 .practice-refresh-topics-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* "Centro de mando" — the concept hub shown in the main area once a
-   Curso ▸ Categoría ▸ Concepto selection resolves to a specific concept. */
+   Curso ▸ Categoría ▸ Concepto selection resolves to a specific concept.
+   .practice-main itself stays full-width (flex:1, shared with other
+   screens), but prose read poorly stretched edge-to-edge on a wide
+   monitor — capping just this wrapper keeps line length readable without
+   touching the rail/header layout. */
+.practice-concept-hub { max-width: 760px; margin: 0 auto; }
 .practice-concept-hub-category {
   display: inline-block;
   padding: 2px 10px;

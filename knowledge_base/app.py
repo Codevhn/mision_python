@@ -7322,8 +7322,11 @@ LIBRARY_FILE = DATA_DIR / "library.json"
 LIBRARY_PROGRESS_FILE = DATA_DIR / "library_progress.json"
 LIBRARY_BOOKMARKS_FILE = DATA_DIR / "library_bookmarks.json"
 LIBRARY_NOTES_FILE = DATA_DIR / "library_notes.json"
-LIBRARY_COVERS_DIR = Path(app.root_path) / "static" / "covers" / "library"
-LIBRARY_COVERS_DIR.mkdir(parents=True, exist_ok=True)
+# Portadas: NO viven bajo static/ — ese directorio es parte de la imagen del
+# contenedor, no del volumen persistente, y Fly apaga y reemplaza la máquina
+# (auto_stop_machines) entre visitas cuando está inactiva. Guardarlas junto
+# al resto de cada libro, dentro de LIBRARY_DIR (que sí es DATA_DIR / el
+# volumen), es lo que evita que desaparezcan solas.
 
 # Fly.io's free volume allowance is 10GB/org (see fly.toml's kb_data mount) —
 # this is informational only, shown as a meter so the cost stays visible
@@ -7424,26 +7427,35 @@ def _extract_book_metadata(path):
 
 
 def _render_library_cover(path, book_id):
-    """Portada = render de la primera página. Funciona igual para PDF y EPUB
-    porque MuPDF pagina el EPUB internamente como si fuera de layout fijo."""
+    """Portada = render de la primera página, guardado junto al resto de los
+    archivos del libro (persistente). Funciona igual para PDF y EPUB porque
+    MuPDF pagina el EPUB internamente como si fuera de layout fijo."""
     try:
         doc = pymupdf.open(path)
         if doc.page_count == 0:
             doc.close()
-            return None
+            return False
         page = doc[0]
         zoom = max(0.5, min(300 / max(page.rect.width, 1), 4))
         pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
-        cover_name = f"{book_id}.jpg"
-        pix.save(str(LIBRARY_COVERS_DIR / cover_name), jpg_quality=82)
+        pix.save(str(LIBRARY_DIR / book_id / "cover.jpg"), jpg_quality=82)
         doc.close()
-        return f"/static/covers/library/{cover_name}"
+        return True
     except Exception:
-        return None
+        return False
 
 
 def _library_storage_used_bytes():
     return sum(p.stat().st_size for p in LIBRARY_DIR.rglob("*") if p.is_file())
+
+
+def _book_cover_url(book_id):
+    """Always the canonical /cover route, never whatever was last persisted
+    — a book saved before the cover-storage fix still has the old (now
+    broken) /static/... URL sitting in library.json, and this route
+    self-heals on request anyway, so there's no reason to trust the stored
+    value over just always pointing here."""
+    return f"/api/library/{book_id}/cover"
 
 
 @app.route("/api/library", methods=["GET"])
@@ -7453,6 +7465,7 @@ def list_library():
     books = list(lib["books"].values())
     for b in books:
         b["progress"] = progress.get(b["id"])
+        b["cover_url"] = _book_cover_url(b["id"])
     books.sort(key=lambda b: b.get("updated_at", ""), reverse=True)
     return jsonify({"books": books})
 
@@ -7501,7 +7514,7 @@ def upload_library_book():
 
     has_text = _pdf_has_text_layer(dest) if ext == "pdf" else True
     meta_title, meta_author, pages = _extract_book_metadata(dest)
-    cover_url = _render_library_cover(dest, book_id) if is_new else None
+    cover_url = f"/api/library/{book_id}/cover" if (is_new and _render_library_cover(dest, book_id)) else None
     now = datetime.now().isoformat(timespec="seconds")
 
     with _LIBRARY_LOCK:
@@ -7518,8 +7531,8 @@ def upload_library_book():
             }
         else:
             book = lib["books"][book_id]
-            if not book.get("cover_url"):
-                book["cover_url"] = _render_library_cover(dest, book_id)
+            if not book.get("cover_url") and _render_library_cover(dest, book_id):
+                book["cover_url"] = f"/api/library/{book_id}/cover"
             book["updated_at"] = now
 
         book["formats"][ext] = {
@@ -7544,6 +7557,7 @@ def get_library_book(book_id):
         return jsonify({"error": "Libro no encontrado"}), 404
     book = dict(book)
     book["progress"] = load_library_progress().get(book_id)
+    book["cover_url"] = _book_cover_url(book_id)
     return jsonify(book)
 
 
@@ -7556,7 +7570,6 @@ def delete_library_book(book_id):
         del lib["books"][book_id]
         save_library(lib)
     shutil.rmtree(LIBRARY_DIR / book_id, ignore_errors=True)
-    (LIBRARY_COVERS_DIR / f"{book_id}.jpg").unlink(missing_ok=True)
     for loader, saver in (
         (load_library_progress, save_library_progress),
         (load_library_bookmarks, save_library_bookmarks),
@@ -7568,6 +7581,23 @@ def delete_library_book(book_id):
             saver(d)
     _OCR_JOBS.pop(book_id, None)
     return jsonify({"ok": True})
+
+
+@app.route("/api/library/<book_id>/cover", methods=["GET"])
+def get_library_cover(book_id):
+    lib = load_library()
+    book = lib["books"].get(book_id)
+    if not book:
+        return jsonify({"error": "Libro no encontrado"}), 404
+    cover_path = LIBRARY_DIR / book_id / "cover.jpg"
+    if not cover_path.exists():
+        # Self-heals a cover lost to an old bug (it used to live outside the
+        # persistent volume) or any other reason the file went missing — the
+        # original PDF/EPUB is still here, so it can just be re-rendered.
+        fmt = "pdf" if "pdf" in book.get("formats", {}) else ("epub" if "epub" in book.get("formats", {}) else None)
+        if not fmt or not _render_library_cover(LIBRARY_DIR / book_id / book["formats"][fmt]["filename"], book_id):
+            return jsonify({"error": "Sin portada"}), 404
+    return send_file(cover_path, mimetype="image/jpeg", conditional=True)
 
 
 @app.route("/api/library/<book_id>/file/<fmt>", methods=["GET"])
