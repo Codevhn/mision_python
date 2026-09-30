@@ -10046,11 +10046,19 @@ function _labRadarSvgHtml(points, labels, topConceptId) {
     const anchor = l.x < _LAB_R_CENTER - 25 ? 'end' : (l.x > _LAB_R_CENTER + 25 ? 'start' : 'middle');
     return `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="${anchor}" class="lab-radar-course-label">${escapeHtml(l.text)}</text>`;
   }).join('');
+  // Same single top-priority point the pulse animation above already
+  // singles out — a dashed line from the center to it makes that "this is
+  // the one to fix first" reading immediate instead of needing to spot
+  // which dot is pulsing.
+  const topPoint = points.find(p => p.id === topConceptId);
+  const line = topPoint
+    ? `<line x1="${_LAB_R_CENTER}" y1="${_LAB_R_CENTER}" x2="${topPoint.x.toFixed(1)}" y2="${topPoint.y.toFixed(1)}" class="lab-radar-line"/>`
+    : '';
   return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:460px" class="lab-radar-svg">
       <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="190" class="lab-radar-ring lab-radar-ring--solid"/>
       <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="127" class="lab-radar-ring lab-radar-ring--progress"/>
       <circle cx="${_LAB_R_CENTER}" cy="${_LAB_R_CENTER}" r="64" class="lab-radar-ring lab-radar-ring--critical"/>
-      ${labelEls}${circles}
+      ${line}${labelEls}${circles}
     </svg>`;
 }
 
