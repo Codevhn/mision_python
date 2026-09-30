@@ -7331,6 +7331,12 @@ LIBRARY_COVERS_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_FREE_CAP_BYTES = 10 * 1024 * 1024 * 1024
 LIBRARY_ALLOWED_EXTS = {"pdf", "epub"}
 _LIBRARY_MIMETYPES = {"pdf": "application/pdf", "epub": "application/epub+zip"}
+# Guards every read-modify-write of library.json: two uploads landing on the
+# same gunicorn worker at once (e.g. selecting several files, which the
+# frontend now sends concurrently for per-file progress) would otherwise
+# both read the file before either writes, and the second save silently
+# discards the first upload's new entry.
+_LIBRARY_LOCK = threading.Lock()
 
 
 def load_library():
@@ -7479,11 +7485,14 @@ def upload_library_book():
     if ext == "epub" and not (raw[:4] == b"PK\x03\x04" and zipfile.is_zipfile(io.BytesIO(raw))):
         return jsonify({"error": "El archivo no es un EPUB válido"}), 400
 
-    lib = load_library()
-    book_id = (request.form.get("book_id") or "").strip()
-    is_new = book_id not in lib["books"]
-    if is_new:
-        book_id = uuid.uuid4().hex[:12]
+    # book_id is decided up front, inside the lock, so two uploads with no
+    # book_id (two brand-new books arriving together) can never race on
+    # is_new/book_id and collide on the same directory.
+    requested_book_id = (request.form.get("book_id") or "").strip()
+    with _LIBRARY_LOCK:
+        lib = load_library()
+        is_new = requested_book_id not in lib["books"]
+        book_id = uuid.uuid4().hex[:12] if is_new else requested_book_id
 
     book_dir = LIBRARY_DIR / book_id
     book_dir.mkdir(parents=True, exist_ok=True)
@@ -7492,35 +7501,38 @@ def upload_library_book():
 
     has_text = _pdf_has_text_layer(dest) if ext == "pdf" else True
     meta_title, meta_author, pages = _extract_book_metadata(dest)
+    cover_url = _render_library_cover(dest, book_id) if is_new else None
     now = datetime.now().isoformat(timespec="seconds")
 
-    if is_new:
-        book = {
-            "id": book_id,
-            "title": (request.form.get("title") or "").strip() or meta_title or f.filename.rsplit(".", 1)[0],
-            "author": (request.form.get("author") or "").strip() or meta_author or "",
-            "cover_url": _render_library_cover(dest, book_id),
-            "formats": {},
-            "created_at": now,
-            "updated_at": now,
-        }
-    else:
-        book = lib["books"][book_id]
-        if not book.get("cover_url"):
-            book["cover_url"] = _render_library_cover(dest, book_id)
-        book["updated_at"] = now
+    with _LIBRARY_LOCK:
+        lib = load_library()
+        if is_new:
+            book = {
+                "id": book_id,
+                "title": (request.form.get("title") or "").strip() or meta_title or f.filename.rsplit(".", 1)[0],
+                "author": (request.form.get("author") or "").strip() or meta_author or "",
+                "cover_url": cover_url,
+                "formats": {},
+                "created_at": now,
+                "updated_at": now,
+            }
+        else:
+            book = lib["books"][book_id]
+            if not book.get("cover_url"):
+                book["cover_url"] = _render_library_cover(dest, book_id)
+            book["updated_at"] = now
 
-    book["formats"][ext] = {
-        "filename": dest.name,
-        "size": len(raw),
-        "pages": pages,
-        "has_text_layer": has_text,
-        "ocr_applied": False,
-        "ocr_status": "idle",
-        "ocr_progress": 0,
-    }
-    lib["books"][book_id] = book
-    save_library(lib)
+        book["formats"][ext] = {
+            "filename": dest.name,
+            "size": len(raw),
+            "pages": pages,
+            "has_text_layer": has_text,
+            "ocr_applied": False,
+            "ocr_status": "idle",
+            "ocr_progress": 0,
+        }
+        lib["books"][book_id] = book
+        save_library(lib)
     return jsonify(book), 201
 
 
@@ -7537,11 +7549,12 @@ def get_library_book(book_id):
 
 @app.route("/api/library/<book_id>", methods=["DELETE"])
 def delete_library_book(book_id):
-    lib = load_library()
-    if book_id not in lib["books"]:
-        return jsonify({"error": "Libro no encontrado"}), 404
-    del lib["books"][book_id]
-    save_library(lib)
+    with _LIBRARY_LOCK:
+        lib = load_library()
+        if book_id not in lib["books"]:
+            return jsonify({"error": "Libro no encontrado"}), 404
+        del lib["books"][book_id]
+        save_library(lib)
     shutil.rmtree(LIBRARY_DIR / book_id, ignore_errors=True)
     (LIBRARY_COVERS_DIR / f"{book_id}.jpg").unlink(missing_ok=True)
     for loader, saver in (

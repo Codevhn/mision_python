@@ -466,7 +466,12 @@
           <button class="practice-view-back" id="libraryUploadBtn" style="margin-left:auto">↑ Subir libro</button>
         </div>
         <div class="lab-body" id="libraryBody"></div>
+        <div class="lib-upload-tray" id="libraryUploadTray"></div>
       </div>
+
+      <!-- Notificaciones propias del sistema (reemplazan alert/confirm/prompt
+           del navegador) — compartidas por toda la Biblioteca. -->
+      <div class="lib-toast-tray" id="libToastTray"></div>
 
       <!-- LECTOR — pantalla de lectura sin ninguna UI de edición visible.
            pdf.js/epub.js vendorizados en /static/vendor, sin CDN. -->
@@ -479,7 +484,10 @@
           <div class="r-tools">
             <span id="readerTocBtn" title="Índice"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h8"/></svg></span>
             <span id="readerBookmarkBtn" title="Marcador"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-2.6-4 2.6z"/></svg></span>
-            <span id="readerFontBtn" title="Tipografía" style="font-weight:700;">Aa</span>
+            <span id="readerZoomOutBtn" class="hidden" title="Reducir zoom">−</span>
+            <span id="readerZoomLabel" class="hidden">100%</span>
+            <span id="readerZoomInBtn" class="hidden" title="Aumentar zoom">+</span>
+            <span id="readerFontBtn" title="Tamaño de letra" style="font-weight:700;">Aa</span>
           </div>
         </div>
         <div class="scan-banner hidden" id="readerScanBanner">

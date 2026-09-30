@@ -26,6 +26,69 @@
 
   const HL_COLORS = { yellow: '#e2c545', green: '#8a9d6e', blue: '#7b9fde' };
 
+  // ── Notificaciones propias del sistema — reemplazan alert()/confirm()/
+  // prompt() del navegador, que rompen el estilo visual de toda la app. ──
+  function _toast(message, type) {
+    const tray = $('libToastTray');
+    if (!tray) return;
+    const el = document.createElement('div');
+    el.className = 'lib-toast' + (type ? ' ' + type : '');
+    el.textContent = message;
+    tray.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease'; setTimeout(() => el.remove(), 260); }, 3400);
+  }
+
+  function _confirmDialog(message, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'lib-modal-overlay';
+      overlay.innerHTML = `
+        <div class="lib-modal">
+          <div class="lib-modal-title">${_escHtml(opts.title || 'Confirmar')}</div>
+          <div class="lib-modal-sub">${_escHtml(message)}</div>
+          <div class="lib-modal-actions">
+            <button class="lib-modal-btn" id="libDlgCancel">Cancelar</button>
+            <button class="lib-modal-btn ${opts.danger ? 'danger' : 'primary'}" id="libDlgOk">${_escHtml(opts.okLabel || 'Confirmar')}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const finish = (val) => { overlay.remove(); resolve(val); };
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(false); });
+      overlay.querySelector('#libDlgCancel').onclick = () => finish(false);
+      overlay.querySelector('#libDlgOk').onclick = () => finish(true);
+    });
+  }
+
+  function _promptDialog(title, defaultValue, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'lib-modal-overlay';
+      overlay.innerHTML = `
+        <div class="lib-modal">
+          <div class="lib-modal-title">${_escHtml(title)}</div>
+          ${opts.sub ? `<div class="lib-modal-sub">${_escHtml(opts.sub)}</div>` : ''}
+          <input type="text" class="lib-modal-input" id="libDlgInput" placeholder="${_escHtml(opts.placeholder || '')}" value="${_escHtml(defaultValue || '')}">
+          <div class="lib-modal-actions">
+            <button class="lib-modal-btn" id="libDlgCancel">Cancelar</button>
+            <button class="lib-modal-btn primary" id="libDlgOk">${_escHtml(opts.okLabel || 'Guardar')}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('#libDlgInput');
+      const finish = (val) => { overlay.remove(); resolve(val); };
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(null); });
+      overlay.querySelector('#libDlgCancel').onclick = () => finish(null);
+      overlay.querySelector('#libDlgOk').onclick = () => finish(input.value);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') finish(input.value);
+        if (e.key === 'Escape') finish(null);
+      });
+      setTimeout(() => { input.focus(); input.select(); }, 30);
+    });
+  }
+
   // ── Estado del espacio Biblioteca (grid + apuntes) ──────────────────────
   const _lib = { tab: 'books', books: [], storage: null };
 
@@ -105,8 +168,10 @@
     body.querySelectorAll('[data-del-book]').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (!confirm('¿Borrar este libro de la Biblioteca? Esto también borra sus notas y marcadores.')) return;
+        const ok = await _confirmDialog('Esto también borra sus notas y marcadores.', { title: 'Borrar este libro', okLabel: 'Borrar', danger: true });
+        if (!ok) return;
         await fetch('/api/library/' + el.dataset.delBook, { method: 'DELETE' });
+        _toast('Libro borrado.', 'success');
         window._renderLibrarySpace();
       });
     });
@@ -155,20 +220,40 @@
       </div>`;
   }
 
-  // ── Subida ───────────────────────────────────────────────────────────────
+  // ── Subida — XHR (no fetch) porque necesitamos xhr.upload.onprogress:
+  // fetch no expone progreso de subida real, solo de descarga. Cada archivo
+  // tiene su propia tarjeta en la bandeja con tamaño y % en vivo, y el grid
+  // se refresca en cuanto ESE archivo termina — no espera a los demás — así
+  // los libros van apareciendo uno a uno en vez de todos de golpe al final. ──
+  function _fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   function _wireUploadButton() {
     const btn = $('libraryUploadBtn');
     const input = $('libraryUploadInput');
     if (!btn || !input || btn._wired) return;
     btn._wired = true;
-    btn.addEventListener('click', () => { input.removeAttribute('data-book-id'); input.click(); });
-    input.addEventListener('change', async () => {
+    btn.addEventListener('click', () => { input.removeAttribute('data-book-id'); input.accept = '.pdf,.epub'; input.click(); });
+    input.addEventListener('change', () => {
       const files = Array.from(input.files || []);
       const bookId = input.dataset.bookId || '';
       input.value = '';
       delete input.dataset.bookId;
-      for (const f of files) await _uploadOneFile(f, bookId);
-      window._renderLibrarySpace();
+      _queueUploads(files, bookId);
+    });
+  }
+
+  // Subidas en cola, una a la vez: cada tarjeta sigue mostrando su propio
+  // progreso, pero nunca hay dos peticiones de subida en vuelo al mismo
+  // tiempo — evita que dos libros nuevos lleguen a la vez al servidor y uno
+  // pise el registro del otro.
+  let _uploadQueue = Promise.resolve();
+  function _queueUploads(files, bookId) {
+    files.forEach(f => {
+      _uploadQueue = _uploadQueue.then(() => _uploadOneFile(f, bookId));
     });
   }
 
@@ -179,17 +264,64 @@
     input.click();
   }
 
-  async function _uploadOneFile(file, bookId) {
+  function _uploadOneFile(file, bookId) {
+    const tray = $('libraryUploadTray');
+    if (!tray) return Promise.resolve();
+    return new Promise((resolve) => {
+    const card = document.createElement('div');
+    card.className = 'lib-upload-card';
+    card.innerHTML = `
+      <div class="lib-upload-card-head">
+        <span class="lib-upload-name">${_escHtml(file.name)}</span>
+        <span class="lib-upload-size">${_fmtBytes(file.size)}</span>
+      </div>
+      <div class="lib-upload-bar-wrap"><div class="lib-upload-bar-fill" style="width:0%"></div></div>
+      <div class="lib-upload-status">Subiendo…</div>`;
+    tray.appendChild(card);
+    const fill = card.querySelector('.lib-upload-bar-fill');
+    const status = card.querySelector('.lib-upload-status');
+
     const fd = new FormData();
     fd.append('file', file);
     if (bookId) fd.append('book_id', bookId);
-    try {
-      const res = await fetch('/api/library/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) alert(data.error || ('Error al subir ' + file.name));
-    } catch (e) {
-      alert('Error al subir ' + file.name);
-    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/library/upload');
+    xhr.upload.addEventListener('progress', (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      fill.style.width = pct + '%';
+      status.textContent = pct < 100
+        ? `Subiendo… ${pct}% (${_fmtBytes(e.loaded)} de ${_fmtBytes(e.total)})`
+        : 'Procesando (portada, texto)…';
+    });
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch (e) {}
+      if (xhr.status >= 200 && xhr.status < 300) {
+        card.classList.add('done');
+        fill.style.width = '100%';
+        status.textContent = 'Listo';
+        _toast(`"${data.title || file.name}" subido.`, 'success');
+        if (_lib.tab === 'books') window._renderLibrarySpace();
+        setTimeout(() => card.remove(), 2000);
+      } else {
+        card.classList.add('error');
+        status.textContent = data.error || 'Error al subir';
+        _toast(data.error || ('Error al subir ' + file.name), 'error');
+        setTimeout(() => card.remove(), 6000);
+      }
+      resolve();
+    };
+    xhr.onerror = () => {
+      card.classList.add('error');
+      status.textContent = 'Error de red';
+      _toast('Error de red al subir ' + file.name, 'error');
+      setTimeout(() => card.remove(), 6000);
+      resolve();
+    };
+    xhr.send(fd);
+    });
   }
 
   // ── Apuntes globales ─────────────────────────────────────────────────────
@@ -233,7 +365,7 @@
     let courses = [];
     try { courses = await fetch('/api/courses').then(r => r.json()); } catch (e) {}
     if (!Array.isArray(courses) || !courses.length) {
-      alert('Crea primero un curso en Cursos para poder convertir esto en un concepto.');
+      _toast('Crea primero un curso en Cursos para poder convertir esto en un concepto.', 'error');
       return;
     }
     const options = courses.map(c => `<option value="${_escHtml(c.id)}">${_escHtml(c.label)}</option>`).join('');
@@ -260,10 +392,11 @@
         });
         const d = await r.json();
         overlay.remove();
-        alert(r.ok ? `Concepto "${d.name}" creado.` : (d.error || 'Error al crear el concepto'));
+        if (r.ok) _toast(`Concepto "${d.name}" creado.`, 'success');
+        else _toast(d.error || 'Error al crear el concepto', 'error');
       } catch (e) {
         overlay.remove();
-        alert('Error al crear el concepto');
+        _toast('Error al crear el concepto', 'error');
       }
     };
   }
@@ -272,7 +405,7 @@
   const _reader = {
     bookId: null, book: null, format: null,
     pdfDoc: null, pdfPage: 1, pdfPageCount: 0, pdfScale: 1.35,
-    epubBook: null, epubRendition: null,
+    epubBook: null, epubRendition: null, epubFontPct: 100,
     tocItems: [], notes: [], bookmarks: [],
     _progressTimer: null,
   };
@@ -282,9 +415,9 @@
     try {
       book = await fetch('/api/library/' + bookId).then(r => r.json());
     } catch (e) {
-      alert('No se pudo abrir el libro'); return;
+      _toast('No se pudo abrir el libro', 'error'); return;
     }
-    if (book.error) { alert(book.error); return; }
+    if (book.error) { _toast(book.error, 'error'); return; }
     _reader.bookId = bookId;
     _reader.book = book;
     const isMobile = window.innerWidth < 820;
@@ -321,6 +454,14 @@
     window.switchSpace('library');
   }
 
+  const PDF_ZOOM_MIN = 0.6, PDF_ZOOM_MAX = 3.0, PDF_ZOOM_STEP = 0.15;
+  const EPUB_FONT_STEPS = [90, 100, 112, 125, 140, 160];
+
+  function _updateZoomLabel() {
+    const label = $('readerZoomLabel');
+    if (label) label.textContent = Math.round(_reader.pdfScale * 100) + '%';
+  }
+
   function _wireReaderChrome() {
     const back = $('readerBackBtn');
     if (back && !back._wired) { back._wired = true; back.addEventListener('click', _closeLibraryReader); }
@@ -333,6 +474,40 @@
     if (bmBtn && !bmBtn._wired) { bmBtn._wired = true; bmBtn.addEventListener('click', _addBookmarkAtCurrentLocation); }
     const ocrBtn = $('readerOcrBtn');
     if (ocrBtn && !ocrBtn._wired) { ocrBtn._wired = true; ocrBtn.addEventListener('click', _startOcrForCurrentBook); }
+
+    const zoomOut = $('readerZoomOutBtn'), zoomIn = $('readerZoomInBtn'), fontBtn = $('readerFontBtn');
+    if (zoomOut && !zoomOut._wired) {
+      zoomOut._wired = true;
+      zoomOut.addEventListener('click', () => {
+        _reader.pdfScale = Math.max(PDF_ZOOM_MIN, +(_reader.pdfScale - PDF_ZOOM_STEP).toFixed(2));
+        _updateZoomLabel();
+        _renderPdfPage();
+      });
+    }
+    if (zoomIn && !zoomIn._wired) {
+      zoomIn._wired = true;
+      zoomIn.addEventListener('click', () => {
+        _reader.pdfScale = Math.min(PDF_ZOOM_MAX, +(_reader.pdfScale + PDF_ZOOM_STEP).toFixed(2));
+        _updateZoomLabel();
+        _renderPdfPage();
+      });
+    }
+    if (fontBtn && !fontBtn._wired) {
+      fontBtn._wired = true;
+      fontBtn.addEventListener('click', () => {
+        if (_reader.format !== 'epub' || !_reader.epubRendition) return;
+        const cur = _reader.epubFontPct || 100;
+        const idx = EPUB_FONT_STEPS.indexOf(cur);
+        const next = EPUB_FONT_STEPS[(idx + 1) % EPUB_FONT_STEPS.length];
+        _reader.epubFontPct = next;
+        _applyEpubTheme(_reader.epubRendition);
+        _toast('Tamaño de letra: ' + next + '%');
+      });
+    }
+    // Zoom es específico de PDF; en EPUB el tamaño de letra se controla con "Aa".
+    const showZoom = _reader.format === 'pdf';
+    [zoomOut, $('readerZoomLabel'), zoomIn].forEach(el => { if (el) el.classList.toggle('hidden', !showZoom); });
+    if (showZoom) _updateZoomLabel();
   }
 
   async function _loadReaderNotesAndBookmarks(bookId) {
@@ -383,23 +558,23 @@
     });
   }
 
-  function _addBookmarkAtCurrentLocation() {
+  async function _addBookmarkAtCurrentLocation() {
     const location = _reader.format === 'epub'
       ? (_reader._epubCurrentCfi || '')
       : `page:${_reader.pdfPage}`;
-    const label = prompt('Nombre para este marcador:', _reader.format === 'epub' ? '' : `Página ${_reader.pdfPage}`);
+    const label = await _promptDialog('Nombre para este marcador', _reader.format === 'epub' ? '' : `Página ${_reader.pdfPage}`);
     if (label === null) return;
     fetch(`/api/library/${_reader.bookId}/bookmarks`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ format: _reader.format, location, label }),
-    }).then(() => alert('Marcador guardado.'));
+    }).then(() => _toast('Marcador guardado.', 'success'));
   }
 
   function _startOcrForCurrentBook() {
     const bookId = _reader.bookId;
     fetch(`/api/library/${bookId}/ocr`, { method: 'POST' }).then(async (r) => {
       const d = await r.json();
-      if (!r.ok) { alert(d.error || 'No se pudo iniciar el OCR'); return; }
+      if (!r.ok) { _toast(d.error || 'No se pudo iniciar el OCR', 'error'); return; }
       const banner = $('readerScanBanner');
       banner.querySelector('b').textContent = 'Aplicando OCR… 0%';
       const poll = setInterval(async () => {
@@ -410,10 +585,11 @@
           clearInterval(poll);
           if (st.status === 'done') {
             banner.querySelector('b').textContent = 'OCR aplicado';
+            _toast('OCR aplicado — ya puedes resaltar y buscar en este libro.', 'success');
             setTimeout(() => window._reopenLibraryReader(), 600);
           } else {
             banner.querySelector('b').textContent = 'Aplicar OCR a este libro';
-            alert('El OCR falló: ' + (st.error || 'error desconocido'));
+            _toast('El OCR falló: ' + (st.error || 'error desconocido'), 'error');
           }
         }
       }, 2500);
@@ -444,13 +620,19 @@
       <span class="act" data-act="ask">✦ Preguntar a la IA</span>
       <span class="act" data-act="concept">🎯 Crear concepto</span>
     `;
-    document.body.appendChild(bar);
-    const top = Math.max(8, rect.top - 46);
-    const left = Math.min(Math.max(8, rect.left), window.innerWidth - bar.offsetWidth - 8);
     bar.style.position = 'fixed';
+    bar.style.zIndex = 9999;
+    bar.style.visibility = 'hidden';
+    document.body.appendChild(bar);
+    // Measure after it's in the DOM (needs its real offsetWidth/Height to
+    // clamp against the viewport), then reveal — avoids a visible jump.
+    const barW = bar.offsetWidth || 260;
+    const barH = bar.offsetHeight || 36;
+    const top = Math.min(Math.max(8, rect.top - barH - 10), window.innerHeight - barH - 8);
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - barW - 8);
     bar.style.top = top + 'px';
     bar.style.left = left + 'px';
-    bar.style.zIndex = 9999;
+    bar.style.visibility = 'visible';
 
     bar.querySelectorAll('.swatch').forEach(sw => {
       sw.addEventListener('click', async () => {
@@ -459,7 +641,7 @@
       });
     });
     bar.querySelector('[data-act="note"]').addEventListener('click', async () => {
-      const noteText = prompt('Tu nota sobre esto:', '');
+      const noteText = await _promptDialog('Tu nota sobre esto', '', { sub: text.length > 140 ? text.slice(0, 140) + '…' : text });
       if (noteText === null) return;
       await _createNoteFromSelection(text, location, 'yellow', noteText);
       _removeSelToolbar();
@@ -467,7 +649,7 @@
     bar.querySelector('[data-act="ask"]').addEventListener('click', () => {
       _removeSelToolbar();
       if (typeof window._openAiAskPanel === 'function') window._openAiAskPanel(text);
-      else alert('El panel de IA no está disponible aquí todavía.');
+      else _toast('El panel de IA no está disponible aquí todavía.', 'error');
     });
     bar.querySelector('[data-act="concept"]').addEventListener('click', async () => {
       const note = await _createNoteFromSelection(text, location, 'yellow', '');
@@ -486,15 +668,30 @@
         }),
       });
       const note = await res.json();
-      if (!res.ok) { alert(note.error || 'No se pudo guardar el resaltado'); return null; }
+      if (!res.ok) { _toast(note.error || 'No se pudo guardar el resaltado', 'error'); return null; }
       _reader.notes.push(note);
       if (_reader.format === 'epub' && location) _applyEpubHighlight(note);
       if (_reader.format === 'pdf') _applyPdfHighlightsForPage(_reader.pdfPage);
+      _toast('Resaltado guardado.', 'success');
       return note;
     } catch (e) {
-      alert('No se pudo guardar el resaltado');
+      _toast('No se pudo guardar el resaltado', 'error');
       return null;
     }
+  }
+
+  // A Range's own getBoundingClientRect() can collapse to a bogus
+  // (0,0)-ish rect when the selection spans several of pdf.js's
+  // individually absolutely-positioned text-layer spans — that's what sent
+  // the toolbar to the top-left corner. getClientRects() returns one rect
+  // per fragment instead, which stays accurate for this exact layout.
+  function _selectionRect(range) {
+    const rects = range.getClientRects();
+    for (let i = rects.length - 1; i >= 0; i--) {
+      const r = rects[i];
+      if (r.width > 0 || r.height > 0) return r;
+    }
+    return range.getBoundingClientRect();
   }
 
   document.addEventListener('mouseup', () => {
@@ -506,8 +703,8 @@
       const text = sel ? sel.toString().trim() : '';
       if (!text || _reader.format !== 'pdf') return; // epub handled via rendition 'selected' event
       if (!sel.rangeCount) return;
-      const rect = sel.getRangeAt(0).getBoundingClientRect();
-      if (!rect || (!rect.top && !rect.left)) return;
+      const rect = _selectionRect(sel.getRangeAt(0));
+      if (!rect || (!rect.width && !rect.height)) return;
       _showSelectionToolbar(text, `page:${_reader.pdfPage}`, rect);
     }, 10);
   });
@@ -681,14 +878,14 @@
         // epub.js renders each chapter in its own iframe; translate the
         // selection's rect from that iframe's coordinate space into the
         // parent page's, so the floating toolbar lands in the right spot.
-        let rect = { top: 120, left: 60 };
+        let rect = { top: 120, left: 60, width: 0, height: 0 };
         try {
           const sel = contents.window.getSelection();
           if (sel && sel.rangeCount) {
-            const r = sel.getRangeAt(0).getBoundingClientRect();
+            const r = _selectionRect(sel.getRangeAt(0));
             const iframe = contents.document.defaultView.frameElement;
             const iframeRect = iframe.getBoundingClientRect();
-            rect = { top: iframeRect.top + r.top, left: iframeRect.left + r.left };
+            rect = { top: iframeRect.top + r.top, left: iframeRect.left + r.left, width: r.width, height: r.height };
           }
         } catch (e) { /* fall back to the default corner position above */ }
         _showSelectionToolbar(text, cfiRange, rect);
@@ -704,13 +901,14 @@
   function _applyEpubTheme(rendition) {
     const shell = document.querySelector('.reader-shell');
     const cs = getComputedStyle(shell);
+    const fontPct = _reader.epubFontPct || 100;
     rendition.themes.default({
       html: { background: 'transparent !important' },
       body: {
         color: cs.color + ' !important',
         background: 'transparent !important',
         'font-family': "'Lora', Georgia, serif !important",
-        'font-size': '112% !important',
+        'font-size': fontPct + '% !important',
         'line-height': '1.85 !important',
         padding: '30px 50px !important',
       },
