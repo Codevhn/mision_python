@@ -1101,7 +1101,17 @@ button.link-btn:hover { opacity: 0.75; }
 }
 body.focus-mode .related-sidebar { display: none; }
 @media (max-width: 768px) {
-  .entry-view.has-related-sidebar { flex-direction: column; gap: 16px; }
+  /* The desktop rule sets align-items: flex-start for the side-by-side
+     row layout; switching to a stacked column here without overriding it
+     left each item sized to fit its own content (flex-start is a shrink-
+     to-fit cross-axis size in a column flex container) instead of
+     stretching to the full width — .entry-main's min-width: 0 only
+     guards the row layout's cross axis, not this one. A wide table (long
+     unbreakable URLs in a cell) then inflated .entry-main past the
+     viewport, and since the page itself can't scroll horizontally on
+     mobile, everything past the first column was silently clipped
+     instead of reachable with a swipe. */
+  .entry-view.has-related-sidebar { flex-direction: column; align-items: stretch; gap: 16px; }
   .related-sidebar {
     position: static;
     width: 100%;
