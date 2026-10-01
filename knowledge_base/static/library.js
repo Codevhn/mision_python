@@ -146,6 +146,9 @@
       return;
     }
 
+    const continuing = _continueReadingBook(st.books);
+    if (continuing) html += _continueReadingCardHtml(continuing);
+
     if (!st.books.length) {
       html += '<div class="lab-empty">Aún no subes ningún libro. Usa "↑ Subir libro" arriba para empezar.</div>';
     } else {
@@ -153,6 +156,9 @@
     }
     body.innerHTML = html;
     _wireLibraryTabs();
+    body.querySelector('.lib-continue-card')?.addEventListener('click', () => {
+      window._openLibraryReader(continuing.id);
+    });
     body.querySelectorAll('.book-card[data-book]').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('[data-add-fmt]') || e.target.closest('[data-del-book]')) return;
@@ -195,33 +201,71 @@
     return html;
   }
 
-  function _bookCardHtml(b) {
-    const pct = b.progress ? Math.round(b.progress.percent) : 0;
-    // The backend always hands back the /cover route (it self-heals a
-    // missing file server-side), but a book that genuinely has no
-    // renderable cover still 404s — onerror swaps in the same spine-title
-    // placeholder used when there's no cover_url at all, instead of a
-    // broken-image icon.
-    const cover = b.cover_url
+  // Shared with the "Continuar leyendo" card below — same self-healing
+  // cover fallback either place uses it.
+  function _bookCoverImgHtml(b) {
+    return b.cover_url
       ? `<img src="${b.cover_url}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;spine-title&quot;>${_escHtml(b.title)}</span>'">`
       : `<span class="spine-title">${_escHtml(b.title)}</span>`;
+  }
+
+  function _bookCardHtml(b) {
+    const pct = b.progress ? Math.round(b.progress.percent) : 0;
     const ring = pct > 0 ? `<div class="book-progress-ring" style="--bp:${pct}"></div>` : '';
-    let meta = _escHtml(b.author || '');
+    // A thin always-on track (not just the corner ring, which only shows
+    // once pct > 0) so a book you haven't touched yet still reads as
+    // "0 progress" instead of looking identical to one mid-read with the
+    // ring just not rendered — same visual language on every card.
+    const track = `<div class="book-progress-track"><div class="book-progress-fill" style="width:${pct}%"></div></div>`;
     const scanNoOcr = b.formats.pdf && b.formats.pdf.has_text_layer === false && !b.formats.pdf.ocr_applied;
-    if (pct >= 100) meta = (meta ? meta + ' · ' : '') + 'terminado';
-    else if (pct > 0) meta = (meta ? meta + ' · ' : '') + pct + '%';
-    else if (scanNoOcr) meta = 'Sin OCR aplicado';
-    else if (!meta) meta = 'sin empezar';
+    // Status used to only get appended when there was no author text yet —
+    // a book with an author but 0% progress silently showed nothing at all
+    // ("sin empezar" never appeared), so it looked identical to one you'd
+    // already started. It's its own line now, always computed.
+    let status;
+    if (pct >= 100) status = 'terminado';
+    else if (pct > 0) status = pct + '%';
+    else if (scanNoOcr) status = 'Sin OCR aplicado';
+    else status = 'sin empezar';
+    const author = _escHtml(b.author || '');
+    const meta = author ? `${author} · ${status}` : status;
     const missing = [];
     if (!b.formats.pdf) missing.push({ ext: 'pdf', label: '+ PDF' });
     if (!b.formats.epub) missing.push({ ext: 'epub', label: '+ EPUB' });
     const addFmtHtml = missing.map(m => `<span class="book-fmt-add" data-add-fmt="${b.id}" data-want-ext="${m.ext}" title="Añadir ${m.ext.toUpperCase()} a este libro">${m.label}</span>`).join('');
     return `
       <div class="book-card" data-book="${b.id}">
-        <div class="book-cover">${cover}${_fmtBadgesHtml(b)}${ring}</div>
+        <div class="book-cover">${_bookCoverImgHtml(b)}${_fmtBadgesHtml(b)}${ring}${track}</div>
         <div class="book-title">${_escHtml(b.title)}</div>
         <div class="book-meta">${meta}${addFmtHtml}</div>
         <span class="book-del" data-del-book="${b.id}" title="Borrar libro">✕</span>
+      </div>`;
+  }
+
+  // The most recently read book that isn't finished yet — "continuar
+  // leyendo" is this one, not just "the last book you uploaded" (the grid
+  // order below is unrelated to reading activity).
+  function _continueReadingBook(books) {
+    const inProgress = books.filter(b => b.progress && b.progress.percent > 0 && b.progress.percent < 100);
+    if (!inProgress.length) return null;
+    inProgress.sort((a, b) => (b.progress.updated_at || '').localeCompare(a.progress.updated_at || ''));
+    return inProgress[0];
+  }
+
+  function _continueReadingCardHtml(b) {
+    const pct = Math.round(b.progress.percent);
+    const author = _escHtml(b.author || '');
+    return `
+      <div class="lib-continue-card" data-book="${b.id}">
+        <div class="lib-continue-cover">${_bookCoverImgHtml(b)}</div>
+        <div class="lib-continue-body">
+          <div class="lib-continue-eyebrow">Continuar leyendo</div>
+          <div class="lib-continue-title">${_escHtml(b.title)}</div>
+          ${author ? `<div class="lib-continue-author">${author}</div>` : ''}
+          <div class="lib-continue-bar-wrap"><div class="lib-continue-bar-fill" style="width:${pct}%"></div></div>
+          <div class="lib-continue-pct">${pct}% leído</div>
+        </div>
+        <button class="lib-continue-btn">Seguir leyendo →</button>
       </div>`;
   }
 
