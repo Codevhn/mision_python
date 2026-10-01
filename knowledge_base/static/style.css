@@ -1978,6 +1978,17 @@ body.focus-mode .related-sidebar { display: none; }
   line-height: 1.6;
 }
 
+/* BlockNote's own table wrapper (overflow-x: auto lives in its bundle CSS)
+   sits inside contenteditable — with no explicit touch-action, a touch
+   browser has to guess whether a horizontal drag there means "scroll" or
+   "extend a text selection" (the content is editable and selectable), and
+   Android Chrome resolves that ambiguity in favor of selection on the
+   first swipe, only recognizing it as a scroll gesture on a second one.
+   pan-x tells it upfront to treat this element as horizontally pannable,
+   so the very first swipe scrolls — vertical swipes still pass through
+   to the page since only pan-x is claimed here. */
+.tableWrapper { touch-action: pan-x; }
+
 .entry-body table {
   width: 100%;
   border-collapse: separate;
