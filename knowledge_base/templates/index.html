@@ -1408,6 +1408,20 @@
     </div>
   </div>
 
+  <!-- MOVE TO MODAL (universal: páginas, teamspace, conocimiento) -->
+  <div class="modal-overlay hidden" id="moveToOverlay">
+    <div class="modal nts-modal move-to-modal">
+      <div class="modal-header">
+        <span>Mover "<em id="moveToEntryTitle"></em>"</span>
+        <button class="modal-close" id="moveToClose">×</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px 8px;">
+        <input type="text" id="moveToSearch" class="move-to-search" placeholder="Buscar un destino…" autocomplete="off" />
+        <div class="move-to-results" id="moveToResults"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PAGE NAME MODAL -->
   <div class="modal-overlay hidden" id="pageNameOverlay">
     <div class="modal" style="max-width:400px">

@@ -1205,6 +1205,101 @@ def set_entry_parent(entry_id):
     return jsonify({"message": "Updated"})
 
 
+@app.route("/api/entry/<entry_id>/move-to", methods=["POST"])
+def move_entry_to(entry_id):
+    """Universal 'Move to' — relocates ANY entry (página, teamspace page or
+    knowledge entry) to a brand-new location without touching anything about
+    it: title, icon, properties, body content and children all stay exactly
+    as they are. Children keep pointing at this same entry_id as their
+    parent_id, so a moved page's sub-pages (and a moved database's rows)
+    move along with it automatically, untouched — only this one entry's own
+    location fields change, and its file is relocated on disk to match
+    (see _entry_path)."""
+    index = load_index()
+    if entry_id not in index:
+        return jsonify({"error": "Not found"}), 404
+    meta = index[entry_id]
+    if meta.get("type") == "course":
+        return jsonify({"error": "Las lecciones de curso no se mueven desde aquí"}), 400
+
+    data = request.json or {}
+    dest = data.get("dest")
+    old_path = _entry_path(entry_id, meta)
+    meta["db_row"] = False  # leaving whatever database it was a row of, if any
+
+    if dest == "pages_root":
+        meta["type"] = "page"
+        meta["parent_id"] = None
+
+    elif dest == "teamspace_root":
+        teamspace_label = (data.get("teamspace_label") or "").strip()
+        teamspace_slug = (data.get("teamspace") or "").strip() or slugify(teamspace_label)
+        if not teamspace_slug:
+            return jsonify({"error": "Falta el teamspace de destino"}), 400
+        meta["type"] = "teamspace"
+        meta["teamspace"] = teamspace_slug
+        meta["teamspace_label"] = teamspace_label or teamspace_slug
+        meta["parent_id"] = None
+        meta["is_teamspace_home"] = False
+
+    elif dest == "knowledge_root":
+        category = (data.get("category") or "").strip()
+        topic = (data.get("topic") or "").strip()
+        if not category or not topic:
+            return jsonify({"error": "Falta categoría o tema de destino"}), 400
+        category_slug = slugify(category)
+        topic_slug = slugify(topic)
+        meta.pop("type", None)
+        meta["category"] = category_slug
+        meta["category_label"] = _canonical_category_label(index, category_slug) or category
+        meta["topic"] = topic_slug
+        meta["topic_label"] = _canonical_topic_label(index, category_slug, topic_slug) or topic
+        meta["parent_id"] = None
+
+    elif dest == "nested":
+        parent_id = data.get("parent_id")
+        if not parent_id or parent_id not in index:
+            return jsonify({"error": "Página de destino no encontrada"}), 404
+        if parent_id == entry_id:
+            return jsonify({"error": "No puede ser su propio padre"}), 400
+        cursor, seen = parent_id, set()
+        while cursor:
+            if cursor == entry_id:
+                return jsonify({"error": "No se puede mover una página dentro de su propia subpágina"}), 400
+            if cursor in seen:
+                break
+            seen.add(cursor)
+            cursor = index.get(cursor, {}).get("parent_id")
+        meta["type"] = "page"
+        meta["parent_id"] = parent_id
+
+    else:
+        return jsonify({"error": "Destino inválido"}), 400
+
+    # Clear whatever rooted it in its OLD bucket so it doesn't linger there
+    # as a ghost duplicate once it has a new home.
+    if dest != "teamspace_root":
+        meta.pop("teamspace", None)
+        meta.pop("teamspace_label", None)
+        meta.pop("is_teamspace_home", None)
+    if dest != "knowledge_root":
+        meta.pop("category", None)
+        meta.pop("category_label", None)
+        meta.pop("topic", None)
+        meta.pop("topic_label", None)
+
+    new_path = _entry_path(entry_id, meta)
+    if old_path != new_path:
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        if old_path.exists():
+            shutil.copy2(old_path, new_path)
+            old_path.unlink()
+
+    index[entry_id] = meta
+    save_index(index)
+    return jsonify({"message": "Moved"})
+
+
 def resolve_entry_id(ref, index):
     """Return slug (entry_id) for a given uid or slug. uid takes priority."""
     for entry_id, meta in index.items():

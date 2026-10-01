@@ -754,6 +754,17 @@ function renderTree(tree) {
         label.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.knowledge);
         entryEl.appendChild(label);
 
+        const kMenuBtn = document.createElement("button");
+        kMenuBtn.className = "tree-page-menu-btn";
+        kMenuBtn.title = "Acciones";
+        kMenuBtn.textContent = "⋯";
+        kMenuBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          _openSimpleMoveMenu(kMenuBtn, entry.id, entry.title);
+        });
+        entryEl.appendChild(kMenuBtn);
+
         entryEl.addEventListener("click", () => loadEntry(entry.id));
 
         // Drag-and-drop for reordering
@@ -996,6 +1007,18 @@ function renderTeamspaceTree(tree) {
       item.dataset.id = entry.id;
       item.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.page);
       item.addEventListener("click", () => loadEntry(entry.id));
+
+      const tsMenuBtn = document.createElement("button");
+      tsMenuBtn.className = "tree-page-menu-btn";
+      tsMenuBtn.title = "Acciones";
+      tsMenuBtn.textContent = "⋯";
+      tsMenuBtn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        _openSimpleMoveMenu(tsMenuBtn, entry.id, entry.title);
+      });
+      item.appendChild(tsMenuBtn);
+
       entryList.appendChild(item);
     }
     if (!entries.length) {
@@ -1129,11 +1152,16 @@ function _openPageActionsMenu(anchor, node) {
   _pageActionsMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `<button data-action="delete" class="danger">🗑 Eliminar página</button>`;
+  menu.innerHTML = `<button data-action="move">⇄ Mover a…</button><button data-action="delete" class="danger">🗑 Eliminar página</button>`;
   const rect = anchor.getBoundingClientRect();
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.right - 168}px;width:168px;z-index:9999`;
   document.body.appendChild(menu);
   _pageActionsMenuEl = menu;
+  menu.querySelector('[data-action="move"]').addEventListener('click', e => {
+    e.stopPropagation();
+    menu.remove(); _pageActionsMenuEl = null;
+    openMoveToModal(node.id, node.title || "Sin título");
+  });
   menu.querySelector('[data-action="delete"]').addEventListener('click', async e => {
     e.stopPropagation();
     menu.remove(); _pageActionsMenuEl = null;
@@ -1159,6 +1187,29 @@ function _openPageActionsMenu(anchor, node) {
   });
   const onOutside = e => {
     if (!menu.contains(e.target)) { menu.remove(); _pageActionsMenuEl = null; document.removeEventListener('mousedown', onOutside); }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
+
+// ── "⋯" menu with just "Mover a…" — used by the Teamspace and Conocimiento
+// trees, which already have their own delete flows elsewhere.
+let _simpleMoveMenuEl = null;
+function _openSimpleMoveMenu(anchor, entryId, entryTitle) {
+  _simpleMoveMenuEl?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'course-actions-menu';
+  menu.innerHTML = `<button data-action="move">⇄ Mover a…</button>`;
+  const rect = anchor.getBoundingClientRect();
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.right - 168}px;width:168px;z-index:9999`;
+  document.body.appendChild(menu);
+  _simpleMoveMenuEl = menu;
+  menu.querySelector('[data-action="move"]').addEventListener('click', e => {
+    e.stopPropagation();
+    menu.remove(); _simpleMoveMenuEl = null;
+    openMoveToModal(entryId, entryTitle || "Sin título");
+  });
+  const onOutside = e => {
+    if (!menu.contains(e.target)) { menu.remove(); _simpleMoveMenuEl = null; document.removeEventListener('mousedown', onOutside); }
   };
   setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
 }
@@ -2215,9 +2266,10 @@ async function loadEntry(id, opts = {}) {
     _trackStudying(id, m.title, m.course || '');
   }
 
-  // "Mover" (category/topic move) only applies to knowledge entries
+  // "Mover a…" works for any entry except course lessons, which already have
+  // their own dedicated move-between-modules flow (see openMoveLessonModal).
   const moveBtnEl = $("moveBtn");
-  if (moveBtnEl) moveBtnEl.style.display = (m.type === "teamspace" || m.type === "page") ? "none" : "";
+  if (moveBtnEl) moveBtnEl.style.display = (m.type === "course") ? "none" : "";
 
   // "Repaso" (repetición espaciada) only applies to knowledge entries — course
   // lessons already have their own SM-2 via "Dominio"/conceptos.
@@ -5282,73 +5334,131 @@ async function duplicateEntry() {
 }
 
 // ============================================================
-// NEW FEATURE: MOVE ENTRY
+// NEW FEATURE: MOVE ENTRY (universal "Mover a…" — cualquier página,
+// teamspace o entrada de Conocimiento puede moverse a cualquier otro lugar,
+// exactamente como en Notion: solo cambia su ubicación, nada de su
+// contenido, propiedades o sub-páginas/filas).
 // ============================================================
 function initMove() {
-  $("moveBtn").addEventListener("click", toggleMovePanel);
-  $("moveCancelBtn").addEventListener("click", closeMovePanel);
-  $("moveApplyBtn").addEventListener("click", applyMove);
-  loadMoveCatSuggestions();
+  $("moveBtn").addEventListener("click", () => {
+    if (!currentEntryId) return;
+    const title = $("inlineTitle")?.textContent?.trim() || "Sin título";
+    openMoveToModal(currentEntryId, title);
+  });
+  $("moveToClose").addEventListener("click", closeMoveToModal);
+  $("moveToOverlay").addEventListener("click", e => { if (e.target === $("moveToOverlay")) closeMoveToModal(); });
+  $("moveToSearch").addEventListener("input", _renderMoveToResults);
 }
 
-async function loadMoveCatSuggestions() {
-  try {
-    const res = await fetch("/api/categories");
-    if (!res.ok) return;
-    const cats = await res.json();
-    const dl = $("moveCatSuggestions");
-    if (dl) dl.innerHTML = Object.values(cats).map(c => `<option value="${escapeHtml(c)}">`).join("");
-  } catch { /* categories endpoint unavailable — non-critical */ }
+function closeMoveToModal() {
+  $("moveToOverlay").classList.add("hidden");
+  _moveToState = null;
 }
 
-function toggleMovePanel() {
-  const panel = $("movePanel");
-  if (panel.classList.contains("hidden")) {
-    $("srsPanel")?.classList.add("hidden");
-    fetch(`/api/entry/${currentEntryId}`).then(r => r.json()).then(data => {
-      const m = data.meta;
-      $("moveCat").value = m.category_label || m.category;
-      $("moveTopic").value = m.topic_label || m.topic;
-    });
-    panel.classList.remove("hidden");
-    loadMoveCatSuggestions();
-  } else {
-    closeMovePanel();
+let _moveToState = null;
+
+async function openMoveToModal(entryId, entryTitle) {
+  $("moveToEntryTitle").textContent = entryTitle;
+  $("moveToSearch").value = "";
+  $("moveToResults").innerHTML = '<div class="tree-empty">Cargando…</div>';
+  $("moveToOverlay").classList.remove("hidden");
+  setTimeout(() => $("moveToSearch").focus(), 50);
+
+  const entries = await fetch("/api/entries").then(r => r.json());
+  const byId = new Map(entries.map(e => [e.id, e]));
+
+  // Can't move a page inside its own subtree — exclude itself and every
+  // descendant reachable by walking parent_id forward.
+  const excluded = new Set([entryId]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const e of entries) {
+      if (!excluded.has(e.id) && e.parent_id && excluded.has(e.parent_id)) {
+        excluded.add(e.id);
+        grew = true;
+      }
+    }
+  }
+
+  _moveToState = { entryId, entries, byId, excluded };
+  _renderMoveToResults();
+}
+
+function _moveToLocationLabel(e, byId) {
+  if (e.teamspace) return `Teamspace · ${escapeHtml(e.teamspace_label || e.teamspace)}`;
+  if (e.category && e.topic) return `Conocimiento · ${escapeHtml(e.category)} › ${escapeHtml(e.topic)}`;
+  if (e.parent_id && byId.has(e.parent_id)) return `Subpágina de ${escapeHtml(byId.get(e.parent_id).title || "Sin título")}`;
+  return "Páginas";
+}
+
+function _renderMoveToResults() {
+  if (!_moveToState) return;
+  const { entries, byId, excluded } = _moveToState;
+  const q = $("moveToSearch").value.trim().toLowerCase();
+  const results = $("moveToResults");
+  results.innerHTML = "";
+
+  const roots = [{ kind: "pages_root", label: "Páginas", sub: "Nivel superior", icon: "📄" }];
+  const seenSpaces = new Map();
+  const seenTopics = new Map();
+  for (const e of entries) {
+    if (e.teamspace && !seenSpaces.has(e.teamspace)) seenSpaces.set(e.teamspace, e.teamspace_label || e.teamspace);
+    if (e.category && e.topic) seenTopics.set(`${e.category}\u0000${e.topic}`, { category: e.category, topic: e.topic });
+  }
+  for (const [slug, label] of seenSpaces) {
+    roots.push({ kind: "teamspace_root", teamspace: slug, teamspace_label: label, label, sub: "Teamspace · nivel superior", icon: "👥" });
+  }
+  for (const { category, topic } of seenTopics.values()) {
+    roots.push({ kind: "knowledge_root", category, topic, label: `${category} › ${topic}`, sub: "Conocimiento · nivel superior", icon: "📚" });
+  }
+
+  const filteredRoots = q ? roots.filter(r => r.label.toLowerCase().includes(q)) : roots;
+  const filteredEntries = entries.filter(e => !excluded.has(e.id) && (!q || (e.title || "").toLowerCase().includes(q)));
+
+  if (!filteredRoots.length && !filteredEntries.length) {
+    results.innerHTML = '<div class="tree-empty">Sin resultados</div>';
+    return;
+  }
+
+  for (const r of filteredRoots) {
+    const item = document.createElement("div");
+    item.className = "move-to-item move-to-item--root";
+    item.innerHTML = `<span class="move-to-item-icon">${r.icon}</span><span class="move-to-item-text"><span class="move-to-item-title">${escapeHtml(r.label)}</span><span class="move-to-item-sub">${escapeHtml(r.sub)}</span></span>`;
+    item.addEventListener("click", () => _confirmMoveTo(r));
+    results.appendChild(item);
+  }
+
+  for (const e of filteredEntries) {
+    const item = document.createElement("div");
+    item.className = "move-to-item";
+    item.innerHTML = `<span class="move-to-item-icon">${renderIconMarkup(e.icon, "move-to-item-glyph", ENTRY_ICON_DEFAULTS.page)}</span><span class="move-to-item-text"><span class="move-to-item-title">${escapeHtml(e.title || "Sin título")}</span><span class="move-to-item-sub">${_moveToLocationLabel(e, byId)}</span></span>`;
+    item.addEventListener("click", () => _confirmMoveTo({ kind: "nested", parent_id: e.id, label: e.title || "Sin título" }));
+    results.appendChild(item);
   }
 }
 
-function closeMovePanel() {
-  $("movePanel").classList.add("hidden");
-}
+async function _confirmMoveTo(dest) {
+  if (!_moveToState) return;
+  const { entryId } = _moveToState;
+  const body = { dest: dest.kind };
+  if (dest.kind === "teamspace_root") { body.teamspace = dest.teamspace; body.teamspace_label = dest.teamspace_label; }
+  if (dest.kind === "knowledge_root") { body.category = dest.category; body.topic = dest.topic; }
+  if (dest.kind === "nested") body.parent_id = dest.parent_id;
 
-async function applyMove() {
-  if (!currentEntryId) return;
-  const cat = $("moveCat").value.trim();
-  const topic = $("moveTopic").value.trim();
-  if (!cat || !topic) { showToast("Completa categoría y tema", "error"); return; }
-
-  const entryRes = await fetch(`/api/entry/${currentEntryId}`);
-  const entryData = await entryRes.json();
-  const m = entryData.meta;
-
-  const res = await fetch(`/api/entry/${currentEntryId}`, {
-    method: "PUT",
+  const res = await fetch(`/api/entry/${entryId}/move-to`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      raw_text: entryData.markdown,
-      title: m.title,
-      category: cat,
-      topic: topic,
-      already_markdown: true,
-    }),
+    body: JSON.stringify(body),
   });
   if (res.ok) {
-    closeMovePanel();
-    showToast("Entrada movida");
+    closeMoveToModal();
+    showToast(`Movido a "${dest.label}"`);
     await loadTree();
-    loadEntry(currentEntryId);
+    if (currentEntryId === entryId) loadEntry(entryId);
   } else {
-    showToast("Error al mover", "error");
+    const err = await res.json().catch(() => ({}));
+    showToast(err.error || "No se pudo mover", "error");
   }
 }
 
