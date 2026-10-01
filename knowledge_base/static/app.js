@@ -916,6 +916,18 @@ function renderCoursesTree(tree, filterSlug, _container = null) {
 }
 
 // ---- TEAMSPACE TREE ----
+// Remembers which teamspace groups the user has manually expanded, so the
+// tree stays collapsed by default but doesn't reset their choices on re-render.
+function _tsOpenMap() {
+  try { return JSON.parse(localStorage.getItem("kb_ts_open") || "{}"); }
+  catch (_) { return {}; }
+}
+function _tsSetOpen(spaceSlug, open) {
+  const map = _tsOpenMap();
+  map[spaceSlug] = open;
+  try { localStorage.setItem("kb_ts_open", JSON.stringify(map)); } catch (_) {}
+}
+
 function renderTeamspaceTree(tree) {
   const nav = $("teamspaceTree");
   const label = $("teamspaceSectionLabel");
@@ -937,9 +949,11 @@ function renderTeamspaceTree(tree) {
 
     const spaceHeader = document.createElement("div");
     spaceHeader.className = "tree-cat-header ts-space-header";
+    let spaceOpen = _tsOpenMap()[spaceSlug] === true;
+
     spaceHeader.innerHTML = `
       <button class="ts-space-toggle-btn" title="Expandir o colapsar">
-        <span class="tree-arrow">▾</span>
+        <span class="tree-arrow">${spaceOpen ? "▾" : "▸"}</span>
       </button>
       <button class="ts-space-main" data-home-id="${escapeHtml(homeId)}" title="${homeId ? `Abrir ${escapeHtml(spaceLabel)}` : escapeHtml(spaceLabel)}">
         <span class="ts-space-icon">${renderIconMarkup(icon, "ts-space-icon-glyph", ENTRY_ICON_DEFAULTS.teamspace)}</span>
@@ -947,7 +961,6 @@ function renderTeamspaceTree(tree) {
       </button>
       <button class="ts-add-page-btn" data-space="${escapeHtml(spaceSlug)}" data-label="${escapeHtml(spaceLabel)}" title="Nueva página en ${escapeHtml(spaceLabel)}">+</button>
     `;
-    let spaceOpen = true;
 
     const toggleBtn = spaceHeader.querySelector(".ts-space-toggle-btn");
     const mainBtn = spaceHeader.querySelector(".ts-space-main");
@@ -956,6 +969,7 @@ function renderTeamspaceTree(tree) {
       e.preventDefault();
       e.stopPropagation();
       spaceOpen = !spaceOpen;
+      _tsSetOpen(spaceSlug, spaceOpen);
       spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
       entryList.style.display = spaceOpen ? "" : "none";
     });
@@ -975,6 +989,7 @@ function renderTeamspaceTree(tree) {
 
     const entryList = document.createElement("div");
     entryList.className = "tree-topic";
+    entryList.style.display = spaceOpen ? "" : "none";
     for (const entry of entries) {
       const item = document.createElement("div");
       item.className = "tree-entry ts-item";
