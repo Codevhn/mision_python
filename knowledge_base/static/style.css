@@ -10306,12 +10306,27 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 .note-card { background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 14px 16px; }
 .note-src { font-size: 0.72rem; color: var(--text-faint); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; }
 .note-quote { font-family: var(--font-display); font-size: 0.92rem; line-height: 1.5; margin-bottom: 8px; }
-.note-quote .hl { background: rgba(226,197,69,0.30); border-radius: 2px; padding: 0 2px; }
-.note-quote .hl.green { background: rgba(138,157,110,0.30); }
-.note-quote .hl.blue { background: rgba(123,159,222,0.30); }
+.note-quote .hl { border-radius: 2px; padding: 0 2px; }
 .note-body { font-size: 0.84rem; color: var(--text-muted); margin-bottom: 10px; }
 .note-actions { display: flex; gap: 14px; flex-wrap: wrap; }
 .note-actions a { font-size: 0.74rem; font-weight: 600; color: var(--accent); cursor: pointer; }
+.note-actions a.note-del-act { color: var(--text-faint); margin-left: auto; }
+.note-actions a.note-del-act:hover { color: var(--danger); }
+
+/* ── Leyenda de colores — qué significa cada color es cosa de quien lee,
+   nunca algo que le imponemos; arranca en blanco y se edita acá mismo. ── */
+.lib-legend-bar {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
+}
+.lib-legend-item { display: flex; align-items: center; gap: 6px; }
+.lib-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.lib-legend-label {
+  font-size: 0.78rem; color: var(--text-muted); min-width: 10px;
+  border-bottom: 1px dashed transparent; outline: none; cursor: text;
+}
+.lib-legend-label:hover, .lib-legend-label:focus { border-bottom-color: var(--border); color: var(--text); }
+.lib-legend-label:empty::before { content: attr(data-placeholder); color: var(--text-faint); font-style: italic; }
 
 /* ── Modal simple (convertir en concepto) ── */
 .lib-modal-overlay {
@@ -10390,8 +10405,9 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 
 /* ── Barra flotante de selección (resaltar / nota / IA / concepto) ── */
 .sel-toolbar {
-  display: flex; align-items: center; gap: 2px; background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: 999px; padding: 5px; box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px; max-width: min(92vw, 420px);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 16px; padding: 5px; box-shadow: 0 6px 18px rgba(0,0,0,0.25);
 }
 .sel-toolbar .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); cursor: pointer; }
 .sel-toolbar .sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }

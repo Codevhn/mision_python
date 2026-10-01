@@ -7322,6 +7322,7 @@ LIBRARY_FILE = DATA_DIR / "library.json"
 LIBRARY_PROGRESS_FILE = DATA_DIR / "library_progress.json"
 LIBRARY_BOOKMARKS_FILE = DATA_DIR / "library_bookmarks.json"
 LIBRARY_NOTES_FILE = DATA_DIR / "library_notes.json"
+LIBRARY_COLOR_LEGEND_FILE = DATA_DIR / "library_color_legend.json"
 # Portadas: NO viven bajo static/ — ese directorio es parte de la imagen del
 # contenedor, no del volumen persistente, y Fly apaga y reemplaza la máquina
 # (auto_stop_machines) entre visitas cuando está inactiva. Guardarlas junto
@@ -7388,6 +7389,18 @@ def save_library_notes(data):
     tmp = LIBRARY_NOTES_FILE.with_suffix('.tmp')
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
     os.replace(tmp, LIBRARY_NOTES_FILE)
+
+
+def load_library_color_legend():
+    if LIBRARY_COLOR_LEGEND_FILE.exists():
+        return json.loads(LIBRARY_COLOR_LEGEND_FILE.read_text())
+    return {}
+
+
+def save_library_color_legend(data):
+    tmp = LIBRARY_COLOR_LEGEND_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, LIBRARY_COLOR_LEGEND_FILE)
 
 
 def _pdf_has_text_layer(path, sample_pages=6, min_chars=40):
@@ -7735,6 +7748,25 @@ def delete_library_note(book_id, note_id):
     all_notes[book_id] = [n for n in all_notes.get(book_id, []) if n["id"] != note_id]
     save_library_notes(all_notes)
     return jsonify({"ok": True})
+
+
+@app.route("/api/library/color-legend", methods=["GET"])
+def get_library_color_legend():
+    """Qué significa cada color de resaltado — en blanco hasta que el propio
+    usuario lo defina; nunca le imponemos un significado fijo nosotros."""
+    return jsonify({"legend": load_library_color_legend()})
+
+
+@app.route("/api/library/color-legend", methods=["PATCH"])
+def update_library_color_legend():
+    body = request.json or {}
+    color = (body.get("color") or "").strip()
+    if not color:
+        return jsonify({"error": "Falta el color"}), 400
+    legend = load_library_color_legend()
+    legend[color] = (body.get("label") or "").strip()
+    save_library_color_legend(legend)
+    return jsonify({"legend": legend})
 
 
 @app.route("/api/library/<book_id>/notes/<note_id>/to-concept", methods=["POST"])

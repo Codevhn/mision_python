@@ -24,7 +24,42 @@
     return `hace ${diffD}d`;
   }
 
-  const HL_COLORS = { yellow: '#e2c545', green: '#8a9d6e', blue: '#7b9fde' };
+  const HL_COLORS = {
+    yellow: '#e2c545', green: '#8a9d6e', blue: '#7b9fde',
+    red: '#d9776b', purple: '#a68bd9', gray: '#a8a59c',
+  };
+  // Color order shown everywhere a row of swatches appears.
+  const HL_COLOR_KEYS = Object.keys(HL_COLORS);
+
+  function _hexToRgba(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  }
+
+  // What each color MEANS is entirely up to whoever is using it — we never
+  // ship a fixed "red = urgent" label. Starts blank; _colorLegend fills in
+  // from the backend once loaded, and stays blank for any color the user
+  // hasn't named yet.
+  let _colorLegend = {};
+  async function _loadColorLegend() {
+    try {
+      const r = await fetch('/api/library/color-legend');
+      const d = await r.json();
+      _colorLegend = (d && d.legend) || {};
+    } catch (e) { _colorLegend = {}; }
+  }
+  async function _setColorLegendLabel(color, label) {
+    _colorLegend[color] = label;
+    try {
+      const r = await fetch('/api/library/color-legend', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color, label }),
+      });
+      const d = await r.json();
+      if (d && d.legend) _colorLegend = d.legend;
+    } catch (e) { /* kept the optimistic local value either way */ }
+  }
+  _loadColorLegend();
 
   // ── Notificaciones propias del sistema — reemplazan alert()/confirm()/
   // prompt() del navegador, que rompen el estilo visual de toda la app. ──
@@ -130,7 +165,7 @@
         <div class="storage-note">${warn ? 'Te acercas al límite gratis de Fly.io — considera borrar libros que ya terminaste.' : 'Al acercarte al límite, te avisamos aquí antes de que algo falle.'}</div>
       </div>
       <div class="lib-head">
-        <h1>Tu biblioteca</h1>
+        <h1>${st.tab === 'notes' ? 'Tus apuntes' : 'Tu biblioteca'}</h1>
         <div class="lib-filters">
           <div class="lib-filter ${st.tab === 'books' ? 'active' : ''}" data-tab="books">Libros</div>
           <div class="lib-filter ${st.tab === 'notes' ? 'active' : ''}" data-tab="notes">Apuntes</div>
@@ -376,36 +411,80 @@
   // ── Apuntes globales ─────────────────────────────────────────────────────
   let _notesCache = [];
 
+  // A thin, always-visible strip over the notes list — not a wall of text
+  // explaining what each color "should" mean (we never decide that), just
+  // the colors you've actually used with whatever name you gave each one,
+  // editable right here. Blank until you type something.
+  function _colorLegendBarHtml() {
+    const items = HL_COLOR_KEYS.map(key => `
+      <span class="lib-legend-item">
+        <i class="lib-legend-dot" style="background:${HL_COLORS[key]}"></i>
+        <span class="lib-legend-label" data-legend-key="${key}" contenteditable="true"
+              data-placeholder="sin nombrar">${_escHtml(_colorLegend[key] || '')}</span>
+      </span>`).join('');
+    return `<div class="lib-legend-bar">${items}</div>`;
+  }
+
+  function _wireColorLegendBar(area) {
+    area.querySelectorAll('[data-legend-key]').forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      });
+      el.addEventListener('blur', () => {
+        const key = el.dataset.legendKey;
+        const val = el.textContent.trim();
+        if (val !== (_colorLegend[key] || '')) _setColorLegendLabel(key, val);
+      });
+    });
+  }
+
   async function _renderLibraryNotesTab() {
     const area = $('libraryNotesArea');
     if (!area) return;
+    await _loadColorLegend();
     const res = await fetch('/api/library/notes');
     const data = await res.json();
     _notesCache = data.notes || [];
     if (!_notesCache.length) {
-      area.innerHTML = '<div class="lab-empty">Aún no tienes resaltados ni notas. Ábrelos desde el lector, seleccionando cualquier texto.</div>';
+      area.innerHTML = _colorLegendBarHtml()
+        + '<div class="lab-empty">Aún no tienes resaltados ni notas. Ábrelos desde el lector, seleccionando cualquier texto.</div>';
+      _wireColorLegendBar(area);
       return;
     }
-    area.innerHTML = '<div class="notes-list">' + _notesCache.map(_noteCardHtml).join('') + '</div>';
+    area.innerHTML = _colorLegendBarHtml() + '<div class="notes-list">' + _notesCache.map(_noteCardHtml).join('') + '</div>';
+    _wireColorLegendBar(area);
     area.querySelectorAll('[data-goto-book]').forEach(el => el.addEventListener('click', () => window._openLibraryReader(el.dataset.gotoBook)));
     area.querySelectorAll('[data-to-concept]').forEach(el => el.addEventListener('click', () => _promptNoteToConcept(el.dataset.bookId, el.dataset.toConcept)));
     area.querySelectorAll('[data-quiz-note]').forEach(el => el.addEventListener('click', () => {
       const n = _notesCache.find(x => x.id === el.dataset.quizNote);
       if (n) window._quizFromLibraryText(n.book_title, (n.note_text ? n.note_text + '\n\n' : '') + n.quote_text, '');
     }));
+    area.querySelectorAll('[data-del-note]').forEach(el => el.addEventListener('click', async () => {
+      const ok = await _confirmDialog('Se eliminará este resaltado o nota.', { title: 'Eliminar', okLabel: 'Eliminar', danger: true });
+      if (!ok) return;
+      try {
+        const r = await fetch(`/api/library/${el.dataset.delBook}/notes/${el.dataset.delNote}`, { method: 'DELETE' });
+        if (!r.ok) { _toast('No se pudo eliminar', 'error'); return; }
+      } catch (e) { _toast('No se pudo eliminar', 'error'); return; }
+      _notesCache = _notesCache.filter(n => n.id !== el.dataset.delNote);
+      _toast('Eliminado.', 'success');
+      el.closest('.note-card')?.remove();
+      if (!_notesCache.length) _renderLibraryNotesTab();
+    }));
   }
 
   function _noteCardHtml(n) {
-    const colorClass = n.color === 'green' ? 'green' : (n.color === 'blue' ? 'blue' : '');
+    const hlColor = HL_COLORS[n.color] || HL_COLORS.yellow;
     return `
       <div class="note-card">
         <div class="note-src"><span>${_escHtml(n.book_title)}${n.chapter_title ? ' · ' + _escHtml(n.chapter_title) : ''}</span><span>${_timeAgo(n.created_at)}</span></div>
-        <div class="note-quote"><span class="hl ${colorClass}">&ldquo;${_escHtml(n.quote_text)}&rdquo;</span></div>
+        <div class="note-quote"><span class="hl" style="background:${_hexToRgba(hlColor, 0.30)}">&ldquo;${_escHtml(n.quote_text)}&rdquo;</span></div>
         ${n.note_text ? `<div class="note-body">${_escHtml(n.note_text)}</div>` : ''}
         <div class="note-actions">
           <a data-goto-book="${n.book_id}">Ir al libro →</a>
           <a data-to-concept="${n.id}" data-book-id="${n.book_id}">Convertir en concepto</a>
           <a data-quiz-note="${n.id}">Generar quiz de esto</a>
+          <a data-del-note="${n.id}" data-del-book="${n.book_id}" class="note-del-act">Eliminar</a>
         </div>
       </div>`;
   }
@@ -697,10 +776,12 @@
     if (!text || !text.trim()) return;
     const bar = document.createElement('div');
     bar.className = 'sel-toolbar sel-toolbar-floating';
+    const swatchesHtml = HL_COLOR_KEYS.map(key => {
+      const label = _colorLegend[key];
+      return `<span class="swatch" data-color="${key}" style="background:${HL_COLORS[key]}" title="${_escHtml(label || '')}"></span>`;
+    }).join('');
     bar.innerHTML = `
-      <span class="swatch" data-color="yellow" style="background:${HL_COLORS.yellow}"></span>
-      <span class="swatch" data-color="green" style="background:${HL_COLORS.green}"></span>
-      <span class="swatch" data-color="blue" style="background:${HL_COLORS.blue}"></span>
+      ${swatchesHtml}
       <span class="sep"></span>
       <span class="act" data-act="note">✎ Nota</span>
       <span class="act" data-act="ask">✦ Preguntar a la IA</span>
