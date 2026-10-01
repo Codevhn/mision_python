@@ -859,6 +859,17 @@
       textLayerDiv.className = 'pdf-text-layer';
       textLayerDiv.style.width = viewport.width + 'px';
       textLayerDiv.style.height = viewport.height + 'px';
+      // pdf.js 4.x sizes the text layer and every span inside it with
+      // calc()/round() expressions against --scale-factor instead of fixed
+      // pixel values (so its own highlight/annotation layers can share one
+      // source of truth for scale) — it never sets this custom property
+      // itself, expecting whoever embeds it to. We don't, so it resolves to
+      // nothing, the layer's width collapses to 0, and — paired with its
+      // overflow:hidden — every span ends up clipped out of existence:
+      // visually invisible either way (color: transparent), but now also
+      // unreachable by the mouse, so a drag over the page can never
+      // actually select anything. One line fixes it.
+      textLayerDiv.style.setProperty('--scale-factor', _reader.pdfScale);
       wrap.appendChild(textLayerDiv);
       await window.pdfjsLib.renderTextLayer({ textContentSource: textContent, container: textLayerDiv, viewport }).promise;
     }
