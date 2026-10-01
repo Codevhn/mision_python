@@ -632,6 +632,22 @@
     document.querySelectorAll('.sel-toolbar-floating').forEach(el => el.remove());
   }
 
+  // The toolbar only ever hid itself from inside its own button handlers —
+  // clicking anywhere else (to clear the selection, or just to keep
+  // reading) left it stuck on screen with no selection behind it anymore.
+  // One mousedown listener per document (the main page, plus each epub
+  // chapter's own iframe document — those don't bubble across the frame
+  // boundary) closes it unless the click is on the toolbar itself.
+  function _wireSelectionDismiss(doc) {
+    if (!doc || doc._libSelDismissWired) return;
+    doc._libSelDismissWired = true;
+    doc.addEventListener('mousedown', (e) => {
+      if (e.target.closest && e.target.closest('.sel-toolbar-floating')) return;
+      _removeSelToolbar();
+    });
+  }
+  _wireSelectionDismiss(document);
+
   function _showSelectionToolbar(text, location, rect) {
     _removeSelToolbar();
     if (!text || !text.trim()) return;
@@ -896,6 +912,7 @@
     });
 
     rendition.on('selected', (cfiRange, contents) => {
+      try { _wireSelectionDismiss(contents.document); } catch (e) { /* ignore */ }
       epubBook.getRange(cfiRange).then(range => {
         const text = range ? range.toString() : '';
         if (!text.trim()) return;
@@ -943,8 +960,16 @@
   function _applyEpubHighlight(note) {
     if (!_reader.epubRendition) return;
     try {
+      // epub.js's annotations.add() keys its internal map by the CFI range
+      // string, but when that key already exists it only swaps the map
+      // entry — it never detaches the OLD highlight's SVG mark from the
+      // page first. Re-highlighting the same passage (or re-rendering on
+      // 'relocated') left every earlier mark orphaned in the DOM, stacking
+      // translucent layers on top of each other until the text underneath
+      // was unreadable. remove() first so there's at most one mark per spot.
+      _reader.epubRendition.annotations.remove(note.location, 'highlight');
       _reader.epubRendition.annotations.add(
-        'highlight', note.location, {}, null, 'epub-hl',
+        'highlight', note.location, {}, () => _confirmRemoveEpubHighlight(note), 'epub-hl',
         { fill: HL_COLORS[note.color] || HL_COLORS.yellow, 'fill-opacity': '0.4', 'mix-blend-mode': 'multiply' }
       );
     } catch (e) { /* a stale CFI from an edited book export — skip silently */ }
@@ -954,4 +979,32 @@
     if (!_reader.epubRendition) return;
     _reader.notes.filter(n => n.format === 'epub' && n.location).forEach(_applyEpubHighlight);
   }
+
+  // Clicking an existing highlight mark is the only way to get rid of one —
+  // there was no affordance for this before, so a wrong or duplicate
+  // highlight was stuck forever.
+  async function _confirmRemoveEpubHighlight(note) {
+    const ok = await _confirmDialog('Se eliminará este resaltado y la nota asociada.', {
+      title: 'Quitar resaltado', okLabel: 'Quitar', danger: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/library/${_reader.bookId}/notes/${note.id}`, { method: 'DELETE' });
+      if (!res.ok) { _toast('No se pudo quitar el resaltado', 'error'); return; }
+    } catch (e) { _toast('No se pudo quitar el resaltado', 'error'); return; }
+    _reader.notes = _reader.notes.filter(n => n.id !== note.id);
+    try { _reader.epubRendition.annotations.remove(note.location, 'highlight'); } catch (e) { /* already gone */ }
+    _toast('Resaltado eliminado.', 'success');
+  }
+
+  // The app's global light/dark toggle (app.js, outside this module) has no
+  // way to reach into the epub.js iframe on its own — without this, the
+  // reader kept the PREVIOUS theme's text color baked into its injected
+  // stylesheet as `!important`, so after switching themes the text color
+  // matched the new background exactly and the whole page looked blank
+  // until something else (e.g. the font-size button) happened to re-run
+  // _applyEpubTheme.
+  window._reapplyEpubReaderTheme = function () {
+    if (_reader.format === 'epub' && _reader.epubRendition) _applyEpubTheme(_reader.epubRendition);
+  };
 })();

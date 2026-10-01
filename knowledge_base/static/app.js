@@ -563,6 +563,11 @@ function toggleTheme() {
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("kb_theme", next);
+  // The epub.js reader renders each chapter in its own iframe with colors
+  // injected (and frozen) at open time — without this it keeps the OLD
+  // theme's text color after switching, which can exactly match the new
+  // background and make the whole page look blank.
+  if (typeof window._reapplyEpubReaderTheme === "function") window._reapplyEpubReaderTheme();
 }
 
 // ---- SIDEBAR ----
