@@ -10044,7 +10044,16 @@ function _labRadarSvgHtml(points, labels, topConceptId) {
   }).join('');
   const labelEls = labels.map(l => {
     const anchor = l.x < _LAB_R_CENTER - 25 ? 'end' : (l.x > _LAB_R_CENTER + 25 ? 'start' : 'middle');
-    return `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="${anchor}" class="lab-radar-course-label">${escapeHtml(l.text)}</text>`;
+    // An 'end'/'start' anchor draws the text extending away from the edge
+    // it's nearest to — a long label (e.g. "SQL Intermedio") can then run
+    // past x=0 or x=size and get clipped by the viewBox itself, losing its
+    // first/last letters. Clamp the anchor point inward by the text's own
+    // estimated width so the whole label always stays inside the circle.
+    const textW = l.text.length * 6.2; // ~avg glyph width at 11px font-ui
+    let x = l.x;
+    if (anchor === 'end') x = Math.max(x, textW + 4);
+    else if (anchor === 'start') x = Math.min(x, size - textW - 4);
+    return `<text x="${x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="${anchor}" class="lab-radar-course-label">${escapeHtml(l.text)}</text>`;
   }).join('');
   // Same single top-priority point the pulse animation above already
   // singles out. A line from the exact center is barely visible for this

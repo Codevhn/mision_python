@@ -8845,7 +8845,12 @@ body {
 .lab-hdr-stat--warn .lab-hdr-v { color: var(--danger); }
 
 .lab-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,1fr); gap: 20px; align-items: start; }
-@media (max-width: 900px) { .lab-grid { grid-template-columns: 1fr; } }
+/* minmax(0, 1fr), not a bare 1fr: without the 0 floor, an fr track's
+   automatic minimum is its content's min-content width — here driven by
+   the radar SVG's max-width:460px hint — so the single column (and
+   everything in it) overflowed past the real viewport width and got
+   silently clipped by the mobile overflow-x:hidden safety rule. */
+@media (max-width: 900px) { .lab-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .lab-panel {
   background: var(--bg-surface); border: 1px solid var(--border-light);
