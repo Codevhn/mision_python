@@ -1162,10 +1162,15 @@ def get_pages_tree():
     roots = []
     for entry_id, node in nodes.items():
         parent_id = node["parent_id"]
-        if parent_id and parent_id in nodes:
-            nodes[parent_id]["children"].append(node)
-        else:
+        if not parent_id:
             roots.append(node)
+        elif parent_id in nodes:
+            nodes[parent_id]["children"].append(node)
+        # else: parent_id points to an entry outside the Páginas universe
+        # (a Teamspace page, a Knowledge entry, a course lesson…) — it
+        # already shows up correctly as a Sub-página wherever that real
+        # parent is viewed (see get_children), so it does NOT also belong
+        # here as a false top-level root.
 
     def sort_tree(node_list):
         node_list.sort(key=lambda n: (n["order"], n["created_at"]))
