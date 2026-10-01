@@ -907,11 +907,24 @@
   function _applyPdfHighlightsForPage(pageNum) {
     const layer = document.querySelector('.pdf-text-layer');
     if (!layer) return;
-    layer.querySelectorAll('span[data-lib-hl]').forEach(s => { s.style.background = ''; s.removeAttribute('data-lib-hl'); });
+    layer.querySelectorAll('span[data-lib-hl]').forEach(s => {
+      s.style.background = ''; s.style.opacity = '';
+      s.removeAttribute('data-lib-hl');
+      s.onclick = null;
+    });
     const notesHere = _reader.notes.filter(n => n.format === 'pdf' && n.location === `page:${pageNum}`);
     if (!notesHere.length) return;
     const spans = Array.from(layer.querySelectorAll('span'));
-    const fullText = spans.map(s => s.textContent).join('');
+    // pdf.js gives each text line its own span, and a selection spanning
+    // several lines joins them with "\n" in sel.toString() — the quote we
+    // store is exactly that string. Concatenating spans with NO separator
+    // here made that "\n" never match anything (a multi-line quote's first
+    // 60 chars almost always contain one), and even on the rare quote that
+    // did match by luck, every "\n" it counted towards its own length with
+    // no matching character on this side pushed the highlighted range past
+    // where the selection actually ended — painting whole extra paragraphs.
+    // Joining with "\n" here too keeps both sides counting the same way.
+    const fullText = spans.map(s => s.textContent).join('\n');
     for (const note of notesHere) {
       const quote = (note.quote_text || '').trim();
       if (!quote) continue;
@@ -924,10 +937,27 @@
           s.style.background = HL_COLORS[note.color] || HL_COLORS.yellow;
           s.style.opacity = '0.55';
           s.setAttribute('data-lib-hl', note.id);
+          // Same affordance as the epub reader: click an existing highlight
+          // to remove it. There was no way to undo one before this.
+          s.onclick = (e) => { e.stopPropagation(); _confirmRemovePdfHighlight(note); };
         }
-        pos += len;
+        pos += len + 1; // +1 for the "\n" joiner between this span and the next
       }
     }
+  }
+
+  async function _confirmRemovePdfHighlight(note) {
+    const ok = await _confirmDialog('Se eliminará este resaltado y la nota asociada.', {
+      title: 'Quitar resaltado', okLabel: 'Quitar', danger: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/library/${_reader.bookId}/notes/${note.id}`, { method: 'DELETE' });
+      if (!res.ok) { _toast('No se pudo quitar el resaltado', 'error'); return; }
+    } catch (e) { _toast('No se pudo quitar el resaltado', 'error'); return; }
+    _reader.notes = _reader.notes.filter(n => n.id !== note.id);
+    _applyPdfHighlightsForPage(_reader.pdfPage);
+    _toast('Resaltado eliminado.', 'success');
   }
 
   // ── EPUB (epub.js) ───────────────────────────────────────────────────────
