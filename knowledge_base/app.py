@@ -5540,6 +5540,378 @@ def generate_mindmap():
     return jsonify(mindmap), 201
 
 
+# ── Concept Maps (mapas conceptuales) ───────────────────────────────────────────
+# Deliberately a DIFFERENT shape from Mindmaps above: a real graph (flat nodes +
+# edges), not a nested tree. A concept map's whole point is that a node can have
+# more than one incoming connection (several ideas converging on one concept),
+# and every connection carries its own linking-phrase label — neither of which a
+# parent/children tree can represent.
+CONCEPT_MAPS_FILE = DATA_DIR / "concept_maps.json"
+
+
+def load_concept_maps():
+    if CONCEPT_MAPS_FILE.exists():
+        return json.loads(CONCEPT_MAPS_FILE.read_text())
+    return {"maps": {}}
+
+
+def save_concept_maps(data):
+    tmp = CONCEPT_MAPS_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    os.replace(tmp, CONCEPT_MAPS_FILE)
+
+
+def _layout_concept_map(nodes, edges):
+    """Assigns x/y in place: ranks nodes by LONGEST path from a root (a
+    concept with no incoming edge) so the map reads general-at-top,
+    specific-below, then spaces each rank's nodes evenly left-to-right.
+    Longest-path (Kahn's algorithm), not plain BFS shortest-path — a
+    converging concept (two paths of different length lead to it, like
+    "P.C.C." in a classic Novak example) must land BELOW every one of its
+    parents, never tied with one of them just because BFS found a shorter
+    route to it first.
+    Approximate on purpose — nodes are freely draggable afterward, this just
+    gives a sane starting arrangement instead of dumping everything at (0,0)."""
+    from collections import deque
+    node_ids = [n["id"] for n in nodes]
+    children = {nid: [] for nid in node_ids}
+    indegree = {nid: 0 for nid in node_ids}
+    for e in edges:
+        if e["from"] in children and e["to"] in indegree:
+            children[e["from"]].append(e["to"])
+            indegree[e["to"]] += 1
+
+    rank = {nid: 0 for nid in node_ids}
+    remaining = dict(indegree)
+    q = deque([nid for nid in node_ids if indegree[nid] == 0])
+    while q:
+        cur = q.popleft()
+        for nxt in children[cur]:
+            rank[nxt] = max(rank[nxt], rank[cur] + 1)
+            remaining[nxt] -= 1
+            if remaining[nxt] == 0:
+                q.append(nxt)
+    # Any node left with remaining > 0 sits on a cycle (shouldn't happen with
+    # well-formed AI output, but never hang on it) — it keeps its rank-0
+    # default rather than being skipped.
+
+    by_rank = {}
+    for nid in node_ids:
+        by_rank.setdefault(rank[nid], []).append(nid)
+
+    COL_W, ROW_H = 230, 160
+    pos = {}
+    for r, ids in by_rank.items():
+        count = len(ids)
+        for i, nid in enumerate(ids):
+            pos[nid] = (i * COL_W - (count - 1) * COL_W / 2, r * ROW_H)
+
+    for n in nodes:
+        x, y = pos.get(n["id"], (0, 0))
+        n["x"] = x
+        n["y"] = y
+
+
+_CONCEPT_MAP_SYSTEM_PROMPT = (
+    "Eres un generador de MAPAS CONCEPTUALES educativos (técnica de Joseph "
+    "Novak) — muy distinto de un mapa mental. En un mapa mental las ramas "
+    "simplemente se abren desde un centro; en un mapa conceptual cada "
+    "conexión entre dos conceptos lleva una frase de enlace, de forma que "
+    "'concepto A' + frase de enlace + 'concepto B' se lea como una oración "
+    "completa con sentido propio.\n\n"
+    "Devuelve SOLO un JSON (sin texto adicional, sin bloques de código "
+    "markdown, sin explicaciones) con esta forma EXACTA:\n"
+    '{"title": "...", "nodes": [{"id": "n1", "text": "..."}], "edges": '
+    '[{"from": "n1", "to": "n2", "label": "..."}]}\n\n'
+    "Reglas estrictas:\n"
+    "- 8 a 16 nodos en total — conceptos concretos y específicos, NUNCA "
+    "placeholders genéricos.\n"
+    "- Un único concepto raíz (el más general/inclusivo del tema), del que "
+    "parten los demás directa o indirectamente mediante las conexiones.\n"
+    "- Cada conexión en 'edges' DEBE tener una 'label' corta (2 a 5 palabras) "
+    "que sea una frase de enlace real ('tiene las', 'se concreta en', "
+    "'depende de', 'produce', 'se clasifica en') — nunca vacía ni genérica "
+    "como 'relacionado con'.\n"
+    "- Puede (y debe, cuando tenga sentido) haber conceptos con más de una "
+    "conexión entrante — varios caminos convergiendo en el mismo concepto. "
+    "Un mapa conceptual NO tiene que ser un árbol estricto.\n"
+    "- Los 'id' son identificadores cortos arbitrarios (n1, n2…) usados solo "
+    "para enlazar 'from'/'to' con el nodo correcto — nunca se muestran.\n"
+    "- Texto claro, específico y en español en todos los nodos y etiquetas.\n"
+    "- 'title' es el concepto raíz reformulado como título corto (máximo 8 "
+    "palabras)."
+)
+
+# Same relationship to _CONCEPT_MAP_SYSTEM_PROMPT as the mindmap pair above:
+# this one reorganizes content that ALREADY EXISTS (a lesson) into proposition
+# form, grounded in what the text actually says, instead of inventing a plan.
+_CONCEPT_MAP_SUMMARIZE_SYSTEM_PROMPT = (
+    "Eres un asistente que convierte contenido educativo YA EXISTENTE en un "
+    "MAPA CONCEPTUAL (técnica de Joseph Novak) — una red de conceptos unidos "
+    "por frases de enlace que forman proposiciones completas, NO un mapa "
+    "mental de ramas. Recibirás el título y el contenido completo de una "
+    "lección.\n\n"
+    "Devuelve SOLO un JSON (sin texto adicional, sin bloques de código "
+    "markdown, sin explicaciones) con esta forma EXACTA:\n"
+    '{"title": "...", "nodes": [{"id": "n1", "text": "..."}], "edges": '
+    '[{"from": "n1", "to": "n2", "label": "..."}]}\n\n'
+    "Reglas estrictas:\n"
+    "- Los conceptos y relaciones deben reflejar lo que REALMENTE aparece en "
+    "el contenido — nunca inventes conceptos ni relaciones que no estén en "
+    "el material.\n"
+    "- Cada conexión en 'edges' DEBE tener una 'label' corta (2 a 5 palabras) "
+    "que sea una frase de enlace real, nunca vacía ni genérica.\n"
+    "- Un único concepto raíz (el tema general de la lección); puede haber "
+    "conceptos con más de una conexión entrante cuando el contenido lo "
+    "sugiera.\n"
+    "- 8 a 16 nodos — ajusta la cantidad a lo que el contenido realmente da.\n"
+    "- Texto claro, específico y en español en todos los nodos y etiquetas.\n"
+    "- 'title' es el título de la lección tal cual, o una versión muy similar."
+)
+
+
+@app.route("/api/concept-maps")
+def list_concept_maps():
+    data = load_concept_maps()
+    maps = [
+        {
+            "id": m["id"], "title": m["title"], "created": m["created"], "updated": m["updated"],
+            "node_count": len(m.get("nodes", [])),
+        }
+        for m in data["maps"].values()
+    ]
+    maps.sort(key=lambda m: m["updated"], reverse=True)
+    return jsonify(maps)
+
+
+@app.route("/api/concept-maps", methods=["POST"])
+def create_concept_map():
+    data = request.json or {}
+    title = (data.get("title") or "Mapa conceptual sin título").strip()
+    maps_data = load_concept_maps()
+    map_id = uuid.uuid4().hex[:8]
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    seed_node = {"id": uuid.uuid4().hex[:8], "text": title, "x": 0, "y": 0, "color": None}
+    cmap = {"id": map_id, "title": title, "created": now, "updated": now, "nodes": [seed_node], "edges": []}
+    maps_data["maps"][map_id] = cmap
+    save_concept_maps(maps_data)
+    return jsonify(cmap), 201
+
+
+@app.route("/api/concept-maps/<map_id>")
+def get_concept_map(map_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/<map_id>", methods=["PUT"])
+def update_concept_map(map_id):
+    """Whole-document replace — same pattern as mindmaps' update_mindmap: the
+    client holds the live nodes/edges in memory (after drags/edits) and saves
+    the whole thing back at once."""
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    if (body.get("title") or "").strip():
+        cmap["title"] = body["title"].strip()[:120]
+    if isinstance(body.get("nodes"), list):
+        cmap["nodes"] = body["nodes"]
+    if isinstance(body.get("edges"), list):
+        cmap["edges"] = body["edges"]
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/<map_id>", methods=["DELETE"])
+def delete_concept_map(map_id):
+    data = load_concept_maps()
+    if map_id not in data["maps"]:
+        return jsonify({"error": "Not found"}), 404
+    del data["maps"][map_id]
+    save_concept_maps(data)
+    return jsonify({"message": "Deleted"})
+
+
+@app.route("/api/concept-maps/<map_id>/nodes", methods=["POST"])
+def add_concept_node(map_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    text = (body.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "text es requerido"}), 400
+    node = {
+        "id": uuid.uuid4().hex[:8], "text": text[:200],
+        "x": float(body.get("x", 0)), "y": float(body.get("y", 0)), "color": None,
+    }
+    cmap["nodes"].append(node)
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap), 201
+
+
+@app.route("/api/concept-maps/<map_id>/nodes/<node_id>", methods=["PATCH"])
+def edit_concept_node(map_id, node_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    node = next((n for n in cmap["nodes"] if n["id"] == node_id), None)
+    if not node:
+        return jsonify({"error": "Node not found"}), 404
+    body = request.json or {}
+    if (body.get("text") or "").strip():
+        node["text"] = body["text"].strip()[:200]
+    if "x" in body:
+        node["x"] = float(body["x"])
+    if "y" in body:
+        node["y"] = float(body["y"])
+    if "color" in body:
+        node["color"] = body["color"] or None
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/<map_id>/nodes/<node_id>", methods=["DELETE"])
+def delete_concept_node(map_id, node_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    cmap["nodes"] = [n for n in cmap["nodes"] if n["id"] != node_id]
+    cmap["edges"] = [e for e in cmap["edges"] if e["from"] != node_id and e["to"] != node_id]
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/<map_id>/edges", methods=["POST"])
+def add_concept_edge(map_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    body = request.json or {}
+    from_id, to_id = body.get("from"), body.get("to")
+    node_ids = {n["id"] for n in cmap["nodes"]}
+    if from_id not in node_ids or to_id not in node_ids or from_id == to_id:
+        return jsonify({"error": "Nodos inválidos"}), 400
+    edge = {"id": uuid.uuid4().hex[:8], "from": from_id, "to": to_id, "label": (body.get("label") or "").strip()[:60]}
+    cmap["edges"].append(edge)
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap), 201
+
+
+@app.route("/api/concept-maps/<map_id>/edges/<edge_id>", methods=["PATCH"])
+def edit_concept_edge(map_id, edge_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    edge = next((e for e in cmap["edges"] if e["id"] == edge_id), None)
+    if not edge:
+        return jsonify({"error": "Edge not found"}), 404
+    body = request.json or {}
+    if "label" in body:
+        edge["label"] = (body["label"] or "").strip()[:60]
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/<map_id>/edges/<edge_id>", methods=["DELETE"])
+def delete_concept_edge(map_id, edge_id):
+    data = load_concept_maps()
+    cmap = data["maps"].get(map_id)
+    if not cmap:
+        return jsonify({"error": "Not found"}), 404
+    cmap["edges"] = [e for e in cmap["edges"] if e["id"] != edge_id]
+    cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
+    save_concept_maps(data)
+    return jsonify(cmap)
+
+
+@app.route("/api/concept-maps/generate", methods=["POST"])
+def generate_concept_map():
+    data = request.json or {}
+    prompt = (data.get("prompt") or "").strip()
+    lesson_content = (data.get("content") or "").strip()
+    mode = data.get("mode") or "explore"
+    if not prompt:
+        return jsonify({"error": "prompt es requerido"}), 400
+
+    if mode == "summarize" and lesson_content:
+        system = _CONCEPT_MAP_SUMMARIZE_SYSTEM_PROMPT
+        user_msg = f"Tema: {prompt}\n\nContenido:\n{lesson_content[:8000]}"
+    else:
+        system = _CONCEPT_MAP_SYSTEM_PROMPT
+        user_msg = prompt
+
+    content, err = _call_ai(system, user_msg, max_tokens=3000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    if err:
+        return err
+
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+    try:
+        parsed = json.loads(cleaned)
+    except Exception:
+        return jsonify({"error": "La IA no devolvió un JSON válido. Intenta de nuevo."}), 502
+
+    title = (parsed.get("title") or prompt).strip()[:120]
+    raw_nodes = parsed.get("nodes") or []
+    raw_edges = parsed.get("edges") or []
+    if not isinstance(raw_nodes, list) or not raw_nodes:
+        return jsonify({"error": "Respuesta de la IA con formato inesperado."}), 502
+
+    id_map = {}
+    nodes = []
+    for rn in raw_nodes[:30]:
+        if not isinstance(rn, dict):
+            continue
+        ai_id = str(rn.get("id") or "").strip()
+        text = str(rn.get("text") or "").strip()
+        if not ai_id or not text:
+            continue
+        real_id = uuid.uuid4().hex[:8]
+        id_map[ai_id] = real_id
+        nodes.append({"id": real_id, "text": text[:200], "x": 0, "y": 0, "color": None})
+
+    edges = []
+    for er in raw_edges[:60]:
+        if not isinstance(er, dict):
+            continue
+        frm = id_map.get(str(er.get("from") or "").strip())
+        to = id_map.get(str(er.get("to") or "").strip())
+        if frm and to and frm != to:
+            label = str(er.get("label") or "").strip()
+            edges.append({"id": uuid.uuid4().hex[:8], "from": frm, "to": to, "label": label[:60]})
+
+    if not nodes:
+        return jsonify({"error": "La IA no devolvió conceptos válidos."}), 502
+
+    _layout_concept_map(nodes, edges)
+
+    maps_data = load_concept_maps()
+    map_id = uuid.uuid4().hex[:8]
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    cmap = {"id": map_id, "title": title, "created": now, "updated": now, "nodes": nodes, "edges": edges}
+    maps_data["maps"][map_id] = cmap
+    save_concept_maps(maps_data)
+    return jsonify(cmap), 201
+
+
 # ── Radar Tech ────────────────────────────────────────────────────────────────
 
 _radar_cache = {"ts": 0, "items": []}

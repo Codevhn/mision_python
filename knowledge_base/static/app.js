@@ -129,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   loadKanbanSidebar();
   loadMindmapSidebar();
+  loadConceptMapSidebar();
   applyTheme();
   initFocusMode();
   initStarFeature();
@@ -265,6 +266,7 @@ function bindEvents() {
   $("moreSrs")?.addEventListener("click",      () => $("srsBtn").click());
   $("moreSaveKnowledge")?.addEventListener("click", openSaveKnowledgePanel);
   $("moreMindmap")?.addEventListener("click", () => _generateMindmapForCurrentLesson());
+  $("moreConceptMap")?.addEventListener("click", () => _generateConceptMapForCurrentLesson());
   $("moreFocus").addEventListener("click",     () => $("focusBtn").click());
   $("moreAI").addEventListener("click",        () => $("aiBtn").click());
   $("morePasteMd").addEventListener("click",   () => $("pasteMarkdownBtn").click());
@@ -324,6 +326,11 @@ function bindEvents() {
   // Mindmap sidebar button
   $("newMindmapBtn")?.addEventListener("click", () => {
     if (window.MindmapApp) window.MindmapApp.showList();
+  });
+
+  // Concept map sidebar button
+  $("newConceptMapBtn")?.addEventListener("click", () => {
+    if (window.ConceptMapApp) window.ConceptMapApp.showList();
   });
 }
 
@@ -415,6 +422,51 @@ async function loadMindmapSidebar() {
 
 // Expose for mindmap.js to call after mutations
 window._loadMindmapSidebar = loadMindmapSidebar;
+
+// ---- CONCEPT MAPS ----
+function showConceptMapArea() {
+  $("entryView").classList.add("hidden");
+  $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
+  $("welcome").classList.add("hidden");
+  _setHomeAmbient(false);
+  if ($("ctxBar")) $("ctxBar").classList.add("hidden");
+  $("conceptMapArea").classList.remove("hidden");
+  closeTOC();
+}
+window.showConceptMapArea = showConceptMapArea;
+
+async function loadConceptMapSidebar() {
+  const tree = $("conceptMapTree");
+  if (!tree) return;
+  try {
+    const res = await fetch("/api/concept-maps");
+    if (!res.ok) return;
+    const maps = await res.json();
+    if (!maps.length) {
+      tree.innerHTML = '<div class="tree-empty">No hay mapas aún.</div>';
+      return;
+    }
+    tree.innerHTML = maps.map(m => `
+      <div class="conceptmap-item" data-id="${m.id}">
+        <span class="conceptmap-item-dot">◈</span>
+        <span>${escapeHtml(m.title)}</span>
+      </div>`).join('');
+    tree.querySelectorAll('.conceptmap-item').forEach(el => {
+      el.addEventListener('click', () => {
+        tree.querySelectorAll('.conceptmap-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        showConceptMapArea();
+        if (window.ConceptMapApp) window.ConceptMapApp.showMap(el.dataset.id);
+        if (isMobile()) closeSidebarMobile();
+      });
+    });
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+// Expose for conceptmap.js to call after mutations
+window._loadConceptMapSidebar = loadConceptMapSidebar;
 
 function autoExtractTitle() {
   if ($("fieldTitle").value.trim()) return;
@@ -600,7 +652,7 @@ function isCompact() { return window.innerWidth > 768 && window.innerWidth <= 10
 // Spaces with their own sidebar tree — these are the ones the mobile
 // drawer drills down INTO; the rest (home/graph/radar/practice/quiz) just
 // close the drawer immediately since there's no tree to show underneath.
-const DRAWER_TREE_SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'pages', 'mindmaps'];
+const DRAWER_TREE_SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'pages', 'mindmaps', 'conceptmaps'];
 
 function toggleSidebar() {
   if (isMobile() || isCompact()) {
@@ -2284,6 +2336,8 @@ async function loadEntry(id, opts = {}) {
   $("moreSaveKnowledge")?.classList.toggle("hidden", !isCourseLesson);
   $("cmMindmap")?.classList.toggle("hidden", !isCourseLesson);
   $("moreMindmap")?.classList.toggle("hidden", !isCourseLesson);
+  $("cmConceptMap")?.classList.toggle("hidden", !isCourseLesson);
+  $("moreConceptMap")?.classList.toggle("hidden", !isCourseLesson);
 
   // Set inline title (before editor render, so a content-load failure can't leave it blank)
   const titleEl = $("inlineTitle");
@@ -5614,6 +5668,19 @@ function _generateMindmapForCurrentLesson() {
   if (window.MindmapApp) window.MindmapApp.generateFromPrompt(topic, { content, mode: "summarize" });
 }
 
+// Same idea as _generateMindmapForCurrentLesson above, but for a concept
+// map (ConceptMapApp) — a proposition network with labeled connections,
+// not a branch tree. See conceptmap.js's header comment for why these are
+// kept as separate features instead of one reskinned engine.
+function _generateConceptMapForCurrentLesson() {
+  if (!currentEntryMeta || currentEntryMeta.type !== "course") return;
+  const topic = (currentEntryMeta.title || "").replace(/^\s*\d+(\.\d+)*\s+/, "").trim();
+  if (!topic) return;
+  const content = _inlineEditor ? _inlineEditor.getMarkdown() : "";
+  document.querySelector('.ab-item[data-space="conceptmaps"]')?.click();
+  if (window.ConceptMapApp) window.ConceptMapApp.generateFromPrompt(topic, { content, mode: "summarize" });
+}
+
 // ============================================================
 // NEW FEATURE: PIN ENTRIES
 // ============================================================
@@ -5980,6 +6047,7 @@ function buildBreadcrumb(meta) {
   $("cmSrs")?.addEventListener("click",       () => { $("srsBtn")?.click();          _closeCtxMenu(); });
   $("cmSaveKnowledge")?.addEventListener("click", () => { openSaveKnowledgePanel();   _closeCtxMenu(); });
   $("cmMindmap")?.addEventListener("click",   () => { _generateMindmapForCurrentLesson(); _closeCtxMenu(); });
+  $("cmConceptMap")?.addEventListener("click", () => { _generateConceptMapForCurrentLesson(); _closeCtxMenu(); });
   $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
   $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
   $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });
@@ -6014,6 +6082,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.getElementById('newKanbanBoardBtn')?.click(); } },
     { id: 'act:new-mindmap', label: 'Nuevo mapa mental',   icon: '✺', group: 'Crear', shortcut: null,
       run: () => { document.getElementById('newMindmapBtn')?.click(); } },
+    { id: 'act:new-conceptmap', label: 'Nuevo mapa conceptual', icon: '◈', group: 'Crear', shortcut: null,
+      run: () => { document.getElementById('newConceptMapBtn')?.click(); } },
     // Navegar
     { id: 'act:home',        label: 'Inicio',               icon: '⌂', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="home"]')?.click(); } },
@@ -6025,6 +6095,8 @@ function _wireCtxBtn(ctxId, sourceId) {
       run: () => { document.querySelector('.ab-item[data-space="knowledge"]')?.click(); document.getElementById('wsStarred')?.click(); } },
     { id: 'act:mindmaps',    label: 'Mapas Mentales',       icon: '✺', group: 'Navegar', shortcut: null,
       run: () => { document.querySelector('.ab-item[data-space="mindmaps"]')?.click(); } },
+    { id: 'act:conceptmaps', label: 'Mapas Conceptuales',   icon: '◈', group: 'Navegar', shortcut: null,
+      run: () => { document.querySelector('.ab-item[data-space="conceptmaps"]')?.click(); } },
     // Herramientas (activas al tener una entrada abierta)
     { id: 'act:ask-ai',      label: 'Consultar IA',         icon: '✦', group: 'Herramientas', shortcut: null,
       run: () => { document.getElementById('cmAI')?.click(); } },
@@ -6358,7 +6430,7 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'conceptmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
 
   // practice/quiz have no matching #space* panel (their own controls live in
   // .practice-rail, inside the content area) — the floating #sidebar must
@@ -6426,6 +6498,7 @@ function setSidebarVisible(visible) {
     const courseEmptySt   = document.getElementById('courseEmptyState');
     const kanbanArea      = document.getElementById('kanbanArea');
     const mindmapArea     = document.getElementById('mindmapArea');
+    const conceptMapArea  = document.getElementById('conceptMapArea');
     const entryView       = document.getElementById('entryView');
     const entryCover      = document.getElementById('entryCover');
     const entryAddCover   = document.getElementById('entryAddCover');
@@ -6451,6 +6524,7 @@ function setSidebarVisible(visible) {
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
     if (mindmapArea)    mindmapArea.classList.add('hidden');
+    if (conceptMapArea) conceptMapArea.classList.add('hidden');
     if (entryView)      entryView.classList.add('hidden');
     if (entryCover)     entryCover.classList.add('hidden');
     if (entryAddCover)  entryAddCover.classList.add('hidden');
@@ -6496,6 +6570,8 @@ function setSidebarVisible(visible) {
     } else if (space === 'mindmaps') {
       // Land directly on the prompt-first screen — no intermediate empty state
       if (window.MindmapApp) window.MindmapApp.showList();
+    } else if (space === 'conceptmaps') {
+      if (window.ConceptMapApp) window.ConceptMapApp.showList();
     } else if (space === 'practice') {
       if (practiceView) practiceView.classList.remove('hidden');
       if (typeof _renderPracticeSpace === 'function') _renderPracticeSpace();
@@ -8199,6 +8275,8 @@ function handleNewEntryTopbar() {
     if (window.KanbanApp && KanbanApp.showCreateBoard) KanbanApp.showCreateBoard();
   } else if (space === 'mindmaps') {
     if (window.MindmapApp) window.MindmapApp.showList();
+  } else if (space === 'conceptmaps') {
+    if (window.ConceptMapApp) window.ConceptMapApp.showList();
   } else if (space === 'teamspace') {
     if (window.openNewTeamspaceModal) openNewTeamspaceModal();
   } else {

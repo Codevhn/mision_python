@@ -1,0 +1,352 @@
+/* =============================================
+   CONCEPT MAP — sidebar tree, landing/list view, and the graph canvas
+   (nodes + labeled edges, freely draggable). Uses CSS vars from style.css.
+   Deliberately distinct from mindmap.css's look: rounded CARDS (not pill
+   bubbles) whose color/weight steps down by hierarchy rank, so the
+   general-to-specific structure that defines a concept map reads at a
+   glance — plus labeled, arrowed connectors, which mind maps don't have.
+   ============================================= */
+
+.concept-map-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+}
+.concept-map-area.hidden { display: none; }
+
+/* ---- Sidebar tree items ---- */
+#conceptMapTree .conceptmap-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 16px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+#conceptMapTree .conceptmap-item:hover { background: var(--bg-hover); color: var(--text); }
+#conceptMapTree .conceptmap-item.active { background: var(--accent-light); color: var(--accent); }
+#conceptMapTree .conceptmap-item-dot { font-size: 0.7rem; flex-shrink: 0; }
+
+/* ---- Loading state ---- */
+.cm-loading { padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+
+/* ---- Prompt-first landing header ---- */
+.cm-prompt-header { padding: 48px 32px 24px; text-align: center; max-width: 640px; margin: 0 auto; }
+.cm-prompt-title { margin: 0 0 20px; font-size: 1.5rem; font-weight: 700; color: var(--text); }
+.cm-prompt-row { display: flex; gap: 8px; }
+.cm-prompt-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.92rem;
+  color: var(--text);
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cm-prompt-input:focus { border-color: var(--accent); }
+.cm-prompt-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  width: 44px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cm-prompt-btn:hover { background: var(--accent-hover); }
+.cm-hint { margin: 14px 0 0; color: var(--text-muted); font-size: 0.78rem; }
+.cm-hint a { color: var(--accent); text-decoration: none; }
+.cm-hint a:hover { text-decoration: underline; }
+
+/* ---- Generating (AI loading) state ---- */
+.cm-generating { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 80px 32px; text-align: center; }
+.cm-generating p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.cm-generating-sub { color: var(--text-faint) !important; font-size: 0.8rem !important; font-style: italic; max-width: 480px; }
+.cm-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ---- Existing-maps grid ---- */
+.cm-grid-label {
+  padding: 0 32px;
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; padding: 0 32px 32px; }
+.cm-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.cm-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.cm-card-icon { font-size: 1.1rem; margin-bottom: 8px; color: var(--accent); }
+.cm-card-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.cm-card-meta { margin-top: 6px; font-size: 0.72rem; color: var(--text-faint); }
+
+/* ---- Map (open) view ---- */
+.cm-map-header { display: flex; align-items: center; gap: 14px; padding: 20px 32px 12px; border-bottom: 1px solid var(--border); }
+.cm-back-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-family: var(--font-ui); flex-shrink: 0; }
+.cm-back-btn:hover { color: var(--accent); }
+.cm-map-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text);
+  outline: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-map-title:focus { background: var(--bg-hover); white-space: normal; overflow: visible; }
+.cm-delete-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cm-delete-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ---- Canvas ---- */
+.cm-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(var(--border-light) 1px, transparent 1px) 0 0 / 22px 22px;
+}
+.cm-svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  display: block;
+  user-select: none;
+  touch-action: none;
+}
+.cm-svg.cm-grabbing { cursor: grabbing; }
+.cm-svg.cm-connecting { cursor: crosshair; }
+
+.cm-edge-line {
+  fill: none;
+  stroke: var(--cm-arrow-color, #94a3b8);
+  stroke-width: 2;
+  stroke-opacity: 0.7;
+}
+.cm-edge-line--pending {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  stroke-opacity: 0.9;
+}
+
+.cm-edge-label-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 2px;
+}
+.cm-edge-label {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--text);
+  outline: none;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.cm-edge-label:focus { border-color: var(--accent); white-space: normal; overflow: visible; max-width: none; z-index: 5; position: relative; }
+.cm-edge-label--empty { color: var(--text-faint); border-style: dashed; }
+.cm-edge-del {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+.cm-edge-label-wrap:hover .cm-edge-del { opacity: 1; }
+.cm-edge-del:hover { background: #ef4444; color: #fff; }
+
+/* ---- Node card ---- */
+.cm-node-box {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--node-color) 16%, var(--bg-elevated));
+  border: 1.5px solid color-mix(in srgb, var(--node-color) 70%, transparent);
+  border-top: 4px solid var(--node-color);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--node-color) 22%, transparent);
+  font-family: var(--font-ui);
+  cursor: grab;
+  position: relative;
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.cm-node-box:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--node-color) 35%, transparent); }
+.cm-node-box:active { cursor: grabbing; }
+.cm-node-box--root {
+  border-radius: 16px;
+  border-top-width: 6px;
+  background: color-mix(in srgb, var(--node-color) 24%, var(--bg-elevated));
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--node-color) 32%, transparent);
+}
+
+.cm-node-text {
+  font-size: var(--node-font, 0.86rem);
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+  line-height: 1.25;
+  user-select: text;
+  width: 100%;
+}
+.cm-node-box--root .cm-node-text { font-weight: 800; }
+
+.cm-node-del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.cm-node-box:hover .cm-node-del { opacity: 1; }
+.cm-node-del:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+.cm-connector-handle {
+  position: absolute;
+  bottom: -7px;
+  right: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--node-color);
+  border: 2px solid var(--bg);
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 0.12s, transform 0.12s;
+}
+.cm-node-box:hover .cm-connector-handle { opacity: 1; }
+.cm-connector-handle:hover { transform: scale(1.25); }
+
+/* ---- Add-concept + zoom controls ---- */
+.cm-add-node-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-ui);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 5;
+}
+.cm-add-node-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cm-add-node-btn svg { flex-shrink: 0; }
+
+.cm-zoom-controls {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  z-index: 5;
+}
+.cm-zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 5px;
+}
+.cm-zoom-btn:hover { background: var(--bg-hover); color: var(--accent); }
+
+@media (max-width: 768px) {
+  .cm-map-header { padding: 14px 16px 10px; gap: 8px; }
+  .cm-map-title { font-size: 0.95rem; }
+  .cm-prompt-title { font-size: 1.2rem; }
+  .cm-prompt-header { padding: 28px 16px 16px; }
+  .cm-grid { padding: 0 16px 24px; }
+}

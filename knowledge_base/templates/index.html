@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="/static/pygments.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/kanban.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/mindmap.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/conceptmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
@@ -103,6 +104,10 @@
           <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="2.6" cy="8" r="1.4"/><circle cx="12.5" cy="3.2" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/><circle cx="12.5" cy="12.8" r="1.4"/><path d="M4 8h7M8 8 11 3.2M8 8l3 4.8"/></svg></span>
           <span class="ab-label">Mapas Mentales</span>
         </button>
+        <button class="ab-item" id="abConceptmaps" data-space="conceptmaps" title="Mapas Conceptuales">
+          <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.3" y="1.5" width="5.4" height="3.6" rx="1"/><rect x="1" y="11" width="5.4" height="3.6" rx="1"/><rect x="9.6" y="11" width="5.4" height="3.6" rx="1"/><path d="M8 5.1v3M8 8.1 3.7 11M8 8.1 12.3 11"/></svg></span>
+          <span class="ab-label">Mapas Conceptuales</span>
+        </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
           <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="2.8" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="13" cy="12" r="1.5"/><path d="M8 4.3 3 10.6M8 4.3l5 6.3M4.4 12h7.2"/></svg></span>
           <span class="ab-label">Grafo</span>
@@ -167,6 +172,7 @@
         <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
         <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
         <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
+        <button class="msn-item" data-space="conceptmaps"><span class="msn-icon">◈</span><span class="msn-label">Mapas Conceptuales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
         <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
@@ -224,6 +230,17 @@
           <button class="ts-new-btn" id="newMindmapBtn" title="Nuevo mapa mental">+</button>
         </div>
         <nav class="tree" id="mindmapTree">
+          <div class="tree-empty">No hay mapas aún.</div>
+        </nav>
+      </div>
+
+      <!-- SPACE: CONCEPT MAPS -->
+      <div class="sidebar-space" id="spaceConceptmaps" style="display:none">
+        <div class="sidebar-space-header">
+          <span>Mapas Conceptuales</span>
+          <button class="ts-new-btn" id="newConceptMapBtn" title="Nuevo mapa conceptual">+</button>
+        </div>
+        <nav class="tree" id="conceptMapTree">
           <div class="tree-empty">No hay mapas aún.</div>
         </nav>
       </div>
@@ -314,6 +331,7 @@
               <button class="ctx-more-item" id="cmSrs">🔁 Repaso (repetición espaciada)</button>
               <button class="ctx-more-item hidden" id="cmSaveKnowledge">★ Guardar en Conocimiento</button>
               <button class="ctx-more-item hidden" id="cmMindmap">✺ Generar mapa mental</button>
+              <button class="ctx-more-item hidden" id="cmConceptMap">◈ Generar mapa conceptual</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmAI">✦ Ask AI</button>
               <button class="ctx-more-item" id="cmPasteMd">↓ Pegar Markdown</button>
@@ -525,6 +543,7 @@
       <div class="kanban-area hidden" id="kanbanArea"></div>
       <!-- MINDMAP VIEW -->
       <div class="mindmap-area hidden" id="mindmapArea"></div>
+      <div class="concept-map-area hidden" id="conceptMapArea"></div>
 
       <!-- NAV BACK BAR (shared, visible when there's history) -->
       <div class="nav-back-bar hidden" id="navBackBar">
@@ -572,6 +591,7 @@
               <button class="btn-ghost" id="moreSrs">🔁 repaso</button>
               <button class="btn-ghost hidden" id="moreSaveKnowledge">★ a conocimiento</button>
               <button class="btn-ghost hidden" id="moreMindmap">✺ mapa mental</button>
+              <button class="btn-ghost hidden" id="moreConceptMap">◈ mapa conceptual</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
               <button class="btn-ghost" id="moreAI">✦ AI</button>
               <button class="btn-ghost" id="morePasteMd">↓ md</button>
@@ -1461,6 +1481,7 @@
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
+  <script src="/static/conceptmap.js?v={{ v }}"></script>
   <!-- Biblioteca: pdf.js/epub.js vendorizados en /static/vendor (sin CDN).
        pdf.js 4.x se distribuye como módulo ES; se expone en window.pdfjsLib
        para que library.js (script clásico) pueda usarlo igual que el resto. -->
