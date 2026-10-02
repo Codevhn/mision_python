@@ -22,6 +22,7 @@
   'use strict';
 
   let _area = null;
+  let _modelChoice = null; // {provider, model} — picked via the model selector, remembered per-context in localStorage
   let _currentMap = null; // {id, title, nodes:[{id,text,x,y,color}], edges:[{id,from,to,label}]}
   let _view = { x: 0, y: 0, k: 1 };
   let _viewportEl = null, _svgEl = null;
@@ -142,6 +143,10 @@
           <button class="cm-prompt-btn" id="cmPromptBtn" title="Generar">→</button>
         </div>
         <p class="cm-hint">La IA arma la red de conceptos y sus relaciones al instante. ¿Prefieres armarlo tú? <a href="#" id="cmBlankLink">crea uno vacío</a>.</p>
+        <div class="cm-model-row">
+          <span class="cm-model-label">Modelo</span>
+          <div class="practice-cselect" id="cmModelCSelect"></div>
+        </div>
       </div>
       ${maps.length ? '<p class="cm-grid-label">Tus mapas</p>' : ''}
       <div class="cm-grid" id="cmGrid">${cards}</div>`;
@@ -154,6 +159,13 @@
     _area.querySelectorAll('.cm-card[data-id]').forEach(card => {
       card.addEventListener('click', () => showMap(card.dataset.id));
     });
+    if (window._mountModelSelector) {
+      window._mountModelSelector(document.getElementById('cmModelCSelect'), {
+        context: 'conceptmap',
+        value: _modelChoice,
+        onChange: choice => { _modelChoice = choice; },
+      });
+    }
     input.focus();
   }
 
@@ -176,6 +188,9 @@
     if (!prompt) return;
     opts = opts || {};
     const isSummarize = opts.mode === 'summarize' && opts.content;
+    // Same fallback as mindmap.js: the lesson-shortcut path calls this
+    // directly, skipping showList()'s model selector entirely.
+    const modelChoice = _modelChoice || (window._getRawSavedModelChoice ? window._getRawSavedModelChoice('conceptmap') : null);
 
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
@@ -190,7 +205,7 @@
     try {
       const res = await fetch('/api/concept-maps/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore' }),
+        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore', provider: modelChoice?.provider, model: modelChoice?.model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al generar');

@@ -5508,7 +5508,12 @@ def generate_mindmap():
         system = _MINDMAP_SYSTEM_PROMPT
         user_msg = prompt
 
-    content, err = _call_ai(system, user_msg, max_tokens=4000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    # 6000 (not the original 4000) + fail_on_truncation=True: same fix already
+    # applied to Quiz/Práctica after the identical symptom there turned out to
+    # be DeepSeek's response getting cut off mid-JSON, not actually malformed
+    # — a truncated string is syntactically broken JSON either way, so without
+    # this it surfaces as the same confusing "formato inválido" error.
+    content, err = _call_ai(system, user_msg, max_tokens=6000, json_mode=True, fail_on_truncation=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
 
@@ -5518,7 +5523,8 @@ def generate_mindmap():
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
     try:
         parsed = json.loads(cleaned)
-    except Exception:
+    except Exception as e:
+        app.logger.warning("Mindmap JSON parse failed (%s): %r", e, content[:2000])
         return jsonify({"error": "La IA no devolvió un JSON válido. Intenta de nuevo."}), 502
 
     title = (parsed.get("title") or prompt).strip()[:120]
@@ -5857,7 +5863,12 @@ def generate_concept_map():
         system = _CONCEPT_MAP_SYSTEM_PROMPT
         user_msg = prompt
 
-    content, err = _call_ai(system, user_msg, max_tokens=3000, json_mode=True, provider=data.get("provider"), model=data.get("model"))
+    # 6000 (not the original 3000) + fail_on_truncation=True: each edge needs
+    # a full grammatical linking phrase (not just a short node label), and the
+    # prompt actively pushes for extra converging edges — that made this the
+    # single likeliest generator to get cut off mid-JSON by DeepSeek's output
+    # limit, exactly the bug Quiz/Práctica already hit and fixed the same way.
+    content, err = _call_ai(system, user_msg, max_tokens=6000, json_mode=True, fail_on_truncation=True, provider=data.get("provider"), model=data.get("model"))
     if err:
         return err
 
@@ -5866,7 +5877,8 @@ def generate_concept_map():
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
     try:
         parsed = json.loads(cleaned)
-    except Exception:
+    except Exception as e:
+        app.logger.warning("Concept map JSON parse failed (%s): %r", e, content[:2000])
         return jsonify({"error": "La IA no devolvió un JSON válido. Intenta de nuevo."}), 502
 
     title = (parsed.get("title") or prompt).strip()[:120]

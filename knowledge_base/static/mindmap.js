@@ -14,6 +14,7 @@
   'use strict';
 
   let _area = null;
+  let _modelChoice = null; // {provider, model} — picked via the model selector, remembered per-context in localStorage
   let _currentMap = null; // full mindmap object currently open, or null
   let _view = { x: 0, y: 0, k: 1 }; // pan/zoom state for the canvas
   let _viewportEl = null, _svgEl = null;
@@ -175,6 +176,10 @@
           <button class="mm-prompt-btn" id="mmPromptBtn" title="Generar">→</button>
         </div>
         <p class="mm-hint">La IA arma el árbol completo — ramas y subramas — al instante. ¿Prefieres armarlo tú? <a href="#" id="mmBlankLink">crea uno vacío</a>.</p>
+        <div class="mm-model-row">
+          <span class="mm-model-label">Modelo</span>
+          <div class="practice-cselect" id="mmModelCSelect"></div>
+        </div>
       </div>
       ${maps.length ? '<p class="mm-grid-label">Tus mapas</p>' : ''}
       <div class="mm-grid" id="mmGrid">
@@ -189,6 +194,13 @@
     _area.querySelectorAll('.mm-card[data-id]').forEach(card => {
       card.addEventListener('click', () => showMap(card.dataset.id));
     });
+    if (window._mountModelSelector) {
+      window._mountModelSelector(document.getElementById('mmModelCSelect'), {
+        context: 'mindmap',
+        value: _modelChoice,
+        onChange: choice => { _modelChoice = choice; },
+      });
+    }
     input.focus();
   }
 
@@ -216,6 +228,12 @@
     if (!prompt) return;
     opts = opts || {};
     const isSummarize = opts.mode === 'summarize' && opts.content;
+    // The lesson-shortcut path (_generateMindmapForCurrentLesson) calls this
+    // directly without ever rendering showList()'s model selector, so
+    // _modelChoice may still be null even though the user picked a model in
+    // an earlier session — fall back to the same saved-per-context choice
+    // the selector itself would have loaded.
+    const modelChoice = _modelChoice || (window._getRawSavedModelChoice ? window._getRawSavedModelChoice('mindmap') : null);
 
     _area = document.getElementById('mindmapArea');
     if (!_area) return;
@@ -230,7 +248,7 @@
     try {
       const res = await fetch('/api/mindmaps/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore' }),
+        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore', provider: modelChoice?.provider, model: modelChoice?.model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al generar');

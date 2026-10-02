@@ -93,6 +93,15 @@
 }
 .mm-hint a { color: var(--accent); text-decoration: none; }
 .mm-hint a:hover { text-decoration: underline; }
+.mm-model-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.mm-model-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.mm-model-row .practice-cselect { min-width: 240px; max-width: 360px; }
 
 /* ---- Generating (AI loading) state ---- */
 .mm-generating {
