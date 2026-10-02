@@ -265,8 +265,10 @@
 
 .mm-link {
   fill: none;
-  stroke-width: 2;
-  stroke-opacity: 0.55;
+  stroke-width: 3;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+  filter: url(#mm-rough);
 }
 
 .mm-node-box {
@@ -275,23 +277,30 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: var(--bg-elevated);
-  border: 2px solid var(--border);
-  border-radius: 9px;
-  padding: 0 10px;
+  gap: 6px;
+  background: color-mix(in srgb, var(--node-color) 20%, var(--bg-elevated));
+  border: 1.5px solid color-mix(in srgb, var(--node-color) 60%, transparent);
+  border-radius: 999px;
+  padding: 0 14px;
   font-family: var(--font-ui);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-  transition: box-shadow 0.12s;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--node-color) 28%, transparent);
+  transition: box-shadow 0.12s, transform 0.12s;
 }
-.mm-node-box:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.mm-node-box:hover {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--node-color) 40%, transparent);
+  transform: translateY(-1px);
+}
 .mm-node-box--root {
-  border-radius: 12px;
+  border: none;
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--node-color) 65%, white 25%), var(--node-color));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--node-color) 48%, transparent), 0 3px 10px rgba(0,0,0,0.25);
   color: #fff;
   justify-content: center;
   font-weight: 700;
 }
-.mm-node-box--root .mm-node-text { color: #fff; text-align: center; }
+.mm-node-box--root:hover { transform: translateY(-1px) scale(1.015); }
+.mm-node-box--root .mm-node-text { color: #fff; text-align: center; font-size: 1.05rem; }
 
 .mm-node-text {
   flex: 1;
@@ -557,9 +566,23 @@
   line-height: 1;
 }
 .mm-node-emoji {
-  font-size: 1rem;
+  font-size: 0.95rem;
   flex-shrink: 0;
   line-height: 1;
+  width: 1.7em;
+  height: 1.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--node-color) 45%, white 55%);
+  margin-left: -4px;
+}
+.mm-node-box--root .mm-node-emoji {
+  font-size: 1.4rem;
+  width: 2.1em;
+  height: 2.1em;
+  background: rgba(255,255,255,0.28);
 }
 
 /* ---- Emoji picker popover ---- */

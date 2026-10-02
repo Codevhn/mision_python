@@ -21,7 +21,8 @@
   let _measureCtx = null;
 
   const BRANCH_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6'];
-  const NODE_H = 40, ROOT_H = 52, ROW_GAP = 16, COL_GAP = 90, NODE_MIN_W = 90, NODE_PAD_X = 64; // room for the fold pill — the toolbar/+ now float outside the box
+  const NODE_H = 44, ROOT_H = 92, ROW_GAP = 18, COL_GAP = 100, NODE_MIN_W = 100, NODE_PAD_X = 68; // room for the fold pill — the toolbar/+ now float outside the box
+  const ROOT_PAD_X = 96; // the root bubble is much bigger and needs extra room for its larger font/emoji
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
 
   // Small inline SVG icons — text glyphs (+, ⋯, ▾) sit off-center within their own
@@ -272,6 +273,12 @@
       </div>
       <div class="mm-canvas-wrap" id="mmCanvasWrap">
         <svg id="mmSvg" class="mm-svg">
+          <defs>
+            <filter id="mm-rough" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="mm-noise"/>
+              <feDisplacementMap in="SourceGraphic" in2="mm-noise" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+          </defs>
           <g id="mmViewport">
             <g id="mmLinks"></g>
             <g id="mmNodes"></g>
@@ -305,12 +312,14 @@
   }
 
   // ── Layout — hand-rolled tidy tree (depth = column, siblings stacked) ──────
-  function measureTextWidth(text, bold) {
+  function measureTextWidth(text, bold, isRoot) {
     if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
     // Must match .mm-node-text's real font-family (var(--font-ui)) exactly — a
     // mismatched fallback here measures a different typeface than what actually
     // renders, so the box comes out too narrow and the text wraps past its border.
-    _measureCtx.font = `${bold ? 700 : 500} 13px "Inter", "Segoe UI", system-ui, sans-serif`;
+    // The root bubble renders at a bigger font size (see .mm-node-box--root
+    // .mm-node-text), so it needs its own, bigger measurement too.
+    _measureCtx.font = `${bold ? 700 : 500} ${isRoot ? 17 : 13}px "Inter", "Segoe UI", system-ui, sans-serif`;
     // Small safety margin: canvas measureText and real DOM text layout are never
     // pixel-identical across browsers/devices, so pad a bit rather than risk wrap.
     return _measureCtx.measureText(text || '').width * 1.04;
@@ -325,7 +334,7 @@
       node._depth = depth;
       node._h = isRoot ? ROOT_H : NODE_H;
       const measureSrc = node.emoji ? `${node.emoji} ${node.text}` : node.text;
-      node._w = Math.max(NODE_MIN_W, Math.ceil(measureTextWidth(measureSrc, isRoot)) + NODE_PAD_X);
+      node._w = Math.max(NODE_MIN_W, Math.ceil(measureTextWidth(measureSrc, isRoot, isRoot)) + (isRoot ? ROOT_PAD_X : NODE_PAD_X));
       node._color = node.color || (isRoot ? 'var(--accent)' : BRANCH_COLORS[branchIdx % BRANCH_COLORS.length]);
       colWidths[depth] = Math.max(colWidths[depth] || 0, node._w);
 
@@ -395,8 +404,11 @@
 
     const box = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
     box.className = 'mm-node-box' + (isRoot ? ' mm-node-box--root' : '');
-    box.style.borderColor = node._color;
-    if (isRoot) box.style.background = node._color;
+    // Drives the bubble's fill/border/shadow in CSS (color-mix against this
+    // one variable) — works whether _color is a real hex or the literal
+    // string 'var(--accent)' (the root's default), since CSS custom
+    // properties happily hold another var() reference as their value.
+    box.style.setProperty('--node-color', node._color);
 
     if (node.emoji) {
       const emojiEl = document.createElement('span');

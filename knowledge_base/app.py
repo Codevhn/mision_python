@@ -5424,8 +5424,8 @@ _MINDMAP_SYSTEM_PROMPT = (
     "Eres un generador de mapas mentales educativos. Dado un tema o pregunta, "
     "devuelve SOLO un JSON (sin texto adicional, sin bloques de código markdown, "
     "sin explicaciones) con esta forma EXACTA:\n"
-    '{"title": "...", "branches": [{"text": "...", "children": [{"text": "...", '
-    '"children": [{"text": "...", "children": []}]}]}]}\n\n'
+    '{"title": "...", "branches": [{"text": "...", "emoji": "...", "children": [{"text": "...", "emoji": "...", '
+    '"children": [{"text": "...", "emoji": "...", "children": []}]}]}]}\n\n'
     "Reglas estrictas:\n"
     "- 5 a 7 ramas principales, cada una cubriendo un aspecto distinto y relevante del tema.\n"
     "- Cada rama principal con 2 a 4 subtemas.\n"
@@ -5435,6 +5435,9 @@ _MINDMAP_SYSTEM_PROMPT = (
     "fragmento de código, envuélvelo entre comillas invertidas simples "
     "(`como esto`) — se muestra como código real en el mapa.\n"
     "- Texto claro, específico y en español en todos los niveles.\n"
+    "- 'emoji' es OPCIONAL: un solo emoji que represente visualmente ese nodo "
+    "si encaja naturalmente (ej. 🎨 para diseño, ⚡ para rendimiento); si ninguno "
+    "encaja bien, usa cadena vacía \"\" — nunca fuerces uno irrelevante.\n"
     "- 'title' es el tema reformulado como título corto (máximo 8 palabras)."
 )
 
@@ -5451,8 +5454,8 @@ _MINDMAP_SUMMARIZE_SYSTEM_PROMPT = (
     "completo de una lección.\n\n"
     "Devuelve SOLO un JSON (sin texto adicional, sin bloques de código "
     "markdown, sin explicaciones) con esta forma EXACTA:\n"
-    '{"title": "...", "branches": [{"text": "...", "children": [{"text": "...", '
-    '"children": [{"text": "...", "children": []}]}]}]}\n\n'
+    '{"title": "...", "branches": [{"text": "...", "emoji": "...", "children": [{"text": "...", "emoji": "...", '
+    '"children": [{"text": "...", "emoji": "...", "children": []}]}]}]}\n\n'
     "Reglas estrictas:\n"
     "- Las ramas y subramas deben reflejar la estructura y los conceptos que "
     "REALMENTE aparecen en el contenido — NUNCA inventes temas, herramientas "
@@ -5468,6 +5471,9 @@ _MINDMAP_SUMMARIZE_SYSTEM_PROMPT = (
     "contenido (normalmente 3 a 8) — no fuerces un número fijo si el "
     "contenido es corto.\n"
     "- Texto claro, específico y en español en todos los niveles.\n"
+    "- 'emoji' es OPCIONAL: un solo emoji que represente visualmente ese nodo "
+    "si encaja naturalmente; si ninguno encaja bien, usa cadena vacía \"\" — "
+    "nunca fuerces uno irrelevante.\n"
     "- 'title' es el título de la lección tal cual, o una versión muy similar."
 )
 
@@ -5475,6 +5481,7 @@ _MINDMAP_SUMMARIZE_SYSTEM_PROMPT = (
 def _build_mindmap_node_from_ai(node_dict, depth=0):
     text = str((node_dict or {}).get("text", "")).strip() or "Sin título"
     node = _new_mindmap_node(text)
+    node["emoji"] = str((node_dict or {}).get("emoji", "")).strip()[:8]
     if depth < 4:  # sane depth cap regardless of what the model actually returned
         for child in (node_dict.get("children") or [])[:8]:
             if isinstance(child, dict):
