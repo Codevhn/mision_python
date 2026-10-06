@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   useComponentsContext,
   useBlockNoteEditor,
@@ -102,8 +102,28 @@ export function DragHandleMenu() {
 
   const items = buildBlockTypeItems(editor);
 
+  // Floating-ui positions this dropdown against the raw viewport, with no
+  // notion that the sticky #ctxBar (breadcrumb/toolbar) visually occludes its
+  // top ~82px. On a block near the top of the page it can flip the dropdown
+  // mostly/fully above the handle, landing its first items behind #ctxBar.
+  // Nudge it down by exactly the overlap, once, right after it mounts —
+  // a transform doesn't fight floating-ui's own top/left positioning.
+  const dropdownRef = useCallback((node) => {
+    if (!node) return;
+    requestAnimationFrame(() => {
+      const ctxBar = document.getElementById("ctxBar");
+      if (!ctxBar) return;
+      const barBottom = ctxBar.getBoundingClientRect().bottom;
+      const menuTop = node.getBoundingClientRect().top;
+      if (menuTop < barBottom) {
+        node.style.transform = `translateY(${barBottom - menuTop + 8}px)`;
+      }
+    });
+  }, []);
+
   return (
     <Components.Generic.Menu.Dropdown
+      ref={dropdownRef}
       className={"bn-menu-dropdown bn-drag-handle-menu"}
     >
       {items.map((item) => {
