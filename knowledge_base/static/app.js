@@ -11659,7 +11659,9 @@ function _mountModelSelector(container, { context, value, onChange }) {
       value: initial ? `${initial.provider}:${initial.model}` : '',
       placeholder: 'Elegir modelo…',
       onChange: raw => {
-        const [provider, model] = raw.split(':');
+        const separator = raw.indexOf(':');
+        const provider = raw.slice(0, separator);
+        const model = raw.slice(separator + 1);
         const choice = { provider, model };
         _saveModelChoice(context, choice);
         onChange(choice);

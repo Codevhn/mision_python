@@ -4789,6 +4789,13 @@ def delete_mindmap_node(map_id, node_id):
 # compatible chat-completions APIs and share one code path; Gemini's REST
 # API has its own request/response shape and gets its own.
 PROVIDERS = {
+    "omniroute": {
+        "label": "OmniRoute",
+        "kind": "openai_compat",
+        "base_url": os.environ.get("OMNIROUTE_BASE_URL", "http://localhost:20128/v1").rstrip("/") + "/chat/completions",
+        "env": "OMNIROUTE_API_KEY",
+        "models": [],
+    },
     "deepseek": {
         "label": "DeepSeek",
         "kind": "openai_compat",
@@ -4847,6 +4854,42 @@ DEFAULT_MODEL = "deepseek-v4-pro"
 # the underlying model's rate limits, which OpenRouter still enforces.
 _OPENROUTER_FREE_MODELS_CACHE = {"models": None, "fetched_at": 0.0}
 _OPENROUTER_FREE_MODELS_TTL = 3600
+
+_OMNIROUTE_MODELS_CACHE = {"models": None, "fetched_at": 0.0, "source": None}
+
+
+def _fetch_omniroute_models():
+    # Explicit IDs also allow selecting combos not included in /v1/models.
+    configured = os.environ.get("OMNIROUTE_MODELS", "")
+    if configured.strip():
+        return [{"id": mid, "label": mid, "hint": "Modelo o combo vía OmniRoute"}
+                for mid in dict.fromkeys(x.strip() for x in configured.split(",")) if mid]
+    url = PROVIDERS["omniroute"]["base_url"].removesuffix("/chat/completions") + "/models"
+    api_key = os.environ.get("OMNIROUTE_API_KEY", "")
+    if not api_key:
+        return []
+    cache = _OMNIROUTE_MODELS_CACHE
+    source = (url, api_key)
+    if cache["source"] != source:
+        cache.update(models=None, fetched_at=0.0, source=source)
+    if cache["models"] is not None and time.time() - cache["fetched_at"] < 300:
+        return cache["models"]
+    try:
+        req = urllib.request.Request(url, headers={**_AI_HTTP_HEADERS, "Authorization": f"Bearer {api_key}"})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read())
+        models = []
+        seen = set()
+        for item in data["data"]:
+            mid = item.get("id")
+            if isinstance(mid, str) and mid and mid not in seen:
+                models.append({"id": mid, "label": item.get("name") or mid, "hint": "Vía OmniRoute"})
+                seen.add(mid)
+        models.sort(key=lambda item: item["label"].lower())
+        cache.update(models=models, fetched_at=time.time())
+        return models
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return cache["models"] or []
 
 
 def _fetch_openrouter_free_models():
@@ -5275,6 +5318,8 @@ def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None
 
 
 def _provider_models(pid, cfg):
+    if pid == "omniroute":
+        return _fetch_omniroute_models()
     return _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
 
 
