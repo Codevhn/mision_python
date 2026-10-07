@@ -6,7 +6,10 @@ en `kb_theme`; no cambia los datos ni requiere variables de Fly.
 
 Aero es una primera vista de Inicio, navegación y Asistente: azul frío,
 tipografía sin serif, reflejos, marcos translúcidos y controles con relieve.
-El contenido del chat conserva un fondo casi opaco para lectura. El tema usa
+Los marcos usan doble borde fino, botones agrupados con relieve y un cierre
+rojo, mientras las listas usan selecciones azules inspiradas en el Explorador.
+Los controles del asistente usan SVG para evitar diferencias entre caracteres
+de distintas fuentes. El contenido del chat conserva un fondo casi opaco para lectura. El tema usa
 CSS y fondos de degradado, sin imágenes remotas ni dependencias nuevas. Hay un
 fondo opaco de respaldo para navegadores sin desenfoque de superficies.
 
