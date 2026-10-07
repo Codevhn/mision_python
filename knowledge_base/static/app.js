@@ -608,14 +608,18 @@ async function fetchCategorySuggestion() {
 
 // ---- THEME ----
 const ATLAS_THEMES = {
-  dark: { scheme: 'dark', style: 'classic' },
-  light: { scheme: 'light', style: 'classic' },
-  aero: { scheme: 'light', style: 'aero' },
+  aero: { scheme: 'light', style: 'aero', variant: 'light' },
+  'aero-blue': { scheme: 'light', style: 'aero', variant: 'blue' },
+  'aero-night': { scheme: 'dark', style: 'aero', variant: 'night' },
 };
 function setAtlasTheme(id, persist = false) {
-  const theme = ATLAS_THEMES[id] || ATLAS_THEMES.dark;
+  // Migrate existing preferences into the Aero family; classics are retired.
+  id = ({dark:'aero-night', light:'aero'})[id] || id;
+  if (!ATLAS_THEMES[id]) id = 'aero-night';
+  const theme = ATLAS_THEMES[id];
   document.documentElement.dataset.theme = theme.scheme;
   document.documentElement.dataset.style = theme.style;
+  document.documentElement.dataset.variant = theme.variant;
   if (persist) { try { localStorage.setItem('kb_theme', id); } catch {} }
   document.querySelectorAll('[data-theme-choice]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));
@@ -623,9 +627,9 @@ function setAtlasTheme(id, persist = false) {
   if (typeof window._reapplyEpubReaderTheme === 'function') window._reapplyEpubReaderTheme();
 }
 function applyTheme() {
-  let saved = 'dark';
-  try { saved = localStorage.getItem('kb_theme') || 'dark'; } catch {}
-  setAtlasTheme(saved);
+  let saved = 'aero-night';
+  try { saved = localStorage.getItem('kb_theme') || 'aero-night'; } catch {}
+  setAtlasTheme(saved, true);
   const picker = $('themePicker');
   picker?.querySelectorAll('[data-theme-choice]').forEach(button => button.addEventListener('click', () => {
     setAtlasTheme(button.dataset.themeChoice, true); picker.close();

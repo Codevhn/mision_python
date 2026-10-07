@@ -1,25 +1,28 @@
 # Apariencia de Atlas
 
-El botón de tema abre **Apariencia** con Clásico oscuro, Clásico claro y Aero
-Glass. En móvil está en el menú de navegación. La elección se guarda localmente
-en `kb_theme`; no cambia los datos ni requiere variables de Fly.
+El botón de tema abre **Apariencia**. En móvil está en el menú de navegación.
+Hay tres variantes de la misma familia visual:
 
-Aero es una primera vista de Inicio, navegación y Asistente: azul frío,
-tipografía sin serif, reflejos, marcos translúcidos y controles con relieve.
-Los marcos usan doble borde fino, botones agrupados con relieve y un cierre
-rojo, mientras las listas usan selecciones azules inspiradas en el Explorador.
-Los controles del asistente usan SVG para evitar diferencias entre caracteres
-de distintas fuentes. El contenido del chat conserva un fondo casi opaco para lectura. El tema usa
-CSS y fondos de degradado, sin imágenes remotas ni dependencias nuevas. Hay un
-fondo opaco de respaldo para navegadores sin desenfoque de superficies.
+- **Aero Claro**: cristal celeste y contenido claro.
+- **Aero Azul Windows 7**: cristal azul profundo y contenido claro.
+- **Aero Nocturno**: cristal azul oscuro y contenido oscuro.
 
-La configuración `ATLAS_THEMES` de `static/app.js` separa el esquema de color
-(`data-theme`: dark/light) del estilo visual (`data-style`: classic/aero).
-Así el editor y el lector existentes siguen recibiendo un esquema compatible.
-`static/themes.css` contiene el selector de apariencia y las reglas de Aero.
-Los temas clásicos conservan su apariencia y pueden recuperarse desde el selector.
+La elección se guarda localmente en `kb_theme`; no cambia los datos ni requiere
+variables de Fly. Los temas clásicos ya no están disponibles: la preferencia
+antigua `light` migra a `aero` y `dark` a `aero-night`. Una preferencia desconocida
+o un navegador nuevo comienza en Aero Nocturno. Se guarda el identificador migrado.
 
-La adaptación completa de otras vistas, familias de iconos y nuevos estilos como
-OpenCode o terminal queda para siguientes etapas. Añadirlos requiere registrar
-el estilo y definir sus tokens, tipografía y componentes; no basta cambiar el
-color de fondo. No aparecen opciones que todavía no estén implementadas.
+Las tres variantes comparten tipografía, marcos de doble borde, reflejos,
+controles agrupados y cierre rojo. La lectura del asistente utiliza fondos casi
+opacos. El esquema se aplica a los tokens del sistema; las adaptaciones de Inicio,
+Asistente, navegación y la cabecera del curso incluyen reglas específicas.
+La revisión detallada de otras vistas e iconos continúa por etapas.
+
+`ATLAS_THEMES`, en `static/app.js`, registra el esquema de color (`data-theme`:
+dark/light), el estilo (`data-style`: aero) y la variante (`data-variant`:
+light/blue/night). Así el editor y el lector existentes siguen recibiendo un
+esquema compatible. `static/themes.css` define los tokens y componentes de las
+variantes, con fondos opacos de respaldo si no hay desenfoque de superficies.
+
+La animación meteorológica no se modifica en esta etapa. Nuevos estilos como
+OpenCode o terminal quedan para después y no aparecen como opciones vacías.
