@@ -5324,7 +5324,8 @@ def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None
         if cfg["kind"] == "gemini":
             inner = _stream_gemini(cfg["base_url"], api_key, model, system, messages, max_tokens, temperature)
         else:
-            inner = _stream_openai_compatible(cfg["base_url"], api_key, model, messages, max_tokens, temperature)
+            request_messages = ([{"role": "system", "content": system}] if system else []) + list(messages)
+            inner = _stream_openai_compatible(cfg["base_url"], api_key, model, request_messages, max_tokens, temperature)
         for part in inner:
             yield part
     except urllib.error.HTTPError as e:

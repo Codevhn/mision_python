@@ -5,6 +5,33 @@ import app as app_module
 from assistant import atlas_context
 
 
+def test_stream_request_delivers_atlas_system_context(auth_client, monkeypatch):
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'test-key')
+    captured = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def __iter__(self):
+            return iter([b'data: {"choices":[{"delta":{"content":"Respuesta"},"finish_reason":null}]}\n', b'data: [DONE]\n'])
+
+    def urlopen(request, **kwargs):
+        captured.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(app_module.urllib.request, 'urlopen', urlopen)
+    system = 'Datos de Atlas: última lección estudiada CSS Grid'
+    history = [{'role': 'user', 'content': '¿Por dónde me quedé?'}]
+    result = list(app_module._stream_call_ai(system, history, provider='deepseek', model='deepseek-v4-pro'))
+    assert result[0] == 'Respuesta'
+    assert captured[0]['messages'] == [{'role': 'system', 'content': system}] + history
+    assert history == [{'role': 'user', 'content': '¿Por dónde me quedé?'}]
+
+
 def create(client):
     response = client.post('/api/assistant/conversations', json={})
     assert response.status_code == 201
