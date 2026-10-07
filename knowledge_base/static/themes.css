@@ -316,3 +316,38 @@
 @media (min-width:1025px) { [data-style="aero"] .sidebar:has(#spaceCourses:not([style*="none"])) { overflow:hidden; } }
 @media (max-width:1024px) { [data-style="aero"] #spaceCourses { height:auto; min-height:calc(100% - 56px); overflow:visible; } }
 @supports not (backdrop-filter:blur(1px)) { [data-style="aero"] #spaceCourses { background:var(--bg-overlay); } }
+
+/* Light variants use one blue reading surface across the workspace and chat. */
+:root[data-style="aero"][data-variant="light"] {
+ --layer-0:#d5e7f4; --layer-1:#d5e7f4; --layer-2:#c9dfef; --layer-3:#bdd6e9; --layer-4:#a9c9e1;
+ --aero-content:#d5e7f4; --aero-field:#deedf7; --aero-card:#d5e7f4;
+ --aero-selection:linear-gradient(#d8eaf7,#b5d3e9);
+ --bg:var(--aero-content); --bg-overlay:var(--aero-content); --panel-bg:var(--aero-content); --panel-bg-2:var(--layer-2); --bg-code:#c9dfef;
+ --aero-toolbar:linear-gradient(#dcecf7,#bfd9ec); --aero-button:linear-gradient(#e8f3fb,#cce2f2 48%,#b2d0e7 49%,#d5e8f5);
+ --aero-glass:linear-gradient(128deg,#e1f2fbd9 0%,#bedceeab 36%,#ecf8ffc9 37%,#bdddedb8 54%,#8ebbd7a6 55%,#c8e2f2d9 100%);
+}
+:root[data-style="aero"][data-variant="blue"] {
+ --layer-0:#b7d4e9; --layer-1:#b7d4e9; --layer-2:#a8cae3; --layer-3:#96bdd9; --layer-4:#80acce;
+ --aero-content:#b7d4e9; --aero-field:#c5deef; --aero-card:#b7d4e9;
+ --aero-selection:linear-gradient(#c2ddef,#8eb8d7);
+ --bg:var(--aero-content); --bg-overlay:var(--aero-content); --panel-bg:var(--aero-content); --panel-bg-2:var(--layer-2); --bg-code:#a8cae3;
+ --aero-toolbar:linear-gradient(#c4deef,#9ec3df); --aero-button:linear-gradient(#d3e8f6,#b3d3e9 48%,#8eb8d8 49%,#bedbed);
+ --aero-title:#173b55; --aero-chrome-text:#173b55;
+ --aero-glass:linear-gradient(128deg,#bedff6d9 0%,#77a8cbad 36%,#d9edfacc 37%,#79adcfb8 54%,#4e8bb7ab 55%,#a1c9e5dc 100%);
+}
+[data-style="aero"]:not([data-variant="night"]) .content-area { background:var(--aero-content) !important; }
+[data-style="aero"]:not([data-variant="night"]) .bn-container { --bn-colors-editor-background:var(--aero-content) !important; }
+[data-style="aero"]:not([data-variant="night"]) .bn-editor { background:var(--aero-content) !important; }
+[data-style="aero"]:not([data-variant="night"]) .ctx-bar { background:var(--aero-toolbar) !important; border-color:var(--border); }
+[data-style="aero"]:not([data-variant="night"]) .breadcrumb-seg { color:var(--text-muted) !important; }
+[data-style="aero"]:not([data-variant="night"]) .breadcrumb-current { color:var(--text) !important; }
+[data-style="aero"]:not([data-variant="night"]) .breadcrumb-sep { color:var(--text-faint) !important; }
+[data-style="aero"]:not([data-variant="night"]) .form-group :is(input,select,textarea) { background:var(--aero-field) !important; color:var(--text) !important; border-color:var(--border) !important; }
+[data-style="aero"][data-variant="blue"] #activityBar .ab-item { color:var(--text) !important; text-shadow:0 1px 1px var(--aero-inset); }
+[data-style="aero"][data-variant="blue"] .sidebar { background:var(--aero-glass) !important; }
+[data-style="aero"][data-variant="blue"] :is(.home-section-label,.assistant-disclaimer,.assistant-model-alerts,#assistantStatus) { color:var(--text-muted) !important; }
+[data-style="aero"][data-variant="blue"] #assistantStatus.assistant-status-error { color:#8a331d !important; }
+[data-style="aero"]:not([data-variant="night"]) .entry-body { --font-serif:var(--font-ui); }
+[data-style="aero"]:not([data-variant="night"]) .sidebar > .sidebar-space:not(#spaceCourses) { background:var(--aero-content); }
+[data-style="aero"]:not([data-variant="night"]) .sidebar-space-header { background:var(--aero-glass); color:var(--text); border-color:var(--border); }
+[data-style="aero"] #activityBar .ab-item--active:not(:hover):not(:focus-visible) { background:var(--aero-selection) !important; color:var(--text) !important; border-color:var(--aero-select-border); box-shadow:inset 0 0 0 1px var(--aero-inset); }

@@ -3,8 +3,8 @@
 El botón de tema abre **Apariencia**. En móvil está en el menú de navegación.
 Hay tres variantes de la misma familia visual:
 
-- **Aero Claro**: cristal celeste y contenido claro.
-- **Aero Azul Windows 7**: cristal azul profundo y contenido claro.
+- **Aero Claro**: cristal celeste y superficies de lectura azul claro uniformes.
+- **Aero Azul Windows 7**: cristal azul y superficies de lectura de un azul más intenso.
 - **Aero Nocturno**: cristal azul oscuro y contenido oscuro.
 
 La elección se guarda localmente en `kb_theme`; no cambia los datos ni requiere
@@ -17,6 +17,11 @@ controles agrupados y cierre rojo. La lectura del asistente utiliza fondos casi
 opacos. El esquema se aplica a los tokens del sistema; las adaptaciones de Inicio,
 Asistente, navegación y la cabecera del curso incluyen reglas específicas.
 La revisión detallada de otras vistas e iconos continúa por etapas.
+En las dos variantes claras, el área de contenido, el editor, el asistente y el
+panel de cursos comparten un fondo azul opaco. Los campos y barras usan tonos
+cercanos; los reflejos se concentran en el marco. Se conservan los colores
+elegidos por el usuario para bloques y las imágenes de portada. Aero Nocturno
+mantiene su paleta.
 
 `ATLAS_THEMES`, en `static/app.js`, registra el esquema de color (`data-theme`:
 dark/light), el estilo (`data-style`: aero) y la variante (`data-variant`:
