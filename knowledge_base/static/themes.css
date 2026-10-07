@@ -293,3 +293,26 @@
 [data-style="aero"] .course-list-row:is(:hover,:focus-within) .course-list-name { color:var(--aero-nav-ink) !important; opacity:1; }
 [data-style="aero"] .course-list-item:not(.active):active,
 [data-style="aero"] .course-list-item.active .course-list-row:active { box-shadow:inset 0 2px 5px #092b4770,inset 0 0 0 1px var(--aero-inset); }
+
+/* Explorer-style course window: blurred chrome, a readable interior and title bar. */
+[data-style="aero"] .sidebar:has(#spaceCourses:not([style*="none"])) {
+ backdrop-filter:blur(30px) saturate(125%) !important; -webkit-backdrop-filter:blur(30px) saturate(125%) !important;
+ border-color:var(--aero-frame); box-shadow:0 8px 28px #071c3245,inset 0 0 0 1px var(--aero-inset);
+}
+[data-style="aero"] #spaceCourses {
+ height:calc(100% - 12px); min-height:0; margin:6px; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--layer-4) var(--layer-1);
+ border:1px solid var(--aero-edge); border-radius:4px; background:var(--aero-content); box-shadow:inset 0 0 0 1px var(--aero-inset);
+}
+[data-style="aero"] #spaceCourses > .sidebar-space-header {
+ position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:8px;
+ min-height:42px; padding:7px 10px; background:var(--aero-glass); border-bottom:1px solid var(--aero-frame);
+ color:var(--text); font-size:.85rem; font-weight:600; text-transform:none; letter-spacing:normal; box-shadow:inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] .course-window-title { display:flex; align-items:center; gap:8px; }
+.course-window-title svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+[data-style="aero"] #newCourseBtn { display:flex; align-items:center; justify-content:center; width:27px; height:25px; padding:0; border:1px solid var(--border); border-radius:3px; background:var(--aero-button); color:var(--text); box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] #newCourseBtn:hover { background:var(--aero-nav-hover); box-shadow:inset 0 1px 0 var(--aero-nav-highlight),0 0 8px #60c2ff45; }
+[data-style="aero"] #spaceCourses .course-list-bar { display:none; }
+@media (min-width:1025px) { [data-style="aero"] .sidebar:has(#spaceCourses:not([style*="none"])) { overflow:hidden; } }
+@media (max-width:1024px) { [data-style="aero"] #spaceCourses { height:auto; min-height:calc(100% - 56px); overflow:visible; } }
+@supports not (backdrop-filter:blur(1px)) { [data-style="aero"] #spaceCourses { background:var(--bg-overlay); } }
