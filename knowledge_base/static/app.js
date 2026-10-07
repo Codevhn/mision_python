@@ -194,6 +194,7 @@ function bindEvents() {
   // welcomeNewBtn is rendered dynamically by renderHome() — handled there
   $("themeToggle").addEventListener("click", toggleTheme);
   $("themeToggleSidebar").addEventListener("click", toggleTheme);
+  $("mobileThemeToggle")?.addEventListener("click", toggleTheme);
   $("sidebarToggle").addEventListener("click", toggleSidebar);
   // #abPractice / #msnPractice open via their data-space="practice" attribute
   // now (generic space-switch wiring below), like every other space icon.
@@ -606,20 +607,38 @@ async function fetchCategorySuggestion() {
 }
 
 // ---- THEME ----
+const ATLAS_THEMES = {
+  dark: { scheme: 'dark', style: 'classic' },
+  light: { scheme: 'light', style: 'classic' },
+  aero: { scheme: 'light', style: 'aero' },
+};
+function setAtlasTheme(id, persist = false) {
+  const theme = ATLAS_THEMES[id] || ATLAS_THEMES.dark;
+  document.documentElement.dataset.theme = theme.scheme;
+  document.documentElement.dataset.style = theme.style;
+  if (persist) { try { localStorage.setItem('kb_theme', id); } catch {} }
+  document.querySelectorAll('[data-theme-choice]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));
+  });
+  if (typeof window._reapplyEpubReaderTheme === 'function') window._reapplyEpubReaderTheme();
+}
 function applyTheme() {
-  const saved = localStorage.getItem("kb_theme") || "dark";
-  document.documentElement.setAttribute("data-theme", saved);
+  let saved = 'dark';
+  try { saved = localStorage.getItem('kb_theme') || 'dark'; } catch {}
+  setAtlasTheme(saved);
+  const picker = $('themePicker');
+  picker?.querySelectorAll('[data-theme-choice]').forEach(button => button.addEventListener('click', () => {
+    setAtlasTheme(button.dataset.themeChoice, true); picker.close();
+  }));
+  $('themePickerClose')?.addEventListener('click', () => picker.close());
+  picker?.addEventListener('click', event => { if (event.target === picker) {
+    const rect = picker.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) picker.close();
+  }});
 }
 function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("kb_theme", next);
-  // The epub.js reader renders each chapter in its own iframe with colors
-  // injected (and frozen) at open time — without this it keeps the OLD
-  // theme's text color after switching, which can exactly match the new
-  // background and make the whole page look blank.
-  if (typeof window._reapplyEpubReaderTheme === "function") window._reapplyEpubReaderTheme();
+  const picker = $('themePicker');
+  if (picker && !picker.open) picker.showModal();
 }
 
 // ---- SIDEBAR ----

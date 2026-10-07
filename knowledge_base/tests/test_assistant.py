@@ -153,6 +153,27 @@ def test_atlas_opt_out_excludes_private_context(auth_client, monkeypatch):
     assert 'Datos actuales de Atlas' not in captured[0][0]
 
 
+def test_simple_greeting_does_not_retrieve_atlas(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, 'load_index', lambda: (_ for _ in ()).throw(AssertionError('Greeting should not read Atlas')))
+    route = '/api/assistant/conversations/' + create(auth_client)
+    response = auth_client.post(route + '/messages', json={'prompt': '¡Hola!', 'use_atlas': True})
+    assert 'event: done' in response.get_data(as_text=True)
+    assert 'Datos actuales de Atlas' not in captured[0][0]
+    assert auth_client.get(route).json['messages'][-1]['sources'] == []
+
+
+def test_greeting_with_actual_question_still_retrieves_context(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, 'load_index', lambda: {'page': {'title': 'Mi página', 'type': 'page'}})
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    response = auth_client.post(route, json={'prompt': 'Hola, ¿qué tengo pendiente?', 'use_atlas': True})
+    assert 'event: done' in response.get_data(as_text=True)
+    assert 'Mi página' in captured[0][0]
+
+
 def test_context_preserves_teamspace_and_page_hierarchy(auth_client, monkeypatch):
     index = {
         'home': {'title': 'Desarrollo', 'type': 'teamspace', 'teamspace': 'dev', 'teamspace_label': 'Equipo Desarrollo', 'is_teamspace_home': True},

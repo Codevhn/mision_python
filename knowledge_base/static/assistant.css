@@ -96,3 +96,16 @@
 .assistant-model-alerts .practice-empty-note { font-size:.7rem; padding:4px 0; }
 
 @media print { .assistant-area, .assistant-launcher { display:none !important; } }
+
+/* Compact chrome: one header row and a composer that grows with its contents. */
+.assistant-header { padding:10px 14px; min-height:48px; box-sizing:border-box; }
+.assistant-header h1 { display:none; }
+.assistant-history { top:56px; }
+.assistant-composer textarea { min-height:40px; max-height:130px; padding:11px 14px 4px; font-size:.85rem; }
+.assistant-composer { padding:8px 12px max(8px, env(safe-area-inset-bottom)); }
+.assistant-composer-footer { padding:5px 8px; }
+.assistant-message-content { font-size:.85rem; line-height:1.58; }
+.assistant-transcript { padding:18px; }
+.assistant-message { margin-bottom:20px; }
+.assistant-message-user { padding:10px 14px; }
+@media (max-width:600px) { .assistant-header { padding-top:calc(10px + env(safe-area-inset-top)); } }

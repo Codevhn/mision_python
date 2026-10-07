@@ -3,7 +3,8 @@
 Abre el botón flotante **Asistente** desde cualquier sección. El panel lateral
 conserva el hilo mientras navegas. La cabecera permite abrir el historial,
 crear otra conversación, ampliar el panel o cerrarlo. En móvil ocupa la pantalla;
-Escape cierra primero controles desplegados y después el panel.
+Escape cierra primero controles desplegados y después el panel. La cabecera usa
+una sola fila; el cuadro de escritura empieza compacto y crece al escribir.
 
 El selector de modelos está dentro del cuadro de escritura y abre hacia arriba
 cuando falta espacio abajo. Enter envía; Shift+Enter agrega una línea.
@@ -22,7 +23,9 @@ tareas de tableros, notas y mapas relacionados. El desplegable **Contenido de
 Atlas consultado** permite abrir las fuentes disponibles para esa respuesta.
 Las notas se buscan por palabras en título y contenido. Se envían fragmentos y
 muestras limitadas: esta versión no hace búsqueda semántica, no lee el contenido
-de PDF/EPUB ni navega por Internet. La última visita no demuestra que una lección
+de PDF/EPUB ni navega por Internet. Los saludos simples no recuperan registros de Atlas. Las instrucciones favorecen
+respuestas breves y evitan listar actividad sin que se solicite.
+La última visita no demuestra que una lección
 esté completada. Los pendientes se interpretan según estados y columnas guardados.
 El directorio incluye hasta 120 entradas, priorizando coincidencias y actividad
 reciente; indica si está recortado y conserva los ancestros de cada entrada.

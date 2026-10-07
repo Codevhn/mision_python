@@ -80,11 +80,12 @@
   }
   function scrollBottom() { const transcript = el('assistantTranscript'); transcript.scrollTop = transcript.scrollHeight; }
   function renderConversation() {
-    el('assistantTitle').textContent = record?.messages.length ? record.title : 'Una pregunta abre un nuevo camino';
+    el('assistantTitle').textContent = record?.messages.length ? record.title : 'Conversación nueva';
+    el('assistantTitle').parentElement.title = el('assistantTitle').textContent;
     el('assistantTranscript').innerHTML = '';
     if (!record?.messages.length) {
       el('assistantTranscript').innerHTML = `<div class="assistant-welcome"><span class="assistant-welcome-icon" aria-hidden="true">✦</span><h2>¿Qué quieres explorar?</h2><p>Pregunta, profundiza y conecta ideas. También puedes consultar tus notas y retomar lo que estabas estudiando.</p><div class="assistant-suggestions"><button type="button">¿Por dónde me quedé estudiando?</button><button type="button">¿Qué tengo pendiente?</button><button type="button">Explícame CSS Grid con ejemplos</button></div></div>`;
-      area.querySelectorAll('.assistant-suggestions button').forEach(button => button.addEventListener('click', () => { el('assistantInput').value = button.textContent; el('assistantInput').focus(); }));
+      area.querySelectorAll('.assistant-suggestions button').forEach(button => button.addEventListener('click', () => { el('assistantInput').value = button.textContent; el('assistantInput').dispatchEvent(new Event('input')); el('assistantInput').focus(); }));
     } else record.messages.forEach(bubble);
     scrollBottom();
     mountModel();
@@ -145,7 +146,7 @@
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       bubble({ role: 'user', content: prompt });
       content = bubble({ role: 'assistant', content: 'Pensando…' });
-      el('assistantInput').value = ''; scrollBottom(); status('Preparando respuesta…');
+      el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
         ...post({ prompt, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
       });
@@ -165,7 +166,7 @@
           if (payload.delta) { partial += payload.delta; content.textContent = partial; scrollBottom(); }
           if (kind === 'done') {
             completed = true;
-            status(payload.truncated ? 'La respuesta alcanzó el límite. Puedes pedir que continúe.' : payload.context_summarized ? 'Guardado · Contexto antiguo resumido' : 'Conversación guardada');
+            status(payload.truncated ? 'La respuesta alcanzó el límite. Puedes pedir que continúe.' : payload.context_summarized ? 'Guardado · Contexto antiguo resumido' : '');
           }
         }
       }
@@ -205,7 +206,7 @@
     el('assistantLauncher').setAttribute('aria-expanded', 'true');
     if (mounted) { el('assistantInput').focus({preventScroll:true}); return; }
     mounted = true;
-    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones">☰</button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación">＋</button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar">⤢</button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar">×</button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="2" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Tomar la página abierta</button><p>Se comparte el contenido guardado con el modelo elegido. La página elegida se mantiene hasta que la cambies.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
+    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones">☰</button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación">＋</button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar">⤢</button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar">×</button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Tomar la página abierta</button><p>Se comparte el contenido guardado con el modelo elegido. La página elegida se mantiene hasta que la cambies.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
     captureContext();
     el('assistantClose').addEventListener('click', close);
     el('assistantExpand').addEventListener('click', () => {
@@ -224,6 +225,9 @@
     el('assistantUseCurrent').addEventListener('change', updateContext);
     el('assistantRefreshContext').addEventListener('click', () => { captureContext(); updateContext(); });
     el('assistantForm').addEventListener('submit', send);
+    el('assistantInput').addEventListener('input', () => {
+      const input = el('assistantInput'); input.style.height = 'auto'; input.style.height = Math.min(130, input.scrollHeight) + 'px';
+    });
     el('assistantInput').addEventListener('keydown', event => {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); }
     });
@@ -231,7 +235,7 @@
     el('assistantNew').addEventListener('click', () => {
       if (busy) return;
       el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
-      ++loadSequence; record = null; el('assistantInput').value = ''; renderConversation(); refreshHistory().catch(error => status(error.message, true));
+      ++loadSequence; record = null; el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; renderConversation(); refreshHistory().catch(error => status(error.message, true));
       status('Nueva conversación'); el('assistantInput').focus();
     });
     renderConversation();
@@ -239,7 +243,7 @@
   }
   el('assistantLauncher').addEventListener('click', open);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !area.classList.contains('hidden')) {
+    if (event.key === 'Escape' && !el('themePicker')?.open && !area.classList.contains('hidden')) {
       if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
       const settings = area.querySelector('details[open]');
       if (settings) { settings.open = false; return; }
