@@ -1957,7 +1957,7 @@ function renderHome() {
           ${studying.length ? `
           <section class="home-section home-section--studying">
             <div class="home-section-header">
-              <div class="home-section-label">Continuar estudiando</div>
+              <div class="home-section-label"><span class="hsl-icon">🎓</span>Continuar estudiando</div>
               <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
             </div>
             ${studyFeaturedHtml(studying[0])}
