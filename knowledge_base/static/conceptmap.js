@@ -144,7 +144,7 @@
         </div>
         <p class="cm-hint">La IA arma la red de conceptos y sus relaciones al instante. ¿Prefieres armarlo tú? <a href="#" id="cmBlankLink">crea uno vacío</a>.</p>
         <div class="cm-model-row">
-          <span class="cm-model-label">Modelo</span>
+          <div class="cm-model-heading"><span class="cm-model-label">Modelo de IA</span><span class="cm-model-description">Elige quién genera tu mapa</span></div>
           <div class="practice-cselect" id="cmModelCSelect"></div>
         </div>
       </div>

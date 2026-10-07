@@ -11470,6 +11470,7 @@ function _renderPracticeRail() {
 // session. This was that bug.
 function _sweepStaleCselectPortals(root) {
   (root || document).querySelectorAll('.practice-cselect').forEach(el => {
+    el._cselectClose?.();
     el._cselectPortal?.remove();
     el._cselectPortal = null;
   });
@@ -11635,6 +11636,96 @@ function _saveModelChoice(context, choice) {
 // configured at all, so the caller should let the request fall through to
 // the backend's own default (which will surface the real "no configurada"
 // error same as today).
+function _mountSearchableModelSelect(container, { options, value, onChange }) {
+  container._cselectClose?.();
+  container._cselectPortal?.remove();
+  let selected = options.find(option => option.value === value);
+  container.innerHTML = `<button type="button" class="ai-model-trigger" aria-label="Elegir modelo de IA" aria-haspopup="listbox" aria-expanded="false"><span class="ai-model-trigger-text"></span><span class="ai-model-arrow" aria-hidden="true">⌄</span></button>`;
+  const trigger = container.querySelector('button');
+  const caption = trigger.querySelector('.ai-model-trigger-text');
+  const updateCaption = () => {
+    caption.innerHTML = `<span class="ai-model-name">${escapeHtml(selected?.name || 'Elegir modelo')}</span><span class="ai-model-provider">${escapeHtml(selected?.provider || 'Busca un modelo o combo')}</span>`;
+  };
+  updateCaption();
+  const panel = document.createElement('div');
+  panel.className = 'ai-model-panel hidden';
+  panel.innerHTML = `<div class="ai-model-search"><input type="search" placeholder="Buscar modelo, combo o proveedor…" aria-label="Buscar modelo, combo o proveedor" autocomplete="off"></div><div class="ai-model-results" role="listbox" aria-label="Modelos de IA"></div><div class="ai-model-count" role="status"></div>`;
+  document.body.appendChild(panel);
+  container._cselectPortal = panel;
+  const input = panel.querySelector('input');
+  const results = panel.querySelector('.ai-model-results');
+  const count = panel.querySelector('.ai-model-count');
+  let shown = [];
+  const normalize = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const render = () => {
+    const terms = normalize(input.value).trim().split(/\s+/).filter(Boolean);
+    const matching = options.filter(option => terms.every(term => normalize(`${option.name} ${option.provider} ${option.value}`).includes(term)));
+    shown = matching.slice(0, 80);
+    results.innerHTML = shown.length ? shown.map((option, index) => `<button type="button" role="option" aria-selected="${selected?.value === option.value}" data-index="${index}" class="ai-model-option"><span class="ai-model-option-copy"><span class="ai-model-name">${escapeHtml(option.name)}</span><span class="ai-model-detail">${escapeHtml(option.hint || '')}</span></span><span class="ai-model-badge">${escapeHtml(option.provider)}</span><span class="ai-model-check" aria-hidden="true">${selected?.value === option.value ? '✓' : ''}</span></button>`).join('') : '<div class="ai-model-empty">No hay coincidencias. Prueba otro nombre.</div>';
+    count.textContent = matching.length > 80 ? `80 de ${matching.length} resultados · Escribe para afinar la búsqueda` : `${matching.length} ${matching.length === 1 ? 'modelo disponible' : 'modelos disponibles'}`;
+    results.scrollTop = 0;
+  };
+  const position = () => {
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 360), window.innerWidth - 24);
+    const below = window.innerHeight - rect.bottom - 16;
+    const above = rect.top - 16;
+    const up = below < 240 && above > below;
+    panel.style.width = `${width}px`;
+    panel.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
+    panel.style.maxHeight = `${Math.max(100, Math.min(430, up ? above : below))}px`;
+    panel.style.top = up ? 'auto' : `${rect.bottom + 8}px`;
+    panel.style.bottom = up ? `${window.innerHeight - rect.top + 8}px` : 'auto';
+  };
+  const close = (restoreFocus = false) => {
+    panel.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside);
+    document.removeEventListener('keydown', escape);
+    window.removeEventListener('resize', position);
+    document.removeEventListener('scroll', onScroll, true);
+    if (restoreFocus) trigger.focus();
+  };
+  const outside = event => { if (!container.contains(event.target) && !panel.contains(event.target)) close(); };
+  const escape = event => { if (event.key === 'Escape') { event.preventDefault(); close(true); } };
+  const onScroll = event => { if (!panel.contains(event.target)) close(); };
+  container._cselectClose = close;
+  trigger.addEventListener('click', () => {
+    if (!panel.classList.contains('hidden')) { close(); return; }
+    input.value = '';
+    render();
+    position();
+    panel.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    window.addEventListener('resize', position);
+    document.addEventListener('scroll', onScroll, true);
+    input.focus();
+  });
+  input.addEventListener('input', render);
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Tab') { close(); return; }
+    const items = [...results.querySelectorAll('button')];
+    const current = items.indexOf(document.activeElement);
+    if (event.key === 'ArrowDown' && items.length) {
+      event.preventDefault(); items[Math.min(current + 1, items.length - 1)].focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault(); if (current <= 0) input.focus(); else items[current - 1].focus();
+    } else if (event.key === 'Enter' && document.activeElement === input && items.length) {
+      event.preventDefault(); items[0].click();
+    }
+  });
+  results.addEventListener('click', event => {
+    const item = event.target.closest('button[data-index]');
+    if (!item) return;
+    selected = shown[Number(item.dataset.index)];
+    updateCaption();
+    close(true);
+    onChange(selected.value);
+  });
+}
+
 function _mountModelSelector(container, { context, value, onChange }) {
   if (!container) return;
   container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> modelos…</div>`;
@@ -11657,15 +11748,16 @@ function _mountModelSelector(container, { context, value, onChange }) {
     }
     const options = [];
     data.providers.forEach(p => {
-      p.models.forEach(m => options.push({ value: `${p.id}:${m.id}`, label: `${m.label} (${p.label}) — ${m.hint}` }));
+      p.models.forEach(m => options.push({ value: `${p.id}:${m.id}`, name: m.label, provider: p.label, hint: m.hint }));
     });
     const initial = value || _getSavedModelChoice(context, data);
     onChange(initial);
     const wrap = document.createElement('div');
+    wrap.className = 'practice-cselect';
     container.innerHTML = '';
     container.appendChild(wrap);
     showWarnings();
-    _mountPracticeCustomSelect(wrap, {
+    _mountSearchableModelSelect(wrap, {
       options,
       value: initial ? `${initial.provider}:${initial.model}` : '',
       placeholder: 'Elegir modelo…',
