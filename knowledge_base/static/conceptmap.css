@@ -365,3 +365,70 @@
   .cm-prompt-header { padding: 28px 16px 16px; }
   .cm-grid { padding: 0 16px 24px; }
 }
+
+/* Concept canvas: paper surfaces, restrained depth colors and readable hierarchy. */
+.cm-map-header { padding: 22px 28px; gap: 22px; background: var(--bg-overlay); }
+.cm-map-heading { flex: 1; min-width: 0; }
+.cm-map-eyebrow { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 6px; }
+.cm-map-title { padding: 0; font-size: 1.25rem; font-weight: 650; }
+.cm-map-meta { margin-top: 7px; font-size: 0.78rem; color: var(--text-muted); }
+.cm-back-btn { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.cm-delete-btn { padding: 9px 12px; border-radius: 9px; }
+.cm-canvas-wrap {
+  background-color: var(--bg);
+  background-image: radial-gradient(color-mix(in srgb, var(--text-muted) 18%, transparent) 0.7px, transparent 0.7px);
+  background-size: 28px 28px;
+}
+.cm-node-box {
+  flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 10px; text-align: left; padding: 14px 16px 14px 20px;
+  border: 1px solid color-mix(in srgb, var(--node-color) 25%, var(--border));
+  border-left: 4px solid var(--node-color); border-radius: 14px;
+  background: var(--bg-overlay);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.055), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.cm-node-box--root {
+  border-radius: 16px; border-top-width: 1px;
+  background: color-mix(in srgb, var(--node-color) 8%, var(--bg-overlay));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.075);
+}
+.cm-node-box:hover, .cm-node-box:focus-within {
+  border-color: var(--node-color);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+.cm-node-kicker {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.62rem; font-weight: 650; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.cm-node-kicker::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--node-color); }
+.cm-node-text { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.cm-node-box--root .cm-node-text { font-weight: 700; }
+.cm-node-text:focus { outline: 2px solid var(--node-color); outline-offset: 4px; border-radius: 3px; }
+.cm-edge-line { stroke: color-mix(in srgb, var(--text-muted) 65%, var(--bg)); stroke-width: 1.6; stroke-opacity: 0.65; }
+.cm-edge-label {
+  padding: 5px 9px; border-radius: 6px; border-color: color-mix(in srgb, var(--border) 65%, transparent);
+  background: var(--bg-overlay); font-size: 0.72rem; font-style: normal; line-height: 1.3;
+  max-width: 158px; white-space: normal; text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.035);
+}
+.cm-edge-active .cm-edge-line { stroke: var(--accent); stroke-opacity: 1; stroke-width: 2.2; }
+.cm-edge-active .cm-edge-label { color: var(--text); border-color: var(--accent); }
+.cm-muted { opacity: 0.24; }
+#cmNodes > foreignObject, #cmEdges > g { transition: opacity 150ms; }
+.cm-node-box:focus-within .cm-node-del, .cm-edge-label-wrap:focus-within .cm-edge-del { opacity: 1; }
+.cm-add-node-btn { top: 20px; left: 20px; padding: 11px 15px; border-radius: 10px; font-size: 0.85rem; background: var(--bg-overlay); box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+.cm-zoom-controls { left: 20px; bottom: 20px; flex-direction: row; gap: 4px; padding: 5px; border-radius: 12px; background: var(--bg-overlay); box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+.cm-zoom-btn { width: 36px; height: 36px; border-radius: 8px; }
+.cm-canvas-hint { position: absolute; bottom: 26px; right: 24px; pointer-events: none; font-size: 0.73rem; color: var(--text-muted); padding: 9px 12px; border-radius: 8px; background: var(--bg-overlay); }
+.cm-back-btn:focus-visible, .cm-delete-btn:focus-visible, .cm-add-node-btn:focus-visible, .cm-zoom-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 768px) {
+  .cm-map-header { padding: 16px; gap: 12px; }
+  .cm-map-title { font-size: 1rem; }
+  .cm-back-btn { font-size: 0.75rem; padding: 8px; }
+  .cm-map-eyebrow { font-size: 0.6rem; }
+  .cm-canvas-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cmNodes > foreignObject, #cmEdges > g, .cm-node-box { transition: none; }
+}

@@ -28,8 +28,8 @@
   let _viewportEl = null, _svgEl = null;
   let _panAbort = null;
 
-  const RANK_COLORS = ['#4f46e5', '#2563eb', '#0891b2', '#059669', '#65a30d', '#ca8a04'];
-  const NODE_W = 170, NODE_H = 56, ROOT_SCALE = 1.35;
+  const RANK_COLORS = ['#bd603e', '#527b91', '#49867a', '#80709c', '#99804c', '#617887'];
+  const NODE_W = 180, NODE_H = 112, ROOT_SCALE = 1.06;
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
   const DRAG_THRESHOLD = 4;
 
@@ -274,7 +274,7 @@
     _area.innerHTML = `
       <div class="cm-map-header">
         <button class="cm-back-btn" id="cmBackBtn" title="Volver a Mapas">← Mapas</button>
-        <h1 class="cm-map-title" id="cmMapTitle" contenteditable="true" spellcheck="false">${_esc(_currentMap.title)}</h1>
+        <div class="cm-map-heading"><div class="cm-map-eyebrow">MAPA CONCEPTUAL</div><h1 class="cm-map-title" id="cmMapTitle" contenteditable="true" spellcheck="false">${_esc(_currentMap.title)}</h1><div class="cm-map-meta" id="cmMapMeta"></div></div>
         <button class="cm-delete-btn" id="cmDeleteBtn" title="Eliminar mapa">Eliminar</button>
       </div>
       <div class="cm-canvas-wrap" id="cmCanvasWrap">
@@ -295,6 +295,7 @@
           <button class="cm-zoom-btn" id="cmZoomFit" title="Ajustar a pantalla">${ICON_FIT}</button>
           <button class="cm-zoom-btn" id="cmZoomIn" title="Acercar">${ICON_PLUS}</button>
         </div>
+        <div class="cm-canvas-hint">Arrastra para explorar · Acerca para leer · Edita cualquier concepto</div>
       </div>`;
 
     document.getElementById('cmBackBtn').addEventListener('click', showList, { signal });
@@ -320,6 +321,8 @@
     const nodes = _currentMap.nodes || [];
     const edges = _currentMap.edges || [];
     const rank = _computeRanks(nodes, edges);
+    const meta = document.getElementById('cmMapMeta');
+    if (meta) meta.textContent = `${nodes.length} conceptos · ${edges.length} relaciones`;
     const byId = {};
     nodes.forEach(n => { byId[n.id] = n; });
 
@@ -328,6 +331,24 @@
     // first and the root's bigger bubble would clip against a stale/default
     // size on the very first paint.
     for (const n of nodes) _sizeNode(n, rank[n.id] || 0);
+    const labelSlots = [];
+    const measure = document.createElement('canvas').getContext('2d');
+    measure.font = '12px Arial';
+    for (const e of edges) {
+      const a = byId[e.from], b = byId[e.to];
+      if (!a || !b) continue;
+      const { x1, y1, x2, y2 } = _edgeEndpoints(a, b);
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const width = Math.min(176, measure.measureText(e.label || 'frase de enlace…').width + 38);
+      e._labelDy = 0;
+      for (const offset of [0, -28, 28, -56, 56]) {
+        const slot = { x: mx, y: my + offset, w: width };
+        const overlapsLabel = labelSlots.some(other => Math.abs(slot.x - other.x) < (slot.w + other.w) / 2 + 6 && Math.abs(slot.y - other.y) < 28);
+        const overlapsNode = nodes.some(n => Math.abs(slot.x - n.x) < (slot.w + n._w) / 2 && Math.abs(slot.y - n.y) < n._h / 2 + 18);
+        if (!overlapsLabel && !overlapsNode) { e._labelDy = offset; break; }
+      }
+      labelSlots.push({ x: mx, y: my + e._labelDy, w: width });
+    }
     for (const e of edges) renderEdge(e, byId[e.from], byId[e.to], edgesG);
     for (const n of nodes) nodesG.appendChild(renderNode(n, rank[n.id] || 0));
   }
@@ -340,7 +361,7 @@
     const isRoot = r === 0;
     const scale = isRoot ? ROOT_SCALE : Math.max(0.82, 1 - r * 0.06);
     node._w = NODE_W * scale;
-    node._h = NODE_H * scale;
+    node._h = NODE_H * (isRoot ? ROOT_SCALE : 1);
   }
 
   function renderNode(node, r) {
@@ -358,15 +379,24 @@
     const box = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
     box.className = 'cm-node-box' + (isRoot ? ' cm-node-box--root' : '');
     box.style.setProperty('--node-color', _nodeColor(node, r));
-    box.style.setProperty('--node-font', (isRoot ? 0.98 : Math.max(0.78, 0.88 - r * 0.02)) + 'rem');
+    box.style.setProperty('--node-font', (isRoot ? 1 : 0.93) + 'rem');
+    const kicker = document.createElement('div');
+    kicker.className = 'cm-node-kicker';
+    kicker.textContent = isRoot ? 'Concepto base' : `Nivel ${r + 1}`;
+    box.appendChild(kicker);
+    box.addEventListener('mouseenter', () => highlightNode(node.id));
+    box.addEventListener('mouseleave', () => highlightNode(null));
 
     const text = document.createElement('div');
     text.className = 'cm-node-text';
     text.textContent = node.text;
     text.contentEditable = 'true';
     text.spellcheck = false;
+    text.setAttribute('aria-label', 'Editar concepto');
+    text.addEventListener('focus', () => highlightNode(node.id));
     text.addEventListener('mousedown', ev => ev.stopPropagation());
     text.addEventListener('blur', () => {
+      highlightNode(null);
       const val = text.textContent.trim();
       if (!val || val === node.text) { text.textContent = node.text; return; }
       node.text = val;
@@ -404,15 +434,15 @@
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+    path.setAttribute('d', _connectionPath(x1, y1, x2, y2));
     path.setAttribute('class', 'cm-edge-line');
     path.setAttribute('marker-end', 'url(#cm-arrow)');
     g.appendChild(path);
 
     const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-    const LW = 150, LH = 30;
+    const LW = 176, LH = 44;
     fo.setAttribute('x', mx - LW / 2);
-    fo.setAttribute('y', my - LH / 2);
+    fo.setAttribute('y', my + (edge._labelDy || 0) - LH / 2);
     fo.setAttribute('width', LW);
     fo.setAttribute('height', LH);
     fo.setAttribute('style', 'overflow: visible;');
@@ -451,6 +481,25 @@
     g.appendChild(fo);
 
     edgesG.appendChild(g);
+  }
+
+  function highlightNode(id) {
+    if (!_svgEl || !_currentMap) return;
+    const connected = new Set([id]);
+    (_currentMap.edges || []).forEach(edge => {
+      const active = id && (edge.from === id || edge.to === id);
+      if (active) { connected.add(edge.from); connected.add(edge.to); }
+      const element = [...document.getElementById('cmEdges').children].find(item => item.dataset.id === edge.id);
+      if (element) { element.classList.toggle('cm-edge-active', !!active); element.classList.toggle('cm-muted', !!id && !active); }
+    });
+    [...document.getElementById('cmNodes').children].forEach(element => {
+      element.classList.toggle('cm-muted', !!id && !connected.has(element.dataset.id));
+    });
+  }
+
+  function _connectionPath(x1, y1, x2, y2) {
+    const middle = (y1 + y2) / 2;
+    return `M ${x1} ${y1} C ${x1} ${middle}, ${x2} ${middle}, ${x2} ${y2}`;
   }
 
   // Where the connecting line should touch each node's box edge — straight
@@ -493,12 +542,12 @@
         if (!a || !b) continue;
         const { x1, y1, x2, y2 } = _edgeEndpoints(a, b);
         const path = g.querySelector('.cm-edge-line');
-        if (path) path.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+        if (path) path.setAttribute('d', _connectionPath(x1, y1, x2, y2));
         const fo2 = g.querySelector('foreignObject');
         if (fo2) {
           const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-          fo2.setAttribute('x', mx - 75);
-          fo2.setAttribute('y', my - 15);
+          fo2.setAttribute('x', mx - 88);
+          fo2.setAttribute('y', my + (ed._labelDy || 0) - 22);
         }
       }
     }
