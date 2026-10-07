@@ -4240,6 +4240,7 @@
     },
     showBoards,
     showBoard,
+    getAssistantContext: () => document.getElementById('kbBoardView') && _currentBoard ? {type: 'board', id: _currentBoard.id, title: _currentBoard.name || _currentBoard.title || 'Tablero'} : null,
   };
 
   window.KanbanApp = KanbanApp;

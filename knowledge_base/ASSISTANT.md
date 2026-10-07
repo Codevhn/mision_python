@@ -1,11 +1,22 @@
 # Asistente Atlas
 
-Abre **Asistente** en la navegación de escritorio o móvil. Crea una conversación,
-elige un modelo en **Modelo y contexto** y escribe tu pregunta. Enter envía;
-Shift+Enter agrega una línea. Puedes retomar o eliminar conversaciones desde el
-historial. **Detener** interrumpe la petición; una respuesta parcial no se guarda.
+Abre el botón flotante **Asistente** desde cualquier sección. El panel lateral
+conserva el hilo mientras navegas. La cabecera permite abrir el historial,
+crear otra conversación, ampliar el panel o cerrarlo. En móvil ocupa la pantalla;
+Escape cierra primero controles desplegados y después el panel.
 
-Con **Consultar mis notas, cursos y pendientes** activo, cada pregunta incorpora
+El selector de modelos está dentro del cuadro de escritura y abre hacia arriba
+cuando falta espacio abajo. Enter envía; Shift+Enter agrega una línea.
+**Detener** interrumpe la petición; una respuesta parcial no se guarda.
+
+En **Contexto**, puedes consultar Atlas, usar la página o tablero abierto, o
+conversar sin añadir datos. **Tomar la página abierta** selecciona explícitamente
+el contexto actual; navegar después no reemplaza esa selección. Se usa contenido
+guardado, no cambios del editor aún sin guardar. Cada consulta muestra sus fuentes.
+La página seleccionada aporta hasta 8.000 caracteres y 40 subpáginas; el tablero
+hasta 12 columnas con 30 tarjetas por columna. Los límites se incluyen en el contexto.
+
+Con **Consultar Atlas** activo, cada pregunta incorpora
 datos actuales de Atlas: páginas, Teamspaces y su jerarquía, actividad reciente, progreso de cursos, columnas y
 tareas de tableros, notas y mapas relacionados. El desplegable **Contenido de
 Atlas consultado** permite abrir las fuentes disponibles para esa respuesta.

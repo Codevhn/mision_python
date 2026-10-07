@@ -4,7 +4,8 @@
   if (!area) return;
   const escape = text => window.escapeHtml(String(text || ''));
   let record = null, choice = null, busy = false, controller = null, mounted = false;
-  let loadSequence = 0;
+  let loadSequence = 0, pinnedContext = null, returnFocus = null;
+  document.body.appendChild(area);
   const el = id => document.getElementById(id);
 
   async function api(url, init) {
@@ -25,6 +26,9 @@
     el('assistantNew').disabled = value;
     area.querySelectorAll('.assistant-history button').forEach(button => button.disabled = value);
     el('assistantModel').inert = value;
+    el('assistantUseAtlas').disabled = value;
+    el('assistantUseCurrent').disabled = value || !pinnedContext;
+    el('assistantRefreshContext').disabled = value;
   }
   function sources(container, list) {
     if (!list?.length) return;
@@ -42,7 +46,8 @@
         } else if (source.type === 'board') {
           document.getElementById('abBoards')?.click(); window.KanbanApp?.showBoard(source.id);
         } else {
-          document.getElementById('abKnowledge')?.click(); window._loadEntryById?.(source.id);
+          const target = {page:'abPages', teamspace:'abTeamspace', course:'abCourses'}[source.entry_type] || 'abKnowledge';
+          document.getElementById(target)?.click(); window._loadEntryById?.(source.id);
         }
       });
       details.appendChild(button);
@@ -88,7 +93,7 @@
     const container = el('assistantModel');
     container.querySelectorAll('.practice-cselect').forEach(node => { node._cselectClose?.(); node._cselectPortal?.remove(); });
     window._mountModelSelector(container, {
-      context: 'assistant', value: record?.provider && record?.model ? { provider: record.provider, model: record.model } : choice,
+      context: 'assistant', warningContainer: el('assistantWarnings'), value: record?.provider && record?.model ? { provider: record.provider, model: record.model } : choice,
       onChange: value => { choice = value; },
     });
   }
@@ -123,7 +128,7 @@
       status('Cargando conversación…');
       const loaded = await api(`/api/assistant/conversations/${id}`);
       if (sequence !== loadSequence) return;
-      record = loaded; renderConversation(); await refreshHistory();
+      record = loaded; renderConversation(); el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false'); await refreshHistory();
       status(loaded.memory ? 'Historial guardado · Los turnos antiguos se resumen para mantener el contexto.' : 'Historial guardado');
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
@@ -142,7 +147,7 @@
       content = bubble({ role: 'assistant', content: 'Pensando…' });
       el('assistantInput').value = ''; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked }), signal: controller.signal,
+        ...post({ prompt, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
@@ -175,13 +180,49 @@
         await refreshHistory();
       } catch (error) { status(`No se pudo recuperar el historial: ${error.message}`, true); }
       setBusy(false);
-      el('assistantInput').focus({ preventScroll: true });
+      if (!area.classList.contains('hidden')) el('assistantInput').focus({ preventScroll: true });
     }
   }
+  function closeModel() {
+    el('assistantModel')?.querySelectorAll('.practice-cselect').forEach(node => node._cselectClose?.());
+  }
+  function close() {
+    closeModel(); area.classList.add('hidden');
+    el('assistantLauncher').classList.remove('hidden');
+    el('assistantLauncher').setAttribute('aria-expanded', 'false');
+    if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+  }
+  function captureContext() {
+    pinnedContext = window._getAssistantVisibleContext?.() || null;
+    el('assistantUseCurrent').checked = false;
+    el('assistantUseCurrent').disabled = !pinnedContext;
+    el('assistantCurrentLabel').textContent = pinnedContext ? `Usar ${pinnedContext.type === 'board' ? 'tablero' : 'página'}: ${pinnedContext.title}` : 'Abre una página o tablero para usar su contexto';
+  }
   async function open() {
-    if (mounted) return;
+    returnFocus = document.activeElement;
+    area.classList.remove('hidden');
+    el('assistantLauncher').classList.add('hidden');
+    el('assistantLauncher').setAttribute('aria-expanded', 'true');
+    if (mounted) { el('assistantInput').focus({preventScroll:true}); return; }
     mounted = true;
-    area.innerHTML = `<aside class="assistant-history"><div class="assistant-history-heading"><span>Conversaciones</span><button type="button" id="assistantNew">+ Nueva</button></div><div id="assistantHistory"></div></aside><div class="assistant-chat"><header class="assistant-header"><div><span class="assistant-eyebrow">ASISTENTE ATLAS</span><h1 id="assistantTitle"></h1></div><details class="assistant-settings"><summary>Modelo y contexto</summary><div id="assistantModel" class="practice-cselect"></div><label class="assistant-context-option"><input type="checkbox" id="assistantUseAtlas" checked> Consultar mis notas, cursos y pendientes</label><p>Cuando está activo, se comparte contexto relevante de Atlas con el modelo elegido.</p></details></header><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="2" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><span id="assistantStatus" role="status"></span><button type="button" class="hidden" id="assistantStop">Detener</button><button type="submit" id="assistantSend">Enviar ↑</button></div><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes y los detalles importantes.</div></form></div>`;
+    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones">☰</button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación">＋</button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar">⤢</button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar">×</button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="2" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Tomar la página abierta</button><p>Se comparte el contenido guardado con el modelo elegido. La página elegida se mantiene hasta que la cambies.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
+    captureContext();
+    el('assistantClose').addEventListener('click', close);
+    el('assistantExpand').addEventListener('click', () => {
+      closeModel(); const expanded = area.classList.toggle('assistant-expanded');
+      el('assistantExpand').setAttribute('aria-pressed', String(expanded));
+      el('assistantExpand').setAttribute('aria-label', expanded ? 'Reducir asistente' : 'Ampliar asistente');
+    });
+    el('assistantHistoryToggle').addEventListener('click', () => {
+      const hidden = el('assistantHistoryPanel').classList.toggle('hidden');
+      el('assistantHistoryToggle').setAttribute('aria-expanded', String(!hidden));
+    });
+    const updateContext = () => {
+      el('assistantContextSummary').textContent = el('assistantUseCurrent').checked ? 'Contexto · Página' : el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
+    };
+    el('assistantUseAtlas').addEventListener('change', updateContext);
+    el('assistantUseCurrent').addEventListener('change', updateContext);
+    el('assistantRefreshContext').addEventListener('click', () => { captureContext(); updateContext(); });
     el('assistantForm').addEventListener('submit', send);
     el('assistantInput').addEventListener('keydown', event => {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); }
@@ -189,11 +230,29 @@
     el('assistantStop').addEventListener('click', () => controller?.abort());
     el('assistantNew').addEventListener('click', () => {
       if (busy) return;
+      el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
       ++loadSequence; record = null; el('assistantInput').value = ''; renderConversation(); refreshHistory().catch(error => status(error.message, true));
       status('Nueva conversación'); el('assistantInput').focus();
     });
     renderConversation();
     try { await refreshHistory(); } catch (error) { status(error.message, true); }
   }
-  window.AssistantApp = { open };
+  el('assistantLauncher').addEventListener('click', open);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !area.classList.contains('hidden')) {
+      if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
+      const settings = area.querySelector('details[open]');
+      if (settings) { settings.open = false; return; }
+      close();
+    }
+  });
+  const updateViewport = () => {
+    if (!window.visualViewport) return;
+    area.style.setProperty('--assistant-vh', `${window.visualViewport.height}px`);
+    area.style.setProperty('--assistant-vtop', `${window.visualViewport.offsetTop}px`);
+  };
+  window.visualViewport?.addEventListener('resize', updateViewport);
+  window.visualViewport?.addEventListener('scroll', updateViewport);
+  updateViewport();
+  window.AssistantApp = { open, close };
 })();

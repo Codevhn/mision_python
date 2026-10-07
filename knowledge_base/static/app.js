@@ -6437,7 +6437,7 @@ function setSidebarVisible(visible) {
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library', 'assistant'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6463,6 +6463,7 @@ function setSidebarVisible(visible) {
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
   function switchSpace(space, targetMapId = null) {
+    if (space === 'assistant') space = 'home'; // migrate the previous dedicated view
     // Close floating panels that live outside #entryView
     closeHistoryPanel();
     closeTOC();
@@ -6520,7 +6521,6 @@ function setSidebarVisible(visible) {
     if (labView)        labView.classList.add('hidden');
     if (libraryView)        libraryView.classList.add('hidden');
     if (libraryReaderView)  libraryReaderView.classList.add('hidden');
-    $('assistantArea')?.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -6550,12 +6550,7 @@ function setSidebarVisible(visible) {
       return;
     }
 
-    if (space === 'assistant') {
-      $('contentArea').scrollTop = 0;
-      window.scrollTo(0, 0);
-      $('assistantArea')?.classList.remove('hidden');
-      window.AssistantApp?.open();
-    } else if (space === 'graph') {
+    if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
     } else if (space === 'radar') {
@@ -11734,8 +11729,9 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   });
 }
 
-function _mountModelSelector(container, { context, value, onChange }) {
+function _mountModelSelector(container, { context, value, onChange, warningContainer = null }) {
   if (!container) return;
+  if (warningContainer) warningContainer.querySelectorAll('.practice-empty-note').forEach(node => node.remove());
   container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> modelos…</div>`;
   _getAvailableProviders().then(data => {
     if (!container.isConnected) return; // panel/parent was closed or re-rendered while this was in flight
@@ -11745,7 +11741,7 @@ function _mountModelSelector(container, { context, value, onChange }) {
         note.className = 'practice-empty-note';
         note.setAttribute('role', 'status');
         note.textContent = warning.message;
-        container.appendChild(note);
+        (warningContainer || container).appendChild(note);
       });
     };
     if (!data.providers || !data.providers.length) {
@@ -13193,3 +13189,11 @@ function _initKaTeX(container, blocks) {
   };
   document.head.appendChild(script);
 }
+
+// Resolve visible context, never a stale entry hidden behind another space.
+window._getAssistantVisibleContext = () => {
+  const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden') && node.getClientRects().length; };
+  if (visible('entryView') && currentEntryId && currentEntryMeta) return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página'};
+  if (visible('kanbanArea')) return window.KanbanApp?.getAssistantContext?.() || null;
+  return null;
+};

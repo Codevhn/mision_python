@@ -212,6 +212,43 @@ def test_atlas_context_injected_and_sources_saved(auth_client, monkeypatch):
     assert saved['messages'][-1]['sources'][0]['id'] == 'note'
 
 
+def test_explicit_page_context_reads_saved_content_without_unrelated_atlas(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    index = {'note': {'title': 'Página elegida', 'type': 'page'},
+             'other': {'title': 'Nota ajena', 'type': 'page'},
+             'child': {'title': 'Subpágina', 'type': 'page', 'parent_id': 'note'}}
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    monkeypatch.setattr(app_module, 'load_activity', lambda: {'recent': [{'id': 'other'}], 'studying': []})
+    folder = app_module.KNOWLEDGE_DIR / 'pages'
+    folder.mkdir()
+    (folder / 'note.md').write_text('Contenido guardado específico para resumir.')
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    response = auth_client.post(route, json={'prompt': 'Resume esto', 'use_atlas': False,
+                                            'current_context': {'type': 'entry', 'id': 'note', 'title': 'Título falso'}})
+    assert 'event: done' in response.get_data(as_text=True)
+    system = captured[0][0]
+    assert 'Contenido guardado específico' in system
+    assert 'Subpágina' in system
+    assert 'Nota ajena' not in system
+    assert 'Título falso' not in system
+
+
+def test_current_board_context_includes_columns_and_tasks(auth_client, monkeypatch):
+    app_module.KANBAN_FILE.write_text(json.dumps({'boards': {'board': {'id': 'board', 'name': 'Proyecto',
+        'columns': [{'name': 'En curso', 'cards': [{'title': 'Terminar página', 'description': 'Revisar diseño'}]}]}}}))
+    data = json.loads(atlas_context(app_module.__dict__, 'Resume esto', {'type': 'board', 'id': 'board'})[0])
+    assert data['current_context']['title'] == 'Proyecto'
+    assert data['current_context']['columns'][0]['cards'][0]['description'] == 'Revisar diseño'
+
+
+def test_invalid_current_context_is_rejected_before_saving(auth_client):
+    route = '/api/assistant/conversations/' + create(auth_client)
+    for current in ['note', {'type': 'entry', 'id': []}, {'type': 'unsupported', 'id': 'note'}]:
+        assert auth_client.post(route + '/messages', json={'prompt': 'Hola', 'current_context': current}).status_code == 400
+    assert auth_client.get(route).json['messages'] == []
+
+
 def test_current_context_does_not_read_paths_outside_knowledge_root(auth_client, monkeypatch, tmp_path):
     monkeypatch.setattr(app_module, 'load_index', lambda: {'escape': {'title': 'minmax', 'type': 'page'}})
     outside = tmp_path / 'private.txt'
