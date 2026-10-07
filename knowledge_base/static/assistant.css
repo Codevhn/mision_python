@@ -40,6 +40,33 @@
 .assistant-message-content table { border-collapse: collapse; }
 .assistant-message-content th, .assistant-message-content td { border: 1px solid var(--border); padding: 8px 12px; }
 .assistant-message-content table { display: block; overflow-x: auto; max-width: 100%; }
+/* Reading rhythm belongs to the response, independent of the panel chrome. */
+.assistant-message-assistant .assistant-message-content { min-width:0; line-height:1.65; }
+.assistant-message-content > p { margin:0 0 12px; }
+.assistant-message-content :is(h1,h2,h3,h4,h5,h6) { margin:22px 0 10px; font-family:var(--font-ui); font-weight:650; line-height:1.35; color:var(--text); }
+.assistant-message-content h1 { font-size:1.2rem; }
+.assistant-message-content h2 { font-size:1.1rem; }
+.assistant-message-content :is(h3,h4,h5,h6) { font-size:1rem; }
+.assistant-message-content :is(ul,ol) { margin:12px 0 18px; padding-left:24px; }
+.assistant-message-content li { padding-left:3px; margin:0; }
+.assistant-message-content li + li { margin-top:8px; }
+.assistant-message-content li > p { margin:0 0 8px; }
+.assistant-message-content li > p:last-child { margin-bottom:0; }
+.assistant-message-content li :is(ul,ol) { margin:8px 0; }
+.assistant-message-content li::marker { color:var(--text-muted); }
+.assistant-message-content blockquote { margin:16px 0; padding:10px 14px; border-left:3px solid var(--accent); background:var(--bg-elevated); }
+.assistant-message-content blockquote p { margin:0; }
+.assistant-message-content blockquote p + p { margin-top:10px; }
+.assistant-message-content pre { margin:16px 0; }
+.assistant-message-content hr { margin:20px 0; border:0; border-top:1px solid var(--border); }
+.assistant-table-scroll { margin:16px 0 20px; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; border:1px solid var(--border); border-radius:4px; scrollbar-color:var(--text-muted) var(--bg-elevated); }
+.assistant-table-scroll:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.assistant-message-content .assistant-table-scroll table { display:table; width:100%; min-width:420px; max-width:none; margin:0; overflow:visible; font-size:.82rem; line-height:1.5; }
+.assistant-message-content .assistant-table-scroll :is(th,td) { min-width:120px; padding:10px 12px; vertical-align:top; overflow-wrap:break-word; word-break:normal; text-align:left; }
+.assistant-message-content .assistant-table-scroll tr > :first-child { min-width:200px; }
+.assistant-table-scroll th { background:var(--bg-elevated); font-weight:650; }
+.assistant-message-content > :first-child { margin-top:0; }
+.assistant-message-content > :last-child { margin-bottom:0; }
 .assistant-copy { padding: 6px 0; border: 0; background: none; color: var(--text-muted); font-size: 0.72rem; cursor: pointer; }
 .assistant-sources { margin-top: 12px; font-size: 0.78rem; color: var(--text-muted); }
 .assistant-sources summary { cursor: pointer; }

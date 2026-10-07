@@ -64,6 +64,14 @@
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
     else content.textContent = message.content;
+    content.querySelectorAll('table').forEach(table => {
+      const scroll = document.createElement('div');
+      scroll.className = 'assistant-table-scroll';
+      scroll.tabIndex = 0;
+      scroll.setAttribute('role', 'region');
+      scroll.setAttribute('aria-label', 'Tabla de la respuesta. Desplázate horizontalmente para ver todas las columnas.');
+      table.before(scroll); scroll.appendChild(table);
+    });
     article.append(label, content);
     if (message.role === 'assistant') {
       const copy = document.createElement('button');
