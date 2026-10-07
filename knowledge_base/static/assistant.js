@@ -98,6 +98,25 @@
       onChange: value => { choice = value; },
     });
   }
+  function confirmDeleteConversation(item, trigger) {
+    if (el('assistantDeleteDialog')?.open) return Promise.resolve(false);
+    const dialog = document.createElement('dialog');
+    dialog.id = 'assistantDeleteDialog'; dialog.className = 'assistant-confirm-dialog';
+    dialog.setAttribute('aria-labelledby', 'assistantDeleteTitle');
+    dialog.setAttribute('aria-describedby', 'assistantDeleteDescription');
+    dialog.innerHTML = `<form method="dialog"><header class="assistant-confirm-header"><h2 id="assistantDeleteTitle">Eliminar conversación</h2></header><div class="assistant-confirm-body"><p>¿Eliminar <strong id="assistantDeleteName"></strong>?</p><p id="assistantDeleteDescription">Se eliminarán esta conversación y todos sus mensajes. Esta acción no se puede deshacer.</p></div><footer class="assistant-confirm-actions"><button type="submit" value="cancel" autofocus>Cancelar</button><button type="submit" value="delete" class="assistant-confirm-danger">Eliminar</button></footer></form>`;
+    dialog.querySelector('#assistantDeleteName').textContent = item.title;
+    document.body.appendChild(dialog);
+    return new Promise(resolve => {
+      dialog.addEventListener('close', () => {
+        const approved = dialog.returnValue === 'delete';
+        dialog.remove();
+        (trigger.isConnected ? trigger : el('assistantHistoryToggle'))?.focus();
+        resolve(approved);
+      }, { once: true });
+      dialog.showModal();
+    });
+  }
   async function refreshHistory() {
     const data = await api('/api/assistant/conversations');
     const history = el('assistantHistory'); history.innerHTML = '';
@@ -111,11 +130,15 @@
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×';
       remove.className = 'assistant-history-delete'; remove.setAttribute('aria-label', `Eliminar ${item.title}`); remove.disabled = busy;
       remove.addEventListener('click', async () => {
-        if (busy || !window.confirm('¿Eliminar esta conversación y sus mensajes?')) return;
+        if (busy || !await confirmDeleteConversation(item, remove) || busy) return;
+        setBusy(true);
+        el('assistantStop').classList.add('hidden');
         try { await api(`/api/assistant/conversations/${item.id}`, { method: 'DELETE' });
           if (record?.id === item.id) { record = null; renderConversation(); }
           await refreshHistory();
+          el('assistantHistoryToggle').focus();
         } catch (error) { status(error.message, true); }
+        finally { setBusy(false); }
       });
       row.append(open, remove); history.appendChild(row);
     });
@@ -245,7 +268,7 @@
   }
   el('assistantLauncher').addEventListener('click', open);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !el('themePicker')?.open && !area.classList.contains('hidden')) {
+    if (event.key === 'Escape' && !el('themePicker')?.open && !el('assistantDeleteDialog')?.open && !area.classList.contains('hidden')) {
       if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
       const settings = area.querySelector('details[open]');
       if (settings) { settings.open = false; return; }
