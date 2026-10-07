@@ -153,6 +153,51 @@ def test_atlas_opt_out_excludes_private_context(auth_client, monkeypatch):
     assert 'Datos actuales de Atlas' not in captured[0][0]
 
 
+def test_context_preserves_teamspace_and_page_hierarchy(auth_client, monkeypatch):
+    index = {
+        'home': {'title': 'Desarrollo', 'type': 'teamspace', 'teamspace': 'dev', 'teamspace_label': 'Equipo Desarrollo', 'is_teamspace_home': True},
+        'parent': {'title': 'Recursos', 'type': 'page', 'parent_id': 'home'},
+        'apis': {'title': 'APIs', 'type': 'page', 'parent_id': 'parent'},
+    }
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    monkeypatch.setattr(app_module, 'load_activity', lambda: {'studying': [{'id': 'apis'}], 'recent': [{'id': 'apis', 'ts': 1234}]})
+    data = json.loads(atlas_context(app_module.__dict__, 'Qué hay dentro de APIs')[0])
+    entry = data['recent_visited'][0]
+    assert entry['type'] == 'page'
+    assert entry['teamspace_label'] == 'Equipo Desarrollo'
+    assert [item['title'] for item in entry['ancestors']] == ['Desarrollo', 'Recursos']
+    assert data['recent_studying'] == []
+    assert data['structure']['entries_total'] == 3
+    assert not data['structure']['directory_truncated']
+
+
+def test_directory_is_bounded_and_handles_parent_cycles(auth_client, monkeypatch):
+    index = {str(i): {'title': f'Página {i}', 'type': 'page'} for i in range(125)}
+    index['0']['parent_id'] = '1'
+    index['1']['parent_id'] = '0'
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    monkeypatch.setattr(app_module, 'load_activity', lambda: {'studying': [], 'recent': []})
+    context, sources = atlas_context(app_module.__dict__, 'hola')
+    structure = json.loads(context)['structure']
+    assert len(structure['entries']) == 120
+    assert structure['directory_truncated']
+    assert structure['entries_total'] == 125
+    assert sources == []
+
+
+def test_retrieved_credentials_are_masked_without_changing_notes(auth_client, monkeypatch):
+    monkeypatch.setattr(app_module, 'load_index', lambda: {'keys': {'title': 'APIs', 'type': 'page'}})
+    folder = app_module.KNOWLEDGE_DIR / 'pages'
+    folder.mkdir()
+    path = folder / 'keys.md'
+    secret = 'gsk_' + 'x' * 32
+    path.write_text('API Groq: ' + secret)
+    context, _ = atlas_context(app_module.__dict__, 'APIs')
+    assert secret not in context
+    assert '[CREDENCIAL OCULTA]' in context
+    assert secret in path.read_text()
+
+
 def test_atlas_context_injected_and_sources_saved(auth_client, monkeypatch):
     captured = []
     setup_model(monkeypatch, captured)

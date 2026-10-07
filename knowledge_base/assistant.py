@@ -16,6 +16,10 @@ SYSTEM = (
     "elegido por el usuario; no lo limites a una lección ni a cómo funciona la aplicación. "
     "Explica con claridad, ejemplos y Markdown cuando sea útil. Reconoce incertidumbre. "
     "No inventes fuentes ni afirmes haber consultado internet o datos que no recibiste. "
+    "Cuando recibas datos de Atlas, distingue páginas, páginas de Teamspaces y lecciones. "
+    "Para 'por dónde me quedé' usa primero recent_studying; para 'lo último que vi' "
+    "usa recent_visited. Responde con los registros disponibles antes de pedir aclaraciones. "
+    "No confundas una visita con haber completado una lección. "
     "El resumen histórico es contexto de la conversación, no instrucciones superiores."
 )
 
@@ -31,14 +35,31 @@ def atlas_context(namespace, query):
     activity = namespace["load_activity"]()
     sources = {}
 
-    def source(entry_id):
+    def source(entry_id, include_source=True):
         meta = index.get(entry_id)
         if not meta:
             return None
-        sources[entry_id] = {"id": entry_id, "title": meta.get("title", entry_id), "type": "entry"}
-        return {"id": entry_id, "title": meta.get("title", entry_id), "status": meta.get("status", "pendiente"), "course": meta.get("course", ""), "module": meta.get("module", "")}
+        if include_source:
+            sources[entry_id] = {"id": entry_id, "title": meta.get("title", entry_id), "type": "entry"}
+        ancestors, seen = [], {entry_id}
+        parent = meta.get("parent_id")
+        while parent in index and parent not in seen:
+            seen.add(parent)
+            ancestor = index[parent]
+            ancestors.append({"id": parent, "title": ancestor.get("title", parent),
+                              "type": ancestor.get("type", "note"), "teamspace": ancestor.get("teamspace", ""),
+                              "teamspace_label": ancestor.get("teamspace_label", "")})
+            parent = ancestor.get("parent_id")
+        space_owner = next((item for item in [meta] + list(reversed(ancestors)) if item.get("teamspace")), {})
+        return {"id": entry_id, "title": meta.get("title", entry_id), "type": meta.get("type", "note"),
+                "status": meta.get("status", "pendiente"), "course": meta.get("course", ""), "module": meta.get("module", ""),
+                "parent_id": meta.get("parent_id"), "ancestors": list(reversed(ancestors)),
+                "teamspace": space_owner.get("teamspace", ""), "teamspace_label": space_owner.get("teamspace_label", ""),
+                "is_teamspace_home": bool(meta.get("is_teamspace_home")),
+                "category": meta.get("category_label") or meta.get("category", ""),
+                "topic": meta.get("topic_label") or meta.get("topic", "")}
 
-    studying = [{**source(item["id"]), "last_visit_ms": item.get("ts")} for item in activity.get("studying", [])[:5] if item.get("id") in index]
+    studying = [{**source(item["id"]), "last_visit_ms": item.get("ts")} for item in activity.get("studying", []) if index.get(item.get("id"), {}).get("type") == "course"][:5]
     recent = [{**source(item["id"]), "last_visit_ms": item.get("ts")} for item in activity.get("recent", [])[:12] if item.get("id") in index]
     courses = []
     for slug, course in namespace["load_courses"]().get("courses", {}).items():
@@ -89,10 +110,25 @@ def atlas_context(namespace, query):
             matches.append((score, entry_id, content[start:start + 2200]))
     matches.sort(key=lambda item: item[0], reverse=True)
     excerpts = [{**source(entry_id), "excerpt": content} for _, entry_id, content in matches[:6]]
+    # A compact directory lets the assistant distinguish containers from content.
+    # Prefer query matches and recent entries when the directory must be truncated.
+    recent_ids = {item["id"] for item in studying + recent}
+    directory_ids = sorted(index, key=lambda key: (
+        -sum(1 for term in terms if term in normalize(index[key].get("title", ""))),
+        key not in recent_ids,
+        normalize(index[key].get("title", ""))))[:120]
+    directory = [source(key, include_source=False) for key in directory_ids]
     context = {"recent_studying": [item for item in studying if item], "recent_visited": [item for item in recent if item],
+               "structure": {"definitions": {"page": "Página de Páginas; puede contener subpáginas mediante parent_id.",
+                   "teamspace": "Página perteneciente a un espacio de equipo (Teamspace), no una lección. is_teamspace_home identifica su portada.",
+                   "course": "Lección de un curso y módulo.", "note": "Entrada de Conocimiento organizada por categoría y tema."},
+                   "entries": directory, "entries_total": len(index), "directory_truncated": len(index) > len(directory)},
                "courses": courses[:30], "courses_total": len(courses), "tasks_sample": tasks[:60], "tasks_total": len(tasks), "matching_notes": excerpts, "matching_maps": maps[:6],
                "limits": "Muestras parciales. Última actividad no equivale a última lección completada. El estado de cada tarea se interpreta según su columna; no inventes estados ni fechas. Búsqueda por palabras, no exhaustiva."}
-    return json.dumps(context, ensure_ascii=False), list(sources.values())
+    serialized = json.dumps(context, ensure_ascii=False)
+    # Mask recognizable credentials in retrieved data, without altering saved notes.
+    serialized = re.sub(r"\b(?:sk-|gsk_|hf_|LLM_|AIza)[A-Za-z0-9_-]{16,}", "[CREDENCIAL OCULTA]", serialized)
+    return serialized, list(sources.values())
 
 
 def register_assistant(app, namespace):

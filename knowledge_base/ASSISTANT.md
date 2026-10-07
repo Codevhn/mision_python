@@ -6,13 +6,17 @@ Shift+Enter agrega una línea. Puedes retomar o eliminar conversaciones desde el
 historial. **Detener** interrumpe la petición; una respuesta parcial no se guarda.
 
 Con **Consultar mis notas, cursos y pendientes** activo, cada pregunta incorpora
-datos actuales de Atlas: actividad reciente, progreso de cursos, columnas y
+datos actuales de Atlas: páginas, Teamspaces y su jerarquía, actividad reciente, progreso de cursos, columnas y
 tareas de tableros, notas y mapas relacionados. El desplegable **Contenido de
 Atlas consultado** permite abrir las fuentes disponibles para esa respuesta.
 Las notas se buscan por palabras en título y contenido. Se envían fragmentos y
 muestras limitadas: esta versión no hace búsqueda semántica, no lee el contenido
 de PDF/EPUB ni navega por Internet. La última visita no demuestra que una lección
 esté completada. Los pendientes se interpretan según estados y columnas guardados.
+El directorio incluye hasta 120 entradas, priorizando coincidencias y actividad
+reciente; indica si está recortado y conserva los ancestros de cada entrada.
+Los formatos reconocibles de credenciales se ocultan en el contexto recuperado;
+este filtro no cubre todos los formatos posibles ni modifica notas guardadas.
 
 Puedes desactivar la consulta de Atlas para una conversación general. El modelo
 seleccionado recibe los mensajes del hilo y, cuando está activo, el contexto de
