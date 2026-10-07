@@ -5337,7 +5337,11 @@ def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None
 def _provider_models(pid, cfg):
     if pid == "omniroute":
         return _fetch_omniroute_models()
-    return _fetch_openrouter_free_models() if pid == "openrouter" else cfg["models"]
+    # OpenRouter is available through the user's OmniRoute combo. Its full
+    # public catalog should not clutter the picker or the fallback rotation.
+    if pid == "openrouter":
+        return []
+    return cfg["models"]
 
 
 @app.route("/api/ai/providers")

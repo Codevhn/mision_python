@@ -5,6 +5,24 @@ import urllib.error
 import app as app_module
 
 
+def test_picker_keeps_direct_models_and_omniroute_combos(auth_client, monkeypatch):
+    combos = ["OpenCode Go", "OpenCode Zen", "OpenRouter", "Groq", "OpenCode Go High and Max effort", "Google IA Studio", "HuggingFace"]
+    monkeypatch.setenv("OMNIROUTE_MODELS", ",".join(combos))
+    for cfg in app_module.PROVIDERS.values():
+        monkeypatch.setenv(cfg["env"], "test-key")
+
+    def unexpected_catalog():
+        raise AssertionError("OpenRouter individual catalog must not be fetched")
+
+    monkeypatch.setattr(app_module, "_fetch_openrouter_free_models", unexpected_catalog)
+    response = auth_client.get("/api/ai/providers")
+    providers = {p["id"]: p for p in response.json["providers"]}
+    assert set(providers) == {"omniroute", "deepseek", "groq", "gemini"}
+    assert [model["id"] for model in providers["omniroute"]["models"]] == combos
+    assert sum(len(providers[pid]["models"]) for pid in ("deepseek", "groq", "gemini")) == 6
+    assert all(pid != "openrouter" for pid, model in app_module._list_available_ai_models())
+
+
 def test_catalog_auth_cache_and_colon_ids(auth_client, monkeypatch):
     monkeypatch.setenv("OMNIROUTE_API_KEY", "test-omniroute-key")
     monkeypatch.delenv("OMNIROUTE_MODELS", raising=False)
