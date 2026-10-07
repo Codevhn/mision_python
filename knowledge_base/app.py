@@ -4855,13 +4855,14 @@ DEFAULT_MODEL = "deepseek-v4-pro"
 _OPENROUTER_FREE_MODELS_CACHE = {"models": None, "fetched_at": 0.0}
 _OPENROUTER_FREE_MODELS_TTL = 3600
 
-_OMNIROUTE_MODELS_CACHE = {"models": None, "fetched_at": 0.0, "source": None}
+_OMNIROUTE_MODELS_CACHE = {"models": None, "fetched_at": 0.0, "source": None, "error": None}
 
 
 def _fetch_omniroute_models():
     # Explicit IDs also allow selecting combos not included in /v1/models.
     configured = os.environ.get("OMNIROUTE_MODELS", "")
     if configured.strip():
+        _OMNIROUTE_MODELS_CACHE["error"] = None
         return [{"id": mid, "label": mid, "hint": "Modelo o combo vía OmniRoute"}
                 for mid in dict.fromkeys(x.strip() for x in configured.split(",")) if mid]
     url = PROVIDERS["omniroute"]["base_url"].removesuffix("/chat/completions") + "/models"
@@ -4871,7 +4872,7 @@ def _fetch_omniroute_models():
     cache = _OMNIROUTE_MODELS_CACHE
     source = (url, api_key)
     if cache["source"] != source:
-        cache.update(models=None, fetched_at=0.0, source=source)
+        cache.update(models=None, fetched_at=0.0, source=source, error=None)
     if cache["models"] is not None and time.time() - cache["fetched_at"] < 300:
         return cache["models"]
     try:
@@ -4886,9 +4887,25 @@ def _fetch_omniroute_models():
                 models.append({"id": mid, "label": item.get("name") or mid, "hint": "Vía OmniRoute"})
                 seen.add(mid)
         models.sort(key=lambda item: item["label"].lower())
-        cache.update(models=models, fetched_at=time.time())
+        cache.update(models=models, fetched_at=time.time(), error=None if models else "OmniRoute devolvió un catálogo vacío. Configura OMNIROUTE_MODELS con los identificadores de tus combos.")
         return models
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            message = f"OmniRoute rechazó el catálogo (HTTP {error.code}). Revisa la clave OMNIROUTE_API_KEY y sus permisos."
+        else:
+            message = f"No se pudo consultar OmniRoute (HTTP {error.code}). Revisa que OmniRoute y el túnel estén activos y que OMNIROUTE_BASE_URL siga vigente."
+        cache["error"] = message
+        app.logger.warning("%s", message)
+        return cache["models"] or []
+    except OSError:
+        message = "No se pudo conectar con OmniRoute. Revisa OMNIROUTE_BASE_URL y que OmniRoute y el túnel estén activos."
+        cache["error"] = message
+        app.logger.warning("%s", message)
+        return cache["models"] or []
+    except (ValueError, KeyError, TypeError, AttributeError):
+        message = "OmniRoute devolvió un catálogo con formato inesperado. Configura OMNIROUTE_MODELS con los identificadores de tus combos."
+        cache["error"] = message
+        app.logger.warning("%s", message)
         return cache["models"] or []
 
 
@@ -5328,14 +5345,19 @@ def list_ai_providers():
     """Only lists providers whose API key is actually configured, so the
     frontend's model selector never offers a choice that would just 503."""
     available = []
+    warnings = []
     for pid, cfg in PROVIDERS.items():
         if not os.environ.get(cfg["env"]):
+            if pid == "omniroute":
+                warnings.append({"provider": pid, "message": "OmniRoute: falta configurar OMNIROUTE_API_KEY en Fly.io."})
             continue
         models = _provider_models(pid, cfg)
+        if pid == "omniroute" and _OMNIROUTE_MODELS_CACHE.get("error"):
+            warnings.append({"provider": pid, "message": _OMNIROUTE_MODELS_CACHE["error"]})
         if not models:
             continue  # OpenRouter's catalog fetch failed / returned nothing free right now
         available.append({"id": pid, "label": cfg["label"], "models": models})
-    return jsonify({"providers": available, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
+    return jsonify({"providers": available, "warnings": warnings, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
 
 
 def _list_available_ai_models():

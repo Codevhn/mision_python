@@ -11640,8 +11640,18 @@ function _mountModelSelector(container, { context, value, onChange }) {
   container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> modelos…</div>`;
   _getAvailableProviders().then(data => {
     if (!container.isConnected) return; // panel/parent was closed or re-rendered while this was in flight
+    const showWarnings = () => {
+      (data.warnings || []).forEach(warning => {
+        const note = document.createElement('div');
+        note.className = 'practice-empty-note';
+        note.setAttribute('role', 'status');
+        note.textContent = warning.message;
+        container.appendChild(note);
+      });
+    };
     if (!data.providers || !data.providers.length) {
       container.innerHTML = `<div class="practice-empty-note">Sin proveedores de IA configurados.</div>`;
+      showWarnings();
       onChange(null);
       return;
     }
@@ -11654,6 +11664,7 @@ function _mountModelSelector(container, { context, value, onChange }) {
     const wrap = document.createElement('div');
     container.innerHTML = '';
     container.appendChild(wrap);
+    showWarnings();
     _mountPracticeCustomSelect(wrap, {
       options,
       value: initial ? `${initial.provider}:${initial.model}` : '',
