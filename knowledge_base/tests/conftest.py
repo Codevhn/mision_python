@@ -40,6 +40,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "RELATIONS_FILE", data_dir / "relations.json")
     monkeypatch.setattr(app_module, "ACTIVITY_FILE", data_dir / "activity.json")
     monkeypatch.setattr(app_module, "MINDMAPS_FILE", data_dir / "mindmaps.json")
+    monkeypatch.setattr(app_module, "CONCEPT_MAPS_FILE", data_dir / "concept_maps.json")
     monkeypatch.setattr(app_module, "CONCEPTS_FILE", data_dir / "concepts.json")
     monkeypatch.setattr(app_module, "CONCEPT_PROGRESS_FILE", data_dir / "concept_progress.json")
 

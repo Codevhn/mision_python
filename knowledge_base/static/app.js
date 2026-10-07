@@ -6437,7 +6437,7 @@ function setSidebarVisible(visible) {
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library', 'assistant'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6462,7 +6462,7 @@ function setSidebarVisible(visible) {
   }
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
-  function switchSpace(space) {
+  function switchSpace(space, targetMapId = null) {
     // Close floating panels that live outside #entryView
     closeHistoryPanel();
     closeTOC();
@@ -6520,6 +6520,7 @@ function setSidebarVisible(visible) {
     if (labView)        labView.classList.add('hidden');
     if (libraryView)        libraryView.classList.add('hidden');
     if (libraryReaderView)  libraryReaderView.classList.add('hidden');
+    $('assistantArea')?.classList.add('hidden');
     if (courseView)     courseView.classList.add('hidden');
     if (courseEmptySt)  courseEmptySt.classList.add('hidden');
     if (kanbanArea)     kanbanArea.classList.add('hidden');
@@ -6549,7 +6550,12 @@ function setSidebarVisible(visible) {
       return;
     }
 
-    if (space === 'graph') {
+    if (space === 'assistant') {
+      $('contentArea').scrollTop = 0;
+      window.scrollTo(0, 0);
+      $('assistantArea')?.classList.remove('hidden');
+      window.AssistantApp?.open();
+    } else if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
     } else if (space === 'radar') {
@@ -6569,9 +6575,9 @@ function setSidebarVisible(visible) {
       if (courseEmptySt) courseEmptySt.classList.remove('hidden');
     } else if (space === 'mindmaps') {
       // Land directly on the prompt-first screen — no intermediate empty state
-      if (window.MindmapApp) window.MindmapApp.showList();
+      if (window.MindmapApp) targetMapId ? window.MindmapApp.showMap(targetMapId) : window.MindmapApp.showList();
     } else if (space === 'conceptmaps') {
-      if (window.ConceptMapApp) window.ConceptMapApp.showList();
+      if (window.ConceptMapApp) targetMapId ? window.ConceptMapApp.showMap(targetMapId) : window.ConceptMapApp.showList();
     } else if (space === 'practice') {
       if (practiceView) practiceView.classList.remove('hidden');
       if (typeof _renderPracticeSpace === 'function') _renderPracticeSpace();
@@ -6608,6 +6614,8 @@ function setSidebarVisible(visible) {
     // Store current space
     try { sessionStorage.setItem('activeSpace', space); } catch(e) {}
   }
+
+  window._openAtlasMap = (kind, id) => switchSpace(kind === 'conceptmap' ? 'conceptmaps' : 'mindmaps', id);
 
   function init() {
     // Wire space buttons. Re-clicking the space you're already in just

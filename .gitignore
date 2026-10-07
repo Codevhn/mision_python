@@ -17,6 +17,8 @@ knowledge_base/data/backups/
 knowledge_base/data/index.db
 knowledge_base/data/index.db-wal
 knowledge_base/data/index.db-shm
+knowledge_base/data/assistant.db
+knowledge_base/data/assistant.db-journal
 
 # Biblioteca — uploaded books and their runtime metadata (progress,
 # marcadores, resaltados/notas), same reasoning as covers/ and backups/ above

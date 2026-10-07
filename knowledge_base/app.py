@@ -8439,5 +8439,8 @@ def library_ocr_status(book_id):
     return jsonify(_OCR_JOBS.get(book_id, {"status": "idle", "progress": 0, "error": None}))
 
 
+from assistant import register_assistant
+register_assistant(app, globals())
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

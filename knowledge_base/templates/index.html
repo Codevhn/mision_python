@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="/static/kanban.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/mindmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/conceptmap.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/assistant.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
@@ -121,6 +122,10 @@
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
         </button>
+        <button class="ab-item" id="abAssistant" data-space="assistant" title="Asistente">
+          <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 2.5h10v8H7l-4 3z"/><path d="M5.5 5.5h5M5.5 8h3"/></svg></span>
+          <span class="ab-label">Asistente</span>
+        </button>
         <button class="ab-item" id="abLibrary" data-space="library" title="Biblioteca">
           <span class="ab-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2.8h4.2a1.6 1.6 0 0 1 1.6 1.6v9.4A1.4 1.4 0 0 0 6.4 12.4H2z"/><path d="M14 2.8H9.8a1.6 1.6 0 0 0-1.6 1.6v9.4a1.4 1.4 0 0 1 1.4-1.4H14z"/></svg></span>
           <span class="ab-label">Biblioteca</span>
@@ -176,6 +181,7 @@
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
         <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
+        <button class="msn-item" id="msnAssistant" data-space="assistant"><span class="msn-icon">✦</span><span class="msn-label">Asistente</span></button>
         <button class="msn-item" id="msnLibrary" data-space="library"><span class="msn-icon">📚</span><span class="msn-label">Biblioteca</span></button>
       </nav>
       <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
@@ -544,6 +550,7 @@
       <!-- MINDMAP VIEW -->
       <div class="mindmap-area hidden" id="mindmapArea"></div>
       <div class="concept-map-area hidden" id="conceptMapArea"></div>
+      <section class="assistant-area hidden" id="assistantArea" aria-label="Asistente conversacional"></section>
 
       <!-- NAV BACK BAR (shared, visible when there's history) -->
       <div class="nav-back-bar hidden" id="navBackBar">
@@ -1482,6 +1489,7 @@
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
   <script src="/static/conceptmap.js?v={{ v }}"></script>
+  <script src="/static/assistant.js?v={{ v }}"></script>
   <!-- Biblioteca: pdf.js/epub.js vendorizados en /static/vendor (sin CDN).
        pdf.js 4.x se distribuye como módulo ES; se expone en window.pdfjsLib
        para que library.js (script clásico) pueda usarlo igual que el resto. -->
