@@ -71,6 +71,9 @@
 .assistant-sources { margin-top: 12px; font-size: 0.78rem; color: var(--text-muted); }
 .assistant-sources summary { cursor: pointer; }
 .assistant-sources button { display: block; max-width: 100%; padding: 6px 0; border: 0; background: none; color: var(--accent); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.assistant-sources button, .assistant-message-content a { text-decoration-thickness:1px; text-underline-offset:3px; text-decoration-skip-ink:auto; }
+.assistant-sources button:is(:hover,:focus-visible), .assistant-message-content a:is(:hover,:focus-visible) { text-decoration-line:underline; color:var(--accent-hover); }
+.assistant-message-content a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
 
 .assistant-message { margin-bottom:24px; }
 .assistant-message-content { font-size:.9rem; line-height:1.7; }
