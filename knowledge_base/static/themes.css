@@ -55,7 +55,7 @@
 [data-style="aero"] .home-date { color:#365b79; }
 [data-style="aero"] .home-card, [data-style="aero"] .home-stat, [data-style="aero"] .home-resume-banner,
 [data-style="aero"] .home-study-card, [data-style="aero"] .home-reminder-card {
- background:var(--aero-glass) !important; border:1px solid #ffffffa6 !important; border-radius:12px; box-shadow:var(--aero-shadow); backdrop-filter:blur(12px);
+ background:var(--aero-glass) !important; border:1px solid var(--border) !important; border-radius:12px; box-shadow:var(--aero-shadow); backdrop-filter:blur(12px);
 }
 [data-style="aero"] .home-card-cover { background:linear-gradient(150deg,#e9f7ff,#aad1ef); }
 [data-style="aero"] .home-card-body { background:#f5faffc9; }
@@ -88,18 +88,18 @@
  border-color:#659dc280; box-shadow:inset 0 0 0 1px #ffffffaa; color:#183e5a;
 }
 [data-style="aero"] .home-card, [data-style="aero"] .home-study-featured, [data-style="aero"] .home-study-compact, [data-style="aero"] .home-stat {
- border-radius:7px !important; border:1px solid #7aa5c25c !important;
- box-shadow:0 3px 10px #183f5b17,inset 0 0 0 1px #ffffffc2 !important;
+ border-radius:7px !important; border:1px solid var(--border) !important;
+ box-shadow:0 3px 10px #183f5b17,inset 0 1px 0 var(--aero-inset) !important;
 }
-[data-style="aero"] .home-study-featured, [data-style="aero"] .home-study-compact { background:var(--aero-glass); }
+[data-style="aero"] .home-study-featured, [data-style="aero"] .home-study-compact { background:var(--aero-glass) !important; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
 [data-style="aero"] .home-card::before { border-radius:7px !important; }
 [data-style="aero"] .home-card::after { display:none !important; }
 [data-style="aero"] .home-card-cover { border-radius:6px 6px 0 0 !important; }
-[data-style="aero"] .home-card-body { background:#f2f8fcd9 !important; border-top:1px solid #ffffffb3; }
+[data-style="aero"] .home-card-body { background:#f2f8fcd9 !important; border-top:1px solid var(--border); }
 [data-style="aero"] .home-card-title { color:#20384b !important; font-weight:500 !important; }
 [data-style="aero"] .home-card:hover, [data-style="aero"] .home-study-featured:hover, [data-style="aero"] .home-study-compact:hover {
- transform:none !important; border-color:#4a94c5b3 !important;
- box-shadow:0 3px 12px #124d7922,inset 0 0 0 1px #f7fcff,0 0 0 1px #80bce73d !important;
+ transform:none !important; border-color:var(--aero-select-border) !important;
+ box-shadow:0 3px 12px #124d7922,inset 0 1px 0 var(--aero-inset) !important;
 }
 [data-style="aero"] .assistant-area { border-radius:8px; border-color:#effaffd9; outline:1px solid #376d9580; box-shadow:0 14px 45px #133d5a40,inset 0 0 0 1px #ffffff50; }
 [data-style="aero"] .assistant-header { padding:7px 9px 7px 13px; min-height:44px; background:linear-gradient(180deg,#eaf8ff90 0%,#ffffff38 45%,#98c7e438 46%,#c9e7f96b 100%); border-bottom:1px solid #ffffff9c; }
@@ -474,3 +474,9 @@
 .atlas-spelling-proposals label { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:12px; margin:10px 0; font-size:.85rem; }
 .atlas-spelling-proposals select { width:100%; padding:7px; border:1px solid var(--border); border-radius:3px; background:var(--aero-field); color:var(--text); font:inherit; }
 .atlas-spelling-preview { margin:14px 0; padding:12px; border:1px solid var(--border); border-radius:3px; white-space:pre-wrap; background:var(--aero-field); color:var(--text); font-size:.85rem; }
+
+/* Dashboard glass follows its variant, overriding legacy light-mode surfaces. */
+[data-style="aero"] .home-stats-strip { background:transparent !important; border-color:var(--border) !important; box-shadow:0 4px 14px #071c3226 !important; }
+[data-style="aero"] :is(.hsf-title,.hsc-title) { color:var(--text) !important; }
+[data-style="aero"] :is(.hsf-time,.hsc-time) { color:var(--text-muted) !important; }
+:root[data-style="aero"] .home-stat[data-stat]:hover { background:var(--aero-glass) !important; border-color:var(--aero-select-border) !important; box-shadow:0 3px 12px #124d7922,inset 0 1px 0 var(--aero-inset) !important; }
