@@ -970,3 +970,8 @@
 [data-style="opencode"][data-palette]:not([data-palette=""]) .assistant-launcher {
  background:var(--layer-2) !important; color:var(--text) !important; border:1px solid var(--accent) !important; box-shadow:none !important;
 }
+
+/* The live document shares its page canvas in every palette. An opaque
+   BlockNote background creates a second rectangle over Aero's desktop. */
+#entryBody .bn-container { --bn-colors-editor-background:transparent !important; }
+#entryBody .bn-editor { background:transparent !important; }
