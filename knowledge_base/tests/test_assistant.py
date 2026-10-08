@@ -52,6 +52,7 @@ def setup_model(monkeypatch, captured):
 def test_assistant_requires_auth(client):
     assert client.get('/api/assistant/conversations').status_code == 401
     assert client.post('/api/assistant/conversations', json={}).status_code == 401
+    assert client.get('/api/assistant/conversations/resume?type=entry&id=page-a').status_code == 401
 
 
 def test_conversation_persists_thread_separate_from_lessons(auth_client, monkeypatch):
@@ -699,3 +700,36 @@ def test_study_heading_cleanup_preserves_code_and_specific_titles():
     from assistant import clean_study_headings
     text = '## Definición formal\nDato.\n## Definición de interfaces\nDetalle.\n```markdown\n## Conclusión\n```\n> **Definición**\n'
     assert clean_study_headings(text) == text.replace('## Definición formal\n', '')
+
+
+def test_resume_finds_latest_page_chat_and_excludes_roadmaps(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    def chat(page, *, legacy=False):
+        conversation = create(auth_client)
+        payload = {'prompt': 'Explica el concepto.', 'use_atlas': False,
+                   'selection_context': {'title': 'Mismo título', 'text': 'Tema', 'entry_id': page}}
+        if not legacy:
+            payload['current_context'] = {'type': 'entry', 'id': page}
+        response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json=payload)
+        assert 'event: done' in response.get_data(as_text=True)
+        return conversation
+    first = chat('page-a')
+    chat('page-b')
+    legacy = chat('page-a', legacy=True)
+    result = auth_client.get('/api/assistant/conversations/resume?type=entry&id=page-a').json['conversation']
+    assert result['id'] == legacy
+    assert '<p>' in result['messages'][1]['html']
+    assert result['messages'][0]['selection_context']['entry_id'] == 'page-a'
+    # A roadmap must not be restored as a study chat, even with the same scope.
+    roadmap = chat('page-a')
+    database = app_module.DATA_DIR / 'assistant.db'
+    with sqlite3.connect(database) as db:
+        payload = json.loads(db.execute('SELECT payload FROM conversations WHERE id=?', (roadmap,)).fetchone()[0])
+        payload['messages'][1]['roadmap_draft'] = {'modules': []}
+        db.execute('UPDATE conversations SET payload=? WHERE id=?', (json.dumps(payload), roadmap))
+    assert auth_client.get('/api/assistant/conversations/resume?type=entry&id=page-a').json['conversation']['id'] == legacy
+    auth_client.delete('/api/assistant/conversations/' + legacy)
+    assert auth_client.get('/api/assistant/conversations/resume?type=entry&id=page-a').json['conversation']['id'] == first
+    assert auth_client.get('/api/assistant/conversations/resume?type=entry&id=missing').json['conversation'] is None
+    assert auth_client.get('/api/assistant/conversations/resume?type=invalid&id=page-a').status_code == 400

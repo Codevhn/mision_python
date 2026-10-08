@@ -47,9 +47,15 @@
  --aero-nav-ink:var(--text); --aero-nav-shadow:inset 0 1px 0 var(--aero-inset),0 0 10px color-mix(in srgb,var(--accent) 22%,transparent); --aero-nav-highlight:var(--aero-inset);
  --grad-primary:linear-gradient(var(--accent),color-mix(in srgb,var(--accent) 78%,black));
 }
-.course-theme-controls { display:grid; gap:10px; padding:16px; margin:16px 20px; border:1px solid var(--border); border-radius:5px; background:var(--aero-glass,var(--bg-elevated)); font-size:.85rem; }
+.course-theme-controls { display:grid; gap:12px; padding:18px; margin:16px 20px; border:1px solid var(--border); border-radius:5px; background:var(--aero-glass,var(--bg-elevated)); color:var(--text); font: .95rem/1.5 var(--font-ui); }
 .course-theme-controls[hidden] { display:none; }
+.course-theme-controls strong { font-size:1.05rem; line-height:1.4; font-weight:600; overflow-wrap:anywhere; }
 .course-theme-controls label { display:flex; align-items:center; gap:8px; }
 .course-theme-controls input { accent-color:var(--accent); width:18px; height:18px; flex:none; }
-.course-theme-controls small { color:var(--text-muted); line-height:1.4; }
-.course-theme-controls button { justify-self:start; }
+.course-theme-controls small { color:var(--text); font-size:.875rem; line-height:1.55; }
+.course-theme-controls button { justify-self:start; color:var(--text) !important; font-size:.875rem !important; min-height:32px; padding:6px 12px; }
+[data-style="aero"] .course-theme-controls { box-shadow:inset 0 1px 0 var(--aero-inset),0 2px 7px #0002; }
+[data-style="aero"] .course-theme-controls :is(strong,label,small,button) { text-shadow:0 1px 1px color-mix(in srgb,var(--bg) 88%,transparent),0 0 6px color-mix(in srgb,var(--text) 20%,transparent); }
+[data-style="aero"] .course-theme-controls button { background:var(--aero-button) !important; border-color:var(--border) !important; box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] .course-theme-controls button:hover:not(:disabled) { background:var(--aero-selection) !important; }
+@media(max-width:600px) { .course-theme-controls { margin:14px 12px; padding:16px; } }

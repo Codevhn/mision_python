@@ -5,6 +5,7 @@
   const escape = text => window.escapeHtml(String(text || ''));
   let record = null, choice = null, busy = false, controller = null, mounted = false;
   let loadSequence = 0, visibleContext = null, returnFocus = null;
+  let forceNewConversation = false;
   let selectedFragment = null, fragmentSent = false;
   let modelReady = Promise.resolve();
   let modelNames = new Map();
@@ -307,10 +308,27 @@
       status('Cargando conversación…');
       const loaded = await api(`/api/assistant/conversations/${id}`);
       if (sequence !== loadSequence) return;
-      clearSelection(); record = loaded; renderConversation(); el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false'); await refreshHistory();
+      clearSelection(); record = loaded; forceNewConversation = false; renderConversation(); closeHistory(); await refreshHistory();
       status(loaded.memory ? 'Historial guardado · Los turnos antiguos se resumen para mantener el contexto.' : 'Historial guardado');
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
+  }
+  function closeHistory() {
+    el('assistantHistoryPanel')?.classList.add('hidden');
+    el('assistantHistoryToggle')?.setAttribute('aria-expanded', 'false');
+  }
+  async function restoreContextConversation(context) {
+    if (busy || forceNewConversation || !context?.id) return;
+    const sequence = ++loadSequence;
+    setBusy(true);
+    el('assistantStop').classList.add('hidden');
+    try {
+      const saved = await api(`/api/assistant/conversations/resume?${new URLSearchParams({type:context.type,id:context.id})}`);
+      if (sequence === loadSequence && saved.conversation) {
+        clearSelection(); record = saved.conversation; renderConversation();
+        status('Conversación de esta página recuperada.');
+      }
+    } finally { setBusy(false); }
   }
   async function expandRoadmap(message) {
     if(busy){status('Espera a que termine la consulta actual antes de ampliar.',true);return;}
@@ -332,6 +350,7 @@
     const expanding=Number.isInteger(options.expand_from);
     try{
       if(!reuse || !record)record=await api('/api/assistant/conversations',post({}));
+      forceNewConversation = false;
       clearSelection();renderConversation();
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       const depth={superficial:'Superficial',estandar:'Estándar',profundo:'Profunda'}[options.depth]||'Estándar';
@@ -374,6 +393,7 @@
     let completed = false, content = null, partial = '';
     try {
       if (!record) record = await api('/api/assistant/conversations', post({}));
+      forceNewConversation = false;
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction });
       content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
@@ -461,11 +481,18 @@
     document.getElementById('aiPanel')?.classList.add('hidden');
     // Keep concepts from the same page together, but never append them to
     // a roadmap conversation or a conversation belonging to another page.
-    const previousSelection = record?.messages.findLast(message => message.selection_context)?.selection_context;
-    const scope = record?.context_scope || (previousSelection?.entry_id ? {type:'entry',id:previousSelection.entry_id} : null);
-    const samePage = visible?.id && scope?.id === visible.id && scope.type === visible.type;
-    const isRoadmap = record?.messages.some(message => message.roadmap_draft || message.roadmap_request);
-    if (!samePage || isRoadmap) {
+    const matchesPage = () => {
+      const previousSelection = record?.messages.findLast(message => message.selection_context)?.selection_context;
+      const scope = record?.context_scope || (previousSelection?.entry_id ? {type:'entry',id:previousSelection.entry_id} : null);
+      return visible?.id && scope?.id === visible.id && scope.type === visible.type &&
+        !record?.messages.some(message => message.roadmap_draft || message.roadmap_request);
+    };
+    if (!matchesPage()) {
+      try { await restoreContextConversation(visible); }
+      catch (error) { status(`No se pudo recuperar la conversación: ${error.message}`, true); return; }
+    }
+    const samePage = matchesPage();
+    if (!samePage) {
       ++loadSequence;
       record = null;
     }
@@ -497,7 +524,14 @@
     area.classList.remove('hidden');
     el('assistantLauncher').classList.add('hidden');
     el('assistantLauncher').setAttribute('aria-expanded', 'true');
-    if (mounted) { captureContext(); el('assistantInput').focus({preventScroll:true}); return; }
+    if (mounted) {
+      captureContext();
+      if (!record) {
+        try { await restoreContextConversation(visibleContext); }
+        catch (error) { status(error.message, true); }
+      }
+      el('assistantInput').focus({preventScroll:true}); return;
+    }
     mounted = true;
     area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantMinimize" aria-label="Minimizar asistente" title="Minimizar sin perder la conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 9h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Actualizar vista actual</button><p>La ubicación y el contenido de la vista abierta se actualizan al enviar cada consulta. Puedes desactivar este contexto.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
     captureContext();
@@ -540,19 +574,22 @@
     el('assistantNew').addEventListener('click', () => {
       if (busy) return;
       el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
-      ++loadSequence; clearSelection(); record = null; el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; renderConversation(); refreshHistory().catch(error => status(error.message, true));
+      ++loadSequence; clearSelection(); record = null; forceNewConversation = true; el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; renderConversation(); refreshHistory().catch(error => status(error.message, true));
       status('Nueva conversación'); el('assistantInput').focus();
     });
     renderConversation();
-    try { await refreshHistory(); } catch (error) { status(error.message, true); }
+    try { await refreshHistory(); await restoreContextConversation(visibleContext); } catch (error) { status(error.message, true); }
   }
   document.addEventListener('pointerdown',event=>{
+    const history = el('assistantHistoryPanel'), toggle = el('assistantHistoryToggle');
+    if (history && !history.classList.contains('hidden') && !history.contains(event.target) && !toggle.contains(event.target)) closeHistory();
     area.querySelectorAll('.assistant-response-menu[open]').forEach(menu=>{if(!menu.contains(event.target))menu.open=false;});
   });
   el('assistantLauncher').addEventListener('click', open);
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented) return;
     if (event.key === 'Escape' && !document.querySelector('dialog[open]') && !area.classList.contains('hidden')) {
+      if (!el('assistantHistoryPanel').classList.contains('hidden')) { closeHistory(); el('assistantHistoryToggle').focus(); return; }
       if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
       const settings = area.querySelector('.assistant-response-menu[open],.assistant-context-menu[open],.assistant-selection details[open]');
       if (settings) { settings.open = false; return; }

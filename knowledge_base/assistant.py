@@ -381,6 +381,31 @@ def register_assistant(app, namespace):
                 message["html"] = namespace["render_markdown"](message["content"])
         return jsonify(record)
 
+    @app.route("/api/assistant/conversations/resume", methods=["GET"])
+    def resume_assistant_conversation():
+        context_type = request.args.get("type")
+        context_id = request.args.get("id")
+        if context_type not in ("entry", "board", "mindmap", "conceptmap", "view") or not context_id or len(context_id) > 300:
+            return jsonify({"error": "Contexto de conversación no válido."}), 400
+        with database() as db:
+            rows = db.execute("SELECT payload FROM conversations ORDER BY updated DESC").fetchall()
+        for row in rows:
+            candidate = json.loads(row[0])
+            messages = candidate.get("messages", [])
+            if not messages or any(message.get("roadmap_draft") or message.get("roadmap_request") for message in messages):
+                continue
+            scope = candidate.get("context_scope")
+            if not scope:
+                selection = next((message["selection_context"] for message in reversed(messages)
+                                  if (message.get("selection_context") or {}).get("entry_id")), None)
+                scope = {"type": "entry", "id": selection["entry_id"]} if selection else None
+            if scope == {"type": context_type, "id": context_id}:
+                for message in messages:
+                    if message["role"] == "assistant":
+                        message["html"] = namespace["render_markdown"](message["content"])
+                return jsonify({"conversation": candidate})
+        return jsonify({"conversation": None})
+
     def compact_context(record, provider, model):
         messages = record["messages"][:-1]
         through = record.get("memory_through", 0)
