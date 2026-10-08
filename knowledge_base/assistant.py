@@ -302,12 +302,14 @@ def register_assistant(app, namespace):
         provider = data.get("provider") or namespace["DEFAULT_PROVIDER"]
         model = data.get("model") or namespace["DEFAULT_MODEL"]
         options = {key: data.get(key, "") for key in ("topic", "depth", "level", "module_count")}
-        summary = f"Genera el roadmap de «{title}». Profundidad: {options['depth'] or 'estándar'}. Nivel: {options['level'] or 'sin especificar'}. Módulos de referencia: {options['module_count'] or 'según el temario'}."
-        if options["topic"]:
-            summary += " Instrucciones adicionales: " + options["topic"]
+        depth_label = {"superficial": "Superficial", "estandar": "Estándar", "profundo": "Profunda"}.get(options["depth"], "Estándar")
+        level_label = {"principiante": "Principiante", "intermedio": "Intermedio", "avanzado": "Avanzado"}.get(options["level"], "Sin especificar")
+        summary = (f"Genera el roadmap con estas opciones:\n\nCurso: {title}\nGranularidad: {depth_label}"
+                   f"\nNivel: {level_label}\nMódulos de referencia: {options['module_count'] or 'La IA decide según el temario'}"
+                   f"\nInstrucciones adicionales: {(options['topic'] or '').strip() or 'Ninguna'}")
         record["messages"].extend([
             {"role": "user", "content": summary,
-             "roadmap_request": {"course_id": course_id, **options}},
+             "roadmap_request": {"course_id": course_id, "course_title": title, **options}},
             {"role": "assistant", "content": "\n".join(parts), "provider": provider, "model": model,
              "sources": [], "roadmap_draft": {"course_id": course_id, "course_title": title, "modules": modules}},
         ])

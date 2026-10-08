@@ -257,20 +257,29 @@
     await open();
     if(busy){status('Espera a que termine la consulta actual antes de generar el roadmap.',true);return;}
     setBusy(true);controller=new AbortController();
+    let progress;
     try{
       if(!reuse || !record)record=await api('/api/assistant/conversations',post({}));
-      clearSelection();renderConversation();await modelReady;setBusy(true);
+      clearSelection();renderConversation();
+      el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
+      const depth={superficial:'Superficial',estandar:'Estándar',profundo:'Profunda'}[options.depth]||'Estándar';
+      const level={principiante:'Principiante',intermedio:'Intermedio',avanzado:'Avanzado'}[options.level]||'Sin especificar';
+      const question=`Genera el roadmap con estas opciones:\n\nCurso: ${options.course_title||'Curso seleccionado'}\nGranularidad: ${depth}\nNivel: ${level}\nMódulos de referencia: ${options.module_count||'La IA decide según el temario'}\nInstrucciones adicionales: ${options.topic?.trim()||'Ninguna'}`;
+      bubble({role:'user',content:question});
+      progress=document.createElement('p');progress.className='assistant-roadmap-progress';progress.setAttribute('role','status');progress.textContent='Preparando la generación…';
+      el('assistantTranscript').append(progress);scrollBottom();
+      await modelReady;setBusy(true);
       const selected=options.provider?{provider:options.provider,model:options.model}:choice;
       if(!selected)throw new Error('Selecciona un modelo configurado para generar el roadmap.');
       status('Generando la propuesta de módulos y lecciones…');
-      const question='Genera el roadmap del curso con las opciones elegidas.';
-      bubble({role:'user',content:question});scrollBottom();
+      progress.textContent=`Generando roadmap con ${modelNames.get(`${selected.provider}:${selected.model}`)||selected.model}…`;
       const result=await api(`/api/assistant/conversations/${record.id}/roadmap`,{
         ...post({...options,...selected,course_id:courseId}),signal:controller.signal});
       record=result;renderConversation();await refreshHistory();
       status('Propuesta lista. Puedes revisarla y aplicarla al curso.');
     }catch(error){
       status(error.name==='AbortError'?'Generación detenida.':error.message,true);
+      if(progress){progress.textContent=error.name==='AbortError'?'Generación detenida. Puedes reintentar con las mismas opciones.':`No se pudo generar el roadmap. ${error.message}`;progress.classList.add('assistant-roadmap-progress-error');}
       const retry=actionButton('Reintentar roadmap con el modelo seleccionado','retry',()=>generateRoadmap(courseId,{...options,provider:choice?.provider,model:choice?.model},true));
       retry.classList.add('assistant-roadmap-retry');el('assistantTranscript').append(retry);
     }finally{setBusy(false);controller=null;}

@@ -9373,6 +9373,7 @@ function initImportRoadmap() {
       body.depth = $('irGenDepth').value;
       body.level = $('irGenLevel').value;
       body.module_count = $('irGenModuleCount').value.trim();
+      body.course_title = $('irCourseIdentity').textContent.replace(/^Curso:\s*/, '');
       const courseSlug=_irState.courseSlug;
       closeImportRoadmapModal();
       await window.AssistantApp.generateRoadmap(courseSlug,body);

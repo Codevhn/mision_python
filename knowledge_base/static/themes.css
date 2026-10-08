@@ -710,6 +710,8 @@
 .theme-options button:is(:hover,:focus-visible) { border-color:var(--accent); box-shadow:inset 0 1px 0 var(--aero-inset),0 0 12px color-mix(in srgb,var(--accent) 22%,transparent); }
 .theme-options button[aria-pressed="true"] { background:var(--aero-selection); box-shadow:inset 0 0 0 1px var(--accent); }
 .theme-options button[aria-pressed="true"] strong::after { content:' · Actual'; color:var(--accent); font-size:.68rem; }
+.assistant-roadmap-progress { padding:12px 14px; margin:12px 18px; border:1px solid var(--border); border-radius:5px; background:var(--aero-toolbar); color:var(--text-muted); font-size:.82rem; line-height:1.5; }
+.assistant-roadmap-progress-error { color:var(--text); border-color:var(--accent); }
 .theme-options strong { font-size:.82rem; }
 .theme-options small { font-size:.7rem; line-height:1.4; }
 .theme-swatch { position:relative; width:66px; height:52px; flex-shrink:0; border-radius:5px; overflow:hidden; }

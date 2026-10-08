@@ -414,7 +414,7 @@ def test_roadmap_uses_course_name_and_persists_draft_without_creating_lessons(au
     monkeypatch.setattr(app_module, '_call_ai_with_fallback', generate)
     route = '/api/assistant/conversations/' + create(auth_client)
     response = auth_client.post(route + '/roadmap', json={'course_id': 'skills', 'topic': '',
-        'depth': 'profundo', 'level': 'avanzado', 'module_count': '6', 'provider': 'deepseek', 'model': 'deepseek-v4-pro'})
+        'depth': 'profundo', 'level': 'avanzado', 'module_count': '6', 'provider': 'deepseek', 'model': 'deepseek-v4-pro', 'course_title': 'Un curso falso'})
     assert response.status_code == 200
     assert '<h2>' in response.json['messages'][-1]['html']
     assert '<h4>Diseñar una skill</h4>' in response.json['messages'][-1]['html']
@@ -430,6 +430,10 @@ def test_roadmap_uses_course_name_and_persists_draft_without_creating_lessons(au
     assert draft['modules'][0]['lessons'][0]['title'] == '1.1 Agentes y herramientas'
     assert 'Diseñar una skill' in draft['modules'][0]['lessons'][0]['content']
     assert record['messages'][0]['roadmap_request']['depth'] == 'profundo'
+    assert record['messages'][0]['roadmap_request']['course_title'] == 'Todo sobre Skills y Agentes de IA'
+    assert 'Granularidad: Profunda\nNivel: Avanzado\nMódulos de referencia: 6' in record['messages'][0]['content']
+    assert 'Instrucciones adicionales: Ninguna' in record['messages'][0]['content']
+    assert 'Un curso falso' not in record['messages'][0]['content']
     assert record['messages'][-1]['model'] == 'deepseek-v4-pro'
     imported = auth_client.post('/api/courses/skills/import', json={'modules': draft['modules']})
     assert imported.status_code == 200
