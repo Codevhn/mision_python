@@ -5181,6 +5181,19 @@ def _clean_ai_error(code, err_body):
     either raw into the UI. Pulls out a short human message when the body is
     parseable JSON in a recognizable shape, always caps the length, and adds
     a plain-language prefix for the error codes users actually hit."""
+    # A proxy or web dashboard can return an HTML error page. It is not a
+    # model response and must never become visible markup in the chat status.
+    if re.search(r"<(?:!doctype\s+html|html|head|body)\b", err_body, re.IGNORECASE):
+        if code == 404:
+            return (
+                "La ruta de la API no se encontró (404). El servidor devolvió una página web, "
+                "no una respuesta de IA. Revisa la URL base de la API y la ruta del proveedor; "
+                "si usas OmniRoute, comprueba la dirección del túnel y /v1/chat/completions."
+            )
+        return (
+            f"El servidor devolvió una página web de error (HTTP {code}), no una respuesta de IA. "
+            "Revisa la conexión y la URL de la API o prueba otro proveedor."
+        )
     detail = None
     try:
         parsed = json.loads(err_body)
