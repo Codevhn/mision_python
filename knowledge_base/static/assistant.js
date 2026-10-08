@@ -26,12 +26,14 @@
     try { await navigator.clipboard.writeText(text); status('Copiado'); button?.setAttribute('aria-label','Contenido copiado'); }
     catch { status('No se pudo copiar. Puedes seleccionar el texto manualmente.',true); }
   }
-  function editDialog(title, fields, save) {
+  function editDialog(title, fields, save, options={}) {
     const dialog=document.createElement('dialog'); dialog.className='assistant-confirm-dialog assistant-edit-dialog';
     dialog.innerHTML='<form><header class="assistant-confirm-header"><h2></h2></header><div class="assistant-confirm-body"></div><footer class="assistant-confirm-actions"><button type="button">Cancelar</button><button type="submit">Guardar</button></footer></form>';
     dialog.querySelector('h2').textContent=title; dialog.setAttribute('aria-label',title);
     const body=dialog.querySelector('.assistant-confirm-body'), inputs={};
-    fields.forEach(field=>{const label=document.createElement('label'),input=document.createElement(field.multiline?'textarea':'input'); label.textContent=field.label; input.value=field.value||'';input.required=!field.readonly;input.readOnly=!!field.readonly;input.maxLength=field.max||100;label.append(input);body.append(label);inputs[field.key]=input;});
+    dialog.querySelector('button[type=submit]').textContent=options.submitLabel||'Guardar';
+    if(options.description){const note=document.createElement('p');note.textContent=options.description;body.append(note);}
+    fields.forEach(field=>{const label=document.createElement('label'),input=document.createElement(field.multiline?'textarea':'input'); label.textContent=field.label; input.value=field.value||'';input.required=!field.readonly&&!field.optional;if(!field.multiline)input.type=field.type||'text';if(field.min!==undefined)input.min=field.min;if(field.maxValue!==undefined)input.max=field.maxValue;input.readOnly=!!field.readonly;input.maxLength=field.max||100;label.append(input);body.append(label);inputs[field.key]=input;});
     const error=document.createElement('p');error.setAttribute('role','status');body.append(error);
     let result=null, saving=false;
     dialog.querySelector('button[type="button"]').addEventListener('click',()=>dialog.close());
@@ -191,7 +193,10 @@
         const apply=document.createElement('button');apply.type='button';apply.className='assistant-roadmap-apply';
         apply.textContent='Revisar y aplicar al curso';
         apply.addEventListener('click',()=>window._previewAssistantRoadmap(message.roadmap_draft));
-        article.append(apply);
+        const tools=document.createElement('div');tools.className='assistant-roadmap-tools';
+        const expand=document.createElement('button');expand.type='button';expand.className='assistant-roadmap-expand';expand.textContent='Ampliar roadmap';expand.addEventListener('click',()=>expandRoadmap(message));
+        tools.append(apply,expand);article.append(tools);
+        if(message.roadmap_draft.added_modules){const note=document.createElement('p');note.className='assistant-roadmap-expansion-note';note.textContent=`${message.roadmap_draft.added_modules} módulos añadidos · ${message.roadmap_draft.modules.length} en total. Los anteriores se conservan.`;article.append(note);}
       }
       sources(article, message.sources);
     } else if(message.role==='user' && record?.messages.at(-1)===message) {
@@ -294,33 +299,46 @@
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
   }
+  async function expandRoadmap(message) {
+    if(busy){status('Espera a que termine la consulta actual antes de ampliar.',true);return;}
+    const conversationId=record?.id,sourceIndex=record?.messages.indexOf(message);
+    if(sourceIndex<0||!message.roadmap_draft)return;
+    const values=await editDialog('Ampliar roadmap',[
+      {key:'count',label:'Módulos adicionales (1–30)',value:'5',type:'number',min:1,maxValue:30},
+      {key:'topic',label:'Temas o enfoque adicional — opcional',multiline:true,optional:true,max:10000}
+    ],values=>values,{submitLabel:'Ampliar',description:`Se conservarán los ${message.roadmap_draft.modules.length} módulos anteriores. Revisarás los nuevos antes de aplicar la propuesta al curso.`});
+    if(!values)return;
+    if(record?.id!==conversationId||record.messages[sourceIndex]!==message){status('La conversación cambió. Vuelve a elegir la propuesta que quieres ampliar.',true);return;}
+    await generateRoadmap(message.roadmap_draft.course_id,{course_title:message.roadmap_draft.course_title,expand_from:sourceIndex,additional_modules:Number(values.count),topic:values.topic},true);
+  }
   async function generateRoadmap(courseId, options={}, reuse=false) {
     await open();
     if(busy){status('Espera a que termine la consulta actual antes de generar el roadmap.',true);return;}
     setBusy(true);controller=new AbortController();
     let progress;
+    const expanding=Number.isInteger(options.expand_from);
     try{
       if(!reuse || !record)record=await api('/api/assistant/conversations',post({}));
       clearSelection();renderConversation();
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       const depth={superficial:'Superficial',estandar:'Estándar',profundo:'Profunda'}[options.depth]||'Estándar';
       const level={principiante:'Principiante',intermedio:'Intermedio',avanzado:'Avanzado'}[options.level]||'Sin especificar';
-      const question=`Genera el roadmap con estas opciones:\n\nCurso: ${options.course_title||'Curso seleccionado'}\nGranularidad: ${depth}\nNivel: ${level}\nMódulos de referencia: ${options.module_count||'La IA decide según el temario'}\nInstrucciones adicionales: ${options.topic?.trim()||'Ninguna'}`;
+      const question=expanding?`Amplía el roadmap de ${options.course_title||'este curso'} sin cambiar los módulos anteriores.\nMódulos adicionales: ${options.additional_modules}\nEnfoque: ${options.topic?.trim()||'Continuar y complementar el temario'}`:`Genera el roadmap con estas opciones:\n\nCurso: ${options.course_title||'Curso seleccionado'}\nGranularidad: ${depth}\nNivel: ${level}\nMódulos de referencia: ${options.module_count||'La IA decide según el temario'}\nInstrucciones adicionales: ${options.topic?.trim()||'Ninguna'}`;
       bubble({role:'user',content:question});
-      progress=document.createElement('p');progress.className='assistant-roadmap-progress';progress.setAttribute('role','status');progress.textContent='Preparando la generación…';
+      progress=document.createElement('p');progress.className='assistant-roadmap-progress';progress.setAttribute('role','status');progress.textContent=expanding?'Preparando la ampliación…':'Preparando la generación…';
       el('assistantTranscript').append(progress);scrollBottom();
       await modelReady;setBusy(true);
       const selected=options.provider?{provider:options.provider,model:options.model}:choice;
       if(!selected)throw new Error('Selecciona un modelo configurado para generar el roadmap.');
-      status('Generando la propuesta de módulos y lecciones…');
-      progress.textContent=`Generando roadmap con ${modelNames.get(`${selected.provider}:${selected.model}`)||selected.model}…`;
+      status(expanding?'Ampliando la propuesta sin cambiar los módulos anteriores…':'Generando la propuesta de módulos y lecciones…');
+      progress.textContent=`${expanding?'Ampliando':'Generando'} roadmap con ${modelNames.get(`${selected.provider}:${selected.model}`)||selected.model}…`;
       const result=await api(`/api/assistant/conversations/${record.id}/roadmap`,{
         ...post({...options,...selected,course_id:courseId}),signal:controller.signal});
       record=result;renderConversation();await refreshHistory();
-      status('Propuesta lista. Puedes revisarla y aplicarla al curso.');
+      status(expanding?'Propuesta ampliada. Puedes revisarla y aplicarla al curso.':'Propuesta lista. Puedes revisarla y aplicarla al curso.');
     }catch(error){
       status(error.name==='AbortError'?'Generación detenida.':error.message,true);
-      if(progress){progress.textContent=error.name==='AbortError'?'Generación detenida. Puedes reintentar con las mismas opciones.':(/^No se pudo generar el roadmap/i.test(error.message)?error.message:`No se pudo generar el roadmap. ${error.message}`);progress.classList.add('assistant-roadmap-progress-error');}
+      if(progress){progress.textContent=error.name==='AbortError'?(expanding?'Ampliación detenida. La propuesta original se conserva.':'Generación detenida. Puedes reintentar con las mismas opciones.'):(/^No se pudo (generar|ampliar) el roadmap/i.test(error.message)?error.message:`No se pudo ${expanding?'ampliar':'generar'} el roadmap. ${error.message}`);progress.classList.add('assistant-roadmap-progress-error');}
       if(error.rawResponse){
         const details=document.createElement('details');details.className='assistant-roadmap-raw';
         const summary=document.createElement('summary');summary.textContent='Ver respuesta recibida del modelo';

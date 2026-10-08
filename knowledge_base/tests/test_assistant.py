@@ -452,6 +452,79 @@ def test_roadmap_failure_does_not_store_a_successful_draft(auth_client, monkeypa
     assert auth_client.post('/api/assistant/conversations/missing/roadmap', json={'course_id': 'skills'}).status_code == 404
 
 
+def test_roadmap_expansion_preserves_original_and_can_expand_again(auth_client, monkeypatch):
+    app_module.save_courses({'courses': {'skills': {'label': 'Skills'}}})
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *a, **k: ('## Fundamentos\n### Agentes\n#### Herramientas', None))
+    route = '/api/assistant/conversations/' + create(auth_client)
+    original = auth_client.post(route + '/roadmap', json={'course_id': 'skills'}).json
+    base = original['messages'][1]['roadmap_draft']['modules']
+    captured = []
+    def expand(system, prompt, **kwargs):
+        captured.append((system, prompt, kwargs))
+        return json.dumps({'modules': [
+            {'title': 'Módulo 99: FUNDAMENTOS', 'lessons': [{'title': 'Agentes'}]},
+            {'title': 'Módulo 1: Arquitectura', 'lessons': [{'title': '1.1 Agentes'}, {'title': '1.2 Componentes', 'subtopics': ['Diseñar interfaces']}]},
+            {'title': 'Despliegue', 'lessons': [{'title': 'Publicar'}]},
+        ]}), None
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', expand)
+    result = auth_client.post(route + '/roadmap', json={'course_id': 'skills', 'expand_from': 1, 'additional_modules': 2, 'topic': 'Arquitectura y despliegue'})
+    assert result.status_code == 200
+    record = result.json
+    assert record['messages'][:2] == original['messages']
+    draft = record['messages'][-1]['roadmap_draft']
+    assert draft['modules'][:len(base)] == base
+    assert [m['title'] for m in draft['modules']] == ['Módulo 1: Fundamentos', 'Módulo 2: Arquitectura', 'Módulo 3: Despliegue']
+    assert draft['modules'][1]['lessons'][0]['title'] == '2.1 Componentes'
+    assert draft['added_modules'] == 2
+    assert 'Diseñar interfaces' in draft['modules'][1]['lessons'][0]['content']
+    assert 'Módulos nuevos solicitados: 2' in captured[0][1]
+    assert 'Agentes' in captured[0][1]
+    assert captured[0][2]['fail_on_truncation'] is True
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *a, **k: ('## Seguridad\n### Permisos', None))
+    second = auth_client.post(route + '/roadmap', json={'course_id': 'skills', 'expand_from': 3, 'additional_modules': 1})
+    assert second.status_code == 200
+    assert second.json['messages'][-1]['roadmap_draft']['modules'][:3] == draft['modules']
+    assert second.json['messages'][-1]['roadmap_draft']['modules'][3]['title'] == 'Módulo 4: Seguridad'
+    assert auth_client.get(route).json['messages'][-1]['roadmap_draft'] == second.json['messages'][-1]['roadmap_draft']
+    assert app_module.load_index() == {}
+
+
+def test_roadmap_expansion_rejects_invalid_or_duplicate_results_without_changes(auth_client, monkeypatch):
+    app_module.save_courses({'courses': {'skills': {'label': 'Skills'}, 'other': {'label': 'Other'}}})
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *a, **k: ('## Fundamentos\n### Agentes', None))
+    route = '/api/assistant/conversations/' + create(auth_client)
+    original = auth_client.post(route + '/roadmap', json={'course_id': 'skills'}).json
+    options = {'course_id': 'skills', 'expand_from': 1, 'additional_modules': 2}
+    for invalid in [{'expand_from': -1}, {'expand_from': True}, {'expand_from': 0}, {'additional_modules': 0}, {'additional_modules': 31}, {'additional_modules': '2'}, {'topic': []}, {'course_id': 'other'}]:
+        assert auth_client.post(route + '/roadmap', json={**options, **invalid}).status_code == 400
+    assert auth_client.post(route + '/roadmap', json=options).status_code == 502
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *a, **k: (None, 'Proveedor caído'))
+    assert auth_client.post(route + '/roadmap', json=options).status_code == 502
+    assert auth_client.get(route).json['messages'] == original['messages']
+    assert app_module.load_index() == {}
+
+
+def test_roadmap_expansion_does_not_overwrite_concurrent_conversation_changes(auth_client, monkeypatch):
+    app_module.save_courses({'courses': {'skills': {'label': 'Skills'}}})
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *a, **k: ('## Fundamentos\n### Agentes', None))
+    route = '/api/assistant/conversations/' + create(auth_client)
+    original = auth_client.post(route + '/roadmap', json={'course_id': 'skills'}).json
+    def concurrent(*args, **kwargs):
+        with sqlite3.connect(app_module.DATA_DIR / 'assistant.db') as db:
+            row = db.execute('SELECT payload FROM conversations WHERE id=?', (original['id'],)).fetchone()
+            changed = json.loads(row[0])
+            changed.update(title='Nombre actualizado', custom_title=True)
+            db.execute('UPDATE conversations SET title=?, payload=?, version=version+1 WHERE id=?',
+                       ('Nombre actualizado', json.dumps(changed), original['id']))
+        return '## Seguridad\n### Permisos', None
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', concurrent)
+    response = auth_client.post(route + '/roadmap', json={'course_id': 'skills', 'expand_from': 1, 'additional_modules': 1})
+    assert response.status_code == 409
+    stored = auth_client.get(route).json
+    assert stored['title'] == 'Nombre actualizado'
+    assert stored['messages'] == original['messages']
+
+
 def test_selected_concepts_keep_history_and_refresh_lesson_context(auth_client, monkeypatch):
     captured = []
     setup_model(monkeypatch, captured)
