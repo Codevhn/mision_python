@@ -41,8 +41,8 @@ function scan(doc,spell) {
 }
 
 export function installInlineSpelling(tip) {
-  let active=true,timer=null,spell=null,issues=[],scannedDoc=null,popup=null,closeTimer=null,review=null;
-  function closePopup(){clearTimeout(closeTimer);popup?.remove();popup=null;}
+  let active=true,timer=null,spell=null,issues=[],scannedDoc=null,popup=null,popupAnchor=null,review=null;
+  function closePopup(){popup?.remove();popup=null;popupAnchor=null;}
   function valid(issue){return active&&!tip.isDestroyed&&tip.state.doc===scannedDoc&&tip.state.doc.textBetween(issue.from,issue.to,'')===issue.word;}
   function apply(edits,doc){
     if(!active||tip.isDestroyed||tip.state.doc!==doc)throw Error('El párrafo cambió. Revísalo de nuevo antes de corregir.');
@@ -87,7 +87,7 @@ export function installInlineSpelling(tip) {
   }
   function showPopup(node){
     const issue=issues[Number(node.dataset.spellingIndex)];if(!issue||!valid(issue))return;
-    if(popup?.dataset.from===String(issue.from)){clearTimeout(closeTimer);return;}
+    if(popup?.dataset.from===String(issue.from))return;
     closePopup();popup=document.createElement('div');popup.className='atlas-spelling-popover';popup.dataset.from=String(issue.from);popup.setAttribute('role','group');popup.setAttribute('aria-label','Sugerencias ortográficas');
     const heading=document.createElement('header');heading.className='atlas-spelling-heading';
     const title=document.createElement('span');title.textContent='Ortografía';
@@ -101,15 +101,20 @@ export function installInlineSpelling(tip) {
     const actions=document.createElement('div');actions.className='atlas-spelling-actions';popup.append(actions);
     button('Corregir párrafo…',()=>reviewParagraph(issue),actions);
     button('Ignorar esta palabra',()=>{ignored.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_ignored',JSON.stringify([...ignored]));}catch{}closePopup();check();},actions);
-    popup.addEventListener('mouseenter',()=>clearTimeout(closeTimer));popup.addEventListener('mouseleave',()=>{closeTimer=setTimeout(closePopup,250);});
-    document.body.append(popup);const rect=node.getBoundingClientRect(),box=popup.getBoundingClientRect();
-    popup.style.left=Math.max(8,Math.min(rect.left,innerWidth-box.width-8))+'px';popup.style.top=(rect.bottom+box.height+8<innerHeight?rect.bottom+6:Math.max(8,rect.top-box.height-6))+'px';
+    popupAnchor=node;document.body.append(popup);positionPopup();
+  }
+  function positionPopup(){
+    if(!popup)return;
+    if(!popupAnchor?.isConnected){closePopup();return;}
+    const rect=popupAnchor.getBoundingClientRect(),box=popup.getBoundingClientRect();
+    popup.style.left=Math.max(8,Math.min(rect.left,innerWidth-box.width-8))+'px';
+    const top=rect.bottom+box.height+8<innerHeight?rect.bottom+6:rect.top-box.height-6;
+    popup.style.top=Math.max(8,Math.min(top,innerHeight-box.height-8))+'px';
   }
   const plugin=new Plugin({key,
     state:{init:()=>DecorationSet.empty,apply:(tr,old)=>tr.getMeta(key)|| (tr.docChanged?DecorationSet.empty:old.map(tr.mapping,tr.doc))},
     props:{decorations:state=>key.getState(state),handleDOMEvents:{
-      mouseover:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-error');if(node){clearTimeout(closeTimer);showPopup(node);}return false;},
-      mouseout:()=>{closeTimer=setTimeout(closePopup,250);return false;},
+      mouseover:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-error');if(node&&!popup)showPopup(node);return false;},
       click:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-error');if(node)showPopup(node);return false;}
     }},
     view:()=>({update:(view,previous)=>{if(view.state.doc!==previous.doc){closePopup();schedule();}},destroy:()=>{active=false;clearTimeout(timer);closePopup();review?.close();}})
@@ -118,8 +123,8 @@ export function installInlineSpelling(tip) {
   dictionary().then(value=>{if(active&&!tip.isDestroyed){spell=value;check();}}).catch(error=>{if(active)window.showToast?.(error.message,'error');});
   const onKey=event=>{if(event.key==='Escape'&&popup){closePopup();event.stopPropagation();}};
   const dismiss=event=>{if(popup&&!popup.contains(event.target)&&!event.target.closest?.('.atlas-spelling-error'))closePopup();};
-  document.addEventListener('keydown',onKey,true);document.addEventListener('pointerdown',dismiss);document.addEventListener('scroll',closePopup,true);
+  document.addEventListener('keydown',onKey,true);document.addEventListener('pointerdown',dismiss);document.addEventListener('scroll',positionPopup,true);window.addEventListener('resize',positionPopup);
   return {reviewParagraph:()=>{if(!spell){window.showToast?.('El diccionario español se está cargando.','info');return;}reviewParagraph();},destroy:()=>{
-    active=false;clearTimeout(timer);closePopup();review?.close();document.removeEventListener('keydown',onKey,true);document.removeEventListener('pointerdown',dismiss);document.removeEventListener('scroll',closePopup,true);if(!tip.isDestroyed)tip.unregisterPlugin(key);
+    active=false;clearTimeout(timer);closePopup();review?.close();document.removeEventListener('keydown',onKey,true);document.removeEventListener('pointerdown',dismiss);document.removeEventListener('scroll',positionPopup,true);window.removeEventListener('resize',positionPopup);if(!tip.isDestroyed)tip.unregisterPlugin(key);
   }};
 }
