@@ -1,7 +1,7 @@
 /* Global, non-modal assistant; the underlying workspace remains usable. */
 .assistant-launcher { position: fixed; right: 24px; bottom: 16px; z-index: 1100; display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius: 28px; background:var(--text); color:var(--bg); padding:12px 18px; height:48px; box-sizing:border-box; font:600 .86rem var(--font-ui); box-shadow:0 6px 22px #0002; cursor:pointer; }
 .assistant-launcher > span:first-child { font-size:1.25rem; }
-.assistant-area { position:fixed; top:calc(var(--topbar-h, 48px) + 12px); right:12px; bottom:12px; width:min(520px, calc(100vw - 24px)); z-index:1200; border:1px solid var(--border); border-radius:20px; overflow:hidden; background:var(--bg); color:var(--text); box-shadow:0 16px 64px #0002; font-family:var(--font-ui); }
+.assistant-area { position:fixed; top:0; right:12px; bottom:12px; width:min(520px, calc(100vw - 24px)); z-index:1200; border:1px solid var(--border); border-radius:20px; overflow:hidden; background:var(--bg); color:var(--text); box-shadow:0 16px 64px #0002; font-family:var(--font-ui); }
 .assistant-area.hidden, .assistant-launcher.hidden { display:none; }
 .assistant-area.assistant-expanded { width:min(920px, calc(100vw - 24px)); }
 .assistant-area .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
