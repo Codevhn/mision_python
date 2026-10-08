@@ -662,3 +662,40 @@ def test_courses_location_is_one_sentence_without_provider_key(auth_client, monk
     saved = auth_client.get(route.removesuffix('/messages')).json['messages'][-1]
     assert saved['content'] == 'Estás en Cursos.'
     assert saved['model'] == 'Atlas'
+
+
+def test_study_scope_and_clean_headings_persist(auth_client, monkeypatch):
+    def stream(*args, **kwargs):
+        yield '## Definición\nContenido técnico.\n\n## Componentes internos\nDetalle.\n\n**Conclusión**\nÚltimo dato útil.'
+        yield ('__done__', False, None)
+
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'test-key')
+    monkeypatch.setattr(app_module, '_stream_call_ai', stream)
+    route = '/api/assistant/conversations/' + create(auth_client)
+    response = auth_client.post(route + '/messages', json={
+        'prompt': 'Desarrolla el concepto seleccionado.',
+        'selection_context': {'text': 'Arquitectura DBMS', 'title': 'Bases de datos'},
+        'selection_action': 'explain',
+        'current_context': {'type': 'entry', 'id': 'dbms-page'}, 'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    record = auth_client.get(route).json
+    assert record['context_scope'] == {'type': 'entry', 'id': 'dbms-page'}
+    assert record['messages'][0]['selection_action'] == 'explain'
+    assert record['messages'][1]['content'] == 'Contenido técnico.\n\n## Componentes internos\nDetalle.\n\nÚltimo dato útil.'
+    assert 'Definición' not in record['messages'][1]['html']
+    # Ordinary requests keep explicitly requested headings and the original scope.
+    followup = auth_client.post(route + '/messages', json={
+        'prompt': 'Escribe una conclusión.', 'use_atlas': False,
+        'current_context': {'type': 'entry', 'id': 'another-page'},
+    })
+    assert 'event: done' in followup.get_data(as_text=True)
+    record = auth_client.get(route).json
+    assert record['context_scope']['id'] == 'dbms-page'
+    assert '**Conclusión**' in record['messages'][3]['content']
+
+
+def test_study_heading_cleanup_preserves_code_and_specific_titles():
+    from assistant import clean_study_headings
+    text = '## Definición formal\nDato.\n## Definición de interfaces\nDetalle.\n```markdown\n## Conclusión\n```\n> **Definición**\n'
+    assert clean_study_headings(text) == text.replace('## Definición formal\n', '')

@@ -62,7 +62,7 @@
     if(message.roadmap_request){ const {course_id,...options}=message.roadmap_request; generateRoadmap(course_id,options,true); return; }
     input.value=message.question||message.content;
     input.dispatchEvent(new Event('input'));
-    send(null,{retry:true,selection:message.selection_context||null});
+    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null});
   }
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
@@ -366,7 +366,7 @@
       content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) fragmentSent = true;
@@ -443,10 +443,16 @@
     if (busy) return;
     if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
-    // A selection from the editor starts its own consultation. Follow-up
-    // messages sent in the composer continue that consultation as usual.
-    ++loadSequence;
-    record = null;
+    // Keep concepts from the same page together, but never append them to
+    // a roadmap conversation or a conversation belonging to another page.
+    const previousSelection = record?.messages.findLast(message => message.selection_context)?.selection_context;
+    const scope = record?.context_scope || (previousSelection?.entry_id ? {type:'entry',id:previousSelection.entry_id} : null);
+    const samePage = visible?.id && scope?.id === visible.id && scope.type === visible.type;
+    const isRoadmap = record?.messages.some(message => message.roadmap_draft || message.roadmap_request);
+    if (!samePage || isRoadmap) {
+      ++loadSequence;
+      record = null;
+    }
     el('assistantHistoryPanel').classList.add('hidden');
     el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
     clearSelection();
@@ -461,10 +467,10 @@
       strip.append(details,remove); el('assistantTranscript').before(strip);
     }
     captureContext();
-    const prompts = {explain:'Define y desarrolla el concepto o tema seleccionado en el contexto de la lección, con rigor técnico y ejemplos pertinentes.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales.',example:'Desarrolla un ejemplo aplicado del concepto o tema seleccionado, con explicación de su funcionamiento en el contexto de la lección.'};
+    const prompts = {explain:'Desarrolla el concepto o tema seleccionado en el contexto de la lección, con rigor técnico y ejemplos pertinentes. Empieza directamente por su significado, sin encabezados genéricos como «Definición» o «Introducción». Usa solo títulos específicos cuando ayuden a organizar el contenido y termina al completar la explicación, sin «Conclusión», recapitulaciones ni cierres redundantes.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales, sin preámbulos ni un segundo resumen al final.',example:'Desarrolla un ejemplo aplicado del concepto o tema seleccionado, con explicación de su funcionamiento en el contexto de la lección, sin encabezados genéricos ni conclusiones redundantes.'};
     const input = el('assistantInput');
     if (action && prompts[action] && !input.value.trim()) {
-      input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send();
+      input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send(null,{selectionAction:action});
     } else {
       status(input.value.trim() ? 'Selección preparada. Conservé tu borrador.' : 'Selección preparada. Pregunta sobre ella.'); input.focus();
     }
