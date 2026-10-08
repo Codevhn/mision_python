@@ -616,6 +616,11 @@ const ATLAS_THEMES = {
   aero: { scheme: 'light', style: 'aero', variant: 'light' },
   'aero-blue': { scheme: 'light', style: 'aero', variant: 'blue' },
   'aero-night': { scheme: 'dark', style: 'aero', variant: 'night' },
+  'aero-ruby': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'ruby' },
+  'aero-electric': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'electric' },
+  'aero-amber': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'amber' },
+  'aero-emerald': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'emerald' },
+  'aero-neon': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'neon' },
 };
 function setAtlasTheme(id, persist = false) {
   // Migrate existing preferences into the Aero family; classics are retired.
@@ -625,6 +630,7 @@ function setAtlasTheme(id, persist = false) {
   document.documentElement.dataset.theme = theme.scheme;
   document.documentElement.dataset.style = theme.style;
   document.documentElement.dataset.variant = theme.variant;
+  document.documentElement.dataset.palette = theme.palette || "";
   if (persist) { try { localStorage.setItem('kb_theme', id); } catch {} }
   document.querySelectorAll('[data-theme-choice]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));

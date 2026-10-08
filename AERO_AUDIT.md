@@ -184,3 +184,23 @@ iconos SVG, sugerencias y grupos del menú; contraste mínimo 3:1 en los iconos
 sobre la superficie del editor y 4,5:1 en sugerencias y etiquetas de dominio
 de Aero azul. Esta comprobación cubre esos componentes, no certifica toda la
 aplicación.
+
+### Cristal con reflejos y paletas neón
+
+Las tarjetas de Inicio desplazan una banda de luz y el fondo de cristal durante
+el hover o foco interno. El reflejo queda detrás del contenido, con menos
+intensidad en superficies oscuras. La preferencia de movimiento reducido
+conserva el brillo estático y elimina el desplazamiento.
+
+La galería centrada incluye los tres temas existentes y cinco paletas oscuras:
+Rojo Rubí, Azul Eléctrico, Naranja Ámbar, Verde Esmeralda y Negro Neón. Mantienen
+el esquema oscuro de lectura y cambian los tokens de cristal, acentos, fondos,
+bordes y controles. La selección persiste; al volver a un tema clásico se
+elimina la paleta neón. El selector tiene miniaturas, identificación del tema
+actual y desplazamiento interno en pantallas pequeñas.
+
+Validación en Chromium: reflejos intermedios/finales en los tres temas clásicos,
+foco de teclado y movimiento reducido; selección y recarga de las cinco
+paletas, contraste de texto secundario mayor a 4,5:1 sobre sus superficies,
+centrado de la ventana, restauración del tema clásico y galería móvil sin
+desbordamiento. No se requieren servicios de IA para estos efectos.
