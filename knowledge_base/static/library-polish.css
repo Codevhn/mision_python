@@ -1,0 +1,56 @@
+/* Compact overview: books and notes keep the main visual focus. */
+#libraryBody .lib-overview { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; margin-bottom:22px; }
+#libraryBody .lib-overview-single { grid-template-columns:1fr; }
+#libraryBody :is(.storage-card,.lib-continue-card) { min-width:0; min-height:110px; margin:0; padding:14px 16px; gap:14px; border-radius:5px; }
+[data-style="aero"] #libraryBody :is(.storage-card,.lib-continue-card) { background:var(--aero-content) !important; border:1px solid var(--aero-edge); box-shadow:inset 0 1px 0 var(--aero-inset),0 2px 6px #0002; }
+#libraryBody .storage-card { --storage-ink:var(--accent-amber,#fbbf5b); flex-wrap:nowrap; }
+#libraryBody .storage-warning { --storage-ink:var(--danger,#e96464); }
+#libraryBody .storage-ring { position:relative; width:64px; height:64px; flex:0 0 64px; padding:0; background:conic-gradient(var(--storage-ink) calc(var(--pct) * 1%),var(--layer-4) 0); border:1px solid var(--border); box-shadow:inset 0 1px 2px #0002; }
+#libraryBody .storage-ring::before { content:""; position:absolute; inset:8px; border:1px solid var(--border); border-radius:50%; background:var(--aero-content,var(--bg-surface)); }
+#libraryBody .storage-ring span { position:relative; display:flex; flex-direction:column; align-items:center; line-height:1.2; color:var(--text); }
+#libraryBody .storage-ring strong { font-size:.82rem; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+#libraryBody .storage-ring small { font-size:.6rem; margin-top:2px; color:var(--text-muted); }
+#libraryBody .storage-title { font-size:.88rem; line-height:1.4; color:var(--text); }
+#libraryBody .storage-sub { line-height:1.5; font-size:.77rem; color:var(--text-muted); }
+#libraryBody .storage-note { margin-top:5px; max-width:none; text-align:left; font-size:.75rem; color:var(--text-muted); }
+#libraryBody .storage-warning .storage-note { color:var(--text); font-weight:600; }
+#libraryBody :is(.storage-bar-wrap,.lib-continue-bar-wrap) { height:8px; max-width:none; border:1px solid var(--border); background:var(--layer-0); box-shadow:inset 0 1px 2px #0004; border-radius:3px; }
+#libraryBody .storage-bar-fill { background:linear-gradient(var(--storage-ink),color-mix(in srgb,var(--storage-ink) 78%,black)); border-radius:1px; }
+#libraryBody .lib-continue-card { flex-wrap:nowrap; cursor:pointer; transform:none; }
+#libraryBody .lib-continue-body { min-width:0; }
+#libraryBody .lib-continue-cover { width:40px; height:60px; border-radius:3px; }
+#libraryBody .lib-continue-title { font-size:.84rem; line-height:1.4; white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+#libraryBody .lib-continue-eyebrow { font-size:.68rem; color:var(--text-muted); }
+#libraryBody :is(.lib-continue-author,.lib-continue-pct,.book-meta) { color:var(--text-muted); line-height:1.45; }
+#libraryBody .lib-continue-btn { width:auto; padding:8px 10px; font-size:.75rem; }
+#libraryBody .lib-head { align-items:center; gap:12px; }
+#libraryBody .lib-filter { font-family:var(--font-ui); color:var(--text); border-radius:4px; }
+/* Notes use quieter paper surfaces; highlight colors remain the reader's choice. */
+#libraryBody .note-card { background:var(--aero-content,var(--bg-surface)); border:1px solid var(--border); border-radius:5px; color:var(--text); box-shadow:inset 0 1px 0 var(--aero-inset,transparent),0 2px 5px #0002; }
+#libraryBody .note-src { color:var(--text-muted); line-height:1.4; }
+#libraryBody .note-src > span:first-child { min-width:0; overflow-wrap:anywhere; }
+#libraryBody .note-src > span:last-child { flex:none; }
+#libraryBody .note-quote { font-family:var(--font-body); color:var(--text); overflow-wrap:anywhere; }
+#libraryBody .note-body { color:var(--text-muted); overflow-wrap:anywhere; }
+#libraryBody .note-actions { gap:6px; padding-top:10px; border-top:1px solid var(--border-light); }
+#libraryBody .note-actions button { cursor:pointer; font-family:var(--font-ui); font-size:.74rem; font-weight:600; padding:5px 8px; color:var(--text); border:1px solid var(--border); border-radius:3px; background:var(--aero-button,var(--bg-elevated)); }
+#libraryBody .note-actions button:is(:hover,:focus-visible) { background:var(--aero-nav-hover,var(--bg-hover)); border-color:var(--accent); }
+#libraryBody .lib-legend-bar { gap:8px; }
+#libraryBody .lib-legend-item { padding:5px 8px; border:1px solid var(--border); border-radius:3px; background:var(--aero-button,var(--bg-elevated)); }
+#libraryBody .lib-legend-label:empty::before { color:var(--text-muted); font-style:normal; }
+/* Dialogs follow the same Aero window chrome as the rest of Atlas. */
+[data-style="aero"] .lib-modal { color:var(--text); background:var(--aero-content); border:1px solid var(--aero-frame); outline:1px solid var(--aero-edge); border-radius:6px; box-shadow:var(--aero-shadow); }
+[data-style="aero"] .lib-modal-title { padding:12px 16px; margin:-20px -22px 16px; border-bottom:1px solid var(--aero-edge); border-radius:5px 5px 0 0; background:var(--aero-glass); color:var(--text); }
+[data-style="aero"] .lib-modal-sub { color:var(--text-muted); line-height:1.5; }
+[data-style="aero"] .lib-modal-btn { background:var(--aero-button); border-color:var(--border); border-radius:4px; color:var(--text); box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] .lib-modal-btn.primary { border-color:var(--accent); }
+[data-style="aero"] .lib-modal-btn.danger { background:linear-gradient(#ecad9f,#ba503d 48%,#943d2d 49%,#bd5740); border-color:#963f31; color:#fff; }
+[data-style="aero"] .lib-modal-btn:not(.danger):hover { background:var(--aero-nav-hover); border-color:var(--aero-select-border); }
+.lib-modal-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+@media (max-width:1100px) { #libraryBody .lib-overview { grid-template-columns:1fr; } }
+@media (max-width:600px) {
+ #libraryBody :is(.storage-card,.lib-continue-card) { padding:12px; gap:10px; }
+ #libraryBody .lib-continue-card { flex-wrap:wrap; }
+ #libraryBody .lib-continue-btn { margin-left:auto; }
+ #libraryBody .lib-head h1 { font-size:1.15rem; }
+}

@@ -73,6 +73,22 @@
     setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s ease'; setTimeout(() => el.remove(), 260); }, 3400);
   }
 
+  function _focusLibraryDialog(overlay, cancel) {
+    const modal = overlay.querySelector('.lib-modal');
+    modal.setAttribute('role', 'dialog');modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', modal.querySelector('.lib-modal-title').textContent);
+    overlay.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
+      if (event.key === 'Tab') {
+        const fields = [...modal.querySelectorAll('button,input,select')].filter(node => !node.disabled);
+        const first = fields[0], last = fields[fields.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault();last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault();first?.focus(); }
+      }
+    });
+    queueMicrotask(() => { if (overlay.isConnected) (modal.querySelector('input') || modal.querySelector('button'))?.focus(); });
+  }
+
   function _confirmDialog(message, opts) {
     opts = opts || {};
     return new Promise((resolve) => {
@@ -88,7 +104,9 @@
           </div>
         </div>`;
       document.body.appendChild(overlay);
-      const finish = (val) => { overlay.remove(); resolve(val); };
+      const previousFocus = document.activeElement;
+      const finish = (val) => { overlay.remove(); previousFocus?.focus(); resolve(val); };
+      _focusLibraryDialog(overlay, () => finish(false));
       overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(false); });
       overlay.querySelector('#libDlgCancel').onclick = () => finish(false);
       overlay.querySelector('#libDlgOk').onclick = () => finish(true);
@@ -112,13 +130,14 @@
         </div>`;
       document.body.appendChild(overlay);
       const input = overlay.querySelector('#libDlgInput');
-      const finish = (val) => { overlay.remove(); resolve(val); };
+      const previousFocus = document.activeElement;
+      const finish = (val) => { overlay.remove(); previousFocus?.focus(); resolve(val); };
+      _focusLibraryDialog(overlay, () => finish(null));
       overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(null); });
       overlay.querySelector('#libDlgCancel').onclick = () => finish(null);
       overlay.querySelector('#libDlgOk').onclick = () => finish(input.value);
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') finish(input.value);
-        if (e.key === 'Escape') finish(null);
       });
       setTimeout(() => { input.focus(); input.select(); }, 30);
     });
@@ -151,24 +170,29 @@
     const st = _lib;
     const usedGB = (st.storage.used_bytes / 1073741824).toFixed(2);
     const capGB = Math.round(st.storage.free_cap_bytes / 1073741824);
-    const pct = Math.min(100, st.storage.pct);
+    const pct = Math.max(0, Math.min(100, Number(st.storage.pct) || 0));
+    const remainingGB = Math.max(0, (st.storage.free_cap_bytes - st.storage.used_bytes) / 1073741824).toFixed(2);
+    const continuing = _continueReadingBook(st.books);
     const warn = pct >= 85;
 
     let html = `
-      <div class="storage-card">
-        <div class="storage-ring" style="--pct:${pct}">${usedGB}GB</div>
+      <div class="lib-overview${continuing ? '' : ' lib-overview-single'}">
+      <div class="storage-card${warn ? ' storage-warning' : ''}">
+        <div class="storage-ring" style="--pct:${pct}" aria-hidden="true"><span><strong>${usedGB}</strong><small>GB</small></span></div>
         <div class="storage-body">
-          <div class="storage-title">Almacenamiento de la Biblioteca</div>
-          <div class="storage-sub"><b>${usedGB} GB</b> usados de <b>${capGB} GB gratis</b> — ${st.books.length} libro${st.books.length === 1 ? '' : 's'} subido${st.books.length === 1 ? '' : 's'}</div>
-          <div class="storage-bar-wrap"><div class="storage-bar-fill" style="width:${pct}%;background:${warn ? 'var(--danger)' : 'var(--amber)'}"></div></div>
+          <div class="storage-title">Almacenamiento</div>
+          <div class="storage-sub"><b>${usedGB} GB</b> usados de <b>${capGB} GB</b> · ${st.books.length} libro${st.books.length === 1 ? '' : 's'} subido${st.books.length === 1 ? '' : 's'}</div>
+          <div class="storage-bar-wrap" role="progressbar" aria-label="Espacio utilizado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-valuetext="${usedGB} GB usados de ${capGB} GB"><div class="storage-bar-fill" style="width:${pct}%;min-width:${pct > 0 ? '3px' : '0'}"></div></div>
+          <div class="storage-note">${warn ? 'Queda poco espacio. Puedes borrar libros que ya no necesites.' : `${remainingGB} GB disponibles`}</div>
         </div>
-        <div class="storage-note">${warn ? 'Te acercas al límite gratis de Fly.io — considera borrar libros que ya terminaste.' : 'Al acercarte al límite, te avisamos aquí antes de que algo falle.'}</div>
+      </div>
+      ${continuing ? _continueReadingCardHtml(continuing) : ''}
       </div>
       <div class="lib-head">
         <h1>${st.tab === 'notes' ? 'Tus apuntes' : 'Tu biblioteca'}</h1>
         <div class="lib-filters">
-          <div class="lib-filter ${st.tab === 'books' ? 'active' : ''}" data-tab="books">Libros</div>
-          <div class="lib-filter ${st.tab === 'notes' ? 'active' : ''}" data-tab="notes">Apuntes</div>
+          <button type="button" class="lib-filter ${st.tab === 'books' ? 'active' : ''}" data-tab="books" aria-pressed="${st.tab === 'books'}">Libros</button>
+          <button type="button" class="lib-filter ${st.tab === 'notes' ? 'active' : ''}" data-tab="notes" aria-pressed="${st.tab === 'notes'}">Apuntes</button>
         </div>
       </div>
     `;
@@ -181,9 +205,6 @@
       return;
     }
 
-    const continuing = _continueReadingBook(st.books);
-    if (continuing) html += _continueReadingCardHtml(continuing);
-
     if (!st.books.length) {
       html += '<div class="lab-empty">Aún no subes ningún libro. Usa "↑ Subir libro" arriba para empezar.</div>';
     } else {
@@ -191,9 +212,6 @@
     }
     body.innerHTML = html;
     _wireLibraryTabs();
-    body.querySelector('.lib-continue-card')?.addEventListener('click', () => {
-      window._openLibraryReader(continuing.id);
-    });
     body.querySelectorAll('.book-card[data-book]').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('[data-add-fmt]') || e.target.closest('[data-del-book]')) return;
@@ -219,6 +237,11 @@
   }
 
   function _wireLibraryTabs() {
+    const resume = document.querySelector('#libraryBody .lib-continue-btn');
+    resume?.addEventListener('click', () => window._openLibraryReader(resume.closest('[data-book]').dataset.book));
+    resume?.closest('.lib-continue-card').addEventListener('click', event => {
+      if (!event.target.closest('button')) window._openLibraryReader(resume.closest('[data-book]').dataset.book);
+    });
     document.querySelectorAll('#libraryBody .lib-filter[data-tab]').forEach(el => {
       el.addEventListener('click', () => { _lib.tab = el.dataset.tab; _renderLibraryBody(); });
     });
@@ -288,7 +311,7 @@
   }
 
   function _continueReadingCardHtml(b) {
-    const pct = Math.round(b.progress.percent);
+    const pct = Math.round(Math.max(0, Math.min(100, Number(b.progress.percent) || 0)));
     const author = _escHtml(b.author || '');
     return `
       <div class="lib-continue-card" data-book="${b.id}">
@@ -420,9 +443,9 @@
       <span class="lib-legend-item">
         <i class="lib-legend-dot" style="background:${HL_COLORS[key]}"></i>
         <span class="lib-legend-label" data-legend-key="${key}" contenteditable="true"
-              data-placeholder="sin nombrar">${_escHtml(_colorLegend[key] || '')}</span>
+              aria-label="Nombre del color ${key}" data-placeholder="Nombrar color">${_escHtml(_colorLegend[key] || '')}</span>
       </span>`).join('');
-    return `<div class="lib-legend-bar">${items}</div>`;
+    return `<div class="lib-legend-bar" aria-label="Colores de tus apuntes">${items}</div>`;
   }
 
   function _wireColorLegendBar(area) {
@@ -481,10 +504,10 @@
         <div class="note-quote"><span class="hl" style="background:${_hexToRgba(hlColor, 0.30)}">&ldquo;${_escHtml(n.quote_text)}&rdquo;</span></div>
         ${n.note_text ? `<div class="note-body">${_escHtml(n.note_text)}</div>` : ''}
         <div class="note-actions">
-          <a data-goto-book="${n.book_id}">Ir al libro →</a>
-          <a data-to-concept="${n.id}" data-book-id="${n.book_id}">Convertir en concepto</a>
-          <a data-quiz-note="${n.id}">Generar quiz de esto</a>
-          <a data-del-note="${n.id}" data-del-book="${n.book_id}" class="note-del-act">Eliminar</a>
+          <button type="button" data-goto-book="${n.book_id}">Ir al libro →</button>
+          <button type="button" data-to-concept="${n.id}" data-book-id="${n.book_id}">Convertir en concepto</button>
+          <button type="button" data-quiz-note="${n.id}">Generar quiz de esto</button>
+          <button type="button" data-del-note="${n.id}" data-del-book="${n.book_id}" class="note-del-act">Eliminar</button>
         </div>
       </div>`;
   }
