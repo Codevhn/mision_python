@@ -584,12 +584,12 @@
           <div class="kb-view-switcher">
             <button class="kb-view-btn kb-view-btn--active" id="kbViewBoard" title="Vista tablero">⊞ Tablero</button>
             <button class="kb-view-btn" id="kbViewTable" title="Vista tabla">☰ Tabla</button>
-            <button class="kb-view-btn" id="kbViewCal" title="Vista calendario">📅 Calendario</button>
+            <button class="kb-view-btn" id="kbViewCal" title="Vista calendario"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#calendar"></use></svg> Calendario</button>
           </div>
           <button class="kb-btn" id="kbBoardMenuBtn" title="Menú del tablero" style="font-size:0.82rem;padding:4px 12px;">&#8801; Menú</button>
         </div>
         <div class="kb-filters-bar" id="kbFiltersBar">
-          <input class="kb-filter-search" id="kbFilterSearch" placeholder="🔍 Buscar tarjeta…" type="text" value="${escHtml(_filterText)}" />
+          <input class="kb-filter-search" id="kbFilterSearch" placeholder="Buscar tarjeta…" type="text" value="${escHtml(_filterText)}" />
           <div class="kb-filter-labels" id="kbFilterLabels"></div>
           <button class="kb-filter-clear kb-btn" id="kbFilterClear" style="display:none">× Limpiar</button>
         </div>
@@ -597,7 +597,7 @@
           <div class="kb-columns-wrap" id="kbColumnsWrap"></div>
           <div class="kb-archive-panel hidden" id="kbArchivePanel">
             <div class="kb-archive-panel-header">
-              <span>📦 Archivo del tablero</span>
+              <span><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#folder"></use></svg> Archivo del tablero</span>
               <button class="kb-archive-panel-close" id="kbArchivePanelClose">&times;</button>
             </div>
             <div class="kb-archive-panel-body" id="kbArchivePanelBody"></div>
@@ -759,7 +759,7 @@
     const btn = document.getElementById('kbArchiveBtn');
     if (!btn) return;
     const count = getArchivedCards().length;
-    btn.textContent = '📦 Archivo' + (count > 0 ? ` (${count})` : '');
+    setAtlasSystemLabel(btn, '📦 Archivo' + (count > 0 ? ` (${count})` : ''));
   }
 
   // ---- Board Menu (Trello-style slide-in panel) ----
@@ -799,7 +799,7 @@
     function makeItem(icon, label, badge, onClick) {
       const btn = document.createElement('button');
       btn.className = 'kb-board-menu-item' + (onClick ? '' : ' is-disabled');
-      btn.innerHTML = `<span class="kb-board-menu-icon">${icon}</span><span class="kb-board-menu-label">${label}</span>` +
+      btn.innerHTML = `<span class="kb-board-menu-icon">${atlasSystemIconMarkup(icon)}</span><span class="kb-board-menu-label">${label}</span>` +
         (badge ? `<span class="kb-board-menu-badge">${badge}</span>` : '');
       if (onClick) btn.addEventListener('click', e => { e.stopPropagation(); onClick(e); });
       return btn;
@@ -814,7 +814,7 @@
     // Share row
     const shareRow = document.createElement('div');
     shareRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 16px;';
-    shareRow.innerHTML = `<span style="font-size:1rem">&#128100;</span><span style="flex:1;font-size:0.85rem">Compartir</span><div style="width:28px;height:28px;border-radius:50%;background:#1773ea;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff">U</div>`;
+    shareRow.innerHTML = `<span style="font-size:1rem"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#person"></use></svg></span><span style="flex:1;font-size:0.85rem">Compartir</span><div style="width:28px;height:28px;border-radius:50%;background:#1773ea;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff">U</div>`;
     body.appendChild(shareRow);
     body.appendChild(makeSep());
 
@@ -1582,7 +1582,7 @@
         };
         const s = statusMap[status];
         dueEl.className = 'kb-card-due ' + s.cls;
-        dueEl.textContent = s.icon + ' ' + card.due;
+        setAtlasSystemLabel(dueEl, s.icon + ' ' + card.due);
         el.appendChild(dueEl);
       }
     }
@@ -1637,7 +1637,7 @@
       if (hasAttach) {
         const attachIcon = document.createElement('span');
         attachIcon.className = 'kb-card-footer-icon';
-        attachIcon.textContent = '📎 ' + card.attachments.length;
+        setAtlasSystemLabel(attachIcon, '📎 ' + card.attachments.length);
         attachIcon.title = 'Adjuntos';
         leftEl.appendChild(attachIcon);
       }
@@ -1995,7 +1995,7 @@
       function makePill(icon, text, onClick) {
         const btn = document.createElement('button');
         btn.className = 'kb-modal-pill-btn';
-        btn.innerHTML = `${icon} ${escHtml(text)}`;
+        setAtlasSystemLabel(btn, `${icon} ${text}`);
         btn.addEventListener('click', e => { e.stopPropagation(); onClick(btn, e); });
         return btn;
       }
@@ -2009,7 +2009,7 @@
       duePillWrap.style.position = 'relative';
       const duePill = document.createElement('button');
       duePill.className = 'kb-modal-pill-btn';
-      duePill.innerHTML = '📅 ' + escHtml(card.due || 'Fecha');
+      setAtlasSystemLabel(duePill, '📅 ' + (card.due || 'Fecha'));
       const duePillInput = document.createElement('input');
       duePillInput.type = 'date';
       duePillInput.className = 'kb-due-input-hidden';
@@ -2050,7 +2050,7 @@
         memSection.className = 'kb-modal-section';
         const memHeader = document.createElement('div');
         memHeader.className = 'kb-modal-section-header';
-        memHeader.innerHTML = '<span class="kb-modal-section-icon">👤</span><span class="kb-modal-section-title">Miembros</span>';
+        memHeader.innerHTML = '<span class="kb-modal-section-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#person"></use></svg></span><span class="kb-modal-section-title">Miembros</span>';
         const memAvatars = document.createElement('div');
         memAvatars.className = 'kb-members-avatars-row';
         card.members.forEach((m, idx) => {
@@ -2360,7 +2360,7 @@
         } else {
           const icon = document.createElement('div');
           icon.className = 'kb-attachment-icon';
-          icon.textContent = '📄';
+          setAtlasSystemLabel(icon, '📄');
           item.appendChild(icon);
         }
         const meta = document.createElement('div');
@@ -2762,7 +2762,7 @@
 
     const uploadBtn = document.createElement('label');
     uploadBtn.className = 'kb-cover-upload-btn';
-    uploadBtn.textContent = '📎 Subir imagen de portada';
+    setAtlasSystemLabel(uploadBtn, '📎 Subir imagen de portada');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
@@ -2804,7 +2804,7 @@
     const photoSearchInput = document.createElement('input');
     photoSearchInput.className = 'kb-cover-photo-search';
     photoSearchInput.type = 'text';
-    photoSearchInput.placeholder = '🔍 Buscar fotos…';
+    photoSearchInput.placeholder = 'Buscar fotos…';
     photoSearchWrap.appendChild(photoSearchInput);
     body.appendChild(photoSearchWrap);
 
@@ -2889,7 +2889,7 @@
     // Etiquetas button
     const lblBtn = document.createElement('button');
     lblBtn.className = 'kb-sidebar-action-btn';
-    lblBtn.innerHTML = '🏷 Etiquetas';
+    setAtlasSystemLabel(lblBtn, '🏷 Etiquetas');
     lblBtn.addEventListener('click', e => {
       e.stopPropagation();
       showLabelPopover(lblBtn, card, () => renderModalLabels(card, overlay.querySelector('#kbModalLabels')));
@@ -2899,7 +2899,7 @@
     // Miembros button
     const memBtn = document.createElement('button');
     memBtn.className = 'kb-sidebar-action-btn';
-    memBtn.innerHTML = '👤 Miembros';
+    setAtlasSystemLabel(memBtn, '👤 Miembros');
     memBtn.addEventListener('click', () => {
       // Toggle members section inline below button
       const existing = sidebar.querySelector('.kb-members-section');
@@ -2911,7 +2911,7 @@
     // Portada button
     const coverBtn = document.createElement('button');
     coverBtn.className = 'kb-sidebar-action-btn';
-    coverBtn.innerHTML = '🎨 Portada';
+    setAtlasSystemLabel(coverBtn, '🎨 Portada');
     coverBtn.addEventListener('click', () => {
       const existing = sidebar.querySelector('.kb-cover-section');
       if (existing) { existing.remove(); return; }
@@ -2939,7 +2939,7 @@
     const dueLabel2 = document.createElement('div');
     dueLabel2.className = 'kb-sidebar-section-label';
     dueLabel2.style.marginTop = '6px';
-    dueLabel2.textContent = '📅 Fecha límite';
+    setAtlasSystemLabel(dueLabel2, '📅 Fecha límite');
     sidebar.appendChild(dueLabel2);
 
     // Due date button shows current value, clicking focuses hidden input
@@ -3006,7 +3006,7 @@
     // Archivar
     const archBtn = document.createElement('button');
     archBtn.className = 'kb-sidebar-action-btn';
-    archBtn.innerHTML = '📦 Archivar';
+    setAtlasSystemLabel(archBtn, '📦 Archivar');
     archBtn.addEventListener('click', () => {
       card.archived = true;
       saveBoard(_currentBoard.id);
@@ -3542,7 +3542,7 @@
     const label = document.createElement('div');
     label.className = 'kb-modal-section-label';
     label.style.marginTop = '8px';
-    label.textContent = '🎨 Portada';
+    setAtlasSystemLabel(label, '🎨 Portada');
     section.appendChild(label);
 
     if (card.cover) {
@@ -3605,7 +3605,7 @@
     const label = document.createElement('div');
     label.className = 'kb-modal-section-label';
     label.style.marginTop = '8px';
-    label.textContent = '👤 Miembros';
+    setAtlasSystemLabel(label, '👤 Miembros');
     section.appendChild(label);
 
     const avatarsRow = document.createElement('div');

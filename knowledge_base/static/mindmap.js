@@ -163,7 +163,7 @@
     const cards = maps.map(m => `
       <div class="mm-card" data-id="${m.id}">
         <button class="mm-card-actions" aria-label="Acciones de ${_esc(m.title)}" title="Acciones del mapa">⋯</button>
-        <div class="mm-card-icon">✺</div>
+        <div class="mm-card-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#mindmaps"></use></svg></div>
         <div class="mm-card-title">${_esc(m.title)}</div>
         <div class="mm-card-meta">${m.node_count} nodo${m.node_count === 1 ? '' : 's'}</div>
       </div>`).join('');
@@ -171,16 +171,13 @@
     _area.innerHTML = `
       <div class="mm-prompt-header">
         <h1 class="mm-prompt-title">¿Sobre qué quieres el mapa mental?</h1>
-        <div class="mm-prompt-row">
+        <div class="mm-prompt-row atlas-ai-composer">
           <input type="text" class="mm-prompt-input" id="mmPromptInput"
                  placeholder="Ej: Quiero saber cómo estudiar SQL desde cero…" autocomplete="off" />
-          <button class="mm-prompt-btn" id="mmPromptBtn" title="Generar">→</button>
+          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="mmModelCSelect"></div><button class="mm-prompt-btn" id="mmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#send"></use></svg></button></div>
         </div>
         <p class="mm-hint">La IA arma el árbol completo — ramas y subramas — al instante. ¿Prefieres armarlo tú? <a href="#" id="mmBlankLink">crea uno vacío</a>.</p>
-        <div class="mm-model-row">
-          <span class="mm-model-label">Modelo</span>
-          <div class="practice-cselect" id="mmModelCSelect"></div>
-        </div>
+
         <div class="mm-model-warnings" id="mmModelWarnings"></div>
       </div>
       ${maps.length ? '<p class="mm-grid-label">Tus mapas</p>' : ''}
@@ -474,7 +471,7 @@
       const chip = document.createElement('span');
       chip.className = 'mm-node-link-chip';
       chip.title = 'Vinculado a una entrada de Conocimiento';
-      chip.textContent = '🔗';
+      setAtlasSystemLabel(chip, '🔗');
       box.appendChild(chip);
     }
 

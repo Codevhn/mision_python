@@ -1,0 +1,34 @@
+/* Shared system decorations and map prompt controls. Theme colors come from Atlas. */
+.atlas-system-icon { display:inline-block; width:20px; height:20px; flex:none; vertical-align:middle; margin-right:5px; filter:drop-shadow(0 1px 1px #0003); }
+:is(.lab-empty-icon,.practice-empty-main-icon,.ces-icon,.cv-empty-icon) > .atlas-system-icon { width:48px; height:48px; margin:0; }
+:is(.mm-card-icon,.cm-card-icon) > .atlas-system-icon { width:26px; height:26px; margin:0; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer { display:flex; flex-direction:column; gap:0; padding:6px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:7px; text-align:left; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer:focus-within { border-color:var(--accent); }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer > input { width:100%; min-width:0; box-sizing:border-box; background:transparent; color:var(--text); border:0; border-radius:0; box-shadow:none; padding:12px 10px; outline:none; }
+.atlas-ai-composer-tools { display:flex; justify-content:flex-end; align-items:center; gap:8px; min-width:0; }
+:is(#mmModelCSelect,#cmModelCSelect), :is(#mmModelCSelect,#cmModelCSelect) .practice-cselect { width:auto; min-width:0; max-width:100%; }
+:is(#mmModelCSelect,#cmModelCSelect) .ai-model-trigger { width:auto; min-height:34px; height:34px; max-width:340px; padding:7px 9px; gap:6px; border-radius:4px; line-height:1.35; }
+:is(#mmModelCSelect,#cmModelCSelect) .ai-model-trigger-text { display:block; min-width:0; flex:0 1 auto; }
+:is(#mmModelCSelect,#cmModelCSelect) .ai-model-provider { display:none; }
+:is(#mmModelCSelect,#cmModelCSelect) .ai-model-name { display:block; font-size:.82rem; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > button { display:flex; align-items:center; justify-content:center; flex:none; width:36px; height:34px; padding:0; background:var(--bg-hover); color:var(--text); border:1px solid var(--border); border-radius:4px; }
+.atlas-ai-composer-tools > button .atlas-system-icon { margin:0; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+[data-style="aero"] :is(#mindmapArea,#conceptMapArea) .atlas-ai-composer { background:var(--aero-field); box-shadow:inset 0 1px 3px #0002,0 1px 0 var(--aero-inset); }
+[data-style="aero"] :is(#mmModelCSelect,#cmModelCSelect) .ai-model-trigger,
+[data-style="aero"] :is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > button { background:var(--aero-button); border:1px solid var(--border); box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] :is(#mmModelCSelect,#cmModelCSelect) .ai-model-trigger:is(:hover,:focus-visible),
+[data-style="aero"] :is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > button:is(:hover,:focus-visible) { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:var(--aero-nav-shadow); }
+@media (max-width:600px) {
+  :is(#mmModelCSelect,#cmModelCSelect) { max-width:calc(100% - 44px); }
+  :is(#mmModelCSelect,#cmModelCSelect) .ai-model-trigger { max-width:100%; }
+}
+:is(#mindmapArea,#conceptMapArea) { min-width:0; }
+:is(#mindmapArea,#conceptMapArea) :is(.mm-prompt-header,.cm-prompt-header) { width:100%; max-width:704px; min-width:0; box-sizing:border-box; }
+@media (max-width:600px) {
+  :is(#mindmapArea,#conceptMapArea) :is(.mm-prompt-header,.cm-prompt-header) { padding:28px 16px 16px; }
+}
+/* The composer owns the focus ring instead of drawing a second frame on its input. */
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer > input:focus { box-shadow:none !important; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer:focus-within { box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent); }
+.msn-icon .atlas-system-icon { margin:0; }

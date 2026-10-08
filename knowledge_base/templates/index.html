@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="/static/assistant.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/themes.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/reader.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/atlas-controls.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/proofreading.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
@@ -173,20 +174,20 @@
            rest of the drawer's height to that tree instead of always reserving
            space for all 11 items regardless of which one you actually need. -->
       <nav class="mobile-space-nav" id="mobileSpaceNav">
-        <button class="msn-item" data-space="home"><span class="msn-icon">⌂</span><span class="msn-label">Inicio</span></button>
-        <button class="msn-item" data-space="knowledge"><span class="msn-icon">📖</span><span class="msn-label">Conocimiento</span></button>
-        <button class="msn-item" data-space="courses"><span class="msn-icon">🎓</span><span class="msn-label">Cursos</span></button>
-        <button class="msn-item" data-space="boards"><span class="msn-icon">⊞</span><span class="msn-label">Tableros</span></button>
-        <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
-        <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
-        <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
-        <button class="msn-item" data-space="diagrams"><span class="msn-icon">▱</span><span class="msn-label">Diagramas</span></button>
-        <button class="msn-item" data-space="conceptmaps"><span class="msn-icon">◈</span><span class="msn-label">Mapas Conceptuales</span></button>
-        <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
-        <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
-        <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon">🎯</span><span class="msn-label">Práctica</span></button>
+        <button class="msn-item" data-space="home"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#home"></use></svg></span><span class="msn-label">Inicio</span></button>
+        <button class="msn-item" data-space="knowledge"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg></span><span class="msn-label">Conocimiento</span></button>
+        <button class="msn-item" data-space="courses"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></span><span class="msn-label">Cursos</span></button>
+        <button class="msn-item" data-space="boards"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#boards"></use></svg></span><span class="msn-label">Tableros</span></button>
+        <button class="msn-item" data-space="teamspace"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#team"></use></svg></span><span class="msn-label">Teamspace</span></button>
+        <button class="msn-item" data-space="pages"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#pages"></use></svg></span><span class="msn-label">Páginas</span></button>
+        <button class="msn-item" data-space="mindmaps"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#mindmaps"></use></svg></span><span class="msn-label">Mapas Mentales</span></button>
+        <button class="msn-item" data-space="diagrams"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#diagrams"></use></svg></span><span class="msn-label">Diagramas</span></button>
+        <button class="msn-item" data-space="conceptmaps"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#conceptmaps"></use></svg></span><span class="msn-label">Mapas Conceptuales</span></button>
+        <button class="msn-item" data-space="radar"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#radar"></use></svg></span><span class="msn-label">Radar</span></button>
+        <button class="msn-item" data-space="graph"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#graph"></use></svg></span><span class="msn-label">Grafo</span></button>
+        <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></span><span class="msn-label">Práctica</span></button>
         <button class="msn-item" id="mobileThemeToggle" aria-label="Elegir apariencia"><span class="msn-icon">◐</span><span class="msn-label">Apariencia</span></button>
-        <button class="msn-item" id="msnLibrary" data-space="library"><span class="msn-icon">📚</span><span class="msn-label">Biblioteca</span></button>
+        <button class="msn-item" id="msnLibrary" data-space="library"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span><span class="msn-label">Biblioteca</span></button>
       </nav>
       <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
         <span class="msn-back-icon">←</span>
@@ -338,10 +339,10 @@
               <button class="ctx-more-item" id="cmHistory">Historial</button>
               <button class="ctx-more-item" id="cmDuplicate">Duplicar</button>
               <button class="ctx-more-item" id="cmMove">Mover</button>
-              <button class="ctx-more-item" id="cmSrs">🔁 Repaso (repetición espaciada)</button>
+              <button class="ctx-more-item" id="cmSrs"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> Repaso (repetición espaciada)</button>
               <button class="ctx-more-item hidden" id="cmSaveKnowledge">★ Guardar en Conocimiento</button>
-              <button class="ctx-more-item hidden" id="cmMindmap">✺ Generar mapa mental</button>
-              <button class="ctx-more-item hidden" id="cmConceptMap">◈ Generar mapa conceptual</button>
+              <button class="ctx-more-item hidden" id="cmMindmap"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#mindmaps"></use></svg> Generar mapa mental</button>
+              <button class="ctx-more-item hidden" id="cmConceptMap"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#conceptmaps"></use></svg> Generar mapa conceptual</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmAI">✦ Ask AI</button>
               <button class="ctx-more-item" id="cmSpelling">Abc✓ Corregir párrafo…</button>
@@ -349,7 +350,7 @@
               <button class="ctx-more-item" id="cmToc">¶ Tabla de contenidos</button>
               <button class="ctx-more-item" id="cmFocus">⊙ Modo focus</button>
               <div class="ctx-menu-sep"></div>
-              <button class="ctx-more-item" id="cmShare">🔗 Compartir…</button>
+              <button class="ctx-more-item" id="cmShare"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir…</button>
               <button class="ctx-more-item" id="cmExport">Exportar…</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmStar">Destacar</button>
@@ -368,7 +369,7 @@
       <!-- COURSES EMPTY STATE — shown when courses space is active but no course selected -->
       <div class="course-empty-state hidden" id="courseEmptyState">
         <div class="ces-inner">
-          <span class="ces-icon">🎓</span>
+          <span class="ces-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></span>
           <p class="ces-title">Selecciona un curso</p>
           <p class="ces-sub">Elige un curso del panel izquierdo para comenzar.</p>
         </div>
@@ -405,7 +406,7 @@
         <div class="cv-hero" id="cvHero">
           <div class="cv-hero-scrim" id="cvHeroScrim"></div>
           <div class="cv-hero-btns">
-            <button class="cv-change-cover-btn" id="cvChangeCoverBtn">🖼 Cambiar portada</button>
+            <button class="cv-change-cover-btn" id="cvChangeCoverBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#image"></use></svg> Cambiar portada</button>
             <button class="cv-remove-cover-btn" id="cvRemoveCoverBtn">× Quitar</button>
           </div>
           <div class="cv-meta" id="cvMeta">
@@ -448,7 +449,7 @@
       <div class="practice-view hidden" id="practiceView">
         <div class="practice-view-header">
           <button class="practice-view-back" id="practiceBackToLab" title="Volver al Centro de Práctica">← Centro de Práctica</button>
-          <h2 class="practice-view-title">🎯 Práctica</h2>
+          <h2 class="practice-view-title"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg> Práctica</h2>
         </div>
         <div class="practice-view-body">
           <aside class="practice-rail" id="practiceRail"></aside>
@@ -480,7 +481,7 @@
            duplicó nada de esa lógica. -->
       <div class="lab-view hidden" id="labView">
         <div class="practice-view-header">
-          <h2 class="practice-view-title">🎯 Centro de Práctica</h2>
+          <h2 class="practice-view-title"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg> Centro de Práctica</h2>
         </div>
         <div class="lab-body" id="labBody"></div>
       </div>
@@ -490,7 +491,7 @@
            Práctica (lab-view/lab-body), contenido propio. -->
       <div class="lab-view hidden" id="libraryView">
         <div class="practice-view-header">
-          <h2 class="practice-view-title">📚 Biblioteca</h2>
+          <h2 class="practice-view-title"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg> Biblioteca</h2>
           <input type="file" id="libraryUploadInput" accept=".pdf,.epub" multiple hidden>
           <button class="practice-view-back" id="libraryUploadBtn" style="margin-left:auto">↑ Subir libro</button>
         </div>
@@ -553,13 +554,13 @@
       <!-- Entry cover banner (outside entry-view for full-width) -->
       <div class="entry-cover hidden" id="entryCover">
         <div class="entry-cover-btns">
-          <button class="cover-change-btn" id="coverChangeBtn">🖼 Cambiar portada</button>
+          <button class="cover-change-btn" id="coverChangeBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#image"></use></svg> Cambiar portada</button>
           <button class="cover-remove-btn" id="coverRemoveBtn">× Quitar</button>
         </div>
       </div>
       <!-- Add cover button (shown when no cover) -->
       <div class="entry-add-cover hidden" id="entryAddCover">
-        <button class="add-cover-btn" id="addCoverBtn">🖼 Agregar portada</button>
+        <button class="add-cover-btn" id="addCoverBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#image"></use></svg> Agregar portada</button>
       </div>
 
       <!-- ENTRY VIEW -->
@@ -599,7 +600,7 @@
             <button class="btn-ghost secondary-action" id="pinBtn">⊞ pin</button>
             <button class="btn-ghost secondary-action" id="dupBtn">⎘ dup</button>
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
-            <button class="btn-ghost secondary-action" id="srsBtn">🔁 repaso</button>
+            <button class="btn-ghost secondary-action" id="srsBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> repaso</button>
             <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
             <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ Asistente</button>
             <button class="btn-ghost secondary-action" id="pasteMarkdownBtn" title="Pegar Markdown">↓ md</button>
@@ -614,10 +615,10 @@
               <button class="btn-ghost" id="morePin">⊞ pin</button>
               <button class="btn-ghost" id="moreDup">⎘ dup</button>
               <button class="btn-ghost" id="moreMove">⇄ move</button>
-              <button class="btn-ghost" id="moreSrs">🔁 repaso</button>
+              <button class="btn-ghost" id="moreSrs"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> repaso</button>
               <button class="btn-ghost hidden" id="moreSaveKnowledge">★ a conocimiento</button>
-              <button class="btn-ghost hidden" id="moreMindmap">✺ mapa mental</button>
-              <button class="btn-ghost hidden" id="moreConceptMap">◈ mapa conceptual</button>
+              <button class="btn-ghost hidden" id="moreMindmap"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#mindmaps"></use></svg> mapa mental</button>
+              <button class="btn-ghost hidden" id="moreConceptMap"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#conceptmaps"></use></svg> mapa conceptual</button>
               <button class="btn-ghost" id="moreFocus">⊙ focus</button>
               <button class="btn-ghost" id="moreAI">✦ AI</button>
               <button class="btn-ghost" id="morePasteMd">↓ md</button>
@@ -1505,6 +1506,7 @@
   <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
   <script src="/static/blocknote/editor.bundle.js?v={{ v }}"></script>
   <script src="/static/properties.js?v={{ v }}"></script>
+  <script src="/static/system-icons.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
@@ -1587,7 +1589,7 @@
   <div class="modal-overlay hidden" id="brokenLinksModalOverlay">
     <div class="modal" id="brokenLinksModal" style="max-width:520px">
       <div class="modal-header">
-        <h2>🔗 Enlaces internos rotos</h2>
+        <h2><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Enlaces internos rotos</h2>
         <button class="modal-close" id="brokenLinksModalClose">×</button>
       </div>
       <div class="modal-body" id="brokenLinksBody" style="max-height:60vh;overflow-y:auto">
@@ -1600,7 +1602,7 @@
   <div class="modal-overlay hidden" id="reviewQueueModalOverlay">
     <div class="modal" id="reviewQueueModal" style="max-width:560px">
       <div class="modal-header">
-        <h2>🔁 Repasar entradas</h2>
+        <h2><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> Repasar entradas</h2>
         <button class="modal-close" id="reviewQueueModalClose">×</button>
       </div>
       <div class="modal-body" id="reviewQueueBody" style="max-height:60vh;overflow-y:auto">
@@ -1613,7 +1615,7 @@
   <div class="modal-overlay hidden" id="shareModalOverlay">
     <div class="modal" id="shareModal" style="max-width:440px">
       <div class="modal-header">
-        <h2>🔗 Compartir entrada</h2>
+        <h2><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir entrada</h2>
         <button class="modal-close" id="shareModalClose">×</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
@@ -1640,7 +1642,7 @@
   <div class="modal-overlay hidden" id="courseShareModalOverlay">
     <div class="modal" id="courseShareModal" style="max-width:440px">
       <div class="modal-header">
-        <h2>🔗 Compartir roadmap</h2>
+        <h2><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir roadmap</h2>
         <button class="modal-close" id="courseShareModalClose">×</button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
@@ -1702,7 +1704,7 @@
 
       <div class="modal-body" id="irStepPaste" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;gap:6px" id="irModeTabsRow">
-          <button type="button" class="btn-ghost ir-mode-tab ir-mode-tab--active" data-mode="paste" id="irModeTabPaste">📋 Pegar documento</button>
+          <button type="button" class="btn-ghost ir-mode-tab ir-mode-tab--active" data-mode="paste" id="irModeTabPaste"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#clipboard"></use></svg> Pegar documento</button>
           <button type="button" class="btn-ghost ir-mode-tab" data-mode="generate" id="irModeTabGenerate">✨ Generar con IA</button>
         </div>
 

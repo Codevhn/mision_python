@@ -228,7 +228,7 @@
     let html = '<div class="book-fmt-row">';
     if (book.formats.pdf) {
       html += book.formats.pdf.has_text_layer === false
-        ? '<span class="book-fmt scan">🖼️ Escaneado</span>'
+        ? '<span class="book-fmt scan"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#image"></use></svg> Escaneado</span>'
         : '<span class="book-fmt">PDF</span>';
     }
     if (book.formats.epub) html += '<span class="book-fmt">EPUB</span>';
@@ -861,9 +861,9 @@
     bar.innerHTML = `
       ${swatchesHtml}
       <span class="sep"></span>
-      <span class="act" data-act="note">✎ Nota</span>
-      <span class="act" data-act="ask">✦ Preguntar a la IA</span>
-      <span class="act" data-act="concept">🎯 Crear concepto</span>
+      <span class="act" data-act="note"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#edit"></use></svg> Nota</span>
+      <span class="act" data-act="ask"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#hint"></use></svg> Preguntar a la IA</span>
+      <span class="act" data-act="concept"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg> Crear concepto</span>
     `;
     bar.style.position = 'fixed';
     bar.style.zIndex = 9999;

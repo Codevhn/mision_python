@@ -129,7 +129,7 @@
 
     const cards = maps.map(m => `
       <div class="cm-card" data-id="${m.id}">
-        <div class="cm-card-icon">◈</div>
+        <div class="cm-card-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#conceptmaps"></use></svg></div>
         <div class="cm-card-title">${_esc(m.title)}</div>
         <div class="cm-card-meta">${m.node_count} concepto${m.node_count === 1 ? '' : 's'}</div>
       </div>`).join('');
@@ -137,16 +137,14 @@
     _area.innerHTML = `
       <div class="cm-prompt-header">
         <h1 class="cm-prompt-title">¿Qué concepto quieres mapear?</h1>
-        <div class="cm-prompt-row">
+        <div class="cm-prompt-row atlas-ai-composer">
           <input type="text" class="cm-prompt-input" id="cmPromptInput"
                  placeholder="Ej: Selectores en CSS, propiedades del contenedor padre…" autocomplete="off" />
-          <button class="cm-prompt-btn" id="cmPromptBtn" title="Generar">→</button>
+          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="cmModelCSelect"></div><button class="cm-prompt-btn" id="cmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#send"></use></svg></button></div>
         </div>
         <p class="cm-hint">La IA arma la red de conceptos y sus relaciones al instante. ¿Prefieres armarlo tú? <a href="#" id="cmBlankLink">crea uno vacío</a>.</p>
-        <div class="cm-model-row">
-          <div class="cm-model-heading"><span class="cm-model-label">Modelo de IA</span><span class="cm-model-description">Elige quién genera tu mapa</span></div>
-          <div class="practice-cselect" id="cmModelCSelect"></div>
-        </div>
+
+        <div class="cm-model-warnings" id="cmModelWarnings"></div>
       </div>
       ${maps.length ? '<p class="cm-grid-label">Tus mapas</p>' : ''}
       <div class="cm-grid" id="cmGrid">${cards}</div>`;
@@ -162,6 +160,7 @@
     if (window._mountModelSelector) {
       window._mountModelSelector(document.getElementById('cmModelCSelect'), {
         context: 'conceptmap',
+        warningContainer: document.getElementById('cmModelWarnings'),
         value: _modelChoice,
         onChange: choice => { _modelChoice = choice; },
       });

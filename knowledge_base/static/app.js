@@ -404,7 +404,7 @@ async function loadMindmapSidebar() {
     }
     tree.innerHTML = maps.map(m => `
       <div class="mindmap-item" data-id="${m.id}">
-        <span class="mindmap-item-dot">✺</span>
+        <span class="mindmap-item-dot"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#mindmaps"></use></svg></span>
         <span>${escapeHtml(m.title)}</span>
         <button class="tree-page-menu-btn" aria-label="Acciones de ${escapeHtml(m.title)}" title="Acciones del mapa">⋯</button>
       </div>`).join('');
@@ -454,7 +454,7 @@ async function loadConceptMapSidebar() {
     }
     tree.innerHTML = maps.map(m => `
       <div class="conceptmap-item" data-id="${m.id}">
-        <span class="conceptmap-item-dot">◈</span>
+        <span class="conceptmap-item-dot"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#conceptmaps"></use></svg></span>
         <span>${escapeHtml(m.title)}</span>
       </div>`).join('');
     tree.querySelectorAll('.conceptmap-item').forEach(el => {
@@ -596,7 +596,7 @@ async function fetchCategorySuggestion() {
 
   if (!suggestions.length) { box.classList.add("hidden"); return; }
 
-  box.innerHTML = '<span class="cat-suggest-label">💡 se parece a:</span>' + suggestions.map(s => `
+  box.innerHTML = '<span class="cat-suggest-label"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#hint"></use></svg> se parece a:</span>' + suggestions.map(s => `
     <button type="button" class="cat-suggest-chip" data-cat="${escapeHtml(s.category)}" data-topic="${escapeHtml(s.topic)}">
       ${escapeHtml(s.category)} › ${escapeHtml(s.topic)}
       <span class="cat-suggest-why">${s.example_title ? `— por "${escapeHtml(s.example_title)}"` : "— sugerido"}</span>
@@ -1342,7 +1342,7 @@ function _openPageActionsMenu(anchor, node, {endpoint = `/api/entry/${encodeURIC
   _pageActionsMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `${allowMove ? '<button data-action="move">⇄ Mover a…</button>' : ''}<button data-action="delete" class="danger">🗑 Eliminar ${entity}</button>`;
+  menu.innerHTML = `${allowMove ? '<button data-action="move">⇄ Mover a…</button>' : ''}<button data-action="delete" class="danger"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg> Eliminar ${entity}</button>`;
   const rect = anchor.getBoundingClientRect();
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${Math.max(8,rect.right - 168)}px;width:168px;z-index:9999`;
   document.body.appendChild(menu);
@@ -1971,7 +1971,7 @@ function _fetchWeather() {
         if (chip) {
           const info = _weatherInfo(data.weather_code, data.is_day);
           const city = data.city ? `<span class="hw-sep">·</span><span class="hw-city">${escapeHtml(data.city)}</span>` : '';
-          chip.innerHTML = `<span class="hw-icon">${info.icon}</span>
+          chip.innerHTML = `<span class="hw-icon">${atlasSystemIconMarkup(info.icon)}</span>
             <div class="hw-body">
               <div class="hw-top"><span class="hw-temp">${Math.round(data.temp)}°</span><span class="hw-unit">C</span></div>
               <div class="hw-bottom"><span class="hw-label">${info.label}</span>${city}</div>
@@ -2025,7 +2025,7 @@ function renderHome() {
     const i = _weatherInfo(data.weather_code, data.is_day);
     const city = data.city ? `<span class="hw-city">${escapeHtml(data.city)}</span>` : '';
     return `<div class="home-weather-chip" id="homeWeatherChip">
-      <span class="hw-icon">${i.icon}</span>
+      <span class="hw-icon">${atlasSystemIconMarkup(i.icon)}</span>
       <div class="hw-body">
         <div class="hw-top"><span class="hw-temp">${Math.round(data.temp)}°</span><span class="hw-unit">C</span></div>
         <div class="hw-bottom"><span class="hw-label">${i.label}</span>${city ? `<span class="hw-sep">·</span>${city}` : ''}</div>
@@ -2044,7 +2044,7 @@ function renderHome() {
       : '';
     const entry    = _index.find(e => e.id === r.id);
     const isCourse = entry?.type === 'course';
-    const typeLabel = isCourse ? '🎓 Curso' : '📄 Nota';
+    const typeLabel = isCourse ? 'Curso' : 'Nota';
     const timeAgo  = _relTimeAgo(r.ts);
     return `<div class="home-card" data-id="${r.id}">
       <div class="home-card-cover" style="${coverStyle}"></div>
@@ -2065,7 +2065,7 @@ function renderHome() {
     const timeAgo     = _relTimeAgo(r.ts);
     return `
       <div class="home-study-featured" data-id="${r.id}">
-        <div class="hsf-icon">🎓</div>
+        <div class="hsf-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></div>
         <div class="hsf-body">
           <div class="hsf-header">
             <span class="hsf-course">${escapeHtml(courseLabel)}</span>
@@ -2083,7 +2083,7 @@ function renderHome() {
     const timeAgo     = _relTimeAgo(r.ts);
     return `
       <div class="home-study-compact" data-id="${r.id}">
-        <span class="hsc-icon">📘</span>
+        <span class="hsc-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg></span>
         ${courseLabel ? `<div class="hsc-course">${escapeHtml(courseLabel)}</div>` : ''}
         <div class="hsc-title">${escapeHtml(r.title || 'Sin título')}</div>
         ${timeAgo ? `<span class="hsc-time">${timeAgo}</span>` : ''}
@@ -2108,7 +2108,7 @@ function renderHome() {
           ${studying.length ? `
           <section class="home-section home-section--studying">
             <div class="home-section-header">
-              <div class="home-section-label"><span class="hsl-icon">🎓</span>Continuar estudiando</div>
+              <div class="home-section-label"><span class="hsl-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></span>Continuar estudiando</div>
               <button class="home-section-link" id="homeCoursesLink">Ver cursos →</button>
             </div>
             ${studyFeaturedHtml(studying[0])}
@@ -2146,9 +2146,9 @@ function renderHome() {
 
         <aside class="home-dash-side">
           <div class="home-stats-strip">
-            <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-icon">📖</span><div class="home-stat-text"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div></div>
-            <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-icon">🎓</span><div class="home-stat-text"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div></div>
-            <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-icon">🗂</span><div class="home-stat-text"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div></div>
+            <div class="home-stat" data-stat="entries"    data-space="knowledge"><span class="home-stat-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg></span><div class="home-stat-text"><span class="home-stat-num">${totalEntries}</span><span class="home-stat-label">entradas</span></div></div>
+            <div class="home-stat" data-stat="courses"    data-space="courses"><span class="home-stat-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></span><div class="home-stat-text"><span class="home-stat-num">${coursesCount}</span><span class="home-stat-label">cursos</span></div></div>
+            <div class="home-stat" data-stat="categories" data-space="knowledge"><span class="home-stat-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#folder"></use></svg></span><div class="home-stat-text"><span class="home-stat-num">${categories}</span><span class="home-stat-label">categorías</span></div></div>
             <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-icon">★</span><div class="home-stat-text"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div></div>
           </div>
 
@@ -2232,7 +2232,7 @@ async function _renderHomeDomain() {
     if (reminder && reminder.kind === 'start') {
       reminderHtml = `
         <div class="home-reminder-card home-reminder-card--start">
-          <span class="hrc-icon">📚</span>
+          <span class="hrc-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span>
           <div class="hrc-body">
             <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
           </div>
@@ -2241,7 +2241,7 @@ async function _renderHomeDomain() {
     } else if (reminder) {
       reminderHtml = `
         <div class="home-reminder-card${reminder.pareto ? ' home-reminder-card--pareto' : ''}">
-          <span class="hrc-icon">${reminder.pareto ? '⚡' : '🔁'}</span>
+          <span class="hrc-icon">${atlasSystemIconMarkup(reminder.pareto ? '⚡' : '🔁')}</span>
           <div class="hrc-body">
             <div class="hrc-msg">${escapeHtml(reminder.message)}</div>
             <div class="hrc-course">${escapeHtml(reminder.course_label)}</div>
@@ -2263,7 +2263,7 @@ async function _renderHomeDomain() {
 
     container.innerHTML = `
       <div class="home-section-header">
-        <div class="home-section-label"><span class="hsl-icon">🎯</span>Tu dominio</div>
+        <div class="home-section-label"><span class="hsl-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></span>Tu dominio</div>
       </div>
       ${reminderHtml}
       ${ringsHtml ? `<div class="home-domain-rings">${ringsHtml}</div>` : ''}`;
@@ -2894,7 +2894,7 @@ function openCoverPicker(saveFn) {
         <div class="cover-url-wrap">
           <label class="cover-upload-label">
             <input type="file" id="coverFileInput" accept="image/*" style="display:none" />
-            <span class="cover-upload-zone" id="coverUploadZone">📁 Haz clic o arrastra una imagen aquí</span>
+            <span class="cover-upload-zone" id="coverUploadZone"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#folder"></use></svg> Haz clic o arrastra una imagen aquí</span>
           </label>
           <div class="cover-url-preview" id="coverUploadPreview"></div>
           <button class="btn-primary" id="coverUploadApply" disabled>Aplicar imagen</button>
@@ -6460,7 +6460,8 @@ function _wireCtxBtn(ctxId, sourceId) {
 
       const iconEl = document.createElement('span');
       iconEl.className = 'cmd-item-icon';
-      iconEl.textContent = item.icon || '·';
+      if (item.id.startsWith('act:')) setAtlasSystemLabel(iconEl, item.icon || '·');
+      else iconEl.textContent = item.icon || '·';
 
       const textEl = document.createElement('div');
       textEl.className = 'cmd-item-text';
@@ -7512,9 +7513,9 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
   menu.innerHTML = `
-    <button data-action="share">🔗 Compartir roadmap</button>
+    <button data-action="share"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir roadmap</button>
     <button data-action="export">⬇ Exportar roadmap (.md)</button>
-    <button data-action="wipe" class="danger">🗑 Eliminar todas las lecciones</button>`;
+    <button data-action="wipe" class="danger"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg> Eliminar todas las lecciones</button>`;
   const rect = anchor.getBoundingClientRect();
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 130}px;width:210px;z-index:9999`;
   document.body.appendChild(menu);
@@ -7808,12 +7809,12 @@ function renderCourseTab(tab, courseSlug, stats) {
     if (!modEntries.length) {
       body.innerHTML = `
         <div class="cv-empty-state">
-          <div class="cv-empty-icon">📭</div>
+          <div class="cv-empty-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#folder"></use></svg></div>
           <p class="cv-empty-title">Este curso todavía no tiene lecciones</p>
           <p class="cv-empty-sub">Elige cómo quieres empezar a construir el roadmap</p>
           <div class="cv-empty-actions">
             <button class="cv-action-card" id="cvEmptyImportRoadmap">
-              <span class="cv-action-icon">📋</span>
+              <span class="cv-action-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#clipboard"></use></svg></span>
               <span class="cv-action-title">Importar roadmap</span>
               <span class="cv-action-desc">Pega un documento con la estructura del curso</span>
             </button>
@@ -7823,7 +7824,7 @@ function renderCourseTab(tab, courseSlug, stats) {
               <span class="cv-action-desc">Usa el curso abierto y elige cómo organizar su roadmap</span>
             </button>
             <button class="cv-action-card" id="cvEmptyNewLesson">
-              <span class="cv-action-icon">✏️</span>
+              <span class="cv-action-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#edit"></use></svg></span>
               <span class="cv-action-title">Crear manualmente</span>
               <span class="cv-action-desc">Empieza escribiendo la primera lección tú mismo</span>
             </button>
@@ -7985,7 +7986,7 @@ function renderCourseTab(tab, courseSlug, stats) {
           <div class="cv-module-card-actions">
             <button class="cv-mod-add-btn" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+ lección</button>
             <button class="cv-mod-rename-btn" data-slug="${escapeHtml(modSlug)}" data-label="${escapeHtml(mod.label)}" title="Renombrar módulo">✎</button>
-            <button class="cv-mod-delete-btn danger" data-slug="${escapeHtml(modSlug)}" data-label="${escapeHtml(mod.label)}" title="Eliminar módulo">🗑</button>
+            <button class="cv-mod-delete-btn danger" data-slug="${escapeHtml(modSlug)}" data-label="${escapeHtml(mod.label)}" title="Eliminar módulo"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg></button>
           </div>
         </div>
         <div class="cv-module-card-bar-wrap">
@@ -9280,7 +9281,7 @@ function _irLessonNode(lesson) {
           <option value="create">Crear aparte (duplicar)</option>
         </select>` : ''}
       <button class="btn-ghost ir-toggle-content" style="font-size:0.75rem;padding:3px 6px">Ver contenido</button>
-      <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px">🗑</button>
+      <button class="btn-ghost ir-del-lesson" title="Eliminar lección" style="padding:3px 6px"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg></button>
     </div>
     <textarea class="ir-lesson-content hidden" style="width:100%;min-height:120px;margin-top:6px;
       font-family:var(--font-mono);font-size:0.78rem;background:var(--bg);border:1px solid var(--border);
@@ -9309,7 +9310,7 @@ function _irModuleNode(mod) {
       <input type="text" class="ir-module-title" placeholder="Título del módulo"
         style="flex:1;font-weight:600;background:var(--bg);border:1px solid var(--border);
                border-radius:6px;padding:6px 8px;color:var(--text)" />
-      <button class="btn-ghost ir-del-module" title="Eliminar módulo" style="padding:4px 8px">🗑</button>
+      <button class="btn-ghost ir-del-module" title="Eliminar módulo" style="padding:4px 8px"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg></button>
     </div>
     <div class="ir-lessons"></div>
     <button class="btn-ghost ir-add-lesson" style="font-size:0.78rem;margin-top:4px">+ Agregar lección</button>`;
@@ -10038,7 +10039,7 @@ function initAIPanel() {
         const c = doneEvent.cache;
         const meta = document.createElement('div');
         meta.className = 'ai-cache-meta';
-        meta.textContent = `🔵 caché: ${c.hit}/${c.total} tokens (${c.pct}%)`;
+        setAtlasSystemLabel(meta, `🔵 caché: ${c.hit}/${c.total} tokens (${c.pct}%)`);
         bubble.wrap.appendChild(meta);
       }
       updateFooter();
@@ -10586,7 +10587,7 @@ function _labQueueHtml(items) {
   return items.map((it, i) => `
     <div class="lab-qitem lab-qitem--${it.kind}" data-idx="${i}">
       <span class="lab-qnum">${i + 1}</span>
-      <div class="lab-qic">${it.icon}</div>
+      <div class="lab-qic">${atlasSystemIconMarkup(it.icon)}</div>
       <div class="lab-qbody">
         <div class="lab-qtitle">${escapeHtml(it.title)}</div>
         <div class="lab-qtag">${escapeHtml(it.tag)}</div>
@@ -10675,7 +10676,7 @@ async function _renderLabSpace() {
   if (!coursesArr.length) {
     body.innerHTML = `
       <div class="lab-empty">
-        <div class="lab-empty-icon">🎯</div>
+        <div class="lab-empty-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></div>
         <h3>Todavía no hay mapa de dominio</h3>
         <p>Generá el mapa de conceptos de un curso para ver tu radar acá — desde Cursos, o abriendo "Por tema" en un reto.</p>
         <button class="btn-primary" id="labGoCoursesBtn">Ir a Cursos →</button>
@@ -10863,8 +10864,8 @@ function _renderQuizRail() {
 
   const formHtml = showForm ? `
     <div class="practice-mode-tabs">
-      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
-      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
+      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#edit"></use></svg> Tema libre</button>
+      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg> Repasar lección</button>
     </div>
     <div id="quizModeBody"></div>
     <div class="practice-diff-row practice-diff-row--col">
@@ -10881,13 +10882,13 @@ function _renderQuizRail() {
     </div>
     <button class="btn-primary practice-generate-btn" id="quizGenerateBtn">✦ Generar quiz</button>
   ` : `
-    <div class="practice-rail-collapsed-hint">Tienes un quiz en curso. Usa <b>✏️ Nuevo quiz</b> arriba para configurar otro.</div>
+    <div class="practice-rail-collapsed-hint">Tienes un quiz en curso. Usa <b><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#edit"></use></svg> Nuevo quiz</b> arriba para configurar otro.</div>
   `;
 
   $('quizRail').innerHTML = `
     <div class="practice-rail-nav">
-      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="quizNavNew">✏️ Nuevo quiz</button>
-      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="quizNavHistory">🕘 Historial</button>
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="quizNavNew"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#edit"></use></svg> Nuevo quiz</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="quizNavHistory"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#history"></use></svg> Historial</button>
     </div>
     ${formHtml}`;
 
@@ -11194,7 +11195,7 @@ function _buildEvalSummaryHtml(pct, fracLabel, gradeMsg, cache) {
   // that produced this quiz/reto, when the provider reports it (see
   // _extract_cache_stats in app.py). Same idea as the Ask AI panel badge.
   const cacheHtml = cache
-    ? `<div class="ai-cache-meta">🔵 caché: ${cache.hit}/${cache.total} tokens (${cache.pct}%)</div>`
+    ? `<div class="ai-cache-meta"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#info"></use></svg> caché: ${cache.hit}/${cache.total} tokens (${cache.pct}%)</div>`
     : '';
   return `
     <div class="eval-summary eval-summary--${grade}">
@@ -11374,7 +11375,7 @@ async function _renderQuizHistoryMain() {
           <span>${_relTimeAgo(new Date(q.updated_at).getTime())}</span>
         </div>
       </div>
-      <button class="practice-history-del" data-id="${q.id}" title="Eliminar del historial">🗑</button>
+      <button class="practice-history-del" data-id="${q.id}" title="Eliminar del historial"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg></button>
     </div>`).join('')}</div>`;
 
   document.querySelectorAll('#quizMain .practice-history-del').forEach(btn => {
@@ -11568,7 +11569,7 @@ function _renderPracticeRail() {
 
   const nudgeHtml = st.startNudge ? `
     <div class="practice-nudge">
-      <span class="practice-nudge-icon">📚</span>
+      <span class="practice-nudge-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span>
       <div class="practice-nudge-msg">${escapeHtml(st.startNudge.message)}</div>
       <button class="practice-nudge-btn" id="practiceNudgeGoBtn">Ir a Cursos →</button>
     </div>` : '';
@@ -11585,10 +11586,10 @@ function _renderPracticeRail() {
   const formHtml = showForm ? `
     ${nudgeHtml}
     <div class="practice-mode-tabs">
-      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic">✏️ Tema libre</button>
-      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review">📖 Repasar lección</button>
-      <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise">🎲 Reto sorpresa</button>
-      <button class="practice-mode-tab ${st.mode === 'concept' ? 'active' : ''}" data-mode="concept">🧭 Por tema</button>
+      <button class="practice-mode-tab ${st.mode === 'topic' ? 'active' : ''}" data-mode="topic"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#edit"></use></svg> Tema libre</button>
+      <button class="practice-mode-tab ${st.mode === 'review' ? 'active' : ''}" data-mode="review"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg> Repasar lección</button>
+      <button class="practice-mode-tab ${st.mode === 'surprise' ? 'active' : ''}" data-mode="surprise"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#dice"></use></svg> Reto sorpresa</button>
+      <button class="practice-mode-tab ${st.mode === 'concept' ? 'active' : ''}" data-mode="concept"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#radar"></use></svg> Por tema</button>
     </div>
     <div id="practiceModeBody"></div>
     <div class="practice-diff-row practice-diff-row--col">
@@ -11605,13 +11606,13 @@ function _renderPracticeRail() {
     </div>
     <button class="btn-primary practice-generate-btn" id="practiceGenerateBtn">✦ Generar reto</button>
   ` : `
-    <div class="practice-rail-collapsed-hint">Tienes un reto en curso. Usa <b>✏️ Nuevo reto</b> arriba para configurar otro.</div>
+    <div class="practice-rail-collapsed-hint">Tienes un reto en curso. Usa <b><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#edit"></use></svg> Nuevo reto</b> arriba para configurar otro.</div>
   `;
 
   $('practiceRail').innerHTML = `
     <div class="practice-rail-nav">
-      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="practiceNavNew">✏️ Nuevo reto</button>
-      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="practiceNavHistory">🕘 Historial</button>
+      <button class="practice-rail-nav-btn ${!st.viewingHistory ? 'active' : ''}" id="practiceNavNew"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#edit"></use></svg> Nuevo reto</button>
+      <button class="practice-rail-nav-btn ${st.viewingHistory ? 'active' : ''}" id="practiceNavHistory"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#history"></use></svg> Historial</button>
     </div>
     ${formHtml}`;
 
@@ -11851,6 +11852,8 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   const trigger = container.querySelector('button');
   const caption = trigger.querySelector('.ai-model-trigger-text');
   const updateCaption = () => {
+    trigger.title = selected ? `${selected.name} · ${selected.provider}` : 'Elegir modelo de IA';
+    trigger.setAttribute('aria-label', selected ? `Modelo: ${selected.name}, ${selected.provider}` : 'Elegir modelo de IA');
     caption.innerHTML = `<span class="ai-model-name">${escapeHtml(selected?.name || 'Elegir modelo')}</span><span class="ai-model-provider">${escapeHtml(selected?.provider || 'Busca un modelo o combo')}</span>`;
   };
   updateCaption();
@@ -12056,7 +12059,7 @@ async function _renderPracticeModeBody() {
       <div class="practice-cselect" id="practiceConceptCourseCSelect"></div>
       <div class="practice-cselect" id="practiceConceptCategoryCSelect" style="margin-top:8px"></div>
       <div class="practice-cselect" id="practiceConceptCSelect" style="margin-top:8px"></div>
-      <button class="practice-refresh-topics-btn" id="practiceRefreshTopicsBtn" type="button" ${!st.conceptCourse ? 'disabled' : ''}>🔄 Actualizar temas de este curso</button>`;
+      <button class="practice-refresh-topics-btn" id="practiceRefreshTopicsBtn" type="button" ${!st.conceptCourse ? 'disabled' : ''}><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> Actualizar temas de este curso</button>`;
 
     _mountPracticeCustomSelect($('practiceConceptCourseCSelect'), {
       options: courseSlugs.map(slug => ({ value: slug, label: domainData.courses[slug].label })),
@@ -12145,11 +12148,11 @@ async function _renderConceptHubMain() {
         <div class="practice-loading-inline"><span class="arp-spinner"></span> Preparando la teoría…</div>
       </div>
       <div class="practice-main-actions">
-        <button class="btn-ghost" id="practiceConceptViewLessonsBtn">📚 Ver lecciones del curso</button>
+        <button class="btn-ghost" id="practiceConceptViewLessonsBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg> Ver lecciones del curso</button>
         <button class="btn-primary" id="practiceConceptGenerateBtn">✦ Generar reto de este concepto</button>
       </div>
       <div class="practice-concept-explain">
-        <h4 class="practice-concept-explain-title">🗣️ Explícamelo (técnica Feynman)</h4>
+        <h4 class="practice-concept-explain-title"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#info"></use></svg> Explícamelo (técnica Feynman)</h4>
         <p class="practice-concept-explain-hint">Explica este concepto con tus propias palabras, como si se lo enseñaras a alguien más — si tu explicación queda superficial, te repregunto antes de dar veredicto.</p>
         <div id="practiceConceptExplainBody"></div>
       </div>
@@ -12331,7 +12334,7 @@ function _renderPracticeMain() {
 function _renderPracticeEmptyMain() {
   $('practiceMain').innerHTML = `
     <div class="practice-empty-main">
-      <span class="practice-empty-main-icon">🎯</span>
+      <span class="practice-empty-main-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></span>
       <p class="practice-empty-main-title">Configura tu reto</p>
       <p class="practice-empty-main-sub">Elegí un modo, la dificultad y el modelo que quieras que lo genere — después tocá "Generar reto".</p>
     </div>`;
@@ -12418,7 +12421,7 @@ function _renderPracticeChallenge() {
   // escaped plain text for older cached challenges or test fixtures that
   // predate this field.
   const hintsHtml = step.hints.slice(0, hintsShown)
-    .map((h, i) => `<div class="practice-hint practice-md">💡 Pista ${i + 1}: ${(step.hints_html && step.hints_html[i]) || escapeHtml(h)}</div>`).join('');
+    .map((h, i) => `<div class="practice-hint practice-md"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#hint"></use></svg> Pista ${i + 1}: ${(step.hints_html && step.hints_html[i]) || escapeHtml(h)}</div>`).join('');
 
   $('practiceMain').innerHTML = `
     <h3 class="practice-challenge-title">${escapeHtml(ch.title)}</h3>
@@ -12428,7 +12431,7 @@ function _renderPracticeChallenge() {
       <div class="practice-step-instruction practice-md">${step.instruction_html || escapeHtml(step.instruction)}</div>
       ${stepBodyHtml}
       ${hintsHtml}
-      ${stepState.explanationHtml ? `<div class="practice-explain practice-md"><strong>🤔 Explicación:</strong>${stepState.explanationHtml}</div>` : ''}
+      ${stepState.explanationHtml ? `<div class="practice-explain practice-md"><strong><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#hint"></use></svg> Explicación:</strong>${stepState.explanationHtml}</div>` : ''}
       ${stepState.revealed ? `<div class="practice-solution"><strong>Solución:</strong><pre>${escapeHtml(step.solution)}</pre></div>` : ''}
     </div>
     <div class="practice-main-actions" id="practiceMainActions"></div>`;
@@ -12485,7 +12488,7 @@ function _renderPracticeChallenge() {
   if (st.entryId) {
     const reviewBtn = document.createElement('button');
     reviewBtn.className = 'btn-ghost';
-    reviewBtn.textContent = '📖 Repasar la lección';
+    setAtlasSystemLabel(reviewBtn, '📖 Repasar la lección');
     reviewBtn.title = 'Tu progreso en este reto queda guardado — volvés a Práctica y seguís donde estabas';
     reviewBtn.addEventListener('click', () => {
       window.switchSpace?.('courses');
@@ -12498,7 +12501,7 @@ function _renderPracticeChallenge() {
   if (hintsShown < step.hints.length) {
     const hintBtn = document.createElement('button');
     hintBtn.className = 'btn-ghost';
-    hintBtn.textContent = `💡 Pista (${hintsShown}/${step.hints.length})`;
+    setAtlasSystemLabel(hintBtn, `💡 Pista (${hintsShown}/${step.hints.length})`);
     hintBtn.addEventListener('click', () => { stepState.hintsShown = hintsShown + 1; _savePracticeProgress(st); _renderPracticeChallenge(); });
     actions.appendChild(hintBtn);
   } else if (!stepState.revealed && !stepState.passed) {
@@ -12509,13 +12512,13 @@ function _renderPracticeChallenge() {
     if (!stepState.explanationHtml) {
       const explainBtn = document.createElement('button');
       explainBtn.className = 'btn-ghost';
-      explainBtn.textContent = '🤔 Explícamelo';
+      setAtlasSystemLabel(explainBtn, '🤔 Explícamelo');
       explainBtn.addEventListener('click', () => _explainPracticeStep(st, stepState, explainBtn));
       actions.appendChild(explainBtn);
     }
     const solBtn = document.createElement('button');
     solBtn.className = 'btn-ghost';
-    solBtn.textContent = '🔓 Ver solución';
+    setAtlasSystemLabel(solBtn, '🔓 Ver solución');
     solBtn.addEventListener('click', async () => {
       if (await showConfirm('Ver solución', 'Ver la solución marca este paso como no resuelto. ¿Continuar?')) {
         stepState.revealed = true;
@@ -12682,7 +12685,7 @@ async function _explainPracticeStep(st, stepState, btn) {
       body: JSON.stringify({ instruction: step.instruction, rubric: step.rubric || '', provider: st.challenge.provider, model: st.challenge.model }),
     });
     const data = await res.json();
-    if (!res.ok || data.error) { showToast(data.error || 'No se pudo generar la explicación', 'error'); btn.disabled = false; btn.textContent = '🤔 Explícamelo'; return; }
+    if (!res.ok || data.error) { showToast(data.error || 'No se pudo generar la explicación', 'error'); btn.disabled = false; setAtlasSystemLabel(btn, '🤔 Explícamelo'); return; }
     stepState.explanation = data.explanation || '';
     stepState.explanationHtml = data.explanation_html || '';
     _savePracticeProgress(st);
@@ -12690,7 +12693,7 @@ async function _explainPracticeStep(st, stepState, btn) {
   } catch (err) {
     showToast('Error de red: ' + err.message, 'error');
     btn.disabled = false;
-    btn.textContent = '🤔 Explícamelo';
+    setAtlasSystemLabel(btn, '🤔 Explícamelo');
   }
 }
 
@@ -13004,7 +13007,7 @@ async function _renderPracticeHistoryMain() {
           <span>${_relTimeAgo(new Date(c.updated_at).getTime())}</span>
         </div>
       </div>
-      <button class="practice-history-del" data-id="${c.id}" title="Eliminar del historial">🗑</button>
+      <button class="practice-history-del" data-id="${c.id}" title="Eliminar del historial"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg></button>
     </div>`).join('')}</div>`;
 
   document.querySelectorAll('.practice-history-del').forEach(btn => {
