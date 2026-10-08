@@ -832,6 +832,18 @@ async function loadTree() {
   renderPinnedSection();
 }
 
+function setTreeDisclosure(header, open) {
+  header.setAttribute('aria-expanded', String(open));
+  header.querySelector('.arrow').textContent = open ? '−' : '+';
+}
+function setupTreeDisclosure(header, open) {
+  header.setAttribute('role', 'button');header.tabIndex=0;
+  setTreeDisclosure(header,open);
+  header.addEventListener('keydown',event=>{
+    if(event.target===header && (event.key==='Enter'||event.key===' ')){event.preventDefault();header.click();}
+  });
+}
+
 function renderTree(tree) {
   const nav = $("tree");
   if (Object.keys(tree).length === 0) {
@@ -853,14 +865,16 @@ function renderTree(tree) {
 
     catEl.innerHTML = `
       <div class="tree-category-header">
-        <span class="arrow">▶</span>
+        <span class="arrow" aria-hidden="true">+</span>
         <span>${escapeHtml(catLabel)}</span>
       </div>
       <div class="tree-topics"></div>
     `;
+    setupTreeDisclosure(catEl.querySelector(".tree-category-header"), treeState[cat].open);
     catEl.querySelector(".tree-category-header").addEventListener("click", () => {
       treeState[cat].open = !treeState[cat].open;
       catEl.classList.toggle("open");
+      setTreeDisclosure(catEl.querySelector(".tree-category-header"), treeState[cat].open);
     });
 
     const topicsEl = catEl.querySelector(".tree-topics");
@@ -877,16 +891,18 @@ function renderTree(tree) {
       topicEl.dataset.topicLabel = topicLabel || topic;
       topicEl.innerHTML = `
         <div class="tree-topic-header">
-          <span class="arrow">▶</span>
+          <span class="arrow" aria-hidden="true">+</span>
           <span>${escapeHtml(topicLabel || topic)}</span>
           <button class="tree-topic-play" title="Review mode">▶</button>
         </div>
         <div class="tree-entries"></div>
       `;
+      setupTreeDisclosure(topicEl.querySelector(".tree-topic-header"), treeState[cat].topics[topic].open);
       topicEl.querySelector(".tree-topic-header").addEventListener("click", e => {
         if (e.target.classList.contains("tree-topic-play")) return;
         treeState[cat].topics[topic].open = !treeState[cat].topics[topic].open;
         topicEl.classList.toggle("open");
+        setTreeDisclosure(topicEl.querySelector(".tree-topic-header"), treeState[cat].topics[topic].open);
       });
       topicEl.querySelector(".tree-topic-play").addEventListener("click", e => {
         e.stopPropagation();
@@ -1019,7 +1035,8 @@ function renderCoursesTree(tree, filterSlug, _container = null) {
       playBtn.textContent = "▶";
       playBtn.addEventListener("click", e => { e.stopPropagation(); startReview(entries); });
 
-      topicHeader.innerHTML = `<span class="arrow">▶</span> <span>${escapeHtml(moduleData.label)}</span>`;
+      topicHeader.innerHTML = `<span class="arrow" aria-hidden="true">+</span> <span>${escapeHtml(moduleData.label)}</span>`;
+      setupTreeDisclosure(topicHeader,modState.open);
       topicHeader.appendChild(playBtn);
       topicDiv.appendChild(topicHeader);
 
@@ -1033,6 +1050,7 @@ function renderCoursesTree(tree, filterSlug, _container = null) {
         if (e.target.classList.contains("tree-topic-play")) return;
         modState.open = !modState.open;
         topicDiv.classList.toggle("open", modState.open);
+        setTreeDisclosure(topicHeader,modState.open);
         entriesDiv.style.display = modState.open ? "" : "none";
       });
 
@@ -1120,8 +1138,8 @@ function renderTeamspaceTree(tree) {
     let spaceOpen = _tsOpenMap()[spaceSlug] === true;
 
     spaceHeader.innerHTML = `
-      <button class="ts-space-toggle-btn" title="Expandir o colapsar">
-        <span class="tree-arrow">${spaceOpen ? "▾" : "▸"}</span>
+      <button type="button" class="ts-space-toggle-btn" title="${spaceOpen ? "Contraer" : "Expandir"} ${escapeHtml(spaceLabel)}" aria-label="${spaceOpen ? "Contraer" : "Expandir"} ${escapeHtml(spaceLabel)}" aria-expanded="${spaceOpen}" aria-controls="ts-entries-${escapeHtml(spaceSlug)}">
+        <span class="ts-space-disclosure-mark" aria-hidden="true">${spaceOpen ? "−" : "+"}</span>
       </button>
       <button class="ts-space-main" data-home-id="${escapeHtml(homeId)}" title="${homeId ? `Abrir ${escapeHtml(spaceLabel)}` : escapeHtml(spaceLabel)}">
         <span class="ts-space-icon">${renderIconMarkup(icon, "ts-space-icon-glyph", ENTRY_ICON_DEFAULTS.teamspace)}</span>
@@ -1145,7 +1163,9 @@ function renderTeamspaceTree(tree) {
       e.stopPropagation();
       spaceOpen = !spaceOpen;
       _tsSetOpen(spaceSlug, spaceOpen);
-      spaceHeader.querySelector(".tree-arrow").textContent = spaceOpen ? "▾" : "▸";
+      toggleBtn.querySelector(".ts-space-disclosure-mark").textContent = spaceOpen ? "−" : "+";
+      toggleBtn.setAttribute("aria-expanded", String(spaceOpen));
+      toggleBtn.title = toggleBtn.ariaLabel = `${spaceOpen ? "Contraer" : "Expandir"} ${spaceLabel}`;
       entryList.style.display = spaceOpen ? "" : "none";
     });
 
@@ -1164,6 +1184,7 @@ function renderTeamspaceTree(tree) {
 
     const entryList = document.createElement("div");
     entryList.className = "tree-topic";
+    entryList.id = `ts-entries-${spaceSlug}`;
     entryList.style.display = spaceOpen ? "" : "none";
     for (const entry of entries) {
       const item = document.createElement("div");
@@ -1217,9 +1238,12 @@ function renderPagesTree(tree) {
     row.draggable = true;
 
     const hasChildren = node.children && node.children.length > 0;
-    const toggle = document.createElement("span");
+    const toggle = document.createElement("button");
+    toggle.type="button";
     toggle.className = "tree-page-toggle";
-    toggle.textContent = hasChildren ? "▾" : "";
+    toggle.setAttribute("aria-label", `Contraer subpáginas de ${node.title}`);
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.textContent = hasChildren ? "−" : "";
     // Leaf pages (the vast majority) don't need the toggle's reserved width —
     // dropping it from the flex flow entirely (not just emptying its text)
     // keeps their icon flush instead of leaving a blank arrow-sized gap.
@@ -1251,7 +1275,9 @@ function renderPagesTree(tree) {
         e.stopPropagation();
         const open = childrenEl.style.display !== "none";
         childrenEl.style.display = open ? "none" : "";
-        toggle.textContent = open ? "▸" : "▾";
+        toggle.textContent = open ? "+" : "−";
+        toggle.setAttribute("aria-expanded",String(!open));
+        toggle.setAttribute("aria-label", `${open ? "Expandir" : "Contraer"} subpáginas de ${node.title}`);
       });
     }
 
@@ -7399,7 +7425,8 @@ async function renderCourseList() {
     return;
   }
   archivedSection.style.display = '';
-  archivedToggle.textContent = `▸ Archivados (${archived.length})`;
+  archivedToggle.innerHTML = `<span class="atlas-disclosure-mark" aria-hidden="true">${archivedList.style.display === "none" ? "+" : "−"}</span> Archivados (${archived.length})`;
+  archivedToggle.setAttribute("aria-expanded",String(archivedList.style.display !== "none"));
 
   // Rebuild archived list when visible
   const rebuildArchived = () => {
@@ -7420,7 +7447,8 @@ async function renderCourseList() {
     archivedToggle.addEventListener('click', () => {
       const open = archivedList.style.display !== 'none';
       archivedList.style.display = open ? 'none' : '';
-      archivedToggle.textContent = `${open ? '▸' : '▾'} Archivados (${archived.length})`;
+      archivedToggle.innerHTML = `<span class="atlas-disclosure-mark" aria-hidden="true">${open ? '+' : '−'}</span> Archivados (${archived.length})`;
+      archivedToggle.setAttribute('aria-expanded',String(!open));
       if (!open) rebuildArchived();
     });
   }
@@ -7807,8 +7835,8 @@ function renderCourseTab(tab, courseSlug, stats) {
       section.className = 'cv-roadmap-section';
       section.dataset.modSlug = modSlug;
       section.innerHTML = `<div class="cv-roadmap-module">
-        <button class="cv-roadmap-mod-label" title="Contraer / expandir módulo">
-          <span class="cv-mod-toggle">▾</span>${escapeHtml(mod.label)}
+        <button class="cv-roadmap-mod-label" title="Contraer / expandir módulo" aria-expanded="true">
+          <span class="cv-mod-toggle" aria-hidden="true">−</span>${escapeHtml(mod.label)}
         </button>
         <span class="cv-roadmap-mod-count">${mod.entries.length} lecciones</span>
         <button class="cv-roadmap-add-lesson" data-module="${escapeHtml(mod.label)}" title="Nueva lección">+</button>
@@ -7819,7 +7847,8 @@ function renderCourseTab(tab, courseSlug, stats) {
       section.querySelector('.cv-roadmap-mod-label').addEventListener('click', ev => {
         ev.stopPropagation();
         const collapsed = entries.classList.toggle('cv-entries-collapsed');
-        section.querySelector('.cv-mod-toggle').textContent = collapsed ? '▸' : '▾';
+        section.querySelector('.cv-mod-toggle').textContent = collapsed ? '+' : '−';
+        section.querySelector('.cv-roadmap-mod-label').setAttribute('aria-expanded',String(!collapsed));
       });
       (mod.entries || []).forEach((e, ei) => {
         const row = document.createElement('div');

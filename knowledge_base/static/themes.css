@@ -1012,3 +1012,48 @@
 @media(prefers-reduced-motion:reduce) {
  #entryBody .bn-block-content[data-content-type="checkListItem"] > div > input[type="checkbox"] { transition:none; }
 }
+
+/* Teamspace uses Explorer-style disclosure buttons and Aero row chrome. */
+#sidebar .ts-space-toggle-btn {
+ width:20px; height:20px; flex:0 0 20px; border:1px solid var(--border);
+ border-radius:3px; background:var(--aero-button,var(--bg-elevated)); color:var(--text);
+ font:600 14px/1 var(--font-ui); box-shadow:inset 0 1px 0 var(--aero-inset,transparent);
+}
+#sidebar .ts-space-toggle-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+[data-style="aero"] #sidebar .ts-space-header {
+ min-height:40px; padding:6px 8px; gap:7px; margin:5px 7px;
+ background:var(--aero-button) !important; color:var(--text);
+ border:1px solid var(--aero-edge); border-radius:5px;
+ box-shadow:inset 0 1px 0 var(--aero-inset),0 1px 3px #0002;
+}
+[data-style="aero"] #sidebar .ts-space-header:is(:hover,:focus-within) {
+ background:var(--aero-nav-hover) !important; border-color:var(--aero-select-border);
+ box-shadow:var(--aero-nav-shadow);
+}
+#sidebar .ts-space-main { min-height:28px; }
+#sidebar .ts-space-main:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+#sidebar .ts-space-label { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; line-height:1.35; }
+[data-style="aero"] #sidebar .ts-space-icon { width:23px; height:23px; background:var(--aero-glass); border-color:var(--aero-frame); }
+#activityBar #abConceptmaps { min-height:44px; height:auto; }
+#activityBar #abConceptmaps .ab-label { text-align:left; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.25; }
+#conceptMapArea .cm-card-title { display:block; -webkit-line-clamp:unset; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; }
+[data-style="aero"] .cm-card {
+ background:var(--aero-glass); border:1px solid var(--aero-frame); border-radius:5px;
+ box-shadow:inset 0 1px 0 var(--aero-inset),0 2px 7px #0002;
+}
+[data-style="aero"] .cm-card:hover { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:var(--aero-nav-shadow); }
+
+/* One Explorer disclosure language across navigation trees and roadmaps. */
+#sidebar :is(.tree-category-header,.tree-topic-header) .arrow,
+#sidebar .tree-page-toggle,
+.atlas-disclosure-mark,.cv-mod-toggle {
+ display:inline-flex; align-items:center; justify-content:center;
+ width:20px; height:20px; flex:0 0 20px; padding:0; box-sizing:border-box;
+ border:1px solid var(--border); border-radius:3px;
+ background:var(--aero-button,var(--bg-elevated)); color:var(--text);
+ font:600 14px/1 var(--font-ui); opacity:1; transform:none !important;
+ box-shadow:inset 0 1px 0 var(--aero-inset,transparent);
+}
+#sidebar :is(.tree-category-header,.tree-topic-header,.tree-page-toggle):focus-visible {
+ outline:2px solid var(--accent); outline-offset:2px;
+}
