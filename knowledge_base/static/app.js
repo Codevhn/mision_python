@@ -2503,29 +2503,24 @@ async function loadEntry(id, opts = {}) {
     titleEl.classList.toggle("is-empty", !m.title);
   }
 
-  // Module label above title — only for course lessons
-  const moduleLabelEl = $("entryModuleLabel");
-  if (moduleLabelEl) {
-    // Prefer the stored label; fall back to the live tree lookup (handles old
-    // index entries created before module_label was always written).
-    const modLabel = m.type === "course"
-      ? (m.module_label || _findEntryModule(m.course, id) || "")
-      : "";
-    const modNumber = m.type === "course" && m.course && m.module
-      ? _coursesTreeData[m.course]?.modules?.[m.module]?.module_number
-      : "";
-    if (modLabel) {
-      const cleanLabel = modNumber
-        ? modLabel.replace(/^(M[oó]dulo\s+\d+[\.:\s]*)\s*/i, "").trim()
-        : modLabel;
-      moduleLabelEl.innerHTML = modNumber
-        ? `<span class="eml-num">MÓDULO ${escapeHtml(modNumber)}</span><span class="eml-sep">:</span><span class="eml-text">${escapeHtml(cleanLabel)}</span>`
-        : `<span class="eml-text">${escapeHtml(modLabel)}</span>`;
-      moduleLabelEl.classList.remove("hidden");
-    } else {
-      moduleLabelEl.classList.add("hidden");
-    }
-    $("entryView")?.classList.toggle("has-module-label", !!modLabel);
+  // The module identity belongs to the cover; the lesson title stays editable below.
+  const moduleHero = $("entryModuleLabel");
+  if (moduleHero) {
+    const courseTree = _coursesTreeData[m.course];
+    const modules = Object.values(courseTree?.modules || {});
+    const module = courseTree?.modules?.[m.module] || modules.find(mod => (mod.entries || []).some(e => e.id === id));
+    const label = m.type === "course" ? (module?.label || m.module_label || _findEntryModule(m.course, id) || "") : "";
+    const match = label.match(/^(M[oó]dulo|Fase|Bloque|Parte)\s+(\d+(?:\.\d+)*)\s*[:.–-]?\s*(.*)$/i);
+    let number = module?.module_number ?? m.module_number;
+    if (number === undefined || number === null || number === '') number = match?.[2] ?? (module ? modules.indexOf(module) + 1 : '');
+    const moduleName = module?.module_title || m.module_title || match?.[3] || label;
+    $("entryModuleNumber").textContent = number !== '' ? `${match?.[1] || 'Módulo'} ${number}` : 'Módulo actual';
+    $("entryModuleName").textContent = moduleName;
+    $("entryModuleCourseName").textContent = courseTree?.label || m.course_label || m.course || '';
+    $("entryModuleCourse").onclick = () => openCourseDetail(m.course);
+    moduleHero.classList.toggle('hidden', !label);
+    $("entryCover").classList.toggle('module-cover', !!label);
+    $("entryView").classList.remove('has-module-label');
   }
 
   // Set page icon button (Notion-style large icon before title)
@@ -2854,12 +2849,15 @@ function applyCover(coverValue) {
     } else {
       coverEl.setAttribute("style", `background:${coverValue}`);
     }
+    coverEl.classList.add("has-custom-cover");
     coverEl.classList.remove("hidden");
     if (addCoverEl) addCoverEl.classList.add("hidden");
   } else {
     coverEl.removeAttribute("style");
-    coverEl.classList.add("hidden");
-    if (addCoverEl) addCoverEl.classList.remove("hidden");
+    coverEl.classList.remove("has-custom-cover");
+    const moduleCover = coverEl.classList.contains("module-cover");
+    coverEl.classList.toggle("hidden", !moduleCover);
+    if (addCoverEl) addCoverEl.classList.toggle("hidden", moduleCover);
   }
 }
 
@@ -9900,7 +9898,7 @@ function initAIPanel() {
 
   // ── Open / close ──────────────────────────────────────────
   async function openPanel(selText) {
-    // Selection queries share the global assistant and its conversation/model.
+    // Selection queries use the global assistant in an independent conversation.
     if (window.AssistantApp) return window.AssistantApp.askSelection(selText || '', null);
     if (selText) {
       _selContext = selText;

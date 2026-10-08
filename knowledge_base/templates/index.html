@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="/static/reader.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/course-themes.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/atlas-controls.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/module-cover.css?v={{ v }}">
   <link rel="stylesheet" href="/static/modal-controls.css?v={{ v }}">
   <link rel="stylesheet" href="/static/library-polish.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/proofreading.css?v={{ v }}" />
@@ -556,6 +557,11 @@
 
       <!-- Entry cover banner (outside entry-view for full-width) -->
       <div class="entry-cover hidden" id="entryCover">
+        <div class="entry-module-hero hidden" id="entryModuleLabel">
+          <button type="button" class="entry-module-course" id="entryModuleCourse" title="Volver al curso"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#courses"></use></svg><span id="entryModuleCourseName"></span></button>
+          <div class="entry-module-number" id="entryModuleNumber"></div>
+          <h2 class="entry-module-name" id="entryModuleName"></h2>
+        </div>
         <div class="entry-cover-btns">
           <button class="cover-change-btn" id="coverChangeBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#image"></use></svg> Cambiar portada</button>
           <button class="cover-remove-btn" id="coverRemoveBtn">× Quitar</button>
@@ -582,8 +588,6 @@
 
       <article class="entry-view hidden" id="entryView">
         <div class="entry-main">
-        <!-- Module breadcrumb label — only shown for course lessons -->
-        <div class="entry-module-label hidden" id="entryModuleLabel"></div>
         <!-- Inline editable title -->
         <div class="inline-title-wrap" id="inlineTitleWrap">
           <button class="entry-page-icon-btn" id="entryPageIconBtn" title="Cambiar icono"></button>

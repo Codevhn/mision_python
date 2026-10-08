@@ -308,6 +308,7 @@ def test_selection_survives_followups_and_history(auth_client, monkeypatch):
     })
     assert 'event: done' in response.get_data(as_text=True)
     history = auth_client.get(f'/api/assistant/conversations/{conversation}').json
+    assert history['title'] == selection['text']
     assert history['messages'][0]['selection_context'] == selection
     assert history['messages'][0]['question'] == 'Explícame el fragmento.'
     assert selection['text'] in captured[0][1][0]['content']
@@ -319,6 +320,7 @@ def test_selection_survives_followups_and_history(auth_client, monkeypatch):
     assert selection['text'] in captured[1][1][0]['content']
     assert len(captured[1][1]) == 3
     assert all(set(item) == {'role', 'content'} for item in captured[1][1])
+    assert auth_client.get(f'/api/assistant/conversations/{conversation}').json['title'] == selection['text']
 
 
 def test_selection_validation_does_not_write_message(auth_client):

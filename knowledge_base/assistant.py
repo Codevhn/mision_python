@@ -531,7 +531,7 @@ def register_assistant(app, namespace):
             record["messages"].append(message)
         record.update(provider=provider, model=model)
         if len(record["messages"]) == 1 and not record.get("custom_title"):
-            record["title"] = prompt.strip()[:100]
+            record["title"] = (" ".join(selection["text"].split()) if selection else prompt.strip())[:100]
         if not update(record, version):
             return jsonify({"error": "La conversación cambió en otra sesión. Vuelve a abrirla."}), 409
 

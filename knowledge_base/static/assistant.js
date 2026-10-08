@@ -443,7 +443,14 @@
     if (busy) return;
     if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
+    // A selection from the editor starts its own consultation. Follow-up
+    // messages sent in the composer continue that consultation as usual.
+    ++loadSequence;
+    record = null;
+    el('assistantHistoryPanel').classList.add('hidden');
+    el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
     clearSelection();
+    renderConversation();
     if (text?.trim()) {
       selectedFragment = {text, title: String(visible?.title || 'Texto seleccionado').slice(0,300),...(insertionTarget||{})};
       const strip = document.createElement('div'), details = document.createElement('details'), summary = document.createElement('summary'), quote = document.createElement('blockquote'), remove = document.createElement('button');
