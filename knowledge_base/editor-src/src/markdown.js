@@ -73,6 +73,11 @@ function parseInline(text, baseStyles = {}) {
       runs.push({ type: "link", href, content: [{ type: "text", text: url, styles: { ...baseStyles } }] });
       after = trail + after;
     }
+  } else if (p.styles?.code) {
+    // Inline code is literal and its ProseMirror mark excludes other marks.
+    // Keep the surrounding formatting, but do not inherit it into code or
+    // parse underscores/asterisks inside the code span as Markdown.
+    runs.push({ type: "text", text: m[1], styles: { code: true } });
   } else {
     runs.push(...parseInline(m[1], { ...baseStyles, ...p.styles }));
   }

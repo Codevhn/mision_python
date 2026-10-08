@@ -59,4 +59,11 @@ check("legacy blank table hack", "|---|", "");
 // line, mistaking it for the closing fence). Not fixed here — out of scope,
 // matches pre-existing behavior.
 
-console.log("\nAll markdown round-trip tests passed.");
+console.log("\nBase markdown round-trip tests passed.");
+
+// Code marks exclude other marks; preserve emphasis around literal code.
+check('italic surrounding inline code', '*Clave `id_cliente` compartida*', '_Clave _`id_cliente`_ compartida_');
+check('bold surrounding inline code', '**Tabla `clientes` relacionada**', '**Tabla **`clientes`** relacionada**');
+check('strike surrounding inline code', '~~Usar `viejo_id` aquí~~', '~~Usar ~~`viejo_id`~~ aquí~~');
+check('inline code preserves markdown-looking literals', '`**literal** _variable_ [x](url)`');
+check('mixed marks in table cell', '| Valor |\n| --- |\n| *Clave `id_cliente`* |', '| Valor |\n| --- |\n| _Clave _`id_cliente` |');
