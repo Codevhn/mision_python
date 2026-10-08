@@ -35,3 +35,10 @@ se retira al terminar y se detiene ante errores o movimiento reducido.
 - Recorrido con respuesta retrasada: pedido visible antes de la respuesta y sin bienvenida; éxito sin indicador atascado; error visible y reintento conservando las opciones.
 
 - Recuperación: formatos alternativos, subtemas sin convertir en lecciones, límite de intentos y respuesta fallida inspeccionable; Chromium comprueba brillo, movimiento reducido y texto sin ejecución de HTML.
+
+El formulario diferencia el modo activo y usa opciones cortas con ayudas:
+Detalle del roadmap, Nivel objetivo y Módulos aproximados (Automático).
+El nivel indica hasta dónde llega el curso, no dónde empieza. La acción
+«Generar en el asistente» describe el siguiente paso. En la vista maximizada,
+mensajes, indicador y entrada comparten una columna centrada de hasta 820 px;
+el ancho se adapta al espacio disponible.

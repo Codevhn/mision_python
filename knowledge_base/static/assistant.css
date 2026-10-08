@@ -151,9 +151,12 @@
 
 /* Chat controls stay compact; expanded view uses the entire viewport. */
 .assistant-area.assistant-expanded { inset:0; width:100vw; height:100dvh; border-radius:0; outline:none; }
-.assistant-expanded .assistant-transcript > article { width:min(900px,100%); margin-left:auto; margin-right:auto; }
-.assistant-expanded .assistant-composer { width:min(960px,100%); align-self:center; }
-.assistant-expanded .assistant-selection { width:min(940px,calc(100% - 16px)); align-self:center; }
+.assistant-expanded { --assistant-column:820px; }
+.assistant-expanded .assistant-transcript > :is(article,.assistant-roadmap-progress,.assistant-roadmap-raw,.assistant-roadmap-retry) { width:min(var(--assistant-column),100%); box-sizing:border-box; margin-left:auto; margin-right:auto; }
+.assistant-expanded .assistant-roadmap-retry { display:block; width:max-content; max-width:var(--assistant-column); }
+.assistant-expanded .assistant-message { max-width:var(--assistant-column); }
+.assistant-expanded .assistant-composer { width:min(calc(var(--assistant-column) + 24px),100%); box-sizing:border-box; align-self:center; }
+.assistant-expanded .assistant-selection { width:min(var(--assistant-column),calc(100% - 16px)); align-self:center; }
 .assistant-disclaimer { margin:0; padding:1px 0; line-height:1.15; font-size:.62rem; }
 #assistantStatus:empty { display:none; }
 #assistantStatus { line-height:1.3; }

@@ -730,3 +730,16 @@
 .theme-swatch:is(.theme-swatch-ruby,.theme-swatch-electric,.theme-swatch-amber,.theme-swatch-emerald,.theme-swatch-neon) { background:linear-gradient(128deg,transparent 30%,#ffffff50 35%,transparent 50%),linear-gradient(145deg,hsl(var(--neon-hue) 80% 35%),#070a10); box-shadow:inset 0 1px 0 var(--neon-accent),0 0 10px color-mix(in srgb,var(--neon-accent) 25%,transparent); }
 @media(max-width:540px) { .theme-options { grid-template-columns:1fr; } .theme-options button { padding:10px; } .theme-picker .theme-options { padding:0 12px 12px; } }
 @media(max-width:768px) { [data-style="aero"] #themeToggle { display:inline-flex !important; align-items:center; justify-content:center; width:30px; min-width:30px; padding:0; } }
+
+/* Roadmap setup: readable choices and a distinct selected Aero button. */
+.ir-generation-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.ir-option { min-width:0; }
+.ir-field-help { display:block; margin-top:6px; color:var(--text-muted); font-size:.73rem; line-height:1.45; }
+#irModeTabsRow { padding-bottom:10px; border-bottom:1px solid var(--border); }
+#irModeTabsRow .ir-mode-tab { min-height:34px; }
+[data-style="aero"] #irModeTabsRow .ir-mode-tab--active { color:var(--text); background:var(--aero-selection) !important; border-color:var(--accent); box-shadow:inset 0 1px 0 var(--aero-inset),0 0 0 1px var(--accent); font-weight:600; }
+#irModelRow { padding:10px 0 0; border-top:1px solid var(--border); justify-content:space-between; }
+#irModelRow #irModelCSelect { flex:0 1 auto !important; min-width:0 !important; max-width:60% !important; }
+#irModelRow .ai-model-trigger { min-height:34px; }
+[data-style="aero"] #irGenerateFields :is(input,select,textarea):not(:focus) { border-color:var(--border) !important; }
+@media(max-width:600px) { .ir-generation-options { grid-template-columns:1fr; } #irModelRow #irModelCSelect { max-width:100% !important; } }

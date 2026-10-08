@@ -1711,33 +1711,36 @@
             style="width:100%;height:90px;font-size:0.85rem;background:var(--bg-elevated);
                    border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;
                    resize:vertical;outline:none;box-sizing:border-box"></textarea>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:170px">
-              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Granularidad</label>
-              <select id="irGenDepth" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
+          <div class="ir-generation-options">
+            <div class="ir-option">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px" for="irGenDepth">Detalle del roadmap</label>
+              <select aria-describedby="irDepthHelp" id="irGenDepth" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
                      border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box">
-                <option value="superficial">Superficial — módulos y lecciones más amplios</option>
-                <option value="estandar" selected>Estándar — desglose típico de un curso</option>
-                <option value="profundo">Profunda — máximo desglose por subtema</option>
+                <option value="superficial">Resumido</option>
+                <option value="estandar" selected>Estándar</option>
+                <option value="profundo">Profundo</option>
               </select>
+              <small id="irDepthHelp" class="ir-field-help">Desglose equilibrado de módulos y lecciones.</small>
             </div>
-            <div style="flex:1;min-width:140px">
-              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Nivel</label>
-              <select id="irGenLevel" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
+            <div class="ir-option">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px" for="irGenLevel">Nivel objetivo</label>
+              <select aria-describedby="irLevelHelp" id="irGenLevel" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
                      border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box">
                 <option value="">Sin especificar</option>
                 <option value="principiante">Principiante</option>
                 <option value="intermedio">Intermedio</option>
                 <option value="avanzado">Avanzado</option>
               </select>
+              <small id="irLevelHelp" class="ir-field-help">Hasta dónde llegará el curso; puede comenzar por los fundamentos.</small>
             </div>
-            <div style="flex:1;min-width:140px">
-              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px" title="Solo una referencia — la IA cubre el tema completo aunque necesite más">
-                # Módulos (referencia, no límite)
+            <div class="ir-option">
+              <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px" for="irGenModuleCount">
+                Módulos aproximados
               </label>
-              <input type="number" id="irGenModuleCount" min="1" placeholder="La IA decide según el tema"
+              <input type="number" id="irGenModuleCount" aria-describedby="irModulesHelp" min="1" placeholder="Automático"
                 style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);
                        border-radius:6px;color:var(--text);padding:6px 8px;font-size:0.82rem;box-sizing:border-box" />
+              <small id="irModulesHelp" class="ir-field-help">La IA puede ajustar esta cantidad para cubrir el tema.</small>
             </div>
           </div>
         </div>

@@ -9104,10 +9104,12 @@ function _irSetMode(mode) {
   const isGenerate = mode === 'generate';
   $('irModeTabPaste').classList.toggle('ir-mode-tab--active', !isGenerate);
   $('irModeTabGenerate').classList.toggle('ir-mode-tab--active', isGenerate);
+  $('irModeTabPaste').setAttribute('aria-pressed', String(!isGenerate));
+  $('irModeTabGenerate').setAttribute('aria-pressed', String(isGenerate));
   $('irPasteFields').classList.toggle('hidden', isGenerate);
   $('irGenerateFields').classList.toggle('hidden', !isGenerate);
   $('irModelLabel').textContent = isGenerate ? 'Modelo para generar:' : 'Modelo para normalizar (si hace falta):';
-  $('irPreviewBtn').textContent = isGenerate ? '✨ Generar →' : 'Vista previa →';
+  $('irPreviewBtn').textContent = isGenerate ? '✨ Generar en el asistente' : 'Vista previa →';
   $('irModalTitle').textContent = isGenerate ? '✨ Generar roadmap' : '↓ Importar roadmap';
   $('irGenErrorNote')?.classList.add('hidden');
 }
@@ -9120,6 +9122,7 @@ function openImportRoadmapModal(courseSlug, mode = 'paste') {
   $('irGenTopic').value = '';
   $('irCourseIdentity').textContent = 'Curso: '+(_coursesTreeData?.[courseSlug]?.label || ($('courseView').dataset.courseId===courseSlug ? $('courseView').dataset.courseTitle : '') || courseSlug);
   $('irGenDepth').value = 'estandar';
+  $('irGenDepth').dispatchEvent(new Event('change'));
   $('irGenLevel').value = '';
   $('irGenModuleCount').value = '';
   $('irAiNote').classList.add('hidden');
@@ -9358,6 +9361,13 @@ function initImportRoadmap() {
     $('irFooterPaste').classList.remove('hidden');
   });
 
+  $('irGenDepth').addEventListener('change', () => {
+    $('irDepthHelp').textContent = {
+      superficial: 'Módulos y lecciones amplios, con menos subdivisiones.',
+      estandar: 'Desglose equilibrado de módulos y lecciones.',
+      profundo: 'Desglose detallado de lecciones y subtemas.'
+    }[$('irGenDepth').value];
+  });
   $('irPreviewBtn').addEventListener('click', async () => {
     const isGenerate = _irState.mode === 'generate';
     const btn = $('irPreviewBtn');
