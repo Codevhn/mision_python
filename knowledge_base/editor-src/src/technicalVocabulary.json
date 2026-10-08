@@ -1,0 +1,8 @@
+{
+  "atlas": ["Atlas", "OmniRoute", "BlockNote", "DeepSeek", "OpenCode", "Teamspace", "Teamspaces"],
+  "languages": ["Python", "JavaScript", "TypeScript", "Java", "SQL", "HTML", "CSS", "Bash", "PowerShell", "Kotlin", "PHP", "Ruby", "Rust", "Golang"],
+  "python": ["REPL", "PyCharm", "Thonny", "CPython", "IPython", "Jupyter", "Anaconda", "Miniconda", "NumPy", "SciPy", "Matplotlib", "PyTorch", "TensorFlow", "Django", "Flask", "FastAPI", "pytest", "venv", "pip", "pipenv", "pyenv"],
+  "development": ["GitHub", "GitLab", "Bitbucket", "Docker", "Kubernetes", "PostgreSQL", "MySQL", "SQLite", "MariaDB", "MongoDB", "Redis", "Neovim", "LazyVim", "IntelliJ", "WebStorm", "VSCode", "npm", "pnpm", "Webpack", "Vite", "Node", "React", "Vue", "Svelte"],
+  "systems": ["Windows", "Linux", "macOS", "Ubuntu", "Debian", "Fedora", "Arch", "Cloudflare"],
+  "notation": ["API", "APIs", "SDK", "IDE", "IDEs", "UML", "JSON", "YAML", "XML", "HTTP", "HTTPS", "UTF", "ASCII", "CLI", "GUI", "CRUD", "ORM", "DOM", "URL", "URLs", "Markdown"]
+}

@@ -2,7 +2,7 @@ import nspell from 'nspell';
 import {Plugin, PluginKey} from '@tiptap/pm/state';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import {closeHistory} from '@tiptap/pm/history';
-import {wordRanges, suggestionsFor} from './spellingWords.js';
+import {wordRanges, suggestionsFor, createSpellingDictionary} from './spellingWords.js';
 
 const key=new PluginKey('atlasSpanishSpelling');
 let dictionaryPromise;
@@ -14,13 +14,10 @@ function dictionary() {
       return response.text();
     }));
     return nspell(aff,dic);
-  })).then(([spanish,english])=>({
-    correct:word=>spanish.correct(word)||english.correct(word),
-    suggest:word=>{const spanishOptions=spanish.suggest(word);return spanishOptions.length?spanishOptions:english.suggest(word);}
-  })).catch(error=>{dictionaryPromise=null;throw error;});
+  })).then(([spanish,english])=>createSpellingDictionary(spanish,english))
+    .catch(error=>{dictionaryPromise=null;throw error;});
   return dictionaryPromise;
 }
-const known=new Set(['Atlas','OmniRoute','Python','JavaScript','TypeScript','GitHub','CSS','HTML','SQL','API','APIs','BlockNote','DeepSeek','OpenCode','Teamspace','Teamspaces','Markdown','Windows','Linux','Java','Docker']);
 const ignored=new Set(),personal=new Set();
 for(const storageKey of ['atlas_spelling_dictionary','atlas_spelling_ignored']) {
   try {JSON.parse(localStorage.getItem(storageKey)||'[]').filter(w=>typeof w==='string'&&w.length<100).forEach(w=>personal.add(w.toLocaleLowerCase('es')));}catch{}
@@ -40,7 +37,7 @@ function scan(doc,spell) {
       }else if(child.isLeaf){text+=' ';positions.push(pos+1+offset);blocked.push(true);}
     });
     for(const {word,offset}of wordRanges(text)){
-      if(word.length<2||word.length>60||known.has(word)||ignored.has(word.toLocaleLowerCase('es'))||personal.has(word.toLocaleLowerCase('es'))||blocked.slice(offset,offset+word.length).some(Boolean)||spell.correct(word))continue;
+      if(word.length<2||word.length>60||ignored.has(word.toLocaleLowerCase('es'))||personal.has(word.toLocaleLowerCase('es'))||blocked.slice(offset,offset+word.length).some(Boolean)||spell.correct(word))continue;
       issues.push({word,offset,from:positions[offset],to:positions[offset+word.length-1]+1,paragraph:pos,text});
     }
     return false;
@@ -105,7 +102,7 @@ export function installInlineSpelling(tip) {
     function button(label,handler,parent=popup){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-label',label);b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>{try{handler();}catch(error){window.showToast?.(error.message,'error');closePopup();}});parent.append(b);}
     const proposals=suggestionsFor(spell,issue.word);
     proposals.forEach(replacement=>button(replacement,()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');apply([{...issue,text:replacement}],scannedDoc);closePopup();},suggestions));
-    if(!proposals.length){const empty=document.createElement('p');empty.textContent='Sin sugerencias. Puedes editar la palabra o ignorarla.';suggestions.append(empty);}
+    if(!proposals.length){const empty=document.createElement('p');empty.textContent='Sin sugerencias fiables. Puedes editar la palabra o agregarla al diccionario.';suggestions.append(empty);}
     const actions=document.createElement('div');actions.className='atlas-spelling-actions';popup.append(actions);
     button('Corregir párrafo…',()=>reviewParagraph(issue),actions);
     button('Agregar al diccionario',()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');personal.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_dictionary',JSON.stringify([...personal]));}catch{}closePopup();check();},actions);
