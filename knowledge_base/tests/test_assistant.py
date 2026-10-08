@@ -789,3 +789,12 @@ def test_general_assistant_uses_balanced_teaching_without_selection(auth_client,
     assert 'La solicitud explícita del usuario de profundizar' in system
     assert 'tareas no educativas' in system
     assert len(messages) == 1
+
+
+def test_simple_math_is_readable_and_code_and_complex_math_are_preserved():
+    from math_text import readable_math
+    assert readable_math(r'Una relación \(R\) con \(A_1, A_2, \dots, A_n\).') == 'Una relación R con A₁, A₂, …, Aₙ.'
+    assert readable_math('\\[\nR \\subseteq D_1 \\times D_2 \\times \\dots \\times D_n\n\\]') == 'R ⊆ D₁ × D₂ × … × Dₙ'
+    assert readable_math(r'\(x_{10}^2 \geq 0\)') == 'x₁₀² ≥ 0'
+    for literal in [r'`\(x_1\)`', '```python\nprint("\\(x_1\\)")\n```', r'\(\frac{x}{y}\)', '    \\(x_1\\)', r'precio $10 y $20']:
+        assert readable_math(literal) == literal

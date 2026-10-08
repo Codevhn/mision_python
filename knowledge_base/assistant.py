@@ -9,6 +9,7 @@ import copy
 from contextlib import contextmanager
 
 from flask import Response, jsonify, request, stream_with_context
+from math_text import readable_math
 
 VIEW_NAMES = {
     "home": "Inicio", "knowledge": "Conocimiento", "courses": "Cursos", "teamspace": "Team", "pages": "Páginas",
@@ -81,6 +82,11 @@ STUDY_GUIDANCE = (
     "Para un tema amplio, cubre sus ideas fundamentales de forma proporcionada, sin convertir cada "
     "mención en otro artículo. Para una pregunta puntual, responde directamente con el detalle necesario. "
     "Evita tanto los párrafos enciclopédicos como las listas telegráficas que dejan los conceptos sin explicar. "
+    "No añadas formalizaciones matemáticas solo para aparentar rigor. Introduce una fórmula únicamente "
+    "cuando ayude al objetivo de aprendizaje y explica sus símbolos. Atlas muestra texto y Markdown: "
+    "para notación sencilla utiliza símbolos Unicode legibles (por ejemplo R ⊆ D₁ × D₂ × … × Dₙ), "
+    "no comandos LaTeX ni delimitadores como \\(, \\[ o $$. Si una expresión compleja es necesaria, "
+    "explica su significado y usa un bloque etiquetado math para su representación formal. "
     "Entrega contenido listo para estudiar: empieza por el significado o la respuesta solicitada, "
     "sin repetir el título seleccionado, encabezados genéricos, conclusiones ni comentarios sobre tu plan."
 )
@@ -427,6 +433,7 @@ def register_assistant(app, namespace):
             return jsonify({"ok": True})
         for message in record["messages"]:
             if message["role"] == "assistant":
+                message["content"] = readable_math(message["content"])
                 message["html"] = namespace["render_markdown"](message["content"])
         return jsonify(record)
 
@@ -451,6 +458,7 @@ def register_assistant(app, namespace):
             if scope == {"type": context_type, "id": context_id}:
                 for message in messages:
                     if message["role"] == "assistant":
+                        message["content"] = readable_math(message["content"])
                         message["html"] = namespace["render_markdown"](message["content"])
                 return jsonify({"conversation": candidate})
         return jsonify({"conversation": None})
@@ -712,7 +720,7 @@ def register_assistant(app, namespace):
                             yield event("error", {"error": part[1].get("error", "Error de IA")})
                             return
                         _, truncated, usage = part
-                        text = "".join(parts)
+                        text = readable_math("".join(parts))
                         if selection_action:
                             text = clean_study_headings(text)
                         if not text.strip():

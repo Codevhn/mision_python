@@ -67,3 +67,9 @@ check('bold surrounding inline code', '**Tabla `clientes` relacionada**', '**Tab
 check('strike surrounding inline code', '~~Usar `viejo_id` aquí~~', '~~Usar ~~`viejo_id`~~ aquí~~');
 check('inline code preserves markdown-looking literals', '`**literal** _variable_ [x](url)`');
 check('mixed marks in table cell', '| Valor |\n| --- |\n| *Clave `id_cliente`* |', '| Valor |\n| --- |\n| _Clave _`id_cliente` |');
+
+check('simple inline LaTeX becomes Unicode', 'Una relación \\(R\\) con \\(A_1, A_2, \\dots, A_n\\).', 'Una relación R con A₁, A₂, …, Aₙ.');
+check('display LaTeX becomes a readable formula', '\\[\nR \\subseteq D_1 \\times D_2 \\times \\dots \\times D_n\n\\]', 'R ⊆ D₁ × D₂ × … × Dₙ');
+check('math inside inline code stays literal', '`\\(x_1\\)`');
+check('math inside fenced code stays literal', '```python\nprint("\\(x_1\\)")\n```');
+check('unsupported complex LaTeX stays intact', '\\(\\frac{x}{y}\\)');

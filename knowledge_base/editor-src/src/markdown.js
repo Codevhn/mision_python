@@ -3,6 +3,7 @@
 // PartialBlock tree. Kept independent from BlockNote's own (lossy, generic)
 // markdown import/export so the on-disk format used by app.py never changes.
 
+import { readableMath } from './mathText.js';
 const HEADING_PREFIX = ["#", "##", "###", "####"];
 
 function textContent(str) {
@@ -336,7 +337,7 @@ function buildTree(flat) {
 }
 
 export function mdToBlocks(md) {
-  return buildTree(mdToFlat(md));
+  return buildTree(mdToFlat(readableMath(md || '')));
 }
 
 // ── BLOCKS -> MARKDOWN ───────────────────────────────────────────────
