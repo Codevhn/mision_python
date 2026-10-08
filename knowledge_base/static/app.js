@@ -622,7 +622,7 @@ const ATLAS_THEMES = {
   'aero-emerald': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'emerald' },
   'aero-neon': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'neon' },
 };
-const THEME_GROUPS = {classic:'Aero clásico',neon:'Aero neón',vivid:'Aero intenso',opencode:'OpenCode'};
+const THEME_GROUPS = {classic:'Aero clásico',neon:'Aero neón',vivid:'Aero intenso',opencode:'OpenCode',glass:'Aero Glass',cyber:'Neón creativo',editor:'Estilos de editor',soft:'Claros suaves'};
 const THEME_CATALOG = [
   ['aero','Aero Claro','Cristal celeste y superficies luminosas','classic','aero'],
   ['aero-blue','Aero Azul Windows 7','Cristal azul profundo · Contenido claro','classic','blue'],
@@ -640,9 +640,40 @@ for(const [id,label,,group,swatch] of [...THEME_CATALOG]){
 ATLAS_THEMES['opencode-dark']={scheme:'dark',style:'opencode',variant:'night'};
 ATLAS_THEMES['opencode-light']={scheme:'light',style:'opencode',variant:'light'};
 THEME_CATALOG.push(['opencode-dark','OpenCode Oscuro','Grafito, tipografía monoespaciada y controles planos','opencode','opencode-dark'],['opencode-light','OpenCode Claro','Papel, tinta y acentos sobrios','opencode','opencode-light']);
+// Additional families share the same palette registry and persisted preference.
+for(const [id,label,description,group,scheme,style,palette] of [
+  ["aero-turquoise", "Turquesa Glass", "Cristal oceánico y reflejos aguamarina", "glass", "dark", "aero", "turquoise"],
+  ["aero-amethyst", "Amatista Glass", "Cristal violeta con reflejos lavanda", "glass", "dark", "aero", "amethyst"],
+  ["aero-fuchsia", "Fucsia Glass", "Cristal rosa vibrante y luz magenta", "glass", "dark", "aero", "fuchsia"],
+  ["aero-gold", "Dorado Glass", "Cristal dorado y reflejos de champán", "glass", "dark", "aero", "gold"],
+  ["aero-silver", "Plata Glass", "Grafito y reflejos de cristal plateado", "glass", "dark", "aero", "silver"],
+  ["neon-cyberpunk", "Cyberpunk", "Negro, amarillo eléctrico y magenta", "cyber", "dark", "aero", "cyberpunk"],
+  ["neon-matrix", "Matrix", "Negro profundo y verde terminal", "cyber", "dark", "aero", "matrix"],
+  ["neon-synthwave", "Synthwave", "Cristal violeta, rosa y destellos cian", "cyber", "dark", "aero", "synthwave"],
+  ["neon-lava", "Lava", "Negro volcánico y naranja encendido", "cyber", "dark", "aero", "lava"],
+  ["editor-dracula", "Dracula", "Violeta oscuro, lavanda y rosa", "editor", "dark", "opencode", "dracula"],
+  ["editor-nord", "Nord", "Azul polar y acentos de hielo", "editor", "dark", "opencode", "nord"],
+  ["editor-tokyo", "Tokyo Night", "Azul de medianoche y luz lavanda", "editor", "dark", "opencode", "tokyo"],
+  ["editor-gruvbox", "Gruvbox", "Grafito cálido, crema y ámbar", "editor", "dark", "opencode", "gruvbox"],
+  ["editor-catppuccin", "Catppuccin", "Mocha oscuro y acentos pastel", "editor", "dark", "opencode", "catppuccin"],
+  ["soft-porcelain", "Porcelana", "Blanco frío, tinta azul y superficies suaves", "soft", "light", "opencode", "porcelain"],
+  ["soft-ivory", "Marfil", "Papel cálido, tinta oscura y ámbar", "soft", "light", "opencode", "ivory"],
+  ["soft-mint", "Menta", "Verde suave y tinta de bosque", "soft", "light", "opencode", "mint"]
+]){
+  ATLAS_THEMES[id]={scheme,style,variant:scheme==='dark'?'night':'light',palette};
+  THEME_CATALOG.push([id,label,description,group,palette]);
+}
 function renderThemeGallery(){
   const gallery=$('themeGallery');if(!gallery)return;
   gallery.replaceChildren();
+  const filters=$('themeCategoryFilters');
+  if(filters){
+    filters.replaceChildren();
+    for(const [key,label] of [['all','Todos'],...Object.entries(THEME_GROUPS)]){
+      const button=document.createElement('button');button.type='button';button.dataset.themeCategory=key;
+      button.textContent=label;button.setAttribute('aria-pressed',String(key==='all'));filters.append(button);
+    }
+  }
   for(const [key,label] of Object.entries(THEME_GROUPS)){
     const section=document.createElement('section');section.className='theme-category';section.dataset.category=key;
     const heading=document.createElement('h3');heading.textContent=label;
