@@ -42,3 +42,13 @@ El nivel indica hasta dónde llega el curso, no dónde empieza. La acción
 «Generar en el asistente» describe el siguiente paso. En la vista maximizada,
 mensajes, indicador y entrada comparten una columna centrada de hasta 820 px;
 el ancho se adapta al espacio disponible.
+
+Las propuestas del asistente se presentan como un roadmap: módulos plegables,
+lecciones numeradas y subtemas con sangría y viñetas. Se conserva el Markdown
+original para copiar, descargar y aplicar, incluidos los borradores del historial.
+Al mostrar una propuesta se abre su inicio. Las acciones principales Aero,
+incluyendo Crear lecciones y Enviar, usan el cristal de la paleta activa.
+
+Validación visual adicional: siete paletas Aero, plegado con ratón y teclado,
+creación de lecciones y vista móvil; el botón de confirmar coincide con el
+cristal del tema Ámbar.

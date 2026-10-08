@@ -401,11 +401,11 @@
 }
 [data-style="aero"] .modal .btn-ghost:not(.danger) { background:var(--aero-button) !important; color:var(--text) !important; }
 [data-style="aero"] .modal .btn-primary:not(.danger) {
- background:linear-gradient(#60b9e5,#2994ce 48%,#1273aa 49%,#278dc3) !important;
- color:#fff !important; border-color:#126398 !important; text-shadow:0 1px 1px #06406a80;
+ background:var(--aero-button) !important;
+ color:var(--text) !important; border-color:var(--aero-select-border) !important; text-shadow:0 1px 1px var(--aero-inset);
 }
 [data-style="aero"] .modal :is(.btn-ghost,.btn-primary):not(.danger):hover:not(:disabled) {
- box-shadow:inset 0 0 0 1px var(--aero-nav-highlight),0 0 8px #60c2ff60 !important;
+ box-shadow:inset 0 0 0 1px var(--aero-nav-highlight),0 0 8px color-mix(in srgb,var(--accent) 35%,transparent) !important;
 }
 [data-style="aero"] .modal :is(button,input,select,textarea):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 [data-style="aero"] .modal :is(.entry-type-toggle,.type-tabs) { background:var(--layer-2) !important; }
@@ -743,3 +743,28 @@
 #irModelRow .ai-model-trigger { min-height:34px; }
 [data-style="aero"] #irGenerateFields :is(input,select,textarea):not(:focus) { border-color:var(--border) !important; }
 @media(max-width:600px) { .ir-generation-options { grid-template-columns:1fr; } #irModelRow #irModelCSelect { max-width:100% !important; } }
+
+/* Aero actions inherit the active glass palette, including the send control. */
+[data-style="aero"] .btn-primary:not(.danger),[data-style="aero"] #assistantSend {
+ background:var(--aero-button) !important; color:var(--text) !important;
+ border:1px solid var(--aero-select-border) !important;
+ box-shadow:inset 0 1px 0 var(--aero-inset),0 1px 2px #0003 !important;
+}
+[data-style="aero"] .btn-primary:not(.danger):hover:not(:disabled),[data-style="aero"] #assistantSend:hover:not(:disabled) {
+ background:var(--aero-nav-hover) !important; color:var(--aero-nav-ink) !important;
+ box-shadow:var(--aero-nav-shadow) !important;
+}
+.assistant-roadmap-outline .assistant-roadmap-overview { color:var(--text-muted); font-size:.75rem; margin:0 0 12px; }
+.assistant-roadmap-outline > h1 { font-size:1.1rem; line-height:1.4; margin:0 0 16px; }
+.assistant-roadmap-module { margin:0 0 12px; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+.assistant-roadmap-module > summary { padding:11px 12px; font-size:.9rem; font-weight:650; line-height:1.45; cursor:pointer; background:var(--aero-toolbar,var(--bg-elevated)); color:var(--text); }
+.assistant-roadmap-module > summary:focus-visible { outline:2px solid var(--accent); outline-offset:-3px; }
+.assistant-roadmap-module-body { padding:2px 12px 10px; }
+.assistant-roadmap-lesson { padding:10px 0; border-bottom:1px solid var(--border); }
+.assistant-roadmap-lesson:last-child { border-bottom:0; padding-bottom:0; }
+.assistant-roadmap-outline .assistant-roadmap-lesson > h3 { font-size:.85rem; color:var(--accent); margin:0 0 8px; line-height:1.45; }
+.assistant-roadmap-outline .assistant-roadmap-lesson > :is(h4,h5,h6) { position:relative; margin:5px 0 5px 12px; padding-left:14px; font-size:.8rem; font-weight:400; line-height:1.5; color:var(--text); }
+.assistant-roadmap-lesson > :is(h4,h5,h6)::before { content:'•'; position:absolute; left:0; color:var(--text-muted); }
+.assistant-roadmap-outline .assistant-roadmap-lesson > :is(p,ul,ol) { font-size:.8rem; line-height:1.5; margin:6px 0 6px 12px; }
+
+.assistant-roadmap-outline .assistant-roadmap-module > summary > h2 { display:inline; font:inherit; color:inherit; margin:0; }

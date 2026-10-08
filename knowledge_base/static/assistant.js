@@ -115,6 +115,29 @@
     });
     container.appendChild(details);
   }
+  function formatRoadmap(content, draft) {
+    content.classList.add('assistant-roadmap-outline');
+    const nodes=Array.from(content.childNodes);
+    content.replaceChildren();
+    const overview=document.createElement('p');overview.className='assistant-roadmap-overview';
+    const lessons=draft.modules.reduce((count,module)=>count+(module.lessons||[]).length,0);
+    overview.textContent=`${draft.modules.length} módulos · ${lessons} lecciones · Propuesta para revisar`;
+    content.append(overview);
+    let moduleBody=null, lessonBody=null;
+    for(const node of nodes){
+      if(node.nodeName==='H2'){
+        const module=document.createElement('details');module.className='assistant-roadmap-module';module.open=true;
+        const summary=document.createElement('summary');summary.append(node);
+        moduleBody=document.createElement('div');moduleBody.className='assistant-roadmap-module-body';
+        module.append(summary,moduleBody);content.append(module);lessonBody=null;
+      }else if(node.nodeName==='H3' && moduleBody){
+        lessonBody=document.createElement('section');lessonBody.className='assistant-roadmap-lesson';
+        lessonBody.append(node);moduleBody.append(lessonBody);
+      }else{
+        (lessonBody||moduleBody||content).append(node);
+      }
+    }
+  }
   function bubble(message) {
     const article = document.createElement('article');
     article.className = `assistant-message assistant-message-${message.role}`;
@@ -125,6 +148,7 @@
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
     else content.textContent = message.question || message.content;
+    if(message.role==='assistant' && message.roadmap_draft?.modules) formatRoadmap(content,message.roadmap_draft);
     content.querySelectorAll('table').forEach(table => {
       const scroll = document.createElement('div');
       scroll.className = 'assistant-table-scroll';
@@ -177,6 +201,10 @@
       area.querySelectorAll('.assistant-suggestions button').forEach(button => button.addEventListener('click', () => { el('assistantInput').value = button.textContent; el('assistantInput').dispatchEvent(new Event('input')); el('assistantInput').focus(); }));
     } else record.messages.forEach(bubble);
     scrollBottom();
+    if(record?.messages.at(-1)?.roadmap_draft){
+      const transcript=el('assistantTranscript'), proposal=transcript.querySelector('.assistant-message-assistant:last-child');
+      if(proposal) transcript.scrollTop+=proposal.getBoundingClientRect().top-transcript.getBoundingClientRect().top-12;
+    }
     mountModel();
   }
   function mountModel() {
