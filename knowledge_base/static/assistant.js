@@ -57,6 +57,7 @@
     if(busy)return;
     const input=el('assistantInput');
     if(input.value.trim()){status('Envía o limpia tu borrador antes de reintentar.',true);return;}
+    if(message.roadmap_request){ const {course_id,...options}=message.roadmap_request; generateRoadmap(course_id,options,true); return; }
     input.value=message.question||message.content;
     input.dispatchEvent(new Event('input'));
     send(null,{retry:true,selection:message.selection_context||null});
@@ -149,6 +150,12 @@
       }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
         const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>{menu.open=false;handler();});options.append(button);
       });menu.append(options);actions.append(menu);article.append(actions);
+      if(message.roadmap_draft){
+        const apply=document.createElement('button');apply.type='button';apply.className='assistant-roadmap-apply';
+        apply.textContent='Revisar y aplicar al curso';
+        apply.addEventListener('click',()=>window._previewAssistantRoadmap(message.roadmap_draft));
+        article.append(apply);
+      }
       sources(article, message.sources);
     } else if(message.role==='user' && record?.messages.at(-1)===message) {
       article.append(actionButton('Reintentar con el modelo seleccionado','retry',()=>retryMessage(message)));
@@ -245,6 +252,28 @@
       status(loaded.memory ? 'Historial guardado · Los turnos antiguos se resumen para mantener el contexto.' : 'Historial guardado');
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
+  }
+  async function generateRoadmap(courseId, options={}, reuse=false) {
+    await open();
+    if(busy){status('Espera a que termine la consulta actual antes de generar el roadmap.',true);return;}
+    setBusy(true);controller=new AbortController();
+    try{
+      if(!reuse || !record)record=await api('/api/assistant/conversations',post({}));
+      clearSelection();renderConversation();await modelReady;setBusy(true);
+      const selected=options.provider?{provider:options.provider,model:options.model}:choice;
+      if(!selected)throw new Error('Selecciona un modelo configurado para generar el roadmap.');
+      status('Generando la propuesta de módulos y lecciones…');
+      const question='Genera el roadmap del curso con las opciones elegidas.';
+      bubble({role:'user',content:question});scrollBottom();
+      const result=await api(`/api/assistant/conversations/${record.id}/roadmap`,{
+        ...post({...options,...selected,course_id:courseId}),signal:controller.signal});
+      record=result;renderConversation();await refreshHistory();
+      status('Propuesta lista. Puedes revisarla y aplicarla al curso.');
+    }catch(error){
+      status(error.name==='AbortError'?'Generación detenida.':error.message,true);
+      const retry=actionButton('Reintentar roadmap con el modelo seleccionado','retry',()=>generateRoadmap(courseId,{...options,provider:choice?.provider,model:choice?.model},true));
+      retry.classList.add('assistant-roadmap-retry');el('assistantTranscript').append(retry);
+    }finally{setBusy(false);controller=null;}
   }
   async function send(event, options={}) {
     event?.preventDefault();
@@ -416,5 +445,5 @@
   window.visualViewport?.addEventListener('resize', updateViewport);
   window.visualViewport?.addEventListener('scroll', updateViewport);
   updateViewport();
-  window.AssistantApp = { open, close, askSelection };
+  window.AssistantApp = { open, close, askSelection, generateRoadmap };
 })();

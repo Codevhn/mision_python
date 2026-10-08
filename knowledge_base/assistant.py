@@ -275,6 +275,52 @@ def register_assistant(app, namespace):
                 through += len(chunk)
         return memory, through, messages[through:] + [record["messages"][-1]]
 
+    @app.route("/api/assistant/conversations/<conversation_id>/roadmap", methods=["POST"])
+    def assistant_roadmap(conversation_id):
+        data = request.get_json(silent=True) or {}
+        course_id = data.get("course_id")
+        if not isinstance(course_id, str) or len(course_id) > 300:
+            return jsonify({"error": "Elige un curso válido."}), 400
+        record, version = read(conversation_id)
+        if record is None:
+            return jsonify({"error": "Conversación no encontrada"}), 404
+        if len(record["messages"]) > 998:
+            return jsonify({"error": "Inicia una conversación nueva para generar el roadmap."}), 400
+        response = app.make_response(namespace["generate_course_roadmap"](course_id))
+        if response.status_code != 200:
+            return response
+        modules = response.get_json()["modules"]
+        course = namespace["load_courses"]()["courses"][course_id]
+        title = course.get("label", course_id)
+        parts = [f"# Roadmap: {title}"]
+        for module in modules:
+            parts.append("\n## " + module["title"])
+            for lesson in module.get("lessons", []):
+                parts.append("\n### " + lesson["title"])
+                if lesson.get("content"):
+                    parts.append(re.sub(r"^## ", "#### ", lesson["content"], flags=re.MULTILINE))
+        provider = data.get("provider") or namespace["DEFAULT_PROVIDER"]
+        model = data.get("model") or namespace["DEFAULT_MODEL"]
+        options = {key: data.get(key, "") for key in ("topic", "depth", "level", "module_count")}
+        summary = f"Genera el roadmap de «{title}». Profundidad: {options['depth'] or 'estándar'}. Nivel: {options['level'] or 'sin especificar'}. Módulos de referencia: {options['module_count'] or 'según el temario'}."
+        if options["topic"]:
+            summary += " Instrucciones adicionales: " + options["topic"]
+        record["messages"].extend([
+            {"role": "user", "content": summary,
+             "roadmap_request": {"course_id": course_id, **options}},
+            {"role": "assistant", "content": "\n".join(parts), "provider": provider, "model": model,
+             "sources": [], "roadmap_draft": {"course_id": course_id, "course_title": title, "modules": modules}},
+        ])
+        record.update(provider=provider, model=model)
+        if not record.get("custom_title"):
+            record["title"] = ("Roadmap · " + title)[:100]
+        if not update(record, version):
+            return jsonify({"error": "La conversación cambió durante la generación. Intenta de nuevo."}), 409
+        for message in record["messages"]:
+            if message["role"] == "assistant":
+                message["html"] = namespace["render_markdown"](message["content"])
+        return jsonify(record)
+
     @app.route("/api/assistant/conversations/<conversation_id>/messages", methods=["POST"])
     def assistant_message(conversation_id):
         data = request.get_json(silent=True) or {}

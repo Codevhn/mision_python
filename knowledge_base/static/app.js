@@ -7548,6 +7548,8 @@ async function loadCourseView(courseSlug, courseEntity) {
   if (isMobile() || isCompact()) closeSidebarMobile();
 
   // Populate header
+  cv.dataset.courseId=courseSlug;
+  cv.dataset.courseTitle=courseEntity.label || courseSlug;
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
 
@@ -7708,7 +7710,7 @@ function renderCourseTab(tab, courseSlug, stats) {
             <button class="cv-action-card cv-action-card--accent" id="cvEmptyGenerateRoadmap">
               <span class="cv-action-icon">✨</span>
               <span class="cv-action-title">Generar con IA</span>
-              <span class="cv-action-desc">Describe el tema y deja que la IA arme el roadmap completo</span>
+              <span class="cv-action-desc">Usa el curso abierto y elige cómo organizar su roadmap</span>
             </button>
             <button class="cv-action-card" id="cvEmptyNewLesson">
               <span class="cv-action-icon">✏️</span>
@@ -9108,9 +9110,9 @@ function openImportRoadmapModal(courseSlug, mode = 'paste') {
   const overlay = $('importRoadmapOverlay');
   if (!overlay) return;
   _irState.courseSlug = courseSlug;
-  _irState.modelChoice = null;
   $('irRawInput').value = '';
   $('irGenTopic').value = '';
+  $('irCourseIdentity').textContent = 'Curso: '+(_coursesTreeData?.[courseSlug]?.label || ($('courseView').dataset.courseId===courseSlug ? $('courseView').dataset.courseTitle : '') || courseSlug);
   $('irGenDepth').value = 'estandar';
   $('irGenLevel').value = '';
   $('irGenModuleCount').value = '';
@@ -9125,6 +9127,12 @@ function openImportRoadmapModal(courseSlug, mode = 'paste') {
   overlay.classList.remove('hidden');
   setTimeout(() => (mode === 'generate' ? $('irGenTopic') : $('irRawInput'))?.focus(), 60);
 }
+
+window._previewAssistantRoadmap = draft => {
+  window.AssistantApp.close();
+  openImportRoadmapModal(draft.course_id,'generate');
+  _irRenderPreview({modules:structuredClone(draft.modules),generated_by_ai:true});
+};
 
 function closeImportRoadmapModal() {
   $('importRoadmapOverlay')?.classList.add('hidden');
@@ -9355,12 +9363,14 @@ function initImportRoadmap() {
     let url;
     if (isGenerate) {
       const topic = $('irGenTopic').value.trim();
-      if (!topic) { showToast('Describe el tema o enfoque del curso primero', 'error'); return; }
       body.topic = topic;
       body.depth = $('irGenDepth').value;
       body.level = $('irGenLevel').value;
       body.module_count = $('irGenModuleCount').value.trim();
-      url = `/api/courses/${_irState.courseSlug}/generate_roadmap`;
+      const courseSlug=_irState.courseSlug;
+      closeImportRoadmapModal();
+      await window.AssistantApp.generateRoadmap(courseSlug,body);
+      return;
     } else {
       const raw = $('irRawInput').value.trim();
       if (!raw) { showToast('Pega el contenido del roadmap primero', 'error'); return; }

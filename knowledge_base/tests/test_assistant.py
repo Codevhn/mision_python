@@ -403,3 +403,46 @@ def test_invalid_view_context_does_not_save_messages(auth_client):
         response = auth_client.post(route + '/messages', json={'prompt': 'Dónde estoy', 'current_context': current})
         assert response.status_code == 400
     assert auth_client.get(route).json['messages'] == []
+
+
+def test_roadmap_uses_course_name_and_persists_draft_without_creating_lessons(auth_client, monkeypatch):
+    app_module.save_courses({'courses': {'skills': {'label': 'Todo sobre Skills y Agentes de IA'}}})
+    captured = []
+    def generate(system, prompt, **kwargs):
+        captured.append((system, prompt, kwargs))
+        return '## Fundamentos\n### Agentes y herramientas\n#### Diseñar una skill\n', None
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', generate)
+    route = '/api/assistant/conversations/' + create(auth_client)
+    response = auth_client.post(route + '/roadmap', json={'course_id': 'skills', 'topic': '',
+        'depth': 'profundo', 'level': 'avanzado', 'module_count': '6', 'provider': 'deepseek', 'model': 'deepseek-v4-pro'})
+    assert response.status_code == 200
+    assert '<h2>' in response.json['messages'][-1]['html']
+    assert '<h4>Diseñar una skill</h4>' in response.json['messages'][-1]['html']
+    assert 'Todo sobre Skills y Agentes de IA' in captured[0][1]
+    assert 'avanzado' in captured[0][1]
+    assert '6 módulos' in captured[0][0]
+    assert captured[0][2]['max_tokens'] == 7000
+    assert app_module.load_index() == {}
+    record = auth_client.get(route).json
+    draft = record['messages'][-1]['roadmap_draft']
+    assert draft['course_id'] == 'skills'
+    assert draft['course_title'] == 'Todo sobre Skills y Agentes de IA'
+    assert draft['modules'][0]['lessons'][0]['title'] == '1.1 Agentes y herramientas'
+    assert 'Diseñar una skill' in draft['modules'][0]['lessons'][0]['content']
+    assert record['messages'][0]['roadmap_request']['depth'] == 'profundo'
+    assert record['messages'][-1]['model'] == 'deepseek-v4-pro'
+    imported = auth_client.post('/api/courses/skills/import', json={'modules': draft['modules']})
+    assert imported.status_code == 200
+    assert imported.json['count'] == 1
+    assert all(item['course'] == 'skills' for item in app_module.load_index().values())
+
+
+def test_roadmap_failure_does_not_store_a_successful_draft(auth_client, monkeypatch):
+    app_module.save_courses({'courses': {'skills': {'label': 'Skills'}}})
+    monkeypatch.setattr(app_module, '_call_ai_with_fallback', lambda *args, **kwargs: (None, 'API rechazada'))
+    route = '/api/assistant/conversations/' + create(auth_client)
+    assert auth_client.post(route + '/roadmap', json={'course_id': 'skills'}).status_code == 502
+    assert auth_client.get(route).json['messages'] == []
+    assert app_module.load_index() == {}
+    assert auth_client.post(route + '/roadmap', json={'course_id': []}).status_code == 400
+    assert auth_client.post('/api/assistant/conversations/missing/roadmap', json={'course_id': 'skills'}).status_code == 404

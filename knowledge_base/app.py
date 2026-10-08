@@ -3824,12 +3824,14 @@ def _ensure_numbered_modules(modules):
 @app.route("/api/courses/<course_id>/generate_roadmap", methods=["POST"])
 def generate_course_roadmap(course_id):
     data = request.json or {}
-    topic = (data.get("topic") or "").strip()
-    if not topic:
-        return jsonify({"error": "Describe el tema o enfoque del curso primero"}), 400
     courses_data = _sync_courses_from_index()
     if course_id not in courses_data["courses"]:
         return jsonify({"error": f"El curso '{course_id}' no existe."}), 400
+    course_title = courses_data["courses"][course_id].get("label", course_id)
+    topic = data.get("topic") or ""
+    if not isinstance(topic, str) or len(topic) > 10000:
+        return jsonify({"error": "Usa instrucciones adicionales de hasta 10.000 caracteres."}), 400
+    topic = topic.strip() or course_title
 
     depth_cfg = _COURSE_GENERATE_DEPTH.get(data.get("depth"), _COURSE_GENERATE_DEPTH["estandar"])
     module_count = (data.get("module_count") or "").strip()
@@ -3846,7 +3848,7 @@ def generate_course_roadmap(course_id):
         depth_instructions=depth_cfg["instructions"],
     )
 
-    user_parts = [f"Tema del curso: {topic}"]
+    user_parts = [f"Nombre del curso: {course_title}", f"Tema o enfoque adicional: {topic}"]
     level = (data.get("level") or "").strip()
     if level:
         user_parts.append(f"Nivel del curso: {level}")

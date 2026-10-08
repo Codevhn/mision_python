@@ -1703,14 +1703,11 @@
         </div>
 
         <div id="irGenerateFields" class="hidden" style="display:flex;flex-direction:column;gap:10px">
-          <p style="font-size:0.82rem;color:var(--text-muted);margin:0">
-            Describe el tema o enfoque del curso — la IA genera solo el <strong>roadmap</strong>
-            (títulos de módulos y lecciones), cubriendo el temario completo de fundamentos a
-            avanzado. No desarrolla el contenido de cada lección — eso lo haces tú después, dentro
-            del sistema.
-          </p>
+          <p id="irCourseIdentity" class="ir-course-identity"></p>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin:0">El asistente usará este curso y tus opciones para proponer módulos y lecciones. Podrás revisar la estructura antes de aplicarla.</p>
+          <label for="irGenTopic">Instrucciones adicionales — opcional</label>
           <textarea id="irGenTopic"
-            placeholder="Ej: Git y GitHub, desde comandos básicos hasta flujos de trabajo en equipo con pull requests"
+            maxlength="10000" placeholder="Ej.: incluir proyectos prácticos, herramientas concretas o un enfoque profesional…"
             style="width:100%;height:90px;font-size:0.85rem;background:var(--bg-elevated);
                    border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;
                    resize:vertical;outline:none;box-sizing:border-box"></textarea>
