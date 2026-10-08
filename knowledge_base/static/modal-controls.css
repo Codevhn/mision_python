@@ -20,6 +20,8 @@ select.atlas-select-native {position:absolute !important;width:1px !important;he
 @media(prefers-reduced-motion:reduce){.atlas-select-arrow{transition:none}}
 
 /* Shared modal fields also cover forms with inline styles outside form-group. */
+.modal-overlay {z-index:10000}
+#confirmOverlay {z-index:13000}
 .atlas-select-trigger {box-sizing:border-box;font-family:var(--font-ui);font-size:.82rem;color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;line-height:1.4}
 .atlas-select-trigger:disabled {opacity:.55;cursor:default}
 .atlas-select-trigger:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
@@ -38,4 +40,35 @@ select.atlas-select-native {position:absolute !important;width:1px !important;he
 .modal .ir-generation-options {gap:12px}
 .modal .atlas-system-icon {width:18px;height:18px}
 .modal textarea#irRawInput {font-family:var(--font-mono) !important}
+
+/* Lesson actions share the explorer's menu surfaces and selection chrome. */
+.cv-lesson-dropdown {width:232px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:5px;border-radius:4px;background:var(--bg-overlay);border:1px solid var(--border);color:var(--text);font-family:var(--font-ui);max-height:calc(100dvh - 16px);overflow:auto;z-index:6000}
+.cv-lesson-dropdown button {display:flex;align-items:center;gap:8px;min-height:36px;padding:7px 9px;line-height:1.35;font:.8rem var(--font-ui);border:1px solid transparent;border-radius:3px;color:var(--text);background:transparent}
+.cv-lesson-dropdown button > span {flex:1;text-align:left}
+.cv-lesson-dropdown .atlas-system-icon {width:19px;height:19px;margin:0}
+.cv-lesson-dropdown button[aria-checked=true]::after {content:'✓';color:var(--text);font-weight:700}
+.cv-lesson-dropdown button:is(:hover,:focus-visible) {outline:none;background:var(--bg-hover);color:var(--text);border-color:var(--accent)}
+.cv-lesson-menu-separator {height:1px;margin:4px 9px 4px 36px;background:var(--border)}
+[data-style=aero] .cv-lesson-dropdown {background:var(--aero-content);border-color:var(--aero-frame);outline:1px solid var(--aero-edge);box-shadow:0 8px 28px #0005,inset 0 1px 0 var(--aero-inset)}
+[data-style=aero] .cv-lesson-dropdown button:is(:hover,:focus-visible) {background:var(--aero-nav-hover);border-color:var(--aero-select-border);color:var(--aero-nav-ink);box-shadow:inset 0 0 0 1px var(--aero-nav-highlight)}
+.cv-lesson-dropdown button.danger {color:var(--danger)}
+[data-theme=light] .cv-lesson-dropdown button.danger {color:#a12f23}
+
+/* Filled destructive actions keep readable white ink, independent of accent. */
+:is(.btn-primary.danger,.lib-modal-btn.danger,.assistant-confirm-danger) {background:#923626 !important;color:#fff !important;border:1px solid #722b20 !important;border-radius:4px !important;font-weight:600;min-height:32px;text-shadow:none !important;filter:none !important;transform:none !important}
+[data-style=aero] :is(.btn-primary.danger,.lib-modal-btn.danger,.assistant-confirm-danger) {background:linear-gradient(#ad4d3a,#943827 48%,#7e291b 49%,#a94330) !important;box-shadow:inset 0 1px 0 #ffffff30,0 1px 2px #0003 !important}
+:is(.btn-primary.danger,.lib-modal-btn.danger,.assistant-confirm-danger):hover:not(:disabled) {background:#9e3e2c !important;color:#fff !important}
+[data-style=aero] :is(.btn-primary.danger,.lib-modal-btn.danger,.assistant-confirm-danger):hover:not(:disabled) {background:linear-gradient(#b0503d,#9e3e2c 48%,#862e20 49%,#aa4532) !important}
+:is(.btn-primary.danger,.lib-modal-btn.danger,.assistant-confirm-danger):focus-visible {outline:2px solid var(--accent) !important;outline-offset:2px}
+
+/* System guidance uses a small frosted inset, separate from editable content. */
+[data-style=aero] :is(.atlas-dialog-notice,.modal-body > p:not([role=status]):not(:empty),#irPasteFields > p,#irGenerateFields > p:not(.ir-course-identity),.assistant-confirm-body > p:not([role=status]):not(:empty),.lib-modal-sub) {
+ box-sizing:border-box;padding:10px 12px !important;border:1px solid var(--aero-edge);border-radius:4px;
+ background:linear-gradient(125deg,#ffffff14 0%,#ffffff04 34%,#ffffff1c 35%,#ffffff08 46%,transparent 47%),linear-gradient(color-mix(in srgb,var(--aero-field) 94%,white),var(--aero-field)) !important;
+ color:var(--text) !important;font-family:var(--font-ui);font-size:.82rem !important;line-height:1.6 !important;
+ box-shadow:inset 0 1px 0 var(--aero-inset),0 1px 3px #0002;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+}
+[data-style=aero] .assistant-edit-dialog .atlas-dialog-notice {margin-bottom:12px}
+[data-style=aero] .assistant-edit-dialog .assistant-confirm-body label {margin-top:10px}
+[data-style=aero] :is(.modal-body > p,#irPasteFields > p,#irGenerateFields > p,.assistant-confirm-body > p) code {font-size:inherit}
 

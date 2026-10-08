@@ -32,7 +32,7 @@
     dialog.querySelector('h2').textContent=title; dialog.setAttribute('aria-label',title);
     const body=dialog.querySelector('.assistant-confirm-body'), inputs={};
     dialog.querySelector('button[type=submit]').textContent=options.submitLabel||'Guardar';
-    if(options.description){const note=document.createElement('p');note.textContent=options.description;body.append(note);}
+    if(options.description){const note=document.createElement('p');note.className='atlas-dialog-notice';note.textContent=options.description;body.append(note);}
     fields.forEach(field=>{const label=document.createElement('label'),input=document.createElement(field.multiline?'textarea':'input'); label.textContent=field.label; input.value=field.value||'';input.required=!field.readonly&&!field.optional;if(!field.multiline)input.type=field.type||'text';if(field.min!==undefined)input.min=field.min;if(field.maxValue!==undefined)input.max=field.maxValue;input.readOnly=!!field.readonly;input.maxLength=field.max||100;label.append(input);body.append(label);inputs[field.key]=input;});
     const error=document.createElement('p');error.setAttribute('role','status');body.append(error);
     let result=null, saving=false;

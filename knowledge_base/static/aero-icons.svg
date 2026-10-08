@@ -104,4 +104,5 @@
 <symbol id="rain" viewBox="0 0 24 24"><path d="M6 15C-1 15 0 6 6 7 7 0 19 0 19 7c6 1 5 8-1 8Z" fill="url(#silver)" stroke="#577a94"/><path d="m7 18-2 4m8-4-2 4m8-4-2 4" stroke="#55b9ee" stroke-width="2"/></symbol>
 <symbol id="snow" viewBox="0 0 24 24"><path d="M12 1v22M2 6l20 12M2 18 22 6M9 3l3 3 3-3M9 21l3-3 3 3M3 9l4-1-1-4m-3 11 4 1-1 4m15-5-4 1 1 4m3-11-4-1 1-4" fill="none" stroke="#7fbde3" stroke-width="2"/></symbol>
 <symbol id="weather" viewBox="0 0 24 24"><rect x="8" y="1" width="8" height="17" rx="4" fill="url(#paper)" stroke="#577a94"/><circle cx="12" cy="18" r="5" fill="url(#red)" stroke="#916431"/><path d="M12 7v11" stroke="#e46c45" stroke-width="3"/></symbol>
+<symbol id="status-complete" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#green)" stroke="#286132"/><path d="m6 12 4 4 8-9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>

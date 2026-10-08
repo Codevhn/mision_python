@@ -3463,7 +3463,7 @@ function showConfirm(title, msg, okLabel) {
   return new Promise(resolve => {
     $("confirmTitle").textContent = title;
     $("confirmMsg").textContent = msg;
-    $("confirmOk").textContent = okLabel || "eliminar";
+    $("confirmOk").textContent = okLabel || "Eliminar";
     $("confirmOverlay").classList.remove("hidden");
     const cleanup = (result) => {
       $("confirmOverlay").classList.add("hidden");
@@ -8120,22 +8120,39 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
 
   const menu = document.createElement('div');
   menu.className = 'cv-lesson-dropdown';
+  menu.id = 'cvLessonActions';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Acciones de la lección');
+  const icon = name => `<svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#${name}"></use></svg>`;
   menu.innerHTML = `
-    <button data-a="edit">Editar</button>
-    <button data-a="status-p">Marcar pendiente</button>
-    <button data-a="status-i">Marcar en progreso</button>
-    <button data-a="status-c">Marcar completado</button>
-    <button data-a="move">Mover a…</button>
-    <button data-a="delete" class="danger">Eliminar</button>`;
+    <button type="button" role="menuitem" data-a="edit">${icon('edit')}<span>Editar</span></button>
+    <div class="cv-lesson-menu-separator" role="separator"></div>
+    <button type="button" role="menuitemradio" data-a="status-p" aria-checked="${!entry.status || entry.status === 'pendiente'}">${icon('calendar')}<span>Marcar pendiente</span></button>
+    <button type="button" role="menuitemradio" data-a="status-i" aria-checked="${entry.status === 'en_progreso'}">${icon('history')}<span>Marcar en progreso</span></button>
+    <button type="button" role="menuitemradio" data-a="status-c" aria-checked="${entry.status === 'completado'}">${icon('status-complete')}<span>Marcar completado</span></button>
+    <div class="cv-lesson-menu-separator" role="separator"></div>
+    <button type="button" role="menuitem" data-a="move">${icon('folder')}<span>Mover a…</span></button>
+    <button type="button" role="menuitem" data-a="delete" class="danger">${icon('trash')}<span>Eliminar</span></button>`;
 
   // Position relative to anchor
   const rect = anchor.getBoundingClientRect();
   menu.style.position = 'fixed';
-  menu.style.top  = rect.bottom + 4 + 'px';
-  menu.style.left = rect.left - 100 + 'px';
   document.body.appendChild(menu);
+  const width = menu.offsetWidth, height = menu.offsetHeight;
+  menu.style.left = Math.max(8, Math.min(rect.right - width, innerWidth - width - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(rect.bottom + 4, innerHeight - height - 8)) + 'px';
+  anchor.setAttribute('aria-expanded', 'true');
+  anchor.setAttribute('aria-haspopup', 'menu');
+  anchor.setAttribute('aria-controls', menu.id);
 
-  const close = () => { menu.remove(); _lessonMenuCleanup = null; };
+  const close = (restoreFocus = false) => {
+    menu.remove(); _lessonMenuCleanup = null;
+    document.removeEventListener('pointerdown', onOutside, true);
+    document.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', onResize);
+    anchor.setAttribute('aria-expanded', 'false'); anchor.removeAttribute('aria-controls');
+    if (restoreFocus && anchor.isConnected) anchor.focus({preventScroll:true});
+  };
   _lessonMenuCleanup = close;
 
   menu.querySelectorAll('button[data-a]').forEach(btn => {
@@ -8168,11 +8185,24 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
     });
   });
 
-  // Close on outside click — use mousedown so it fires before the button's click
+  // Dismiss and clean up all listeners, including after an action.
   const onOutside = e => {
-    if (!menu.contains(e.target)) { close(); document.removeEventListener('mousedown', onOutside); }
+    if (!menu.contains(e.target)) close();
   };
-  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+  const onScroll = e => { if (!menu.contains(e.target)) close(); };
+  const onResize = () => close();
+  menu.addEventListener('keydown', e => {
+    const buttons = [...menu.querySelectorAll('button')], index = buttons.indexOf(document.activeElement);
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+      buttons[e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+    } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+    else if (e.key === 'Tab') { close(true); }
+  });
+  document.addEventListener('pointerdown', onOutside, true);
+  document.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', onResize);
+  menu.querySelector('button').focus({preventScroll:true});
 }
 
 // ── Course actions (⚙ menu) ───────────────────────────────────────────────
