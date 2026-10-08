@@ -62,6 +62,13 @@ Se retiraron los fondos blancos heredados de Continuar estudiando y el contorno
 blanco interior completo de las tarjetas; el reflejo queda limitado al borde
 superior. Estadísticas, tarjetas fijadas y estados hover usan bordes del tema.
 
+Las listas laterales de Conocimiento, Cursos, Tableros, Team, Páginas, Mapas
+Mentales, Mapas Conceptuales y Radar comparten el degradado y relieve de Cursos.
+Incluye categorías, temas, lecciones anidadas, fuentes y Archivados. Los botones
+de navegación principal comparten la misma sombra; hover, foco y pulsación usan
+tokens comunes en las tres variantes. Los elementos informativos del Grafo
+conservan su presentación sin simular botones.
+
 El menú Más utiliza el marco y los botones Aero en las tres variantes.
 El editor subraya errores mediante un diccionario español local, con sugerencias
 al pasar o tocar y revisión del párrafo antes de aplicar. Comprobados: conservación

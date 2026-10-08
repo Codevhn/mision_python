@@ -262,6 +262,8 @@
  --aero-nav-hover:linear-gradient(180deg,#ffffffc4 0%,#e4f6ffb3 46%,#9ecdeba8 47%,#d1eeffcf 100%);
  --aero-nav-ink:#143b58;
  --aero-nav-highlight:#ffffffa6;
+ --aero-nav-shadow:inset 0 1px 0 var(--aero-nav-highlight),inset 0 0 0 1px var(--aero-inset),inset 0 -1px 0 #24628f38,0 0 8px #60c2ff38,0 2px 4px #092b472b;
+ --aero-nav-pressed:inset 0 2px 5px #092b4770,inset 0 0 0 1px var(--aero-inset);
 }
 [data-style="aero"][data-variant="night"] {
  --aero-nav-hover:linear-gradient(180deg,#719dbac9 0%,#476e8eb8 46%,#1b456ac9 47%,#386a8dd9 100%);
@@ -272,27 +274,27 @@
 [data-style="aero"] #activityBar .ab-item:is(:hover,:focus-visible) {
  background:var(--aero-nav-hover) !important; color:var(--aero-nav-ink) !important;
  border-color:var(--aero-select-border); text-shadow:0 1px 1px var(--aero-inset);
- box-shadow:inset 0 1px 0 var(--aero-nav-highlight),inset 0 0 0 1px var(--aero-inset),inset 0 -1px 0 #24628f38,0 0 10px #60c2ff45,0 2px 4px #092b472b;
+ box-shadow:var(--aero-nav-shadow);
 }
 [data-style="aero"] #activityBar .ab-item:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-[data-style="aero"] #activityBar .ab-item:active { transform:none; box-shadow:inset 0 2px 5px #092b4770,inset 0 0 0 1px var(--aero-inset); }
+[data-style="aero"] #activityBar .ab-item:active { transform:none; box-shadow:var(--aero-nav-pressed); }
 
 /* Course buttons keep the expanded lesson tree outside the glossy surface. */
 [data-style="aero"] .course-list-item { margin:3px 6px; padding:6px 8px; border:1px solid transparent; border-radius:5px; transition:background .12s,box-shadow .12s,border-color .12s; }
 [data-style="aero"] .course-list-item.active { border-left:1px solid transparent; padding-left:8px; }
 [data-style="aero"] .course-list-item.active:not(.archived):hover { background:transparent; box-shadow:none; }
 [data-style="aero"] .course-list-item.active .course-list-row { margin:-6px -8px 0; padding:6px 8px; border:1px solid var(--aero-select-border); border-radius:5px; background:var(--aero-selection); box-shadow:inset 0 1px 0 var(--aero-inset); }
-[data-style="aero"] .course-list-item:not(.active):hover,
-[data-style="aero"] .course-list-item.archived:hover,
+[data-style="aero"] .course-list-item:not(.active):is(:hover,:focus-visible),
+[data-style="aero"] .course-list-item.archived:is(:hover,:focus-visible),
 [data-style="aero"] .course-list-item.active .course-list-row:is(:hover,:focus-within) {
- background:var(--aero-nav-hover); border-color:var(--aero-select-border);
- box-shadow:inset 0 1px 0 var(--aero-nav-highlight),inset 0 0 0 1px var(--aero-inset),inset 0 -1px 0 #24628f38,0 0 8px #60c2ff38,0 2px 4px #092b472b;
+ background:var(--aero-nav-hover); border-color:var(--aero-select-border); color:var(--aero-nav-ink);
+ box-shadow:var(--aero-nav-shadow);
 }
-[data-style="aero"] .course-list-item:not(.active):hover .course-list-name,
-[data-style="aero"] .course-list-item.archived:hover .course-list-name,
+[data-style="aero"] .course-list-item:not(.active):is(:hover,:focus-visible) .course-list-name,
+[data-style="aero"] .course-list-item.archived:is(:hover,:focus-visible) .course-list-name,
 [data-style="aero"] .course-list-row:is(:hover,:focus-within) .course-list-name { color:var(--aero-nav-ink) !important; opacity:1; }
 [data-style="aero"] .course-list-item:not(.active):active,
-[data-style="aero"] .course-list-item.active .course-list-row:active { box-shadow:inset 0 2px 5px #092b4770,inset 0 0 0 1px var(--aero-inset); }
+[data-style="aero"] .course-list-item.active .course-list-row:active { box-shadow:var(--aero-nav-pressed); }
 
 /* Explorer-style course window: blurred chrome, a readable interior and title bar. */
 [data-style="aero"] #spaceCourses {
@@ -441,9 +443,6 @@
  border:1px solid var(--border); border-radius:3px; background:var(--aero-button); color:var(--text);
  box-shadow:inset 0 1px 0 var(--aero-inset);
 }
-[data-style="aero"] #sidebar :is(.ts-space-header,.tree-row,.ts-item):is(:hover,:focus-within) {
- background:var(--aero-nav-hover); border-radius:4px; box-shadow:inset 0 0 0 1px var(--aero-nav-highlight);
-}
 [data-style="aero"] :is(.ai-inline-bar,.ai-result-pop) {
  background:var(--aero-content); color:var(--text); border:1px solid var(--aero-frame);
  border-radius:5px; box-shadow:0 8px 28px #071c3260,inset 0 0 0 1px var(--aero-inset);
@@ -480,3 +479,22 @@
 [data-style="aero"] :is(.hsf-title,.hsc-title) { color:var(--text) !important; }
 [data-style="aero"] :is(.hsf-time,.hsc-time) { color:var(--text-muted) !important; }
 :root[data-style="aero"] .home-stat[data-stat]:hover { background:var(--aero-glass) !important; border-color:var(--aero-select-border) !important; box-shadow:0 3px 12px #124d7922,inset 0 1px 0 var(--aero-inset) !important; }
+
+/* One Explorer button treatment across every interactive sidebar list. */
+[data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle) {
+ border:1px solid transparent; border-radius:5px;
+ transition:background .12s,box-shadow .12s,border-color .12s;
+}
+[data-style="aero"] #sidebar :is(.kanban-board-item,.mindmap-item,.conceptmap-item,.ts-space-header) { margin:3px 6px; }
+[data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):is(:hover,:focus-visible,:focus-within) {
+ background:var(--aero-nav-hover) !important; border-color:var(--aero-select-border) !important;
+ color:var(--aero-nav-ink) !important; box-shadow:var(--aero-nav-shadow) !important;
+}
+[data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):is(:hover,:focus-visible,:focus-within) :is(.tree-entry-title,.tree-entry-label,.tree-cat-label,.ts-space-label) { color:var(--aero-nav-ink) !important; opacity:1; }
+[data-style="aero"] #sidebar :is(.tree-entry,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn).active:not(:hover):not(:focus-within) {
+ background:var(--aero-selection) !important; border-color:var(--aero-select-border) !important;
+ color:var(--text) !important; box-shadow:inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):active { box-shadow:var(--aero-nav-pressed) !important; }
+[data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+@media (prefers-reduced-motion:reduce) { [data-style="aero"] #sidebar :is(.course-list-item,.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle) { transition:none; } }
