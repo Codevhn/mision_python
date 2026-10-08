@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blue" x2="0" y2="1"><stop stop-color="#b6edff"/><stop offset=".48" stop-color="#55b9ee"/><stop offset=".5" stop-color="#2688c9"/><stop offset="1" stop-color="#125e98"/></linearGradient>
+    <linearGradient id="gold" x2="0" y2="1"><stop stop-color="#fff5ad"/><stop offset=".5" stop-color="#f6cf65"/><stop offset="1" stop-color="#ca8b29"/></linearGradient>
+    <linearGradient id="paper" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#c3dfef"/></linearGradient>
+    <linearGradient id="green" x2="0" y2="1"><stop stop-color="#c6ef8d"/><stop offset=".5" stop-color="#6cb84e"/><stop offset="1" stop-color="#287332"/></linearGradient>
+    <linearGradient id="red" x2="0" y2="1"><stop stop-color="#ffc5ad"/><stop offset=".48" stop-color="#e46c45"/><stop offset=".5" stop-color="#bb3825"/><stop offset="1" stop-color="#7f241b"/></linearGradient>
+    <linearGradient id="silver" x2="0" y2="1"><stop stop-color="#f4fbff"/><stop offset=".5" stop-color="#b9cfde"/><stop offset="1" stop-color="#667c90"/></linearGradient>
+    <linearGradient id="purple" x2="0" y2="1"><stop stop-color="#e0cdff"/><stop offset=".5" stop-color="#a58ade"/><stop offset="1" stop-color="#665197"/></linearGradient>
+  </defs>
+  <symbol id="home" viewBox="0 0 24 24">
+    <path d="M5 10v11h14V10L12 4Z" fill="url(#paper)" stroke="#577a94"/>
+    <path d="m2 11 10-9 10 9-2 2-8-7-8 7Z" fill="url(#gold)" stroke="#916431" stroke-linejoin="round"/>
+    <path d="M10 14h5v7h-5Z" fill="url(#blue)" stroke="#356283"/><path d="M6 13h3v4H6Z" fill="#6ac7f3"/>
+  </symbol>
+  <symbol id="knowledge" viewBox="0 0 24 24">
+    <path d="M2 5q5-2 10 1 5-3 10-1v15q-5-2-10 1-5-3-10-1Z" fill="url(#blue)" stroke="#325f81"/>
+    <path d="M3 3q5-1 9 2 4-3 9-2v15q-5-1-9 2-4-3-9-2Z" fill="url(#paper)" stroke="#7896aa"/>
+    <path d="M12 5v15M5 7l4 1M5 11l4 1M15 8l4-1M15 12l4-1" fill="none" stroke="#6a93ad"/>
+  </symbol>
+  <symbol id="courses" viewBox="0 0 24 24">
+    <path d="M3 12v9h16v-9" fill="url(#blue)" stroke="#3a6585"/><path d="M7 13v5q5 4 10 0v-5" fill="url(#silver)" stroke="#436079"/>
+    <path d="m1 9 11-6 11 6-11 5Z" fill="url(#blue)" stroke="#244d70" stroke-linejoin="round"/>
+    <path d="m12 9 8 2v7" fill="none" stroke="#ffd879" stroke-width="1.5"/><path d="M19 17h2l1 4h-4Z" fill="url(#gold)"/>
+  </symbol>
+  <symbol id="boards" viewBox="0 0 24 24">
+    <rect x="2" y="3" width="20" height="17" rx="2" fill="url(#silver)" stroke="#4e6b84"/><path d="M3 7h18" stroke="#fff"/>
+    <rect x="4" y="8" width="4" height="9" rx="1" fill="url(#gold)"/><rect x="10" y="8" width="4" height="7" rx="1" fill="url(#blue)"/><rect x="16" y="8" width="4" height="10" rx="1" fill="url(#green)"/>
+  </symbol>
+  <symbol id="team" viewBox="0 0 24 24">
+    <circle cx="16" cy="7" r="4" fill="url(#gold)" stroke="#997744"/><path d="M11 21v-5a5 5 0 0 1 11 0v5Z" fill="url(#green)" stroke="#48743b"/>
+    <circle cx="8" cy="8" r="4" fill="url(#paper)" stroke="#7397ac"/><path d="M2 22v-6a6 6 0 0 1 12 0v6Z" fill="url(#blue)" stroke="#315e83"/><path d="M5 14q3-2 6 0" fill="none" stroke="#d4f4ff"/>
+  </symbol>
+  <symbol id="pages" viewBox="0 0 24 24">
+    <path d="M6 1h10l5 5v16H6Z" fill="url(#silver)" stroke="#5c8099"/><path d="M3 3h10l5 5v15H3Z" fill="url(#paper)" stroke="#5c8099"/>
+    <path d="M13 3v5h5" fill="#b1daef" stroke="#5c8099"/><path d="M6 11h8M6 14h9M6 17h9M6 20h6" stroke="#5f97bc"/>
+  </symbol>
+  <symbol id="mindmaps" viewBox="0 0 24 24">
+    <path d="M7 12h8M11 12l6-7M11 12l6 7" stroke="#bfdceb" stroke-width="2" fill="none"/>
+    <circle cx="5" cy="12" r="4" fill="url(#blue)" stroke="#346587"/><circle cx="19" cy="4" r="3" fill="url(#gold)" stroke="#9a733b"/><circle cx="19" cy="12" r="3" fill="url(#green)" stroke="#447e3c"/><circle cx="19" cy="20" r="3" fill="url(#purple)" stroke="#716096"/>
+  </symbol>
+  <symbol id="conceptmaps" viewBox="0 0 24 24">
+    <path d="M12 7v5H5v5M12 12h7v5" stroke="#b7d5e7" stroke-width="2" fill="none"/>
+    <rect x="7" y="1" width="10" height="7" rx="1" fill="url(#blue)" stroke="#436d8b"/><rect x="1" y="16" width="9" height="7" rx="1" fill="url(#gold)" stroke="#9a733b"/><rect x="14" y="16" width="9" height="7" rx="1" fill="url(#green)" stroke="#447e3c"/>
+  </symbol>
+  <symbol id="graph" viewBox="0 0 24 24">
+    <path d="m12 4-8 16h16ZM4 20l16-9" fill="none" stroke="#afcfe6" stroke-width="2"/>
+    <circle cx="12" cy="4" r="3" fill="url(#blue)" stroke="#315e83"/><circle cx="4" cy="20" r="3" fill="url(#green)" stroke="#447e3c"/><circle cx="20" cy="20" r="3" fill="url(#gold)" stroke="#9a733b"/><circle cx="20" cy="11" r="3" fill="url(#purple)" stroke="#716096"/>
+  </symbol>
+  <symbol id="radar" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="11" fill="url(#silver)" stroke="#4c6a80"/><circle cx="12" cy="12" r="9" fill="url(#green)" stroke="#306239"/>
+    <circle cx="12" cy="12" r="5" fill="none" stroke="#def2c8" stroke-opacity=".7"/><path d="M3 12h18M12 3v18m0-9 6-6" stroke="#def2c8" fill="none"/><circle cx="15" cy="15" r="1.5" fill="#ffffc8"/><path d="M5 7q6-5 13 0" stroke="#fff" stroke-opacity=".5" fill="none"/>
+  </symbol>
+  <symbol id="practice" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10" fill="url(#silver)" stroke="#4e6a82"/><circle cx="12" cy="12" r="7" fill="url(#blue)" stroke="#fff"/><circle cx="12" cy="12" r="4" fill="url(#paper)"/><circle cx="12" cy="12" r="1.5" fill="#dc7747"/><path d="m12 12 9-9m-2 0h2v2" fill="none" stroke="#de7b33" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="library" viewBox="0 0 24 24">
+    <path d="M2 22h20" stroke="#a7c4d8" stroke-width="2"/><rect x="2" y="4" width="5" height="17" rx="1" fill="url(#blue)" stroke="#345a7b"/><rect x="8" y="2" width="5" height="19" rx="1" fill="url(#red)" stroke="#864c3d"/><path d="m14 5 5-1 3 16-5 1Z" fill="url(#gold)" stroke="#a07d40"/><path d="M3 8h3M9 7h3m4 2 4-1M3 18h3M9 18h3" stroke="#fff" stroke-opacity=".7"/>
+  </symbol>
+  <symbol id="search" viewBox="0 0 24 24">
+    <path d="m15 16 6 6" stroke="#365c7c" stroke-width="5" stroke-linecap="round"/><path d="m16 16 5 5" stroke="#a4c8de" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="10" cy="10" r="8" fill="url(#silver)" stroke="#4c6f89"/><circle cx="10" cy="10" r="6" fill="url(#blue)"/><path d="M6 8q1-4 6-3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="export" viewBox="0 0 24 24">
+    <path d="M2 14h20v8H2Z" fill="url(#silver)" stroke="#526e85"/><path d="M4 18h16" stroke="#fff"/><path d="M9 2h6v9h5l-8 8-8-8h5Z" fill="url(#green)" stroke="#417737" stroke-linejoin="round"/><path d="M10 3h2v9" fill="none" stroke="#e4ffbd"/>
+  </symbol>
+  <symbol id="power" viewBox="0 0 24 24">
+    <rect x="1" y="1" width="22" height="22" rx="5" fill="url(#silver)" stroke="#547287"/><rect x="2.5" y="2.5" width="19" height="19" rx="4" fill="url(#red)" stroke="#8b3a2b"/>
+    <path d="M5 4h14q2 0 1 5H4q-1-5 1-5Z" fill="#fff" opacity=".18"/>
+    <path d="M12 6v6m-4-3a6 6 0 1 0 8 0" fill="none" stroke="#fff5eb" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+</svg>

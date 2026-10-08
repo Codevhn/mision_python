@@ -6311,7 +6311,7 @@ function _wireCtxBtn(ctxId, sourceId) {
   // ── Keyboard navigation ───────────────────────────────────
   function _onKey(e) {
     const active = _list.querySelectorAll('.cmd-item[data-idx]');
-    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       _active = Math.min(_active + 1, active.length - 1);
@@ -6403,7 +6403,7 @@ function _wireCtxBtn(ctxId, sourceId) {
       e.preventDefault();
       _open ? close() : open();
     }
-    if (e.key === 'Escape' && _open) close();
+    if (e.key === 'Escape' && _open) { e.preventDefault(); close(); }
   });
 
   // Expose for programmatic use
@@ -11749,6 +11749,7 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
     panel.style.width = `${width}px`;
     panel.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
     panel.style.maxHeight = `${Math.max(100, Math.min(430, up ? above : below))}px`;
+    panel.style.setProperty('--model-reveal-offset', up ? '5px' : '-5px');
     panel.style.top = up ? 'auto' : `${rect.bottom + 8}px`;
     panel.style.bottom = up ? `${window.innerHeight - rect.top + 8}px` : 'auto';
   };

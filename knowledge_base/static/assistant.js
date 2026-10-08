@@ -401,6 +401,7 @@
   }
   el('assistantLauncher').addEventListener('click', open);
   document.addEventListener('keydown', event => {
+    if (event.defaultPrevented) return;
     if (event.key === 'Escape' && !document.querySelector('dialog[open]') && !area.classList.contains('hidden')) {
       if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
       const settings = area.querySelector('details[open]');

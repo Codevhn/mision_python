@@ -118,3 +118,24 @@ Validación: 94 pruebas del servidor y recorridos en Chromium de copiar,
 renombrar, ampliar, cambiar tema desde búsqueda, reintentar, crear página y
 conocimiento, selección y móvil. IA simulada; no se verificaron los servicios
 externos ni los permisos de los combos desde este entorno.
+
+## Iconos y controles de Windows 7
+
+La barra principal usa quince ilustraciones SVG originales con degradados,
+reflejos y volumen, incluyendo el botón rojo de encendido de Salir. Se mantienen
+los nombres y destinos de navegación. El buscador de comandos, la barra de
+contexto de las páginas y el panel de relacionadas comparten las superficies
+Aero también en el tema nocturno.
+
+Copiar, reintentar, el menú de respuestas, modelo, contexto y ortografía tienen
+relieve visible en reposo, brillo al pasar el puntero y estado presionado.
+El selector compartido de modelos aparece con un fundido y desplazamiento de
+5 px durante 180 ms, orientado según el lado en el que se abre; se desactiva
+con la preferencia de movimiento reducido. Escape en el buscador deja abierto
+el asistente.
+
+Verificado en Chromium con los tres temas: carga de los quince iconos,
+controles con degradado/borde/relieve, apertura y cierre del selector,
+navegación del buscador por teclado y superficies de contexto/relacionadas.
+También se verificó el selector a 390 px y movimiento reducido. La conversación
+de prueba se generó con un proveedor simulado y datos aislados.
