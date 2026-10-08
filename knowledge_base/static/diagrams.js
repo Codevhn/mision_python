@@ -18,50 +18,7 @@
   }
   function status(text,error=false){const n=el('dgStatus');if(n){n.textContent=text;n.classList.toggle('dg-error',error);n.dataset.state=error?'error':text.includes('…')?'busy':'ready';}}
   function lock(on){busy=on;area.querySelectorAll('button,input,select,textarea').forEach(n=>{if(on){n.dataset.dgDisabled=String(n.disabled);n.disabled=true;}else if(n.dataset.dgDisabled!==undefined){n.disabled=n.dataset.dgDisabled==='true';delete n.dataset.dgDisabled;}});area.setAttribute('aria-busy',String(on));}
-  // Keep native values for forms while rendering a theme-controlled popup.
-  let closeSelectPopup=null;
-  const selectDescriptions={socratic:'Aprende mediante preguntas y decisiones propias.',guided:'Avanza con explicaciones y propuestas por pasos.',review:'Revisa un diagrama que ya has construido.',automatic:'Obtén una propuesta completa a partir del objetivo.',manual:'Edita libremente y consulta cuando lo necesites.'};
-  function mountSelects(root){
-    root.querySelectorAll('select:not([data-dg-mounted])').forEach(select=>{
-      select.dataset.dgMounted='true';
-      const wrapper=document.createElement('span');wrapper.className='dg-select';
-      select.before(wrapper);wrapper.append(select);
-      select.classList.add('dg-select-native');select.setAttribute('aria-hidden','true');select.tabIndex=-1;
-      const trigger=document.createElement('button');trigger.type='button';trigger.className='dg-select-trigger';
-      trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');
-      const label=Array.from(select.labels||[]).map(n=>Array.from(n.childNodes).filter(c=>c.nodeType===3).map(c=>c.textContent.trim()).join(' ')).join(' ')||'Elegir opción';
-      const sync=()=>{trigger.innerHTML=`<span>${esc(select.selectedOptions[0]?.textContent||'Elegir opción')}</span><span class="dg-select-arrow" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="m3 6 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;trigger.setAttribute('aria-label',label+': '+(select.selectedOptions[0]?.textContent||''));trigger.disabled=select.disabled;};
-      wrapper.append(trigger);sync();select.addEventListener('change',sync);
-      function open(initial){
-        if(trigger.disabled)return;
-        closeSelectPopup?.();
-        const popup=document.createElement('div');popup.className='dg-select-popup';popup.id='dg-options-'+uid();popup.setAttribute('role','listbox');popup.setAttribute('aria-label',label);popup.tabIndex=-1;
-        const items=Array.from(select.options),selected=Math.max(0,select.selectedIndex);let active=initial??selected,typed='',lastType=0;
-        popup.innerHTML=items.map((o,index)=>`<div class="dg-select-option" id="${popup.id}-${index}" role="option" aria-selected="${index===selected}" data-index="${index}"><span class="dg-select-check" aria-hidden="true">${index===selected?'✓':''}</span><span><span class="dg-select-label">${esc(o.textContent)}</span>${select.dataset.config==='mode'?`<span class="dg-select-description">${esc(selectDescriptions[o.value]||'')}</span>`:''}</span></div>`).join('');
-        document.body.append(popup);trigger.setAttribute('aria-expanded','true');trigger.setAttribute('aria-controls',popup.id);
-        const position=()=>{const r=trigger.getBoundingClientRect(),gap=6,padding=8,below=innerHeight-r.bottom-padding,above=r.top-padding,up=below<Math.min(popup.scrollHeight,260)&&above>below;popup.style.width=Math.min(r.width,innerWidth-padding*2)+'px';popup.style.left=Math.max(padding,Math.min(r.left,innerWidth-r.width-padding))+'px';popup.style.maxHeight=Math.max(80,Math.min(360,up?above-gap:below-gap))+'px';popup.style.top=up?'auto':r.bottom+gap+'px';popup.style.bottom=up?innerHeight-r.top+gap+'px':'auto';};
-        const highlight=()=>{popup.querySelectorAll('[role=option]').forEach((n,index)=>n.classList.toggle('dg-option-active',index===active));popup.setAttribute('aria-activedescendant',popup.id+'-'+active);const row=popup.children[active];if(row){if(row.offsetTop<popup.scrollTop)popup.scrollTop=row.offsetTop;else if(row.offsetTop+row.offsetHeight>popup.scrollTop+popup.clientHeight)popup.scrollTop=row.offsetTop+row.offsetHeight-popup.clientHeight;}};
-        const close=(focus=false)=>{popup.remove();trigger.setAttribute('aria-expanded','false');trigger.removeAttribute('aria-controls');document.removeEventListener('pointerdown',outside,true);window.removeEventListener('resize',position);document.removeEventListener('scroll',scroll,true);observer.disconnect();if(closeSelectPopup===close)closeSelectPopup=null;if(focus&&trigger.isConnected)trigger.focus();};
-        const choose=index=>{select.selectedIndex=index;select.dispatchEvent(new Event('change',{bubbles:true}));close(true);};
-        const outside=e=>{if(!wrapper.contains(e.target)&&!popup.contains(e.target))close();};
-        const scroll=e=>{if(popup.contains(e.target))return;const r=trigger.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)close();else position();};
-        const observer=new MutationObserver(()=>{if(!select.isConnected||area.classList.contains('hidden')||select.disabled)close();});observer.observe(area,{childList:true,subtree:true,attributes:true,attributeFilter:['class','disabled']});
-        closeSelectPopup=close;position();popup.focus({preventScroll:true});highlight();
-        popup.onpointermove=e=>{const row=e.target.closest('[data-index]');if(row){active=Number(row.dataset.index);highlight();}};
-        popup.onclick=e=>{const row=e.target.closest('[data-index]');if(row)choose(Number(row.dataset.index));};
-        popup.onkeydown=e=>{
-          if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();active=e.key==='Home'?0:e.key==='End'?items.length-1:(active+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;highlight();}
-          else if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(active);}
-          else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true);}
-          else if(e.key==='Tab'){close(true);}
-          else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){const now=Date.now();typed=now-lastType>700?e.key:typed+e.key;lastType=now;const found=items.findIndex(o=>o.textContent.toLocaleLowerCase().startsWith(typed.toLocaleLowerCase()));if(found>=0){active=found;highlight();}}
-        };
-        document.addEventListener('pointerdown',outside,true);window.addEventListener('resize',position);document.addEventListener('scroll',scroll,true);
-      }
-      trigger.onclick=()=>{if(trigger.getAttribute('aria-expanded')==='true')closeSelectPopup?.(true);else open();};
-      trigger.onkeydown=e=>{if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();open(e.key==='Home'?0:e.key==='End'?select.options.length-1:undefined);}};
-    });
-  }
+  const mountSelects=root=>window.mountAtlasSelects(root);
   function options(values,current){return Object.entries(values).map(([v,t])=>`<option value="${v}" ${v===current?'selected':''}>${esc(t)}</option>`).join('');}
   function field(key,label,values,cfg){return `<label>${label}<select data-config="${key}">${options(values,cfg[key])}</select></label>`;}
   function configFields(cfg) {
@@ -79,7 +36,7 @@
   async function showList(){
     if(busy)return;
     area=el('diagramArea'); if(!area)return;
-    closeSelectPopup?.();state=null;selection=null;area.innerHTML='<p role="status">Cargando diagramas…</p>';
+    window.closeAtlasSelectPopup?.();state=null;selection=null;area.innerHTML='<p role="status">Cargando diagramas…</p>';
     try{
       const list=await api('');
       if(area.classList.contains('hidden'))return;

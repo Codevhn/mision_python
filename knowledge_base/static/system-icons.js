@@ -23,7 +23,7 @@ function setAtlasSystemLabel(element, text) {
     "🌤️": "sun", "☁️": "cloud", "🌫️": "cloud", "🌧️": "rain",
     "❄️": "snow", "⛈️": "rain", "🌡️": "weather", "🔌": "settings",
     "📌": "tag", "🕐": "history", "👁": "search", "⏰": "history",
-    "⚠": "info",
+    "⚠": "info", "✨": "hint",
   };
   const prefix = Object.keys(icons).find(key => text.startsWith(key));
   element.replaceChildren();

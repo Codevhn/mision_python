@@ -1,0 +1,41 @@
+.atlas-select {display:block;position:relative;min-width:0;width:100%}
+select.atlas-select-native {position:absolute !important;width:1px !important;height:1px !important;min-height:0 !important;padding:0 !important;opacity:0;pointer-events:none;clip-path:inset(50%)}
+.atlas-select-trigger {display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;min-height:42px;text-align:left;padding:9px 12px;background:var(--aero-button,var(--bg-elevated));box-shadow:inset 0 1px 0 #ffffff12}
+.atlas-select-trigger>span:first-child {white-space:normal;overflow-wrap:anywhere}
+.atlas-select-arrow {color:var(--text-muted);font-size:18px;line-height:1;flex-shrink:0;transition:transform .15s}
+.atlas-select-trigger[aria-expanded=true] {border-color:var(--accent);outline:1px solid var(--accent);outline-offset:1px}
+.atlas-select-trigger[aria-expanded=true] .atlas-select-arrow {transform:rotate(180deg)}
+.atlas-select-popup {position:fixed;z-index:12000;box-sizing:border-box;overflow:auto;padding:5px;border:1px solid var(--aero-edge,var(--border));border-radius:7px;background:var(--bg-overlay,var(--layer-2));color:var(--text);box-shadow:0 12px 32px #0005,inset 0 1px 0 #ffffff18;font:14px var(--font-ui,system-ui,sans-serif);scrollbar-width:thin;overscroll-behavior:contain}
+.atlas-select-popup:focus {outline:none}
+[data-style=aero] .atlas-select-popup {background:linear-gradient(135deg,#ffffff0d,transparent 48%),var(--bg-overlay,var(--layer-2));backdrop-filter:blur(18px)}
+.atlas-select-option {display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:38px;box-sizing:border-box;border:1px solid transparent;border-radius:4px;cursor:pointer;line-height:1.35}
+.atlas-select-option+.atlas-select-option {margin-top:2px}
+.atlas-select-option[aria-disabled=true] {opacity:.5;cursor:default}
+.atlas-select-option.atlas-option-active {background:var(--aero-nav-hover,var(--bg-elevated));border-color:var(--aero-edge,var(--border));box-shadow:inset 0 1px 0 #ffffff12}
+.atlas-select-option[aria-selected=true] .atlas-select-label {font-weight:600}
+.atlas-select-check {width:16px;flex-shrink:0;color:var(--accent);font-weight:700}
+.atlas-select-label,.atlas-select-description {display:block;overflow-wrap:anywhere}
+.atlas-select-description {margin-top:3px;color:var(--text-muted);font-size:12px;font-weight:400}
+[data-style=opencode] .atlas-select-popup,[data-style=opencode] .atlas-select-trigger {box-shadow:none;border-radius:4px}
+@media(prefers-reduced-motion:reduce){.atlas-select-arrow{transition:none}}
+
+/* Shared modal fields also cover forms with inline styles outside form-group. */
+.atlas-select-trigger {box-sizing:border-box;font-family:var(--font-ui);font-size:.82rem;color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;line-height:1.4}
+.atlas-select-trigger:disabled {opacity:.55;cursor:default}
+.atlas-select-trigger:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+:is(.modal,.lib-modal,.assistant-confirm-dialog,.atlas-spelling-review) .atlas-select-trigger {min-height:34px;padding:7px 10px}
+[data-style=aero] :is(.modal,.lib-modal,.assistant-confirm-dialog) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),textarea,select:not(.atlas-select-native)) {
+ background:var(--aero-field) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:3px !important;box-shadow:inset 0 1px 3px #0002;font-family:var(--font-ui);
+}
+[data-style=aero] :is(.modal,.lib-modal,.assistant-confirm-dialog) :is(input,textarea)::placeholder {color:var(--text-faint) !important;opacity:1}
+[data-style=aero] :is(.modal,.lib-modal,.assistant-confirm-dialog) :is(input,textarea):focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+[data-style=aero] .atlas-select-trigger {background:var(--aero-button);box-shadow:inset 0 1px 0 var(--aero-inset)}
+[data-style=aero] .atlas-select-trigger:hover:not(:disabled) {background:var(--aero-nav-hover);border-color:var(--aero-select-border)}
+[data-style=aero] .modal .ir-mode-tab {background:var(--aero-button) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:3px !important;min-height:34px}
+[data-style=aero] .modal .ir-mode-tab--active {background:var(--aero-selection) !important;border-color:var(--accent) !important;box-shadow:inset 0 0 0 1px var(--aero-inset)}
+[data-style=aero] .modal .ir-course-identity {background:var(--aero-toolbar) !important;color:var(--text);border:1px solid var(--border);border-radius:3px}
+.modal .ir-field-help {font-size:.75rem;line-height:1.45;color:var(--text-muted)}
+.modal .ir-generation-options {gap:12px}
+.modal .atlas-system-icon {width:18px;height:18px}
+.modal textarea#irRawInput {font-family:var(--font-mono) !important}
+

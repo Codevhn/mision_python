@@ -388,7 +388,19 @@
   function closeModel() {
     el('assistantModel')?.querySelectorAll('.practice-cselect').forEach(node => node._cselectClose?.());
   }
+  function launcherLabel(minimized) {
+    const launcher=el('assistantLauncher');
+    launcher.querySelector('span:last-child').textContent=minimized?'Restaurar asistente':'Asistente';
+    launcher.setAttribute('aria-label',minimized?'Restaurar asistente Atlas':'Abrir asistente Atlas');
+    launcher.title=minimized?'Restaurar la conversación y el borrador':'Abrir asistente';
+    launcher.classList.toggle('assistant-minimized',minimized);
+  }
+  function minimize() {
+    close();launcherLabel(true);
+    el('assistantLauncher').focus({preventScroll:true});
+  }
   function close() {
+    launcherLabel(false);
     closeModel(); area.classList.add('hidden');
     el('assistantLauncher').classList.remove('hidden');
     el('assistantLauncher').setAttribute('aria-expanded', 'false');
@@ -434,14 +446,16 @@
   }
   async function open() {
     returnFocus = document.activeElement;
+    launcherLabel(false);
     area.classList.remove('hidden');
     el('assistantLauncher').classList.add('hidden');
     el('assistantLauncher').setAttribute('aria-expanded', 'true');
     if (mounted) { captureContext(); el('assistantInput').focus({preventScroll:true}); return; }
     mounted = true;
-    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Actualizar vista actual</button><p>La ubicación y el contenido de la vista abierta se actualizan al enviar cada consulta. Puedes desactivar este contexto.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
+    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantMinimize" aria-label="Minimizar asistente" title="Minimizar sin perder la conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 9h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Actualizar vista actual</button><p>La ubicación y el contenido de la vista abierta se actualizan al enviar cada consulta. Puedes desactivar este contexto.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
     captureContext();
     el('assistantClose').addEventListener('click', close);
+    el('assistantMinimize').addEventListener('click', minimize);
     el('assistantExpand').addEventListener('click', () => {
       const before = area.getBoundingClientRect();
       const previousRadius = getComputedStyle(area).borderRadius;
@@ -506,5 +520,5 @@
   window.visualViewport?.addEventListener('resize', updateViewport);
   window.visualViewport?.addEventListener('scroll', updateViewport);
   updateViewport();
-  window.AssistantApp = { open, close, askSelection, generateRoadmap };
+  window.AssistantApp = { open, close, minimize, askSelection, generateRoadmap };
 })();

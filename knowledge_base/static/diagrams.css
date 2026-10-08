@@ -57,26 +57,6 @@
 .dg-canvas .dg-selected {stroke:var(--accent);stroke-width:3}
 
 /* Theme-controlled selectors: native values remain available to forms. */
-.dg-select {display:block;position:relative;min-width:0;width:100%}
-.diagram-area select.dg-select-native {position:absolute;width:1px;height:1px;padding:0;opacity:0;pointer-events:none;clip-path:inset(50%)}
-.diagram-area .dg-select-trigger {display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;min-height:42px;text-align:left;padding:9px 12px;background:var(--aero-button,var(--bg-elevated));box-shadow:inset 0 1px 0 #ffffff12}
-.dg-select-trigger>span:first-child {white-space:normal;overflow-wrap:anywhere}
-.dg-select-arrow {color:var(--text-muted);font-size:18px;line-height:1;flex-shrink:0;transition:transform .15s}
-.dg-select-trigger[aria-expanded=true] {border-color:var(--accent);outline:1px solid var(--accent);outline-offset:1px}
-.dg-select-trigger[aria-expanded=true] .dg-select-arrow {transform:rotate(180deg)}
-.dg-select-popup {position:fixed;z-index:12000;box-sizing:border-box;overflow:auto;padding:5px;border:1px solid var(--aero-edge,var(--border));border-radius:7px;background:var(--bg-overlay,var(--layer-2));color:var(--text);box-shadow:0 12px 32px #0005,inset 0 1px 0 #ffffff18;font:14px var(--font-ui,system-ui,sans-serif);scrollbar-width:thin;overscroll-behavior:contain}
-.dg-select-popup:focus {outline:none}
-[data-style=aero] .dg-select-popup {background:linear-gradient(135deg,#ffffff0d,transparent 48%),var(--bg-overlay,var(--layer-2));backdrop-filter:blur(18px)}
-.dg-select-option {display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:38px;box-sizing:border-box;border:1px solid transparent;border-radius:4px;cursor:pointer;line-height:1.35}
-.dg-select-option+.dg-select-option {margin-top:2px}
-.dg-select-option.dg-option-active {background:var(--aero-nav-hover,var(--bg-elevated));border-color:var(--aero-edge,var(--border));box-shadow:inset 0 1px 0 #ffffff12}
-.dg-select-option[aria-selected=true] .dg-select-label {font-weight:600}
-.dg-select-check {width:16px;flex-shrink:0;color:var(--accent);font-weight:700}
-.dg-select-label,.dg-select-description {display:block;overflow-wrap:anywhere}
-.dg-select-description {margin-top:3px;color:var(--text-muted);font-size:12px;font-weight:400}
-[data-style=opencode] .dg-select-popup,[data-style=opencode] .dg-select-trigger {box-shadow:none;border-radius:4px}
-@media(prefers-reduced-motion:reduce){.dg-select-arrow{transition:none}}
-
 /* The palette shows notation symbols rather than rectangular text controls. */
 .dg-palette {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 5px}
 .diagram-area .dg-palette .dg-shape-tool {display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;min-width:0;min-height:88px;padding:5px 2px;background:transparent;border:1px solid transparent;border-radius:5px;box-shadow:none;text-align:center;font-size:12px;line-height:1.3;filter:none;transition:background .15s,border-color .15s}
