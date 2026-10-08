@@ -456,3 +456,21 @@
 @supports not (backdrop-filter:blur(1px)) { [data-style="aero"] #sidebar, [data-style="aero"] #sidebar > .sidebar-space { background:var(--bg-overlay) !important; } }
 [data-style="aero"] .ai-inline-bar { max-height:calc(100dvh - 16px); overflow-y:auto; max-width:calc(100vw - 16px); }
 [data-style="aero"] .assistant-area.assistant-expanded { border-radius:0; outline:none; }
+
+/* Explorer context menus use the active glass palette, including Más. */
+[data-style="aero"] .ctx-more-menu { background:var(--aero-content) !important; border:1px solid var(--aero-frame); outline:1px solid var(--aero-edge); border-radius:4px; padding:5px; box-shadow:0 8px 28px #071c3255,inset 0 0 0 1px var(--aero-inset); }
+[data-style="aero"] .ctx-more-item { border:1px solid transparent; border-radius:3px; color:var(--text); }
+[data-style="aero"] .ctx-more-item:is(:hover,:focus-visible) { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:inset 0 0 0 1px var(--aero-nav-highlight); color:var(--aero-nav-ink); }
+[data-style="aero"] .ctx-more-item--danger { color:var(--danger); }
+[data-style="aero"] .ctx-more-item--danger:is(:hover,:focus-visible) { color:var(--danger); }
+[data-style="aero"] .ctx-menu-sep { background:var(--border); }
+.atlas-spelling-error { text-decoration-line:underline; text-decoration-style:wavy; text-decoration-color:#df554e; text-decoration-thickness:1.5px; text-underline-offset:3px; cursor:help; }
+.atlas-spelling-popover { position:fixed; z-index:9600; width:250px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow:auto; padding:6px; border:1px solid var(--aero-frame); border-radius:4px; background:var(--bg-overlay); color:var(--text); box-shadow:0 8px 24px #0005; font: .82rem var(--font-ui); }
+.atlas-spelling-popover strong { display:block; padding:7px 9px; overflow-wrap:anywhere; }
+.atlas-spelling-popover button { display:block; width:100%; padding:8px 9px; text-align:left; background:none; color:var(--text); border-radius:3px; }
+.atlas-spelling-popover button:is(:hover,:focus-visible) { background:var(--aero-nav-hover); outline:1px solid var(--border); }
+.atlas-spelling-review { width:min(560px,calc(100vw - 24px)); }
+.atlas-spelling-review .assistant-confirm-body { max-height:65dvh; overflow:auto; }
+.atlas-spelling-proposals label { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:12px; margin:10px 0; font-size:.85rem; }
+.atlas-spelling-proposals select { width:100%; padding:7px; border:1px solid var(--border); border-radius:3px; background:var(--aero-field); color:var(--text); font:inherit; }
+.atlas-spelling-preview { margin:14px 0; padding:12px; border:1px solid var(--border); border-radius:3px; white-space:pre-wrap; background:var(--aero-field); color:var(--text); font-size:.85rem; }

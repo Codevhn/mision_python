@@ -4,13 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "test": "vite-node test/markdown.test.js && vite-node test/pasteCode.test.js && vite-node test/textEdits.test.js"
+    "build": "node scripts/copySpelling.mjs && vite build",
+    "test": "vite-node test/markdown.test.js && vite-node test/pasteCode.test.js && vite-node test/textEdits.test.js && vite-node test/spellingWords.test.js"
   },
   "dependencies": {
     "@blocknote/core": "0.51.4",
     "@blocknote/mantine": "0.51.4",
     "@blocknote/react": "0.51.4",
+    "dictionary-es": "^4.0.0",
+    "nspell": "^2.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "shiki": "^4.2.0"

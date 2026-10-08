@@ -8,6 +8,7 @@
   let selectedFragment = null, fragmentSent = false;
   let modelReady = Promise.resolve();
   let modelNames = new Map();
+  let resizeAnimation = null;
   const icons = {
     copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
     retry:'<path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5"/>',
@@ -356,11 +357,20 @@
     captureContext();
     el('assistantClose').addEventListener('click', close);
     el('assistantExpand').addEventListener('click', () => {
+      const before = area.getBoundingClientRect();
+      const previousRadius = getComputedStyle(area).borderRadius;
+      resizeAnimation?.cancel();
       closeModel(); const expanded = area.classList.toggle('assistant-expanded');
       el('assistantExpand').setAttribute('aria-pressed', String(expanded));
       el('assistantExpand').setAttribute('aria-label', expanded ? 'Reducir asistente' : 'Ampliar asistente');
       el('assistantExpand').title = expanded ? 'Reducir' : 'Ampliar';
       el('assistantExpand').innerHTML = expanded ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2h6v6M2 4h6v6H2z"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg>';
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && area.animate) {
+        const after = area.getBoundingClientRect(), radius = getComputedStyle(area).borderRadius;
+        const frame = (rect, borderRadius) => ({left:`${rect.x}px`,top:`${rect.y}px`,right:'auto',bottom:'auto',width:`${rect.width}px`,height:`${rect.height}px`,borderRadius});
+        resizeAnimation = area.animate([frame(before,previousRadius),frame(after,radius)], {duration:280,easing:'cubic-bezier(.22,.75,.25,1)'});
+        area.querySelector('.assistant-chat').animate([{opacity:.88},{opacity:1}],{duration:220,easing:'ease-out'});
+      }
     });
     el('assistantHistoryToggle').addEventListener('click', () => {
       const hidden = el('assistantHistoryPanel').classList.toggle('hidden');

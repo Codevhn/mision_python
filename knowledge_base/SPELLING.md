@@ -5,7 +5,26 @@ editor y elegir **Revisar ortografía…**, o pulsar **Abc✓** junto al envío 
 borrador del asistente. Sin selección, el botón usa el último campo de texto
 enfocado; también permite pegar un texto y copiar la propuesta.
 
-## Tres métodos
+## Corrección dentro del editor
+
+El editor carga un diccionario español local y subraya posibles errores mientras
+escribes. Pasa por una palabra marcada o tócala para elegir una sugerencia;
+por ejemplo, «abjeto» propone «objeto». **Ignorar esta palabra** guarda la
+excepción en este navegador. El análisis no envía el contenido a una API ni a IA.
+Se excluyen el código y los enlaces.
+
+**Corregir párrafo…**, en las sugerencias o en **Más**, muestra todas las
+propuestas del párrafo y una vista previa. Puedes elegir otra sugerencia o
+conservar cada palabra. **Aplicar correcciones** realiza los cambios juntos,
+conservando el formato y los bloques vecinos; Ctrl+Z los deshace. Si cambió el
+documento durante la revisión, se rechaza la aplicación. El diccionario detecta
+ortografía; la revisión gramatical sigue disponible mediante los otros métodos.
+
+El diccionario procede de `dictionary-es` 4.0.0 y el motor es `nspell` 2.1.5.
+Sus licencias se incluyen en `static/spelling/`. `npm run build` copia los
+archivos del diccionario al directorio estático para servirlos desde Atlas.
+
+## Tres métodos adicionales
 
 - **Navegador**: revisión nativa con subrayados y sugerencias mediante clic
   derecho. Activa español en la configuración de corrección del navegador.

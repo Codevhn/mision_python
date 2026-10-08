@@ -55,6 +55,17 @@ en los tres temas. Revisión del asistente a 390 px y regresión de navegación,
 historial y selector de modelos. Respuestas de IA simuladas en estas pruebas;
 los permisos de combos OmniRoute requieren configuración del proveedor.
 
+## Corrector integrado y movimiento
+
+El menú Más utiliza el marco y los botones Aero en las tres variantes.
+El editor subraya errores mediante un diccionario español local, con sugerencias
+al pasar o tocar y revisión del párrafo antes de aplicar. Comprobados: conservación
+de negrita, deshacer, exclusión de código y rechazo de una revisión desactualizada.
+
+Ampliar y restaurar el asistente anima su posición y tamaño durante 280 ms, con
+desaceleración suave y sin rebote ni escalado del texto. Se conserva la pantalla
+completa; `prefers-reduced-motion` desactiva el movimiento. Verificado en Chromium.
+
 ## Controles del chat
 
 Implementados: copiar respuesta con icono, reintentar usando el modelo elegido,

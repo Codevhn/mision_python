@@ -10,6 +10,7 @@ import { mdToBlocks, blocksToMd } from "./markdown.js";
 import { detectPastedCode } from "./pasteCode.js";
 import { CustomSideMenu } from "./dragHandleMenu.jsx";
 import { textEdits } from "./textEdits.js";
+import { installInlineSpelling } from "./inlineSpelling.js";
 
 // The "database" block type is registered in schema.js (so old content still
 // renders), but BlockNote's built-in slash menu only auto-lists its own
@@ -76,6 +77,12 @@ async function uploadFile(file) {
 function EditorView({ instanceRef, onChange, onReady }) {
   const editor = useCreateBlockNote({ schema, uploadFile, domAttributes: {editor: {spellcheck:"true", lang:"es"}} });
   const [theme, setTheme] = React.useState(currentAppTheme());
+
+  React.useEffect(() => {
+    const spelling = installInlineSpelling(editor._tiptapEditor);
+    instanceRef.spelling = spelling;
+    return () => { spelling.destroy(); instanceRef.spelling = null; };
+  }, [editor]);
 
   React.useEffect(() => {
     instanceRef.editor = editor;
@@ -213,6 +220,7 @@ function createInstance(opts) {
     }
   }
   const api = {
+    reviewSpellingParagraph() { instanceRef.spelling?.reviewParagraph(); },
     captureSpellingSelection() {
       const editor = instanceRef.editor;
       const tip = editor?._tiptapEditor;

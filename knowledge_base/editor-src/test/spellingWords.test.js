@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import nspell from 'nspell';
+import {wordRanges,suggestionsFor} from '../src/spellingWords.js';
+const spell=nspell(fs.readFileSync('node_modules/dictionary-es/index.aff','utf8'),fs.readFileSync('node_modules/dictionary-es/index.dic','utf8'));
+assert.equal(spell.correct('abjeto'),false);
+assert.equal(spell.correct('objeto'),true);
+assert.equal(suggestionsFor(spell,'abjeto')[0],'objeto');
+assert.equal(suggestionsFor(spell,'incorecto')[0],'incorrecto');
+assert.equal(suggestionsFor(spell,'prueva')[0],'prueba');
+assert.deepEqual(wordRanges('😀 abjeto, árbol.'),[{word:'abjeto',offset:3},{word:'árbol',offset:11}]);
+console.log('PASS: Spanish dictionary, suggestions and UTF-16 ranges.');

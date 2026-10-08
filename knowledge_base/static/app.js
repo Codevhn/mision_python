@@ -6072,6 +6072,7 @@ function buildBreadcrumb(meta) {
   $("cmMindmap")?.addEventListener("click",   () => { _generateMindmapForCurrentLesson(); _closeCtxMenu(); });
   $("cmConceptMap")?.addEventListener("click", () => { _generateConceptMapForCurrentLesson(); _closeCtxMenu(); });
   $("cmAI")?.addEventListener("click",        () => { $("aiBtn")?.click();           _closeCtxMenu(); });
+  $("cmSpelling")?.addEventListener("click", () => { _closeCtxMenu(); _inlineEditor?.reviewSpellingParagraph?.(); });
   $("cmPasteMd")?.addEventListener("click",   () => { $("pasteMarkdownBtn")?.click(); _closeCtxMenu(); });
   $("cmToc")?.addEventListener("click",       () => { $("tocBtn")?.click();          _closeCtxMenu(); });
   $("cmFocus")?.addEventListener("click",     () => { $("focusBtn")?.click();        _closeCtxMenu(); });
