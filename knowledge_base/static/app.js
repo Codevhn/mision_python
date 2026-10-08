@@ -663,6 +663,7 @@ for(const [id,label,description,group,scheme,style,palette] of [
   ATLAS_THEMES[id]={scheme,style,variant:scheme==='dark'?'night':'light',palette};
   THEME_CATALOG.push([id,label,description,group,palette]);
 }
+registerAtlasLanguageThemes(ATLAS_THEMES,THEME_CATALOG,THEME_GROUPS);
 function renderThemeGallery(){
   const gallery=$('themeGallery');if(!gallery)return;
   gallery.replaceChildren();
@@ -680,7 +681,7 @@ function renderThemeGallery(){
     const choices=document.createElement('div');choices.className='theme-options';
     for(const [id,title,description,group,swatch] of THEME_CATALOG.filter(item=>item[3]===key)){
       const button=document.createElement('button');button.type='button';button.dataset.themeChoice=id;
-      const preview=document.createElement('span');preview.className='theme-swatch theme-swatch-'+swatch;preview.setAttribute('aria-hidden','true');if(group==='vivid')preview.classList.add('theme-swatch-vivid');
+      const preview=document.createElement('span');if(ATLAS_THEMES[id].preview)preview.style.background=ATLAS_THEMES[id].preview;preview.className='theme-swatch theme-swatch-'+swatch;preview.setAttribute('aria-hidden','true');if(group==='vivid')preview.classList.add('theme-swatch-vivid');
       const text=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small');name.textContent=title;detail.textContent=description;text.append(name,detail);button.append(preview,text);choices.append(button);
     }
     section.append(heading,choices);gallery.append(section);
@@ -701,7 +702,9 @@ function setAtlasTheme(id, persist = false) {
   document.documentElement.dataset.variant = theme.variant;
   document.documentElement.dataset.palette = theme.palette || "";
   document.documentElement.dataset.intensity = theme.intensity || "normal";
-  if (persist) { try { localStorage.setItem('kb_theme', id); } catch {} }
+  document.documentElement.dataset.languageTheme = theme.language || '';
+  document.documentElement.dataset.themeId = id;
+  if (persist) _persistAtlasThemeChoice(id);
   document.querySelectorAll('[data-theme-choice]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));
   });
@@ -724,7 +727,7 @@ function applyTheme() {
 }
 function toggleTheme() {
   const picker = $('themePicker');
-  if (picker && !picker.open) picker.showModal();
+  if (picker && !picker.open) { _renderCourseThemeControls(); picker.showModal(); }
 }
 
 // ---- SIDEBAR ----
@@ -2454,6 +2457,8 @@ async function loadEntry(id, opts = {}) {
 
   const m = data.meta;
   currentEntryMeta = m;
+  if (m.course) _enterCourseTheme(m.course, m.course_label || _coursesTreeData[m.course]?.label);
+  else _leaveCourseTheme();
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
 
   // Track in recently visited
@@ -6617,6 +6622,7 @@ function setSidebarVisible(visible) {
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
   function switchSpace(space, targetMapId = null) {
+    _courseThemeSpace(space);
     if (space === 'assistant') space = 'home'; // migrate the previous dedicated view
     // Close floating panels that live outside #entryView
     closeHistoryPanel();
@@ -7462,6 +7468,7 @@ async function renderCourseList() {
 
 // ── Open course detail in sidebar + load course view in main ─────────────
 async function openCourseDetail(courseSlug) {
+  _enterCourseTheme(courseSlug,_coursesTreeData[courseSlug]?.label);
   _activeCourseSlug = courseSlug;
   expandedCourses[courseSlug] = true;
   closeHistoryPanel();
@@ -7475,6 +7482,8 @@ async function openCourseDetail(courseSlug) {
   // Re-render list — renderCourseList populates trees for all expanded courses
   await renderCourseList();
 
+  if (_activeCourseSlug !== courseSlug || _courseThemeNavigation !== 'courses') return;
+  _enterCourseTheme(courseSlug,course.label);
   loadCourseView(courseSlug, course);
 }
 
@@ -7485,6 +7494,7 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
   menu.innerHTML = `
+    <button data-action="theme">Tema del curso…</button>
     <button data-action="edit">Editar curso</button>
     <button data-action="archive">${course.archived ? 'Desarchivar' : 'Archivar'}</button>
     <button data-action="duplicate">Duplicar</button>
@@ -7620,6 +7630,7 @@ async function openCourseShareModal(courseSlug, courseEntity) {
 
 // ── Deactivate course detail ──────────────────────────────────────────────
 function closeCourseDetail() {
+  _leaveCourseTheme();
   _activeCourseSlug = null;
 
   // Remove active marker + inline tree from course list items
@@ -7639,6 +7650,7 @@ function closeCourseDetail() {
 
 // ── Main: Course View ─────────────────────────────────────────────────────
 async function loadCourseView(courseSlug, courseEntity) {
+  _enterCourseTheme(courseSlug,courseEntity.label);
   const cv = $('courseView');
   const welcome = $('welcome');
   const entryView = $('entryView');
@@ -8165,7 +8177,9 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
 
 // ── Course actions (⚙ menu) ───────────────────────────────────────────────
 async function handleCourseAction(action, courseSlug, courseEntity) {
-  if (action === 'edit') {
+  if (action === 'theme') {
+    _enterCourseTheme(courseSlug,courseEntity.label);toggleTheme();
+  } else if (action === 'edit') {
     openEditCourseModal(courseSlug, courseEntity);
   } else if (action === 'archive') {
     const archived = !courseEntity.archived;

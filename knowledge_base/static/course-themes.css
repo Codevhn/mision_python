@@ -1,0 +1,55 @@
+/* Dual-color language palettes retain the shared Windows 7 surfaces. */
+:root[data-language-theme="python"] { --language-hue:210; --language-saturation:48%; --language-dark-accent:#ffd56b; --language-light-accent:#815800; }
+:root[data-language-theme="sql"] { --language-hue:208; --language-saturation:21%; --language-dark-accent:#ffc778; --language-light-accent:#805009; }
+:root[data-language-theme="javascript"] { --language-hue:48; --language-saturation:16%; --language-dark-accent:#ffe66d; --language-light-accent:#705500; }
+:root[data-language-theme="typescript"] { --language-hue:214; --language-saturation:58%; --language-dark-accent:#8bc9ff; --language-light-accent:#15549a; }
+:root[data-language-theme="java"] { --language-hue:18; --language-saturation:32%; --language-dark-accent:#ffb391; --language-light-accent:#8b3923; }
+:root[data-language-theme="html"] { --language-hue:24; --language-saturation:60%; --language-dark-accent:#ffbd88; --language-light-accent:#9a410f; }
+:root[data-language-theme="css"] { --language-hue:198; --language-saturation:60%; --language-dark-accent:#76e5ed; --language-light-accent:#096a7b; }
+:root[data-language-theme="cpp"] { --language-hue:215; --language-saturation:17%; --language-dark-accent:#c0d6ef; --language-light-accent:#36577a; }
+:root[data-language-theme="csharp"] { --language-hue:272; --language-saturation:42%; --language-dark-accent:#dbb4ff; --language-light-accent:#74329f; }
+:root[data-language-theme="rust"] { --language-hue:25; --language-saturation:28%; --language-dark-accent:#eeb08a; --language-light-accent:#875027; }
+:root[data-language-theme="go"] { --language-hue:184; --language-saturation:46%; --language-dark-accent:#77e3de; --language-light-accent:#116b70; }
+:root[data-language-theme="git"] { --language-hue:8; --language-saturation:22%; --language-dark-accent:#ffae9f; --language-light-accent:#963e31; }
+
+:root[data-style="aero"][data-language-theme]:not([data-language-theme=""]) {
+ --accent:var(--language-dark-accent); --accent-hover:color-mix(in srgb,var(--accent) 65%,white);
+ --layer-0:hsl(var(--language-hue) var(--language-saturation) 8%); --layer-1:hsl(var(--language-hue) var(--language-saturation) 12%);
+ --layer-2:hsl(var(--language-hue) var(--language-saturation) 17%); --layer-3:hsl(var(--language-hue) var(--language-saturation) 23%); --layer-4:hsl(var(--language-hue) var(--language-saturation) 31%);
+ --text:#edf3fb; --text-muted:hsl(var(--language-hue) 25% 80%); --text-faint:hsl(var(--language-hue) 22% 72%);
+ --aero-inset:#ffffff32; --aero-frame:hsl(var(--language-hue) 40% 70% / .55); --aero-edge:hsl(var(--language-hue) 45% 65% / .4);
+ --border:hsl(var(--language-hue) 35% 65% / .42); --border-light:hsl(var(--language-hue) 35% 65% / .22);
+ --aero-shadow:0 8px 24px #0006,inset 0 1px 0 var(--aero-inset),0 0 14px color-mix(in srgb,var(--accent) 12%,transparent);
+ --aero-glass:linear-gradient(128deg,color-mix(in srgb,var(--layer-4) 85%,var(--accent)) 0%,var(--layer-1) 35%,#ffffff38 36%,color-mix(in srgb,var(--layer-3) 65%,var(--accent)) 52%,var(--layer-1) 53%,var(--layer-3) 100%);
+ --aero-desktop:radial-gradient(ellipse at 12% 0%,hsl(var(--language-hue) 65% 32% / .65),transparent 55%),radial-gradient(ellipse at 95% 85%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 60%),linear-gradient(145deg,var(--layer-0),var(--layer-1));
+}
+:root[data-style="aero"][data-language-theme][data-theme="light"]:not([data-language-theme=""]) {
+ --accent:var(--language-light-accent); --accent-hover:color-mix(in srgb,var(--accent) 80%,black);
+ --layer-0:hsl(var(--language-hue) 36% 94%); --layer-1:hsl(var(--language-hue) 35% 91%);
+ --layer-2:hsl(var(--language-hue) 38% 87%); --layer-3:hsl(var(--language-hue) 42% 81%); --layer-4:hsl(var(--language-hue) 45% 73%);
+ --text:hsl(var(--language-hue) 38% 17%); --text-muted:hsl(var(--language-hue) 27% 31%); --text-faint:hsl(var(--language-hue) 24% 37%);
+ --border:hsl(var(--language-hue) 30% 55% / .55); --border-light:hsl(var(--language-hue) 30% 55% / .3);
+ --aero-frame:#ffffffbf; --aero-edge:hsl(var(--language-hue) 45% 40% / .5); --aero-inset:#ffffffc2;
+ --aero-shadow:0 6px 22px #132a3b24,inset 0 1px 0 var(--aero-inset);
+ --aero-glass:linear-gradient(128deg,var(--layer-2) 0%,var(--layer-4) 35%,#ffffffd9 36%,color-mix(in srgb,var(--layer-3) 85%,var(--language-dark-accent)) 52%,var(--layer-4) 53%,var(--layer-2) 100%);
+ --aero-desktop:radial-gradient(ellipse at 12% 0%,#ffffffb0,transparent 50%),radial-gradient(ellipse at 95% 85%,color-mix(in srgb,var(--language-dark-accent) 25%,transparent),transparent 60%),linear-gradient(145deg,var(--layer-4),var(--layer-1) 55%,var(--layer-3));
+}
+:root[data-style="aero"][data-language-theme][data-theme]:not([data-language-theme=""]) {
+ --bg:var(--layer-0); --bg-sidebar:var(--layer-1); --bg-surface:var(--layer-2); --bg-elevated:var(--layer-3); --bg-overlay:var(--layer-1);
+ --fg:var(--text); --fg-muted:var(--text-muted); --panel-bg:var(--layer-1); --panel-bg-2:var(--layer-2);
+ --h1-color:var(--text); --h2-color:var(--text); --h3-color:var(--text-muted);
+ --accent-light:color-mix(in srgb,var(--accent) 12%,transparent); --accent-dim:color-mix(in srgb,var(--accent) 22%,transparent); --bg-hover:var(--accent-light);
+ --aero-content:var(--layer-1); --aero-field:var(--layer-2); --aero-card:var(--layer-2); --aero-title:var(--text); --aero-chrome-text:var(--text);
+ --aero-toolbar:linear-gradient(var(--layer-3),var(--layer-1)); --aero-button:linear-gradient(var(--layer-4),var(--layer-3) 48%,var(--layer-2) 49%,var(--layer-3));
+ --aero-selection:linear-gradient(color-mix(in srgb,var(--layer-3) 78%,var(--accent)),color-mix(in srgb,var(--layer-2) 90%,var(--accent))); --aero-select-border:var(--accent);
+ --aero-hero:var(--aero-glass); --aero-sidebar-tint:var(--layer-1);
+ --aero-nav-hover:linear-gradient(color-mix(in srgb,var(--layer-4) 78%,var(--accent)),var(--layer-3) 46%,var(--layer-2) 47%,color-mix(in srgb,var(--layer-3) 88%,var(--accent)));
+ --aero-nav-ink:var(--text); --aero-nav-shadow:inset 0 1px 0 var(--aero-inset),0 0 10px color-mix(in srgb,var(--accent) 22%,transparent); --aero-nav-highlight:var(--aero-inset);
+ --grad-primary:linear-gradient(var(--accent),color-mix(in srgb,var(--accent) 78%,black));
+}
+.course-theme-controls { display:grid; gap:10px; padding:16px; margin:16px 20px; border:1px solid var(--border); border-radius:5px; background:var(--aero-glass,var(--bg-elevated)); font-size:.85rem; }
+.course-theme-controls[hidden] { display:none; }
+.course-theme-controls label { display:flex; align-items:center; gap:8px; }
+.course-theme-controls input { accent-color:var(--accent); width:18px; height:18px; flex:none; }
+.course-theme-controls small { color:var(--text-muted); line-height:1.4; }
+.course-theme-controls button { justify-self:start; }

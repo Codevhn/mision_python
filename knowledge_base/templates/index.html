@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="/static/assistant.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/themes.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/reader.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/course-themes.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/atlas-controls.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/proofreading.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
@@ -1507,6 +1508,7 @@
   <script src="/static/blocknote/editor.bundle.js?v={{ v }}"></script>
   <script src="/static/properties.js?v={{ v }}"></script>
   <script src="/static/system-icons.js?v={{ v }}"></script>
+  <script src="/static/course-themes.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
@@ -1523,6 +1525,7 @@
       <button type="button" data-theme-category="vivid" aria-pressed="false">Aero intenso</button>
       <button type="button" data-theme-category="opencode" aria-pressed="false">OpenCode</button>
     </div>
+    <div id="courseThemeControls" class="course-theme-controls" hidden></div>
     <div id="themeGallery"></div>
   </dialog>
   <button type="button" class="assistant-launcher" id="assistantLauncher" aria-label="Abrir asistente Atlas" aria-controls="assistantArea" aria-expanded="false"><span aria-hidden="true">✦</span><span>Asistente</span></button>
