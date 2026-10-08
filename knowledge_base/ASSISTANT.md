@@ -10,12 +10,15 @@ El selector de modelos está dentro del cuadro de escritura y abre hacia arriba
 cuando falta espacio abajo. Enter envía; Shift+Enter agrega una línea.
 **Detener** interrumpe la petición; una respuesta parcial no se guarda.
 
-En **Contexto**, puedes consultar Atlas, usar la página o tablero abierto, o
-conversar sin añadir datos. **Tomar la página abierta** selecciona explícitamente
-el contexto actual; navegar después no reemplaza esa selección. Se usa contenido
-guardado, no cambios del editor aún sin guardar. Cada consulta muestra sus fuentes.
-La página seleccionada aporta hasta 8.000 caracteres y 40 subpáginas; el tablero
-hasta 12 columnas con 30 tarjetas por columna. Los límites se incluyen en el contexto.
+En **Contexto**, puedes consultar Atlas y seguir la vista abierta, o desactivar
+ambas opciones. La ubicación se actualiza al enviar cada consulta. En el editor,
+se incorpora hasta 8.000 caracteres del texto mostrado, incluyendo cambios sin
+guardar. Si hay una selección, el extracto se centra en ella y su entorno. Ese
+texto visible tiene prioridad sobre el extracto guardado cuando difieren; el
+curso, módulo, título y jerarquía proceden de los registros de Atlas. Las vistas
+ajenas al editor, los tableros y los mapas mantienen sus límites de consulta.
+La página aporta hasta 40 subpáginas; el tablero hasta 12 columnas con 30 tarjetas
+por columna. Los límites se incluyen en el contexto.
 
 Con **Consultar Atlas** activo, cada pregunta incorpora
 datos actuales de Atlas: páginas, Teamspaces y su jerarquía, actividad reciente, progreso de cursos, columnas y
@@ -23,8 +26,7 @@ tareas de tableros, notas y mapas relacionados. El desplegable **Contenido de
 Atlas consultado** permite abrir las fuentes disponibles para esa respuesta.
 Las notas se buscan por palabras en título y contenido. Se envían fragmentos y
 muestras limitadas: esta versión no hace búsqueda semántica, no lee el contenido
-de PDF/EPUB ni navega por Internet. Los saludos simples no recuperan registros de Atlas. Las instrucciones favorecen
-respuestas breves y evitan listar actividad sin que se solicite.
+de PDF/EPUB ni navega por Internet. Los saludos simples no recuperan registros de Atlas. Las instrucciones evitan listar actividad sin que se solicite.
 La última visita no demuestra que una lección
 esté completada. Los pendientes se interpretan según estados y columnas guardados.
 El directorio incluye hasta 120 entradas, priorizando coincidencias y actividad
@@ -54,3 +56,26 @@ configurar nuevas variables para este asistente.
 Validación: `pytest knowledge_base/tests -q`. Las pruebas del asistente simulan
 respuestas para comprobar persistencia, historial entre turnos, resúmenes,
 recuperación de contexto, autenticación y errores sin consumir proveedores reales.
+
+## Estilo académico y continuidad
+
+Las instrucciones de sistema exigen definiciones formales, explicaciones
+completas y ejemplos pertinentes, sin preámbulos de chat, elogios, disculpas,
+metacomentarios sobre el «fragmento», cierres automáticos ni «En resumen».
+Una síntesis solicitada se entrega como contenido principal. Los títulos y
+selecciones se interpretan como conceptos o temas en su lección; no se afirma
+que un título ya contenga una definición. Estas instrucciones se aplican también
+al continuar conversaciones antiguas y evitan imitar su estilo anterior.
+
+La acción Explicar envía un pedido académico. El historial conserva las
+selecciones y respuestas anteriores; la compresión pide preservar las relaciones
+entre conceptos y lecciones. El contexto del editor se obtiene nuevamente en
+cada envío, con prioridad para la vista actual al cambiar de tema. Las respuestas
+antiguas no se reescriben. El cumplimiento lingüístico depende del modelo; no se
+borran párrafos automáticamente mediante coincidencias de texto.
+
+Validación adicional: 119 pruebas de backend y Chromium con selección real,
+consulta posterior, otra selección al final de un documento largo, contexto
+visible sin guardar, reintentos de mensajes antiguos y controles móviles. Las
+pruebas usan respuestas simuladas y comprueban las instrucciones y el contexto
+enviados; no acreditan el estilo de salida de un proveedor real.

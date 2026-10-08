@@ -386,7 +386,7 @@
     if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
   }
   function captureContext() {
-    visibleContext = window._getAssistantVisibleContext?.() || null;
+    visibleContext = window._getAssistantVisibleContext?.(selectedFragment?.text) || null;
     el('assistantUseCurrent').checked = useVisibleContext && !!visibleContext;
     el('assistantUseCurrent').disabled = !visibleContext;
     el('assistantCurrentLabel').textContent = visibleContext ? `Seguir la vista abierta: ${visibleContext.title}` : 'Seguir automáticamente la vista abierta';
@@ -401,7 +401,7 @@
     const visible = source || window._getAssistantVisibleContext?.();
     await open();
     if (busy) return;
-    if (text && text.length > 10000) { status('Selecciona un fragmento de hasta 10.000 caracteres.', true); return; }
+    if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
     clearSelection();
     if (text?.trim()) {
@@ -414,7 +414,7 @@
       strip.append(details,remove); el('assistantTranscript').before(strip);
     }
     captureContext();
-    const prompts = {explain:'Explícame el fragmento seleccionado con claridad.',summarize:'Resume el fragmento seleccionado.',example:'Dame un ejemplo práctico del fragmento seleccionado.'};
+    const prompts = {explain:'Define y desarrolla el concepto o tema seleccionado en el contexto de la lección, con rigor técnico y ejemplos pertinentes.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales.',example:'Desarrolla un ejemplo aplicado del concepto o tema seleccionado, con explicación de su funcionamiento en el contexto de la lección.'};
     const input = el('assistantInput');
     if (action && prompts[action] && !input.value.trim()) {
       input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send();

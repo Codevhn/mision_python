@@ -13291,9 +13291,15 @@ function _initKaTeX(container, blocks) {
 }
 
 // Resolve visible context, never a stale entry hidden behind another space.
-window._getAssistantVisibleContext = () => {
+window._getAssistantVisibleContext = (selectedText = '') => {
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden') && node.getClientRects().length; };
-  if (visible('entryView') && currentEntryId && currentEntryMeta) return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página'};
+  if (visible('entryView') && currentEntryId && currentEntryMeta) {
+    const text = document.getElementById('entryBody')?.innerText || '';
+    const position = selectedText ? text.indexOf(selectedText.trim()) : -1;
+    const start = position < 0 ? 0 : Math.max(0, position - 2000);
+    return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página',
+      excerpt:text.slice(start,start+8000),content_truncated:start>0 || text.length>start+8000};
+  }
   if (visible('kanbanArea')) {
     const board = window.KanbanApp?.getAssistantContext?.();
     if (board) return board;
