@@ -1504,7 +1504,18 @@
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
   <script src="/static/conceptmap.js?v={{ v }}"></script>
-  <dialog id="themePicker" class="theme-picker" aria-labelledby="themePickerTitle"><div class="theme-picker-heading"><h2 id="themePickerTitle">Apariencia</h2><button type="button" id="themePickerClose" aria-label="Cerrar temas">×</button></div><p>Elige el ambiente de Atlas.</p><div class="theme-options"><button type="button" data-theme-choice="aero"><span class="theme-swatch theme-swatch-aero"></span><span><strong>Aero Claro</strong><small>Cristal celeste y superficies luminosas</small></span></button><button type="button" data-theme-choice="aero-blue"><span class="theme-swatch theme-swatch-blue"></span><span><strong>Aero Azul Windows 7</strong><small>Cristal azul profundo · Contenido claro</small></span></button><button type="button" data-theme-choice="aero-night"><span class="theme-swatch theme-swatch-night"></span><span><strong>Aero Nocturno</strong><small>Cristal azul oscuro · Contenido oscuro</small></span></button><button type="button" data-theme-choice="aero-ruby"><span class="theme-swatch theme-swatch-ruby" aria-hidden="true"></span><span><strong>Rojo Rubí Neón</strong><small>Cristal carmesí y destellos rosados</small></span></button><button type="button" data-theme-choice="aero-electric"><span class="theme-swatch theme-swatch-electric" aria-hidden="true"></span><span><strong>Azul Eléctrico Neón</strong><small>Reflejos de zafiro y luz cian</small></span></button><button type="button" data-theme-choice="aero-amber"><span class="theme-swatch theme-swatch-amber" aria-hidden="true"></span><span><strong>Naranja Ámbar Neón</strong><small>Cristal cobrizo y brillo naranja</small></span></button><button type="button" data-theme-choice="aero-emerald"><span class="theme-swatch theme-swatch-emerald" aria-hidden="true"></span><span><strong>Verde Esmeralda Neón</strong><small>Reflejos verdes y luz de jade</small></span></button><button type="button" data-theme-choice="aero-neon"><span class="theme-swatch theme-swatch-neon" aria-hidden="true"></span><span><strong>Negro Neón</strong><small>Cristal negro y destellos violetas</small></span></button></div></dialog>
+  <dialog id="themePicker" class="theme-picker" aria-labelledby="themePickerTitle">
+    <div class="theme-picker-heading"><h2 id="themePickerTitle">Apariencia</h2><button type="button" id="themePickerClose" aria-label="Cerrar temas">×</button></div>
+    <p>Elige un estilo y su intensidad de color.</p>
+    <div id="themeCategoryFilters" class="theme-category-filters" role="group" aria-label="Categorías de temas">
+      <button type="button" data-theme-category="all" aria-pressed="true">Todos</button>
+      <button type="button" data-theme-category="classic" aria-pressed="false">Aero clásico</button>
+      <button type="button" data-theme-category="neon" aria-pressed="false">Aero neón</button>
+      <button type="button" data-theme-category="vivid" aria-pressed="false">Aero intenso</button>
+      <button type="button" data-theme-category="opencode" aria-pressed="false">OpenCode</button>
+    </div>
+    <div id="themeGallery"></div>
+  </dialog>
   <button type="button" class="assistant-launcher" id="assistantLauncher" aria-label="Abrir asistente Atlas" aria-controls="assistantArea" aria-expanded="false"><span aria-hidden="true">✦</span><span>Asistente</span></button>
   <section class="assistant-area hidden" id="assistantArea" role="region" aria-label="Asistente Atlas"></section>
   <script src="/static/assistant.js?v={{ v }}"></script>

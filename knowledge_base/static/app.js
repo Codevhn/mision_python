@@ -622,6 +622,44 @@ const ATLAS_THEMES = {
   'aero-emerald': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'emerald' },
   'aero-neon': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'neon' },
 };
+const THEME_GROUPS = {classic:'Aero clásico',neon:'Aero neón',vivid:'Aero intenso',opencode:'OpenCode'};
+const THEME_CATALOG = [
+  ['aero','Aero Claro','Cristal celeste y superficies luminosas','classic','aero'],
+  ['aero-blue','Aero Azul Windows 7','Cristal azul profundo · Contenido claro','classic','blue'],
+  ['aero-night','Aero Nocturno','Cristal azul oscuro · Contenido oscuro','classic','night'],
+  ['aero-ruby','Rojo Rubí Neón','Cristal carmesí y destellos rosados','neon','ruby'],
+  ['aero-electric','Azul Eléctrico Neón','Reflejos de zafiro y luz cian','neon','electric'],
+  ['aero-amber','Naranja Ámbar Neón','Cristal naranja y destellos de fuego','neon','amber'],
+  ['aero-emerald','Verde Esmeralda Neón','Reflejos verdes y luz de jade','neon','emerald'],
+  ['aero-neon','Negro Neón','Cristal negro y destellos violetas','neon','neon'],
+];
+for(const [id,label,,group,swatch] of [...THEME_CATALOG]){
+  const vividId=id+'-intense';ATLAS_THEMES[vividId]={...ATLAS_THEMES[id],intensity:'vivid'};
+  THEME_CATALOG.push([vividId,label.replace(' Neón','')+' Intenso','Más color, reflejos y brillo · Lectura cómoda','vivid',swatch]);
+}
+ATLAS_THEMES['opencode-dark']={scheme:'dark',style:'opencode',variant:'night'};
+ATLAS_THEMES['opencode-light']={scheme:'light',style:'opencode',variant:'light'};
+THEME_CATALOG.push(['opencode-dark','OpenCode Oscuro','Grafito, tipografía monoespaciada y controles planos','opencode','opencode-dark'],['opencode-light','OpenCode Claro','Papel, tinta y acentos sobrios','opencode','opencode-light']);
+function renderThemeGallery(){
+  const gallery=$('themeGallery');if(!gallery)return;
+  gallery.replaceChildren();
+  for(const [key,label] of Object.entries(THEME_GROUPS)){
+    const section=document.createElement('section');section.className='theme-category';section.dataset.category=key;
+    const heading=document.createElement('h3');heading.textContent=label;
+    const choices=document.createElement('div');choices.className='theme-options';
+    for(const [id,title,description,group,swatch] of THEME_CATALOG.filter(item=>item[3]===key)){
+      const button=document.createElement('button');button.type='button';button.dataset.themeChoice=id;
+      const preview=document.createElement('span');preview.className='theme-swatch theme-swatch-'+swatch;preview.setAttribute('aria-hidden','true');if(group==='vivid')preview.classList.add('theme-swatch-vivid');
+      const text=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small');name.textContent=title;detail.textContent=description;text.append(name,detail);button.append(preview,text);choices.append(button);
+    }
+    section.append(heading,choices);gallery.append(section);
+  }
+  $('themeCategoryFilters')?.querySelectorAll('[data-theme-category]').forEach(button=>button.addEventListener('click',()=>{
+    const selected=button.dataset.themeCategory;
+    $('themeCategoryFilters').querySelectorAll('button').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+    gallery.querySelectorAll('.theme-category').forEach(section=>section.hidden=selected!=='all' && section.dataset.category!==selected);
+  }));
+}
 function setAtlasTheme(id, persist = false) {
   // Migrate existing preferences into the Aero family; classics are retired.
   id = ({dark:'aero-night', light:'aero'})[id] || id;
@@ -631,6 +669,7 @@ function setAtlasTheme(id, persist = false) {
   document.documentElement.dataset.style = theme.style;
   document.documentElement.dataset.variant = theme.variant;
   document.documentElement.dataset.palette = theme.palette || "";
+  document.documentElement.dataset.intensity = theme.intensity || "normal";
   if (persist) { try { localStorage.setItem('kb_theme', id); } catch {} }
   document.querySelectorAll('[data-theme-choice]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));
@@ -638,6 +677,7 @@ function setAtlasTheme(id, persist = false) {
   if (typeof window._reapplyEpubReaderTheme === 'function') window._reapplyEpubReaderTheme();
 }
 function applyTheme() {
+  renderThemeGallery();
   let saved = 'aero-night';
   try { saved = localStorage.getItem('kb_theme') || 'aero-night'; } catch {}
   setAtlasTheme(saved, true);

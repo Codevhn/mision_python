@@ -1,33 +1,32 @@
 # Apariencia de Atlas
 
-El botón de tema abre **Apariencia**. En móvil está en el menú de navegación.
-Hay tres variantes de la misma familia visual:
+El botón de tema, disponible también desde la búsqueda y en móvil, abre una
+colección centrada con categorías y filtros. Hay 18 opciones:
 
-- **Aero Claro**: cristal celeste y superficies de lectura azul claro uniformes.
-- **Aero Azul Windows 7**: cristal azul y superficies de lectura de un azul más intenso.
-- **Aero Nocturno**: cristal azul oscuro y contenido oscuro.
+- **Aero clásico**: Claro, Azul Windows 7 y Nocturno.
+- **Aero neón**: Rubí, Eléctrico, Naranja Ámbar, Esmeralda y Negro Neón.
+- **Aero intenso**: versiones más saturadas de las ocho opciones Aero.
+- **OpenCode**: dos estilos inspirados en interfaces de herramientas de código,
+  claro y oscuro, con tipografía monoespaciada, superficies planas y acentos verdes.
 
-La elección se guarda localmente en `kb_theme`; no cambia los datos ni requiere
-variables de Fly. Los temas clásicos ya no están disponibles: la preferencia
-antigua `light` migra a `aero` y `dark` a `aero-night`. Una preferencia desconocida
-o un navegador nuevo comienza en Aero Nocturno. Se guarda el identificador migrado.
+Naranja Ámbar usa cristal naranja, no tonos café desaturados. Las variantes
+intensas refuerzan marcos, reflejos y fondos, conservando superficies de lectura
+con contraste. Cada opción tiene vista previa y el tema actual queda marcado.
+La cabecera y los filtros permanecen disponibles al desplazarse por la colección.
 
-Las tres variantes comparten tipografía, marcos de doble borde, reflejos,
-controles agrupados y cierre rojo. La lectura del asistente utiliza fondos casi
-opacos. El esquema se aplica a los tokens del sistema; las adaptaciones de Inicio,
-Asistente, navegación y la cabecera del curso incluyen reglas específicas.
-La revisión detallada de otras vistas e iconos continúa por etapas.
-En las dos variantes claras, el área de contenido, el editor, el asistente y el
-panel de cursos comparten un fondo azul opaco. Los campos y barras usan tonos
-cercanos; los reflejos se concentran en el marco. Se conservan los colores
-elegidos por el usuario para bloques y las imágenes de portada. Aero Nocturno
-mantiene su paleta.
+La elección se guarda localmente en `kb_theme`. Las preferencias antiguas
+`light` y `dark` migran a Aero Claro y Nocturno. Una opción desconocida utiliza
+Aero Nocturno. Cambiar de familia limpia la paleta y la intensidad anteriores.
+El esquema dark/light sigue aplicándose al editor y al lector de biblioteca.
 
-`ATLAS_THEMES`, en `static/app.js`, registra el esquema de color (`data-theme`:
-dark/light), el estilo (`data-style`: aero) y la variante (`data-variant`:
-light/blue/night). Así el editor y el lector existentes siguen recibiendo un
-esquema compatible. `static/themes.css` define los tokens y componentes de las
-variantes, con fondos opacos de respaldo si no hay desenfoque de superficies.
+`ATLAS_THEMES` registra esquema, estilo, variante, paleta e intensidad;
+`THEME_CATALOG` y `THEME_GROUPS` organizan títulos, vistas previas y categorías.
+La colección se construye a partir del catálogo, sin opciones vacías. Para una
+familia futura se registran sus temas, categoría y estilos; no hace falta añadir
+botones manualmente al diálogo. Los tokens y componentes están en `themes.css`.
 
-La animación meteorológica no se modifica en esta etapa. Nuevos estilos como
-OpenCode o terminal quedan para después y no aparecen como opciones vacías.
+Validación en Chromium: 18 opciones, filtros, contraste de texto secundario en
+superficies de lectura de al menos 4,5:1, selección actual, persistencia al recargar,
+limpieza al cambiar de familia, cierre con Escape y límites del diálogo en móvil.
+Las variantes intensas mantienen el efecto Aero; OpenCode oculta la ambientación
+animada de Inicio para conservar su presentación plana.
