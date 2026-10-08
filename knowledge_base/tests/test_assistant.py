@@ -368,3 +368,38 @@ def test_failed_answer_retry_does_not_duplicate_question(auth_client, monkeypatc
     assert 'event: done' in good.get_data(as_text=True)
     assert len(auth_client.get(url).json['messages']) == 2
     assert captured[0][2]['model'] == 'deepseek-v4-flash'
+
+
+def test_current_view_is_included_even_in_greeting_and_uses_known_title(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    response = auth_client.post(route, json={'prompt': 'Hola', 'use_atlas': False,
+        'current_context': {'type': 'view', 'id': 'libraryView', 'title': 'Inventado', 'excerpt': 'Tus libros: Java'}})
+    assert response.status_code == 200
+    assert 'event: done' in response.get_data(as_text=True)
+    context = json.loads(captured[0][0].split('\n')[-1])['current_context']
+    assert context['title'] == 'Biblioteca'
+    assert context['excerpt'] == 'Tus libros: Java'
+    assert 'Tiene prioridad sobre las visitas anteriores' in captured[0][0]
+
+
+def test_current_map_is_loaded_without_query_match(auth_client):
+    for kind, filename in [('mindmap', app_module.MINDMAPS_FILE), ('conceptmap', app_module.CONCEPT_MAPS_FILE)]:
+        filename.write_text(json.dumps({'maps': {'selected': {'id': 'selected', 'title': 'Mapa actual',
+            'nodes': [{'id': 'one', 'text': 'Concepto visible'}]}}}))
+        context, sources = atlas_context(app_module.__dict__, 'Dónde estamos', {'type': kind, 'id': 'selected'})
+        current = json.loads(context)['current_context']
+        assert current['title'] == 'Mapa actual'
+        assert 'Concepto visible' in current['excerpt']
+        assert current['content_truncated'] is False
+        assert any(source['id'] == 'selected' and source['type'] == kind for source in sources)
+
+
+def test_invalid_view_context_does_not_save_messages(auth_client):
+    route = '/api/assistant/conversations/' + create(auth_client)
+    for current in [{'type': 'view', 'id': 'unknown'}, {'type': 'view', 'id': 'home', 'excerpt': []},
+                    {'type': 'view', 'id': 'home', 'excerpt': 'a' * 8001}]:
+        response = auth_client.post(route + '/messages', json={'prompt': 'Dónde estoy', 'current_context': current})
+        assert response.status_code == 400
+    assert auth_client.get(route).json['messages'] == []

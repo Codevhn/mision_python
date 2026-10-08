@@ -1305,5 +1305,5 @@
     // "+ Nuevo mapa" entry points are enough to reach showList()/showMap().
   }
 
-  window.MindmapApp = { init, showList, showMap, generateFromPrompt };
+  window.MindmapApp = { init, showList, showMap, generateFromPrompt, getAssistantContext: () => _currentMap ? {type:'mindmap',id:_currentMap.id,title:_currentMap.title || 'Mapa'} : null };
 })();

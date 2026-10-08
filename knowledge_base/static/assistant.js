@@ -4,11 +4,12 @@
   if (!area) return;
   const escape = text => window.escapeHtml(String(text || ''));
   let record = null, choice = null, busy = false, controller = null, mounted = false;
-  let loadSequence = 0, pinnedContext = null, returnFocus = null;
+  let loadSequence = 0, visibleContext = null, returnFocus = null;
   let selectedFragment = null, fragmentSent = false;
   let modelReady = Promise.resolve();
   let modelNames = new Map();
   let resizeAnimation = null;
+  let useVisibleContext = true;
   const icons = {
     copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
     retry:'<path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5"/>',
@@ -82,7 +83,7 @@
     area.querySelectorAll('.assistant-history button').forEach(button => button.disabled = value);
     el('assistantModel').inert = value;
     el('assistantUseAtlas').disabled = value;
-    el('assistantUseCurrent').disabled = value || !pinnedContext;
+    el('assistantUseCurrent').disabled = value || !visibleContext;
     el('assistantRefreshContext').disabled = value;
   }
   function sources(container, list) {
@@ -251,6 +252,7 @@
     if (busy || !prompt) return;
     if (!choice) { status('Selecciona un modelo configurado para empezar.', true); return; }
     const selection = options.retry ? options.selection : selectedFragment && !fragmentSent ? selectedFragment : null;
+    captureContext();
     setBusy(true); controller = new AbortController();
     let completed = false, content = null, partial = '';
     try {
@@ -260,7 +262,7 @@
       content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) fragmentSent = true;
@@ -307,10 +309,11 @@
     if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
   }
   function captureContext() {
-    pinnedContext = window._getAssistantVisibleContext?.() || null;
-    el('assistantUseCurrent').checked = false;
-    el('assistantUseCurrent').disabled = !pinnedContext;
-    el('assistantCurrentLabel').textContent = pinnedContext ? `Usar ${pinnedContext.type === 'board' ? 'tablero' : 'página'}: ${pinnedContext.title}` : 'Abre una página o tablero para usar su contexto';
+    visibleContext = window._getAssistantVisibleContext?.() || null;
+    el('assistantUseCurrent').checked = useVisibleContext && !!visibleContext;
+    el('assistantUseCurrent').disabled = !visibleContext;
+    el('assistantCurrentLabel').textContent = visibleContext ? `Seguir la vista abierta: ${visibleContext.title}` : 'Seguir automáticamente la vista abierta';
+    el('assistantContextSummary').textContent = el('assistantUseCurrent').checked ? 'Contexto · Vista actual' : el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
   }
   function clearSelection() {
     selectedFragment = null; fragmentSent = false;
@@ -332,12 +335,8 @@
       details.append(summary, quote); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Quitar selección');
       remove.addEventListener('click', () => { const sent = fragmentSent; clearSelection(); status(sent ? 'La selección enviada permanece en el historial.' : 'Selección retirada.'); });
       strip.append(details,remove); el('assistantTranscript').before(strip);
-      el('assistantUseCurrent').checked = false;
-      el('assistantContextSummary').textContent = el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
-    } else if (visible) {
-      pinnedContext = visible; el('assistantUseCurrent').disabled = false; el('assistantUseCurrent').checked = true;
-      el('assistantCurrentLabel').textContent = `Usar página: ${visible.title}`; el('assistantContextSummary').textContent = 'Contexto · Página';
     }
+    captureContext();
     const prompts = {explain:'Explícame el fragmento seleccionado con claridad.',summarize:'Resume el fragmento seleccionado.',example:'Dame un ejemplo práctico del fragmento seleccionado.'};
     const input = el('assistantInput');
     if (action && prompts[action] && !input.value.trim()) {
@@ -351,9 +350,9 @@
     area.classList.remove('hidden');
     el('assistantLauncher').classList.add('hidden');
     el('assistantLauncher').setAttribute('aria-expanded', 'true');
-    if (mounted) { el('assistantInput').focus({preventScroll:true}); return; }
+    if (mounted) { captureContext(); el('assistantInput').focus({preventScroll:true}); return; }
     mounted = true;
-    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Tomar la página abierta</button><p>Se comparte el contenido guardado con el modelo elegido. La página elegida se mantiene hasta que la cambies.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
+    area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Actualizar vista actual</button><p>La ubicación y el contenido de la vista abierta se actualizan al enviar cada consulta. Puedes desactivar este contexto.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;
     captureContext();
     el('assistantClose').addEventListener('click', close);
     el('assistantExpand').addEventListener('click', () => {
@@ -377,10 +376,10 @@
       el('assistantHistoryToggle').setAttribute('aria-expanded', String(!hidden));
     });
     const updateContext = () => {
-      el('assistantContextSummary').textContent = el('assistantUseCurrent').checked ? 'Contexto · Página' : el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
+      el('assistantContextSummary').textContent = el('assistantUseCurrent').checked ? 'Contexto · Vista actual' : el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
     };
     el('assistantUseAtlas').addEventListener('change', updateContext);
-    el('assistantUseCurrent').addEventListener('change', updateContext);
+    el('assistantUseCurrent').addEventListener('change', () => { useVisibleContext = el('assistantUseCurrent').checked; updateContext(); });
     el('assistantRefreshContext').addEventListener('click', () => { captureContext(); updateContext(); });
     el('assistantForm').addEventListener('submit', send);
     el('assistantInput').addEventListener('input', () => {

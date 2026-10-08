@@ -139,3 +139,27 @@ controles con degradado/borde/relieve, apertura y cierre del selector,
 navegación del buscador por teclado y superficies de contexto/relacionadas.
 También se verificó el selector a 390 px y movimiento reducido. La conversación
 de prueba se generó con un proveedor simulado y datos aislados.
+
+## Contexto automático del asistente
+
+La ubicación actual estaba desactivada por defecto y se capturaba una sola vez.
+Ahora está activada inicialmente y se actualiza antes de cada consulta y al
+reabrir el chat. Desactivarla se respeta durante la sesión, incluso al reabrir.
+
+Las páginas, lecciones y páginas de Team consultan su contenido guardado;
+los tableros incluyen nombre, columnas y tarjetas. Los mapas mentales y
+conceptuales consultan sus datos guardados. Las otras vistas envían su nombre
+y una muestra del texto mostrado: Inicio, Conocimiento, listados de Cursos,
+Team y Páginas, Tableros, mapas, Radar, Grafo, Práctica, Quiz, Biblioteca y lector.
+La ubicación actual tiene prioridad sobre las visitas recientes y las menciones
+a otras ubicaciones en turnos anteriores. La consulta general de Atlas sigue
+siendo una búsqueda de contenido relevante y muestras limitadas, no una lectura
+exhaustiva de todos los documentos. La captura del lector no extrae automáticamente
+el texto completo de los PDF ni de los documentos alojados en iframes.
+
+Validación: 99 pruebas del servidor, incluyendo límites/validación de las vistas,
+contexto en saludos y recuperación del mapa seleccionado sin coincidencias de
+búsqueda. Recorrido en Chromium con tablero → página → mapa → listado de mapas
+→ Biblioteca manteniendo el asistente abierto; comprobación de las solicitudes
+reales y de desactivar ambos contextos, cerrar y reabrir el asistente. Datos y
+modelo de prueba aislados.

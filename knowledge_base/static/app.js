@@ -13267,6 +13267,29 @@ function _initKaTeX(container, blocks) {
 window._getAssistantVisibleContext = () => {
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden') && node.getClientRects().length; };
   if (visible('entryView') && currentEntryId && currentEntryMeta) return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página'};
-  if (visible('kanbanArea')) return window.KanbanApp?.getAssistantContext?.() || null;
-  return null;
+  if (visible('kanbanArea')) {
+    const board = window.KanbanApp?.getAssistantContext?.();
+    if (board) return board;
+  }
+  if (visible('mindmapArea')) {
+    const map = window.MindmapApp?.getAssistantContext?.();
+    if (map) return map;
+  }
+  if (visible('conceptMapArea')) {
+    const map = window.ConceptMapApp?.getAssistantContext?.();
+    if (map) return map;
+  }
+  const views = {kanbanArea:'Tableros',mindmapArea:'Mapas Mentales',conceptMapArea:'Mapas Conceptuales',
+    libraryReaderView:'Lector de Biblioteca',libraryView:'Biblioteca',radarView:'Radar Tech',graphView:'Grafo',
+    courseView:'Cursos',practiceView:'Práctica',quizView:'Quiz',labView:'Centro de Práctica'};
+  for (const [id,title] of Object.entries(views)) {
+    if (!visible(id)) continue;
+    const node = document.getElementById(id);
+    // Only rendered content from this view; never the assistant or hidden panels.
+    const text = node.innerText || '';
+    return {type:'view',id,title,excerpt:text.slice(0,8000),content_truncated:text.length>8000};
+  }
+  const space = sessionStorage.getItem('activeSpace') || 'home';
+  const names = {home:'Inicio',knowledge:'Conocimiento',courses:'Cursos',teamspace:'Team',pages:'Páginas'};
+  return {type:'view',id:names[space] ? space : 'home',title:names[space] || 'Inicio'};
 };

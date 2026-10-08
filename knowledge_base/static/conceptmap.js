@@ -802,5 +802,5 @@
     // fresh each render, same pattern as MindmapApp.
   }
 
-  window.ConceptMapApp = { init, showList, showMap, generateFromPrompt };
+  window.ConceptMapApp = { init, showList, showMap, generateFromPrompt, getAssistantContext: () => _currentMap ? {type:'conceptmap',id:_currentMap.id,title:_currentMap.title || 'Mapa'} : null };
 })();
