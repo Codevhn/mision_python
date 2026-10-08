@@ -48,6 +48,44 @@ def clean_study_headings(text):
     return ''.join(result)
 
 
+STUDY_GUIDANCE = (
+    "\n\nCriterio pedagógico general para explicaciones y desarrollo de contenido educativo:\n"
+    "Aplica este criterio tanto a consultas escritas como a acciones sobre selecciones. "
+    "No lo conviertas en una plantilla para consultas de ubicación, gestión de Atlas o tareas no educativas. "
+    "Busca equilibrio entre comprensión suficiente y economía de contenido. Prioriza las ideas de mayor "
+    "valor para comprender y aplicar el tema, sin interpretar el 80/20 como una cuota: no omitas "
+    "conceptos esenciales, prerrequisitos, condiciones o excepciones importantes para acortar la respuesta. "
+    "Desarrolla el tema solicitado; si hay una selección en una lección, desarrolla únicamente ese "
+    "subtema dentro de la lección y el nivel del curso. "
+    "Antes de escribir, delimita internamente su objetivo de aprendizaje, los conocimientos previos "
+    "y su relación con los otros subtemas disponibles. En consultas sin temario, delimita el alcance "
+    "a partir de la pregunta, el nivel indicado y el contexto disponible. No muestres ese plan ni inventes un temario. "
+    "Usa lesson_outline, module_lessons, el contenido actual y el historial para delimitar el alcance; "
+    "si faltan, infiere un alcance prudente a partir del título y reconoce la incertidumbre cuando sea relevante. "
+    "Por defecto usa profundidad moderada: explica qué es, para qué sirve y cómo funciona en lo necesario "
+    "para comprender el subtema. Incluye los conceptos esenciales y explica los términos nuevos; "
+    "no los sustituyas por un inventario de nombres técnicos. Rigor significa precisión y comprensión, "
+    "no acumulación de detalles. No impongas una longitud fija: termina al alcanzar el objetivo. "
+    "Usa un ejemplo representativo solo cuando ayude a comprender o aplicar la idea. Evita ejemplos "
+    "múltiples, historia, variantes especializadas o detalles de implementación si no son necesarios "
+    "para el objetivo actual. No desarrolles los demás subtemas cuando se pida uno solo ni adelantes lecciones posteriores; "
+    "menciona un prerrequisito solo lo necesario para entender la explicación. "
+    "No repitas las explicaciones ya presentes en la página o el historial: usa una referencia breve "
+    "si son correctas y relevantes. Si el texto actual se ha eliminado o cambió, puedes desarrollarlo "
+    "de nuevo sin copiar automáticamente la amplitud de las respuestas antiguas. "
+    "Distingue clasificaciones relacionadas sin presentarlas como equivalentes: compartir términos "
+    "no demuestra que correspondan uno a uno. No conviertas simplificaciones introductorias en "
+    "afirmaciones absolutas. Mantén los matices necesarios para evitar errores. "
+    "La solicitud explícita del usuario de profundizar, ampliar o cubrir varios subtemas modifica este "
+    "alcance por defecto. En una ampliación añade lo que falta, sin repetir todo el desarrollo anterior. "
+    "Para un tema amplio, cubre sus ideas fundamentales de forma proporcionada, sin convertir cada "
+    "mención en otro artículo. Para una pregunta puntual, responde directamente con el detalle necesario. "
+    "Evita tanto los párrafos enciclopédicos como las listas telegráficas que dejan los conceptos sin explicar. "
+    "Entrega contenido listo para estudiar: empieza por el significado o la respuesta solicitada, "
+    "sin repetir el título seleccionado, encabezados genéricos, conclusiones ni comentarios sobre tu plan."
+)
+
+
 def _roadmap_label(title):
     title = re.sub(r"(?i)^(?:m[oó]dulo|fase|bloque|parte)\s+\d+\s*[:.)-]?\s*", "", title).strip()
     return re.sub(r"^\d+(?:\.\d+)*\s*[:.)-]?\s+", "", title).strip()
@@ -287,6 +325,17 @@ def atlas_context(namespace, query, current_context=None):
             current["visible_excerpt"] = current_context["excerpt"]
             current["visible_content_truncated"] = bool(current_context.get("content_truncated"))
             current["visible_scope"] = "Texto mostrado ahora en el editor, alrededor de la selección cuando existe; puede contener cambios sin guardar."
+        if "lesson_outline" in current_context:
+            current["lesson_outline"] = current_context["lesson_outline"]
+        selected_meta = index[selected_id]
+        if selected_meta.get("type") == "course":
+            course_id, module_id = selected_meta.get("course"), selected_meta.get("module")
+            peers = [meta for meta in index.values() if meta.get("type") == "course" and
+                     meta.get("course") == course_id and meta.get("module") == module_id]
+            peers.sort(key=lambda meta: meta.get("order", 0))
+            current["module_lessons"] = [str(meta.get("title", ""))[:300] for meta in peers[:40]]
+            current["module_lessons_truncated"] = len(peers) > 40
+            current["course_level"] = namespace["load_courses"]().get("courses", {}).get(course_id, {}).get("level", "")
     elif selected_type == "board":
         board = next((item for item in boards.values() if item.get("id") == selected_id), None)
         if board:
@@ -562,6 +611,14 @@ def register_assistant(app, namespace):
         if current_context and current_context["type"] == "entry" and "excerpt" in current_context and (
                 not isinstance(current_context["excerpt"], str) or len(current_context["excerpt"]) > 8000):
             return jsonify({"error": "Contexto de lección no válido."}), 400
+        if current_context and "lesson_outline" in current_context:
+            outline = current_context["lesson_outline"]
+            if current_context["type"] != "entry" or not isinstance(outline, list) or len(outline) > 40 or any(
+                    not isinstance(item, dict) or type(item.get("level")) is not int or not 1 <= item["level"] <= 6 or
+                    not isinstance(item.get("title"), str) or not item["title"].strip() or len(item["title"]) > 300
+                    for item in outline):
+                return jsonify({"error": "Esquema de lección no válido."}), 400
+            current_context["lesson_outline"] = [{"level": item["level"], "title": item["title"]} for item in outline]
         record, version = read(conversation_id)
         if record is None:
             return jsonify({"error": "Conversación no encontrada"}), 404
@@ -610,7 +667,7 @@ def register_assistant(app, namespace):
                     memory, through, messages = record.get("memory", ""), record.get("memory_through", 0), []
                 else:
                     memory, through, messages = compact_context(record, provider, model)
-                system = SYSTEM
+                system = SYSTEM + STUDY_GUIDANCE
                 if memory and not location_only:
                     system += "\n\nResumen de turnos anteriores (puede omitir detalles):\n" + memory
                 sources = []

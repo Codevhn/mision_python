@@ -733,3 +733,59 @@ def test_resume_finds_latest_page_chat_and_excludes_roadmaps(auth_client, monkey
     assert auth_client.get('/api/assistant/conversations/resume?type=entry&id=page-a').json['conversation']['id'] == first
     assert auth_client.get('/api/assistant/conversations/resume?type=entry&id=missing').json['conversation'] is None
     assert auth_client.get('/api/assistant/conversations/resume?type=invalid&id=page-a').status_code == 400
+
+
+def test_quick_study_uses_bounded_pedagogy_and_current_outline(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    index = {'lesson': {'title': 'Introducción a DBMS', 'type': 'course', 'course': 'sql', 'module': 'intro', 'order': 0},
+             'next': {'title': 'Diseño conceptual', 'type': 'course', 'course': 'sql', 'module': 'intro', 'order': 1},
+             'other': {'title': 'Otro curso', 'type': 'course', 'course': 'python', 'module': 'intro', 'order': 0}}
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    outline = [{'level': 2, 'title': 'Arquitectura DBMS'}, {'level': 2, 'title': 'Tipos de modelos de datos'}]
+    response = auth_client.post('/api/assistant/conversations/' + create(auth_client) + '/messages', json={
+        'prompt': 'Explica el subtema seleccionado como parte de esta lección.', 'selection_action': 'explain',
+        'selection_context': {'text': 'Tipos de modelos de datos', 'title': 'Introducción a DBMS'},
+        'current_context': {'type': 'entry', 'id': 'lesson', 'excerpt': 'Contenido actual', 'lesson_outline': outline},
+        'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    system = captured[0][0]
+    assert 'Por defecto usa profundidad moderada' in system
+    assert 'No impongas una longitud fija' in system
+    assert 'No desarrolles los demás subtemas' in system
+    assert 'clasificaciones relacionadas sin presentarlas como equivalentes' in system
+    assert 'La solicitud explícita del usuario de profundizar' in system
+    current = json.loads(system.split('\n')[-1])['current_context']
+    assert current['lesson_outline'] == outline
+    assert current['module_lessons'] == ['Introducción a DBMS', 'Diseño conceptual']
+    assert 'Otro curso' not in current['module_lessons']
+
+
+def test_invalid_lesson_outline_does_not_store_a_message(auth_client):
+    route = '/api/assistant/conversations/' + create(auth_client)
+    for outline in ['bad', [{'level': True, 'title': 'Tema'}], [{'level': 7, 'title': 'Tema'}],
+                    [{'level': 2, 'title': ''}], [{'level': 2, 'title': 'x' * 301}],
+                    [{'level': 2, 'title': 'Tema'}] * 41]:
+        response = auth_client.post(route + '/messages', json={
+            'prompt': 'Explica', 'current_context': {'type': 'entry', 'id': 'lesson', 'lesson_outline': outline},
+        })
+        assert response.status_code == 400
+    assert auth_client.get(route).json['messages'] == []
+
+
+def test_general_assistant_uses_balanced_teaching_without_selection(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    response = auth_client.post('/api/assistant/conversations/' + create(auth_client) + '/messages', json={
+        'prompt': 'Explícame los modelos de datos para empezar a estudiar bases de datos.', 'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    system, messages, _ = captured[0]
+    assert 'tanto a consultas escritas como a acciones sobre selecciones' in system
+    assert 'sin interpretar el 80/20 como una cuota' in system
+    assert 'conceptos esenciales, prerrequisitos, condiciones o excepciones importantes' in system
+    assert 'Evita tanto los párrafos enciclopédicos como las listas telegráficas' in system
+    assert 'La solicitud explícita del usuario de profundizar' in system
+    assert 'tareas no educativas' in system
+    assert len(messages) == 1

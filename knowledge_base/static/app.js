@@ -13448,7 +13448,10 @@ window._getAssistantVisibleContext = (selectedText = '') => {
     const position = selectedText ? text.indexOf(selectedText.trim()) : -1;
     const start = position < 0 ? 0 : Math.max(0, position - 2000);
     return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página',
-      excerpt:text.slice(start,start+8000),content_truncated:start>0 || text.length>start+8000};
+      excerpt:text.slice(start,start+8000),content_truncated:start>0 || text.length>start+8000,
+      lesson_outline:Array.from(document.getElementById('entryBody')?.querySelectorAll('h1,h2,h3,h4,h5,h6') || [])
+        .map(heading=>({level:Number(heading.tagName.slice(1)),title:heading.textContent.trim().slice(0,300)}))
+        .filter(heading=>heading.title).slice(0,40)};
   }
   if (visible('kanbanArea')) {
     const board = window.KanbanApp?.getAssistantContext?.();
