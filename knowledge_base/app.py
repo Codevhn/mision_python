@@ -1779,6 +1779,25 @@ def delete_entry(entry_id):
         return jsonify({"error": "Not found"}), 404
 
     ids_to_delete = [entry_id] + _collect_descendants(entry_id, index)
+    _delete_indexed_entries(index, ids_to_delete)
+    return jsonify({"message": "Deleted", "deleted_ids": ids_to_delete})
+
+
+@app.route("/api/teamspace/<space_slug>", methods=["DELETE"])
+def delete_teamspace(space_slug):
+    index = load_index()
+    roots = [eid for eid, meta in index.items()
+             if meta.get("type") == "teamspace" and meta.get("teamspace", "general") == space_slug]
+    if not roots:
+        return jsonify({"error": "Team not found"}), 404
+    ids_to_delete = sorted({eid for root in roots
+                            for eid in [root] + _collect_descendants(root, index)})
+    _delete_indexed_entries(index, ids_to_delete)
+    return jsonify({"message": "Deleted", "deleted_ids": ids_to_delete})
+
+
+def _delete_indexed_entries(index, ids_to_delete):
+    """Share page/Team deletion, including descendant files and relation cleanup."""
     uids = set()
     for eid in ids_to_delete:
         meta = index.get(eid)
@@ -1802,7 +1821,6 @@ def delete_entry(entry_id):
         }
         if len(relations["relations"]) != before:
             save_relations(relations)
-    return jsonify({"message": "Deleted"})
 
 
 @app.route("/api/search")

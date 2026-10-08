@@ -69,6 +69,24 @@ de navegación principal comparten la misma sombra; hover, foco y pulsación usa
 tokens comunes en las tres variantes. Los elementos informativos del Grafo
 conservan su presentación sin simular botones.
 
+Radar, Centro de Práctica y Biblioteca usan ahora superficies glass y marcos
+azules discretos. Noticias, sesiones sugeridas, bitácora, tarjetas de libros,
+Continuar leyendo y controles comparten el hover/foco/relieve de Cursos. Las
+portadas, colores de categoría, estados de práctica y avisos de prioridad se
+conservan; los paneles informativos no reciben hover de botón.
+
+Team dispone de menú ⋯ para eliminar el contenedor y de Mover/Eliminar para
+cada página. La confirmación del contenedor indica que borra todas sus páginas
+y subpáginas; se limpian las relaciones asociadas. Mapas Mentales incorpora
+Eliminar en el menú ⋯ de la lista lateral y de cada tarjeta, con confirmación.
+Su selector conserva el buscador común del asistente con un botón de una línea
+y 34 px de alto. Las tarjetas usan glass y el hover común en las tres variantes.
+
+Verificado en una base aislada: cancelar conserva los datos; eliminar un Team
+no afecta a los otros; borrar un mapa conserva los demás. Pruebas de backend
+verifican archivos, descendientes, relaciones y autenticación. Revisión visual
+y de dimensiones del selector en escritorio y a 390 px.
+
 El menú Más utiliza el marco y los botones Aero en las tres variantes.
 El editor subraya errores mediante un diccionario español local, con sugerencias
 al pasar o tocar y revisión del párrafo antes de aplicar. Comprobados: conservación

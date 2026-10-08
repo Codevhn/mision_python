@@ -162,6 +162,7 @@
 
     const cards = maps.map(m => `
       <div class="mm-card" data-id="${m.id}">
+        <button class="mm-card-actions" aria-label="Acciones de ${_esc(m.title)}" title="Acciones del mapa">⋯</button>
         <div class="mm-card-icon">✺</div>
         <div class="mm-card-title">${_esc(m.title)}</div>
         <div class="mm-card-meta">${m.node_count} nodo${m.node_count === 1 ? '' : 's'}</div>
@@ -180,6 +181,7 @@
           <span class="mm-model-label">Modelo</span>
           <div class="practice-cselect" id="mmModelCSelect"></div>
         </div>
+        <div class="mm-model-warnings" id="mmModelWarnings"></div>
       </div>
       ${maps.length ? '<p class="mm-grid-label">Tus mapas</p>' : ''}
       <div class="mm-grid" id="mmGrid">
@@ -192,11 +194,16 @@
     input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
     document.getElementById('mmBlankLink').addEventListener('click', e => { e.preventDefault(); promptCreateBlank(); });
     _area.querySelectorAll('.mm-card[data-id]').forEach(card => {
+      card.querySelector('.mm-card-actions').addEventListener('click', e => {
+        e.stopPropagation();
+        window._openMindmapActionsMenu(e.currentTarget, maps.find(m=>m.id===card.dataset.id));
+      });
       card.addEventListener('click', () => showMap(card.dataset.id));
     });
     if (window._mountModelSelector) {
       window._mountModelSelector(document.getElementById('mmModelCSelect'), {
         context: 'mindmap',
+        warningContainer: document.getElementById('mmModelWarnings'),
         value: _modelChoice,
         onChange: choice => { _modelChoice = choice; },
       });

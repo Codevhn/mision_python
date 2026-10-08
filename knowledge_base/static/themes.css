@@ -498,3 +498,59 @@
 [data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):active { box-shadow:var(--aero-nav-pressed) !important; }
 [data-style="aero"] #sidebar :is(.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle):focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
 @media (prefers-reduced-motion:reduce) { [data-style="aero"] #sidebar :is(.course-list-item,.tree-entry,.tree-category-header,.tree-topic-header,.tree-row,.ts-space-header,.kanban-board-item,.mindmap-item,.conceptmap-item,.radar-filter-btn,.radar-src-check,.course-archived-toggle) { transition:none; } }
+
+/* Radar, practice and library use the same Aero surfaces as Explorer. */
+[data-style="aero"] :is(.radar-header,.practice-view-header) { background:var(--aero-glass); border-color:var(--border); box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-panel,.lab-qitem,.storage-card,.lib-continue-card,.book-card,.practice-history-item) {
+ background:var(--aero-glass) !important; border:1px solid var(--border); border-radius:7px;
+ box-shadow:0 3px 10px #183f5b17,inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] .book-card { padding:8px; min-width:0; }
+[data-style="aero"] .book-cover { border-color:var(--border); border-radius:4px; }
+[data-style="aero"] .lab-hist-row { border:1px solid transparent; border-bottom-color:var(--border); border-radius:5px; padding:11px 8px; }
+[data-style="aero"] :is(.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.lab-jump-select,.practice-cselect-btn) {
+ background:var(--aero-button); color:var(--text); border:1px solid var(--border); border-radius:4px; box-shadow:inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] :is(.radar-refresh-btn,.practice-view-back) { padding:6px 12px; }
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item,.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.lab-jump-select,.practice-cselect-btn) { transition:background .12s,border-color .12s,box-shadow .12s; }
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item,.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.lab-jump-select,.practice-cselect-btn):not(:disabled):is(:hover,:focus-visible,:focus-within) {
+ background:var(--aero-nav-hover) !important; border-color:var(--aero-select-border) !important;
+ color:var(--aero-nav-ink) !important; box-shadow:var(--aero-nav-shadow) !important; transform:none !important;
+}
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item):is(:hover,:focus-within) :is(.radar-featured-title,.radar-wide-title,.radar-tile-title,.lab-qtitle,.lab-hist-title,.book-title,.lib-continue-title,.practice-history-title) { color:var(--aero-nav-ink); }
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item,.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.practice-cselect-btn):not(:disabled):active { box-shadow:var(--aero-nav-pressed) !important; }
+[data-style="aero"] :is(.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn).active:not(:hover):not(:focus-within) { background:var(--aero-selection); border-color:var(--aero-select-border); color:var(--text); }
+[data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item,.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.practice-cselect-btn):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+@media (prefers-reduced-motion:reduce) { [data-style="aero"] :is(.radar-featured,.radar-wide,.radar-tile,.lab-qitem,.lab-hist-row,.book-card,.lib-continue-card,.practice-history-item,.radar-refresh-btn,.practice-view-back,.lib-continue-btn,.lib-filter,.practice-mode-tab,.practice-diff-btn,.practice-rail-nav-btn,.practice-refresh-topics-btn,.lab-jump-select,.practice-cselect-btn) { transition:none; animation:none; opacity:1; } }
+
+[data-style="aero"] .lab-callout { background:var(--aero-glass); border-radius:7px; box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] .lab-callout .btn-primary { background:var(--aero-button) !important; color:var(--text) !important; border-color:var(--aero-select-border); border-radius:4px; box-shadow:inset 0 1px 0 var(--aero-inset) !important; }
+[data-style="aero"] .lab-callout .btn-primary:is(:hover,:focus-visible,:focus-within) { background:var(--aero-nav-hover) !important; color:var(--aero-nav-ink) !important; border-color:var(--aero-select-border) !important; box-shadow:var(--aero-nav-shadow) !important; transform:none !important; }
+[data-style="aero"] .lab-callout .btn-primary:active { box-shadow:var(--aero-nav-pressed) !important; }
+[data-style="aero"] #labView .ai-model-trigger { background:var(--aero-button); border-color:var(--border); border-radius:4px; box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] #labView .ai-model-trigger:is(:hover,:focus-visible,:focus-within) { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:var(--aero-nav-shadow); }
+
+/* Map library and actions retain the same Explorer chrome. */
+[data-style="aero"] .mm-card { position:relative; background:var(--aero-glass); border:1px solid var(--border); border-radius:7px; box-shadow:0 3px 10px #183f5b17,inset 0 1px 0 var(--aero-inset); transition:background .12s,border-color .12s,box-shadow .12s; }
+[data-style="aero"] .mm-card:is(:hover,:focus-within) { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:var(--aero-nav-shadow); transform:none; }
+[data-style="aero"] .mm-card:is(:hover,:focus-within) .mm-card-title { color:var(--aero-nav-ink); }
+[data-style="aero"] .mm-card-title { padding-right:16px; }
+.mm-card-actions { position:absolute; top:8px; right:8px; width:26px; height:24px; border:1px solid var(--border); border-radius:3px; background:var(--aero-button); color:var(--text); cursor:pointer; }
+[data-style="aero"] .mm-model-row { justify-content:center; gap:8px; }
+[data-style="aero"] .mm-model-warnings { max-width:580px; margin:8px auto 0; text-align:center; }
+[data-style="aero"] #mmModelCSelect { width:auto; max-width:100%; min-width:0; }
+[data-style="aero"] #mmModelCSelect .practice-cselect { width:auto; min-width:0; max-width:100%; }
+[data-style="aero"] #mmModelCSelect .ai-model-trigger { width:max-content; height:34px; min-height:34px; max-width:min(340px,calc(100vw - 100px)); padding:7px 9px; gap:6px; line-height:1.35; border-radius:4px; background:var(--aero-button); box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] #mmModelCSelect .ai-model-trigger-text { display:block; flex:0 1 auto; min-width:0; }
+[data-style="aero"] #mmModelCSelect .ai-model-provider { display:none; }
+[data-style="aero"] #mmModelCSelect .ai-model-name { display:block; font-size:.82rem; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-style="aero"] #mmModelCSelect .ai-model-trigger:is(:hover,:focus-visible) { background:var(--aero-nav-hover); box-shadow:var(--aero-nav-shadow); }
+[data-style="aero"] .mm-prompt-input { background:var(--aero-field); border-color:var(--border); border-radius:4px; }
+[data-style="aero"] :is(.mm-prompt-btn,.mm-delete-btn,.mm-export-btn) { background:var(--aero-button); color:var(--text); border:1px solid var(--border); border-radius:4px; box-shadow:inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] :is(.mm-prompt-btn,.mm-delete-btn,.mm-export-btn,.mm-card-actions):is(:hover,:focus-visible) { background:var(--aero-nav-hover); box-shadow:var(--aero-nav-shadow); border-color:var(--aero-select-border); }
+[data-style="aero"] .course-actions-menu { padding:5px; background:var(--aero-content); border:1px solid var(--aero-frame); border-radius:4px; box-shadow:0 8px 24px #0005,inset 0 1px 0 var(--aero-inset); }
+[data-style="aero"] .course-actions-menu button { border:1px solid transparent; border-radius:3px; }
+[data-style="aero"] .course-actions-menu button:is(:hover,:focus-visible) { background:var(--aero-nav-hover); border-color:var(--aero-select-border); box-shadow:var(--aero-nav-shadow); color:var(--aero-nav-ink); }
+[data-style="aero"] .course-actions-menu button.danger { color:var(--danger); }
+[data-style="aero"] #sidebar .tree-page-menu-btn { opacity:1; }
+[data-style="aero"] .mindmap-item > span:nth-child(2) { flex:1; min-width:0; }

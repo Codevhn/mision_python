@@ -406,8 +406,13 @@ async function loadMindmapSidebar() {
       <div class="mindmap-item" data-id="${m.id}">
         <span class="mindmap-item-dot">✺</span>
         <span>${escapeHtml(m.title)}</span>
+        <button class="tree-page-menu-btn" aria-label="Acciones de ${escapeHtml(m.title)}" title="Acciones del mapa">⋯</button>
       </div>`).join('');
     tree.querySelectorAll('.mindmap-item').forEach(el => {
+      el.querySelector('.tree-page-menu-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        _openMindmapActionsMenu(e.currentTarget, maps.find(m=>m.id===el.dataset.id));
+      });
       el.addEventListener('click', () => {
         tree.querySelectorAll('.mindmap-item').forEach(i => i.classList.remove('active'));
         el.classList.add('active');
@@ -1046,10 +1051,17 @@ function renderTeamspaceTree(tree) {
         <span class="tree-cat-label ts-space-label">${escapeHtml(spaceLabel)}</span>
       </button>
       <button class="ts-add-page-btn" data-space="${escapeHtml(spaceSlug)}" data-label="${escapeHtml(spaceLabel)}" title="Nueva página en ${escapeHtml(spaceLabel)}">+</button>
+      <button class="tree-page-menu-btn ts-space-menu-btn" aria-label="Acciones de ${escapeHtml(spaceLabel)}" title="Acciones del Team">⋯</button>
     `;
 
     const toggleBtn = spaceHeader.querySelector(".ts-space-toggle-btn");
     const mainBtn = spaceHeader.querySelector(".ts-space-main");
+    spaceHeader.querySelector('.ts-space-menu-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      _openPageActionsMenu(e.currentTarget, {id:homeId, title:spaceLabel}, {
+        endpoint:`/api/teamspace/${encodeURIComponent(spaceSlug)}`, entity:'Team', count:entries.length, allowMove:false
+      });
+    });
 
     toggleBtn.addEventListener("click", e => {
       e.preventDefault();
@@ -1090,7 +1102,7 @@ function renderTeamspaceTree(tree) {
       tsMenuBtn.addEventListener("click", e => {
         e.preventDefault();
         e.stopPropagation();
-        _openSimpleMoveMenu(tsMenuBtn, entry.id, entry.title);
+        _openPageActionsMenu(tsMenuBtn, {id:entry.id, title:entry.title});
       });
       item.appendChild(tsMenuBtn);
 
@@ -1223,16 +1235,16 @@ function renderPagesTree(tree) {
 
 // ── "⋯" actions menu for a single row in the PÁGINAS tree ─────────────────
 let _pageActionsMenuEl = null;
-function _openPageActionsMenu(anchor, node) {
+function _openPageActionsMenu(anchor, node, {endpoint = `/api/entry/${encodeURIComponent(node.id)}`, entity = 'página', count = 0, allowMove = true, onDeleted = null} = {}) {
   _pageActionsMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `<button data-action="move">⇄ Mover a…</button><button data-action="delete" class="danger">🗑 Eliminar página</button>`;
+  menu.innerHTML = `${allowMove ? '<button data-action="move">⇄ Mover a…</button>' : ''}<button data-action="delete" class="danger">🗑 Eliminar ${entity}</button>`;
   const rect = anchor.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.right - 168}px;width:168px;z-index:9999`;
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${Math.max(8,rect.right - 168)}px;width:168px;z-index:9999`;
   document.body.appendChild(menu);
   _pageActionsMenuEl = menu;
-  menu.querySelector('[data-action="move"]').addEventListener('click', e => {
+  menu.querySelector('[data-action="move"]')?.addEventListener('click', e => {
     e.stopPropagation();
     menu.remove(); _pageActionsMenuEl = null;
     openMoveToModal(node.id, node.title || "Sin título");
@@ -1241,14 +1253,19 @@ function _openPageActionsMenu(anchor, node) {
     e.stopPropagation();
     menu.remove(); _pageActionsMenuEl = null;
     const hasChildren = node.children && node.children.length > 0;
-    const msg = hasChildren
+    const msg = entity === 'Team'
+      ? `¿Eliminar el Team "${node.title}" y todas sus páginas (${count})? También se eliminarán sus subpáginas. Esta acción no se puede deshacer.`
+      : hasChildren
       ? `¿Eliminar "${node.title || 'Sin título'}" y sus ${node.children.length} subpágina(s)? Esta acción no se puede deshacer.`
       : `¿Eliminar "${node.title || 'Sin título'}"? Esta acción no se puede deshacer.`;
-    const ok = await showConfirm('rm -f página', msg);
+    const ok = await showConfirm(`Eliminar ${entity}`, msg);
     if (!ok) return;
-    const res = await fetch(`/api/entry/${node.id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('No se pudo eliminar la página', 'error'); return; }
-    if (currentEntryId === node.id) {
+    let res;
+    try { res = await fetch(endpoint, { method: 'DELETE' }); }
+    catch { showToast(`No se pudo eliminar ${entity}. Revisa la conexión.`, 'error'); return; }
+    if (!res.ok) { showToast(`No se pudo eliminar ${entity}`, 'error'); return; }
+    const result = await res.json();
+    if (!onDeleted && (currentEntryId === node.id || result.deleted_ids?.includes(currentEntryId))) {
       currentEntryId = null;
       $("entryView").classList.add("hidden");
       $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
@@ -1257,13 +1274,21 @@ function _openPageActionsMenu(anchor, node) {
       $("welcome").classList.remove("hidden");
       renderHome();
     }
-    showToast("Página eliminada");
-    await loadTree();
+    showToast(entity === 'Team' ? 'Team eliminado' : entity === 'página' ? 'Página eliminada' : 'Mapa eliminado');
+    if (onDeleted) await onDeleted();
+    else await loadTree();
   });
   const onOutside = e => {
     if (!menu.contains(e.target)) { menu.remove(); _pageActionsMenuEl = null; document.removeEventListener('mousedown', onOutside); }
   };
   setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
+
+function _openMindmapActionsMenu(anchor, map) {
+  _openPageActionsMenu(anchor, {id:map.id, title:map.title}, {
+    endpoint:`/api/mindmaps/${encodeURIComponent(map.id)}`, entity:'mapa mental', allowMove:false,
+    onDeleted:async()=>{await loadMindmapSidebar();await window.MindmapApp?.showList();}
+  });
 }
 
 // ── "⋯" menu with just "Mover a…" — used by the Teamspace and Conocimiento
