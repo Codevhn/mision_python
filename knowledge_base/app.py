@@ -8442,6 +8442,8 @@ def library_ocr_status(book_id):
 
 from assistant import register_assistant
 register_assistant(app, globals())
+from proofreading import register_proofreading
+register_proofreading(app, globals())
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

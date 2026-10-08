@@ -10077,6 +10077,12 @@ function initAIPanel() {
         const selText = _barSelText;
         const selRect = _barSelRect;
 
+        if (action === 'proofread') {
+          window.AtlasProofreader?.open();
+          _hideBar();
+          return;
+        }
+
         if (action === 'panel') {
           _hideBar();
           openPanel(selText || null);
@@ -11676,7 +11682,7 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   const panel = document.createElement('div');
   panel.className = 'ai-model-panel hidden';
   panel.innerHTML = `<div class="ai-model-search"><input type="search" placeholder="Buscar modelo, combo o proveedor…" aria-label="Buscar modelo, combo o proveedor" autocomplete="off"></div><div class="ai-model-results" role="listbox" aria-label="Modelos de IA"></div><div class="ai-model-count" role="status"></div>`;
-  document.body.appendChild(panel);
+  (container.closest('dialog') || document.body).appendChild(panel);
   container._cselectPortal = panel;
   const input = panel.querySelector('input');
   const results = panel.querySelector('.ai-model-results');

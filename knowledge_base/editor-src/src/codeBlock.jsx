@@ -334,7 +334,7 @@ function CodeBlockComponent({ block, editor, contentRef }) {
         )}
       </div>
 
-      <pre className="code-block-pre">
+      <pre className="code-block-pre" spellCheck={false}>
         <code className="code-block-code">
           <div ref={contentRef} />
         </code>

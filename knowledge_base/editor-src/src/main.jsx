@@ -9,6 +9,7 @@ import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
 import { detectPastedCode } from "./pasteCode.js";
 import { CustomSideMenu } from "./dragHandleMenu.jsx";
+import { textEdits } from "./textEdits.js";
 
 // The "database" block type is registered in schema.js (so old content still
 // renders), but BlockNote's built-in slash menu only auto-lists its own
@@ -73,7 +74,7 @@ async function uploadFile(file) {
 }
 
 function EditorView({ instanceRef, onChange, onReady }) {
-  const editor = useCreateBlockNote({ schema, uploadFile });
+  const editor = useCreateBlockNote({ schema, uploadFile, domAttributes: {editor: {spellcheck:"true", lang:"es"}} });
   const [theme, setTheme] = React.useState(currentAppTheme());
 
   React.useEffect(() => {
@@ -212,6 +213,23 @@ function createInstance(opts) {
     }
   }
   const api = {
+    captureSpellingSelection() {
+      const editor = instanceRef.editor;
+      const tip = editor?._tiptapEditor;
+      if (!tip) return null;
+      const doc = tip.state.doc, {from, to, $from, $to} = tip.state.selection;
+      if (from === to) return null;
+      const text = doc.textBetween(from, to, '\n');
+      let code = false;
+      doc.nodesBetween(from, to, node => { if (node.type.name === 'codeBlock' || node.marks?.some(mark => mark.type.name === 'code')) code = true; });
+      const safe = $from.parent === $to.parent && $from.parent.isTextblock && !code;
+      return {text, focus:() => editor.focus(), apply: safe ? corrected => {
+        if (instanceRef.editor !== editor || tip.state.doc !== doc || !container.isConnected) throw new Error('El texto cambió. Selecciónalo de nuevo antes de aplicar la corrección.');
+        const tr = tip.state.tr;
+        for (const edit of textEdits(text, corrected).reverse()) tr.insertText(edit.text, from + edit.from, from + edit.to);
+        tip.view.dispatch(tr); return true;
+      } : null};
+    },
     load(markdown) {
       if (ready) applyMarkdown(markdown);
       else pendingMarkdown = markdown;
@@ -291,6 +309,7 @@ updatePageBlock(blockId, title, pageId) {
     },
   };
 
+  container._captureSpellingSelection = () => api.captureSpellingSelection();
   return api;
 }
 

@@ -1,0 +1,31 @@
+.proofreader { position:fixed; inset:0; margin:auto; padding:0; width:min(740px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); overflow:hidden; border:1px solid var(--aero-frame); border-radius:7px; background:var(--bg-overlay); color:var(--text); font-family:var(--font-ui); box-shadow:0 18px 60px #0006,inset 0 0 0 1px var(--aero-inset); }
+.proofreader[open] { display:flex; flex-direction:column; }
+.proofreader::backdrop { background:#071c3459; backdrop-filter:blur(3px); }
+.proofreader-header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--aero-glass); border-bottom:1px solid var(--border); flex-shrink:0; }
+.proofreader-header h2 { font-size:.95rem; font-weight:600; margin:0; }
+.proofreader button { font:inherit; font-size:.8rem; cursor:pointer; padding:7px 12px; border-radius:4px; border:1px solid var(--border); background:var(--aero-button); color:var(--text); }
+.proofreader button:disabled { opacity:.5; cursor:default; }
+.proofreader button:focus-visible, .proofreader textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.proofreader #proofreadingClose { padding:1px 10px; font-size:1.4rem; background:linear-gradient(#f4b49f,#b73f29 48%,#cf6043); color:white; border-color:#96503f; }
+.proofreader-body { padding:16px; overflow:auto; min-height:0; }
+.proofreader-methods { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.proofreader-methods [aria-pressed="true"] { background:var(--aero-selection); border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--aero-inset); }
+.proofreader p { margin:10px 0; font-size:.8rem; line-height:1.6; color:var(--text-muted); }
+.proofreader-texts { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0; }
+.proofreader-texts label { font-size:.8rem; font-weight:600; }
+.proofreader textarea { display:block; margin-top:7px; width:100%; height:170px; resize:vertical; max-height:35dvh; min-height:90px; padding:10px; border:1px solid var(--border); border-radius:4px; background:var(--aero-field); color:var(--text); font:400 .85rem/1.6 var(--font-ui); }
+.proofreader-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; flex-shrink:0; border-top:1px solid var(--border); background:var(--aero-toolbar); }
+#proofreadingApply { background:var(--grad-primary); color:white; }
+#proofreadingModel[hidden], #proofreadingCheck[hidden], #proofreadingPreviewLabel[hidden] { display:none; }
+.proofreader-texts:has(#proofreadingPreviewLabel[hidden]) { grid-template-columns:1fr; }
+.proofreader-issues { display:grid; gap:10px; }
+.proofreader-issue { padding:10px 12px; border:1px solid var(--border); border-radius:4px; background:var(--bg-surface); }
+.proofreader-issue p { color:var(--text); margin:0 0 8px; }
+.proofreader-issue small { display:block; margin-bottom:8px; color:var(--text-muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+.proofreader-issue button { margin:0 6px 6px 0; }
+.proofreader-issue button[aria-pressed="true"] { border-color:var(--accent); background:var(--aero-selection); }
+#proofreadingStatus.error { color:#a94026; }
+[data-variant="night"] #proofreadingStatus.error { color:#ffbca6; }
+#proofreadingToggle { width:auto; padding:0 8px; font-size:.8rem; font-weight:600; white-space:nowrap; }
+#assistantProofread { flex-shrink:0; padding:5px 3px; border:0; background:none; color:var(--text-muted); cursor:pointer; font:600 .65rem var(--font-ui); }
+@media(max-width:600px) { .proofreader-texts { grid-template-columns:1fr; } .proofreader textarea { height:120px; } .proofreader-body { padding:12px; } .proofreader-footer { padding:10px 12px; } }

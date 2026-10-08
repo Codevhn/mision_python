@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="/static/conceptmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/assistant.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/themes.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/proofreading.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
@@ -64,6 +65,7 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button type="button" id="proofreadingToggle" class="topbar-icon-btn" title="Corrector ortográfico" aria-label="Abrir corrector ortográfico">Abc✓</button>
       <button id="newEntryBtn" class="btn-primary">+ Nueva entrada</button>
       <button id="themeToggle" class="topbar-icon-btn" title="Cambiar tema">◐</button>
     </div>
@@ -561,7 +563,7 @@
         <!-- Inline editable title -->
         <div class="inline-title-wrap" id="inlineTitleWrap">
           <button class="entry-page-icon-btn" id="entryPageIconBtn" title="Cambiar icono"></button>
-          <h1 class="inline-title" id="inlineTitle" contenteditable="true" spellcheck="false" data-placeholder="Sin título"></h1>
+          <h1 class="inline-title" id="inlineTitle" contenteditable="true" spellcheck="true" lang="es" data-placeholder="Sin título"></h1>
         </div>
 
         <div class="entry-header" id="entryHeader">
@@ -743,7 +745,7 @@
     <div class="ai-inline-header">✦ IA — selección</div>
     <button class="ai-inline-btn" data-action="explain">✦ Explicar</button>
     <button class="ai-inline-btn" data-action="expand">⇧ Ampliar</button>
-    <button class="ai-inline-btn" data-action="fix">✓ Corregir</button>
+    <button class="ai-inline-btn" data-action="proofread">✓ Revisar ortografía…</button>
     <button class="ai-inline-btn" data-action="summarize">⊟ Resumir</button>
     <button class="ai-inline-btn" data-action="continue">→ Continuar</button>
     <button class="ai-inline-btn" data-action="quiz">? Quiz</button>
@@ -1490,6 +1492,21 @@
   <button type="button" class="assistant-launcher" id="assistantLauncher" aria-label="Abrir asistente Atlas" aria-controls="assistantArea" aria-expanded="false"><span aria-hidden="true">✦</span><span>Asistente</span></button>
   <section class="assistant-area hidden" id="assistantArea" role="region" aria-label="Asistente Atlas"></section>
   <script src="/static/assistant.js?v={{ v }}"></script>
+  <dialog id="proofreadingDialog" class="proofreader" aria-labelledby="proofreadingTitle">
+    <header class="proofreader-header"><h2 id="proofreadingTitle">Abc✓ Corrector ortográfico</h2><button type="button" id="proofreadingClose" aria-label="Cerrar corrector">×</button></header>
+    <div class="proofreader-body">
+      <div class="proofreader-methods" role="group" aria-label="Método de corrección"><button type="button" data-proof-mode="browser" aria-pressed="true">Navegador</button><button type="button" data-proof-mode="languagetool" aria-pressed="false">LanguageTool</button><button type="button" data-proof-mode="ai" aria-pressed="false">IA</button></div>
+      <p id="proofreadingHint"></p>
+      <div id="proofreadingModel" hidden></div>
+      <div class="proofreader-texts"><label>Texto a revisar<textarea id="proofreadingSource" spellcheck="true" lang="es" maxlength="10000" placeholder="Selecciona texto en el editor o pega un fragmento aquí…"></textarea></label><label id="proofreadingPreviewLabel">Propuesta<textarea id="proofreadingPreview" spellcheck="true" lang="es" maxlength="30000"></textarea></label></div>
+      <button type="button" id="proofreadingCheck">Revisar texto</button>
+      <p id="proofreadingStatus" role="status" aria-live="polite"></p>
+      <div id="proofreadingIssues" class="proofreader-issues"></div>
+      <p id="proofreadingTargetHint"></p>
+    </div>
+    <footer class="proofreader-footer"><button type="button" id="proofreadingCopy">Copiar propuesta</button><button type="button" id="proofreadingApply">Aplicar al fragmento</button></footer>
+  </dialog>
+  <script src="/static/proofreading.js?v={{ v }}"></script>
   <!-- Biblioteca: pdf.js/epub.js vendorizados en /static/vendor (sin CDN).
        pdf.js 4.x se distribuye como módulo ES; se expone en window.pdfjsLib
        para que library.js (script clásico) pueda usarlo igual que el resto. -->
