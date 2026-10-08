@@ -79,6 +79,26 @@ def is_smalltalk(prompt):
     return normalized in {"hola", "hola atlas", "hola asistente", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hey", "hi", "gracias", "muchas gracias", "adios", "hasta luego", "ok", "perfecto"}
 
 
+def location_response(current, namespace):
+    """Navigation is an application fact, not a model inference."""
+    if not current:
+        return "No tengo una vista actual disponible para identificar tu ubicación."
+    title = " ".join(str(current.get("title", "")).split())
+    kind = current.get("type")
+    if kind == "view":
+        return f"Estás en {title}."
+    if kind == "course":
+        course = current.get("course")
+        label = namespace["load_courses"]().get("courses", {}).get(course, {}).get("label") or course
+        path = ["Cursos", label, current.get("module"), title]
+    elif current.get("teamspace"):
+        path = ["Team", current.get("teamspace_label"), title]
+    else:
+        path = [{"page": "Páginas", "board": "Tableros", "mindmap": "Mapas Mentales",
+                 "conceptmap": "Mapas Conceptuales"}.get(kind, "Conocimiento"), title]
+    return "Estás en " + " → ".join(str(part) for part in path if part) + "."
+
+
 def atlas_context(namespace, query, current_context=None):
     """Read current Atlas data; lexical retrieval with explicit, limited excerpts."""
     def normalize(text):
@@ -399,7 +419,7 @@ def register_assistant(app, namespace):
         if not isinstance(provider, str) or provider not in namespace["PROVIDERS"] or not isinstance(model, str) or len(model) > 300:
             return jsonify({"error": "Proveedor o modelo inválido"}), 400
         import os
-        if not os.environ.get(namespace["PROVIDERS"][provider]["env"]):
+        if not is_location_query(prompt) and not os.environ.get(namespace["PROVIDERS"][provider]["env"]):
             return jsonify({"error": "El proveedor seleccionado no está configurado."}), 503
         if len(record["messages"]) >= 999:
             return jsonify({"error": "Esta conversación llegó a 1.000 mensajes. Inicia una nueva para continuar."}), 400
@@ -438,6 +458,7 @@ def register_assistant(app, namespace):
                 if memory and not location_only:
                     system += "\n\nResumen de turnos anteriores (puede omitir detalles):\n" + memory
                 sources = []
+                identity = None
                 if (not is_smalltalk(prompt) or current_context) and (data.get("use_atlas", True) or current_context):
                     query = " ".join(item["content"] for item in messages[-5:] if item["role"] == "user")
                     context, sources = atlas_context(namespace, query, current_context)
@@ -448,13 +469,6 @@ def register_assistant(app, namespace):
                         identity = {key: value for key, value in (selected or {}).items() if key in identity_keys}
                         context = json.dumps({"current_context": identity or None}, ensure_ascii=False)
                         sources = [item for item in sources if selected and item["id"] == selected["id"]]
-                        system += (
-                            "\nConsulta de ubicación: responde en una o dos frases, sin encabezados, listas ni tablas. "
-                            "Indica solo la sección y el título abiertos; incluye curso y módulo únicamente "
-                            "si sitúan esa lección. No enumeres campos ausentes, estado, visitas, progreso ni "
-                            "contenido de la página. Si no hay ubicación actual disponible, dilo sin deducirla "
-                            "del historial. Ejemplo: Estás en Páginas → Comando NeoVim con LazyVim."
-                        )
                     elif not data.get("use_atlas", True):
                         selected = json.loads(context)["current_context"]
                         context = json.dumps({"current_context": selected}, ensure_ascii=False)
@@ -476,8 +490,10 @@ def register_assistant(app, namespace):
                 # Provider APIs accept role/content, not our UI attachment/source metadata.
                 model_messages = [{"role": item["role"], "content": item["content"]} for item in messages]
                 if location_only:
-                    model_messages = [{"role": "user", "content": prompt}]
-                for part in namespace["_stream_call_ai"](system, model_messages, max_tokens=256 if location_only else 4000, provider=provider, model=model):
+                    stream = iter([location_response(identity, namespace), ("__done__", False, None)])
+                else:
+                    stream = namespace["_stream_call_ai"](system, model_messages, max_tokens=4000, provider=provider, model=model)
+                for part in stream:
                     if isinstance(part, tuple):
                         if part[0] != "__done__":
                             yield event("error", {"error": part[1].get("error", "Error de IA")})
@@ -490,7 +506,9 @@ def register_assistant(app, namespace):
                         if re.fullmatch(r"\s*User\s+Safety\s*:\s*safe\s+Response\s+Safety\s*:\s*safe\s*", text, re.I):
                             yield event("error", {"error": "El modelo devolvió solo etiquetas de seguridad, sin responder. Reintenta o elige otro modelo."})
                             return
-                        record["messages"].append({"role": "assistant", "content": text, "sources": sources, "provider": provider, "model": model})
+                        record["messages"].append({"role": "assistant", "content": text, "sources": sources,
+                                                   "provider": "atlas" if location_only else provider,
+                                                   "model": "Atlas" if location_only else model})
                         record.update(memory=memory, memory_through=through)
                         if not update(record, version + 1):
                             yield event("error", {"error": "La conversación cambió durante la respuesta. No se sobrescribió el historial."})

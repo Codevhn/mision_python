@@ -547,16 +547,11 @@ def test_location_query_only_receives_current_identity(auth_client, monkeypatch)
     response = auth_client.post(route, json={'prompt': 'Dime en dónde estoy',
         'current_context': {'type': 'entry', 'id': 'here', 'excerpt': 'Contenido completo que no se pidió.'}})
     assert 'event: done' in response.get_data(as_text=True)
-    system, messages, options = captured[-1]
-    context = json.loads(system.split('\n')[-1])
-    assert list(context) == ['current_context']
-    assert context['current_context']['title'] == 'Comando NeoVim con LazyVim'
-    assert 'status' not in context['current_context']
-    assert 'excerpt' not in context['current_context']
-    assert 'Visita anterior ajena' not in system
-    assert 'Contenido completo que no se pidió' not in system
-    assert messages == [{'role': 'user', 'content': 'Dime en dónde estoy'}]
-    assert options['max_tokens'] == 256
+    assert len(captured) == 1  # Only the previous explanation called the provider.
+    saved = auth_client.get(route.removesuffix('/messages')).json['messages'][-1]
+    assert saved['content'] == 'Estás en Páginas → Comando NeoVim con LazyVim.'
+    assert saved['model'] == 'Atlas'
+    assert len(saved['sources']) == 1
 
 
 def test_location_intent_does_not_capture_other_questions():
@@ -576,6 +571,19 @@ def test_unknown_current_location_does_not_use_recent_visits(auth_client, monkey
     route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
     response = auth_client.post(route, json={'prompt': 'Dónde estoy'})
     assert 'event: done' in response.get_data(as_text=True)
-    context = json.loads(captured[-1][0].split('\n')[-1])
-    assert context == {'current_context': None}
-    assert 'Página anterior' not in captured[-1][0]
+    assert captured == []
+    saved = auth_client.get(route.removesuffix('/messages')).json['messages'][-1]
+    assert saved['content'] == 'No tengo una vista actual disponible para identificar tu ubicación.'
+    assert saved['sources'] == []
+
+
+def test_courses_location_is_one_sentence_without_provider_key(auth_client, monkeypatch):
+    monkeypatch.delenv('DEEPSEEK_API_KEY', raising=False)
+    monkeypatch.setattr(app_module, '_stream_call_ai', lambda *a, **k: (_ for _ in ()).throw(AssertionError('No provider call expected')))
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    response = auth_client.post(route, json={'prompt': 'Donde estoy?', 'current_context': {
+        'type': 'view', 'id': 'courses', 'excerpt': 'Actividad y progreso que no se solicitaron.'}})
+    assert 'event: done' in response.get_data(as_text=True)
+    saved = auth_client.get(route.removesuffix('/messages')).json['messages'][-1]
+    assert saved['content'] == 'Estás en Cursos.'
+    assert saved['model'] == 'Atlas'
