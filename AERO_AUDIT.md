@@ -33,3 +33,24 @@ No se crearon cursos ni se modificaron datos de producción.
 La lluvia y los demás efectos del tiempo se revisarán después, como se acordó.
 Estos pendientes no deben considerarse auditados por haber recibido estilos
 compartidos: aún necesitan recorrerse en cada tema y estado.
+
+## Segunda revisión: paneles laterales y consultas de selección
+
+- Marcos y encabezados comunes en Cursos, Team, Conocimiento, Páginas,
+  Tableros, mapas, Radar y Grafo. Fondo translúcido tintado y blur de 28 px;
+  se mantiene un fondo sólido de respaldo si el navegador no admite blur.
+- Explicar, Resumir, Ejemplo y Preguntar al asistente usan Asistente Atlas;
+  el acceso desde el lector de Biblioteca usa el mismo asistente.
+- El fragmento se muestra como adjunto desplegable y se guarda en el hilo.
+  Las preguntas siguientes lo conservan mediante el historial sin reenviarlo
+  como otro adjunto. Quitar el adjunto no borra mensajes ya enviados.
+- Revisar ortografía conserva sus tres métodos. Ampliar, Continuar y
+  Traducir conservan la vista previa y la inserción explícita; se rechaza
+  insertar si se cambió de página o se editó el documento entretanto.
+
+Comprobado en Chromium: selección real del editor, consulta y seguimiento,
+historial del fragmento, borrador conservado, nueva conversación, ausencia
+de cambios al editor y paneles de Conocimiento/Cursos/Team/Páginas/Tableros
+en los tres temas. Revisión del asistente a 390 px y regresión de navegación,
+historial y selector de modelos. Respuestas de IA simuladas en estas pruebas;
+los permisos de combos OmniRoute requieren configuración del proveedor.

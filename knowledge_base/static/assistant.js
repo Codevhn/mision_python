@@ -5,6 +5,8 @@
   const escape = text => window.escapeHtml(String(text || ''));
   let record = null, choice = null, busy = false, controller = null, mounted = false;
   let loadSequence = 0, pinnedContext = null, returnFocus = null;
+  let selectedFragment = null, fragmentSent = false;
+  let modelReady = Promise.resolve();
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
 
@@ -63,7 +65,7 @@
     const content = document.createElement('div');
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
-    else content.textContent = message.content;
+    else content.textContent = message.question || message.content;
     content.querySelectorAll('table').forEach(table => {
       const scroll = document.createElement('div');
       scroll.className = 'assistant-table-scroll';
@@ -73,6 +75,13 @@
       table.before(scroll); scroll.appendChild(table);
     });
     article.append(label, content);
+    if (message.selection_context) {
+      const detail = document.createElement('details'), heading = document.createElement('summary'), quote = document.createElement('blockquote');
+      detail.className = 'assistant-selection-detail';
+      heading.textContent = `Selección · ${message.selection_context.title || 'Texto seleccionado'}`;
+      quote.textContent = message.selection_context.text;
+      detail.append(heading, quote); article.append(detail);
+    }
     if (message.role === 'assistant') {
       const copy = document.createElement('button');
       copy.type = 'button'; copy.className = 'assistant-copy'; copy.textContent = 'Copiar respuesta';
@@ -101,7 +110,7 @@
   function mountModel() {
     const container = el('assistantModel');
     container.querySelectorAll('.practice-cselect').forEach(node => { node._cselectClose?.(); node._cselectPortal?.remove(); });
-    window._mountModelSelector(container, {
+    modelReady = window._mountModelSelector(container, {
       context: 'assistant', warningContainer: el('assistantWarnings'), value: record?.provider && record?.model ? { provider: record.provider, model: record.model } : choice,
       onChange: value => { choice = value; },
     });
@@ -142,7 +151,7 @@
         setBusy(true);
         el('assistantStop').classList.add('hidden');
         try { await api(`/api/assistant/conversations/${item.id}`, { method: 'DELETE' });
-          if (record?.id === item.id) { record = null; renderConversation(); }
+          if (record?.id === item.id) { clearSelection(); record = null; renderConversation(); }
           await refreshHistory();
           el('assistantHistoryToggle').focus();
         } catch (error) { status(error.message, true); }
@@ -160,7 +169,7 @@
       status('Cargando conversación…');
       const loaded = await api(`/api/assistant/conversations/${id}`);
       if (sequence !== loadSequence) return;
-      record = loaded; renderConversation(); el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false'); await refreshHistory();
+      clearSelection(); record = loaded; renderConversation(); el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false'); await refreshHistory();
       status(loaded.memory ? 'Historial guardado · Los turnos antiguos se resumen para mantener el contexto.' : 'Historial guardado');
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
@@ -170,18 +179,20 @@
     const prompt = el('assistantInput').value.trim();
     if (busy || !prompt) return;
     if (!choice) { status('Selecciona un modelo configurado para empezar.', true); return; }
+    const selection = selectedFragment && !fragmentSent ? selectedFragment : null;
     setBusy(true); controller = new AbortController();
     let completed = false, content = null, partial = '';
     try {
       if (!record) record = await api('/api/assistant/conversations', post({}));
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
-      bubble({ role: 'user', content: prompt });
+      bubble({ role: 'user', content: prompt, selection_context: selection });
       content = bubble({ role: 'assistant', content: 'Pensando…' });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
+        ...post({ prompt, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
+      if (selection) fragmentSent = true;
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
       while (true) {
         const chunk = await reader.read(); if (chunk.done) break;
@@ -230,6 +241,40 @@
     el('assistantUseCurrent').disabled = !pinnedContext;
     el('assistantCurrentLabel').textContent = pinnedContext ? `Usar ${pinnedContext.type === 'board' ? 'tablero' : 'página'}: ${pinnedContext.title}` : 'Abre una página o tablero para usar su contexto';
   }
+  function clearSelection() {
+    selectedFragment = null; fragmentSent = false;
+    el('assistantSelection')?.remove();
+  }
+  async function askSelection(text, action = null, source = null) {
+    if (busy) { status('Espera a que termine la respuesta o detenla antes de cambiar la selección.', true); return; }
+    const visible = source || window._getAssistantVisibleContext?.();
+    await open();
+    if (busy) return;
+    if (text && text.length > 10000) { status('Selecciona un fragmento de hasta 10.000 caracteres.', true); return; }
+    document.getElementById('aiPanel')?.classList.add('hidden');
+    clearSelection();
+    if (text?.trim()) {
+      selectedFragment = {text, title: String(visible?.title || 'Texto seleccionado').slice(0,300)};
+      const strip = document.createElement('div'), details = document.createElement('details'), summary = document.createElement('summary'), quote = document.createElement('blockquote'), remove = document.createElement('button');
+      strip.id = 'assistantSelection'; strip.className = 'assistant-selection';
+      summary.textContent = `Selección · ${selectedFragment.title}`; quote.textContent = text;
+      details.append(summary, quote); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Quitar selección');
+      remove.addEventListener('click', () => { const sent = fragmentSent; clearSelection(); status(sent ? 'La selección enviada permanece en el historial.' : 'Selección retirada.'); });
+      strip.append(details,remove); el('assistantTranscript').before(strip);
+      el('assistantUseCurrent').checked = false;
+      el('assistantContextSummary').textContent = el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
+    } else if (visible) {
+      pinnedContext = visible; el('assistantUseCurrent').disabled = false; el('assistantUseCurrent').checked = true;
+      el('assistantCurrentLabel').textContent = `Usar página: ${visible.title}`; el('assistantContextSummary').textContent = 'Contexto · Página';
+    }
+    const prompts = {explain:'Explícame el fragmento seleccionado con claridad.',summarize:'Resume el fragmento seleccionado.',example:'Dame un ejemplo práctico del fragmento seleccionado.'};
+    const input = el('assistantInput');
+    if (action && prompts[action] && !input.value.trim()) {
+      input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send();
+    } else {
+      status(input.value.trim() ? 'Selección preparada. Conservé tu borrador.' : 'Selección preparada. Pregunta sobre ella.'); input.focus();
+    }
+  }
   async function open() {
     returnFocus = document.activeElement;
     area.classList.remove('hidden');
@@ -268,7 +313,7 @@
     el('assistantNew').addEventListener('click', () => {
       if (busy) return;
       el('assistantHistoryPanel').classList.add('hidden'); el('assistantHistoryToggle').setAttribute('aria-expanded', 'false');
-      ++loadSequence; record = null; el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; renderConversation(); refreshHistory().catch(error => status(error.message, true));
+      ++loadSequence; clearSelection(); record = null; el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; renderConversation(); refreshHistory().catch(error => status(error.message, true));
       status('Nueva conversación'); el('assistantInput').focus();
     });
     renderConversation();
@@ -291,5 +336,5 @@
   window.visualViewport?.addEventListener('resize', updateViewport);
   window.visualViewport?.addEventListener('scroll', updateViewport);
   updateViewport();
-  window.AssistantApp = { open, close };
+  window.AssistantApp = { open, close, askSelection };
 })();

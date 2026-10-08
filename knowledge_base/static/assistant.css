@@ -139,3 +139,12 @@
 .assistant-message { margin-bottom:20px; }
 .assistant-message-user { padding:10px 14px; }
 @media (max-width:600px) { .assistant-header { padding-top:calc(10px + env(safe-area-inset-top)); } }
+
+/* Selected text is a visible attachment, separate from the question. */
+.assistant-selection { display:flex; align-items:flex-start; gap:8px; flex-shrink:0; margin:8px; padding:9px 12px; border:1px solid var(--border); border-radius:4px; background:var(--layer-2); color:var(--text); }
+.assistant-selection details { flex:1; min-width:0; }
+.assistant-selection summary { cursor:pointer; font-size:.8rem; overflow-wrap:anywhere; }
+.assistant-selection > button { flex-shrink:0; width:26px; height:26px; border:1px solid var(--border); background:var(--aero-button); color:var(--text); border-radius:3px; }
+.assistant-selection blockquote, .assistant-selection-detail blockquote { white-space:pre-wrap; overflow-wrap:anywhere; margin:10px 0 0; padding:8px 12px; border-left:2px solid var(--accent); max-height:150px; overflow:auto; font-size:.82rem; }
+.assistant-selection-detail { margin-top:12px; color:var(--text-muted); font-size:.8rem; }
+.assistant-selection-detail summary { cursor:pointer; }

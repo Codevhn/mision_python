@@ -295,3 +295,37 @@ def test_summary_failure_preserves_full_history(auth_client, monkeypatch):
     assert len(saved['messages']) == 27
     assert saved['memory_through'] == 0
     assert not captured
+
+
+def test_selection_survives_followups_and_history(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    conversation = create(auth_client)
+    selection = {'text': 'git reset --soft HEAD~1', 'title': 'Reset y sus tres modos'}
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Explícame el fragmento.', 'selection_context': selection,
+        'provider': 'deepseek', 'model': 'deepseek-v4-pro', 'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    history = auth_client.get(f'/api/assistant/conversations/{conversation}').json
+    assert history['messages'][0]['selection_context'] == selection
+    assert history['messages'][0]['question'] == 'Explícame el fragmento.'
+    assert selection['text'] in captured[0][1][0]['content']
+    assert set(captured[0][1][0]) == {'role', 'content'}
+    followup = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': '¿Y el staging?', 'provider': 'deepseek', 'model': 'deepseek-v4-pro', 'use_atlas': False,
+    })
+    assert 'event: done' in followup.get_data(as_text=True)
+    assert selection['text'] in captured[1][1][0]['content']
+    assert len(captured[1][1]) == 3
+    assert all(set(item) == {'role', 'content'} for item in captured[1][1])
+
+
+def test_selection_validation_does_not_write_message(auth_client):
+    conversation = create(auth_client)
+    for selection in ['text', {'text': '', 'title': 'Página'}, {'text': 'x' * 10001, 'title': 'Página'}, {'text': 'Hola', 'title': []}]:
+        response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+            'prompt': 'Explica', 'selection_context': selection,
+        })
+        assert response.status_code == 400
+    assert auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'] == []

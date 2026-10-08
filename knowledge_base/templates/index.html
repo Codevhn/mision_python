@@ -252,7 +252,7 @@
 
       <!-- SPACE: TEAMSPACE -->
       <div class="sidebar-space" id="spaceTeamspace" style="display:none">
-        <div class="sidebar-section-label teamspace-label" id="teamspaceSectionLabel" style="display:flex;align-items:center;justify-content:space-between;margin-top:0">
+        <div class="sidebar-space-header teamspace-label" id="teamspaceSectionLabel">
           <span>Teamspace</span>
           <button class="ts-new-btn" id="newTeamspaceEntryBtn" title="Crear nuevo teamspace">+</button>
         </div>
@@ -581,7 +581,7 @@
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
             <button class="btn-ghost secondary-action" id="srsBtn">🔁 repaso</button>
             <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
-            <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ AI</button>
+            <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ Asistente</button>
             <button class="btn-ghost secondary-action" id="pasteMarkdownBtn" title="Pegar Markdown">↓ md</button>
             <button class="btn-ghost secondary-action" id="fmtBtn" title="Agregar espaciado lógico entre elementos">⬚ fmt</button>
             <!-- Mobile: más acciones -->
@@ -744,6 +744,7 @@
   <div class="ai-inline-bar hidden" id="aiInlineBar">
     <div class="ai-inline-header">✦ IA — selección</div>
     <button class="ai-inline-btn" data-action="explain">✦ Explicar</button>
+    <button class="ai-inline-btn" data-action="example">◇ Ejemplo</button>
     <button class="ai-inline-btn" data-action="expand">⇧ Ampliar</button>
     <button class="ai-inline-btn" data-action="proofread">✓ Revisar ortografía…</button>
     <button class="ai-inline-btn" data-action="summarize">⊟ Resumir</button>
@@ -751,7 +752,7 @@
     <button class="ai-inline-btn" data-action="quiz">? Quiz</button>
     <button class="ai-inline-btn" data-action="translate_en">⇌ Traducir al inglés</button>
     <div class="ai-inline-sep"></div>
-    <button class="ai-inline-btn ai-inline-btn--panel" data-action="panel">⋯ Abrir panel IA</button>
+    <button class="ai-inline-btn ai-inline-btn--panel" data-action="panel">⋯ Preguntar al asistente</button>
     <div class="ai-inline-loading hidden" id="aiInlineLoading">✦ procesando…</div>
   </div>
 

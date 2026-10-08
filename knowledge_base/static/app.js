@@ -9697,6 +9697,8 @@ function initAIPanel() {
 
   // ── Open / close ──────────────────────────────────────────
   async function openPanel(selText) {
+    // Selection queries share the global assistant and its conversation/model.
+    if (window.AssistantApp) return window.AssistantApp.askSelection(selText || '', null);
     if (selText) {
       _selContext = selText;
       selCtxText.textContent = selText.length > 200 ? selText.slice(0, 200) + '…' : selText;
@@ -9723,7 +9725,9 @@ function initAIPanel() {
   // Exposed so features outside this closure (the Biblioteca reader's
   // "Preguntar a la IA" selection action, which has no currentEntryId to
   // hook into) can still open this same panel prefilled with selected text.
-  window._openAiAskPanel = (selText) => openPanel(selText || null);
+  window._openAiAskPanel = (selText, source) => window.AssistantApp
+    ? window.AssistantApp.askSelection(selText || '', null, source)
+    : openPanel(selText || null);
 
   function closePanel() {
     saveConversation();
@@ -9984,8 +9988,9 @@ function initAIPanel() {
 
   function _showBar(rect) {
     if (!inlineBar) return;
-    const BAR_W = 192;
-    const BAR_H = 260;
+    inlineBar.classList.remove('hidden');
+    const BAR_W = inlineBar.offsetWidth;
+    const BAR_H = inlineBar.offsetHeight;
     const GAP   = 8;
 
     // Prefer right of the selection to avoid BlockNote's formatting toolbar
@@ -10089,6 +10094,12 @@ function initAIPanel() {
           return;
         }
 
+        if (['explain', 'summarize', 'example'].includes(action)) {
+          _hideBar();
+          await window.AssistantApp?.askSelection(selText, action);
+          return;
+        }
+
         if (action === 'quiz') {
           _hideBar();
           _openQuizSpace(selText);
@@ -10106,6 +10117,8 @@ function initAIPanel() {
 // Notion-style inline AI result popover ─────────────────────────────────────
 function _showAiResultPopover(selText, selRect, action) {
   document.querySelectorAll('.ai-result-pop').forEach(e => e.remove());
+  const originEntryId = currentEntryId;
+  const originDocument = _inlineEditor.getMarkdown();
 
   const pop = document.createElement('div');
   pop.className = 'ai-result-pop';
@@ -10142,7 +10155,7 @@ function _showAiResultPopover(selText, selRect, action) {
   // panel (mounted there) rather than showing its own picker in this
   // compact popover — change the model via the panel's selector and it
   // applies here too.
-  const popModelChoice = _getRawSavedModelChoice('ask');
+  const popModelChoice = _getRawSavedModelChoice('assistant');
   fetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -10178,6 +10191,10 @@ function _showAiResultPopover(selText, selRect, action) {
 
   pop.querySelector('.arp-insert').addEventListener('click', () => {
     if (!_result) return;
+    if (currentEntryId !== originEntryId || _inlineEditor.getMarkdown() !== originDocument) {
+      showToast('La página cambió. Selecciona de nuevo el texto antes de insertar.', 'error');
+      return;
+    }
     _inlineInsert(action, selText, _result);
     pop.remove();
     showToast('Respuesta insertada', 'success');
@@ -11762,7 +11779,7 @@ function _mountModelSelector(container, { context, value, onChange, warningConta
   if (!container) return;
   if (warningContainer) warningContainer.querySelectorAll('.practice-empty-note').forEach(node => node.remove());
   container.innerHTML = `<div class="practice-loading-inline"><span class="arp-spinner"></span> modelos…</div>`;
-  _getAvailableProviders().then(data => {
+  return _getAvailableProviders().then(data => {
     if (!container.isConnected) return; // panel/parent was closed or re-rendered while this was in flight
     const showWarnings = () => {
       (data.warnings || []).forEach(warning => {

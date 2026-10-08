@@ -815,7 +815,7 @@
     });
     bar.querySelector('[data-act="ask"]').addEventListener('click', () => {
       _removeSelToolbar();
-      if (typeof window._openAiAskPanel === 'function') window._openAiAskPanel(text);
+      if (typeof window._openAiAskPanel === 'function') window._openAiAskPanel(text, { title: $('readerTitle').textContent || 'Biblioteca' });
       else _toast('El panel de IA no está disponible aquí todavía.', 'error');
     });
     bar.querySelector('[data-act="concept"]').addEventListener('click', async () => {
