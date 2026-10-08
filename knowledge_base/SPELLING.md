@@ -7,14 +7,19 @@ enfocado; también permite pegar un texto y copiar la propuesta.
 
 ## Corrección dentro del editor
 
-El editor carga un diccionario español local y subraya posibles errores mientras
+El editor carga diccionarios locales de español e inglés y subraya posibles errores mientras
 escribes. Pasa por una palabra marcada o tócala para elegir una sugerencia;
 por ejemplo, «abjeto» propone «objeto». El panel permanece abierto al mover el
 ratón o desplazar la página; se cierra al pulsar fuera, usar Escape o aplicar
 una acción. Pasar sobre otra palabra no reemplaza la sugerencia abierta.
-**Ignorar esta palabra** guarda la
-excepción en este navegador. El análisis no envía el contenido a una API ni a IA.
-Se excluyen el código y los enlaces.
+**Agregar al diccionario** guarda la palabra en tu diccionario personal de este
+navegador; también acepta sus variantes de mayúsculas y minúsculas.
+**Ignorar esta palabra** la omite durante la sesión. Las excepciones guardadas
+con versiones anteriores siguen siendo reconocidas. Los términos válidos en
+español o inglés no se subrayan. El análisis no envía el contenido a una API ni a IA.
+Se excluyen el código y los enlaces. En el editor, las marcas las controla este
+corrector; se desactiva el subrayado nativo del navegador para que no vuelva a
+marcar palabras inglesas o aceptadas en tu diccionario personal.
 
 **Corregir párrafo…**, en las sugerencias o en **Más**, muestra todas las
 propuestas del párrafo y una vista previa. Puedes elegir otra sugerencia o

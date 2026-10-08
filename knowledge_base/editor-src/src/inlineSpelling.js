@@ -7,16 +7,24 @@ import {wordRanges, suggestionsFor} from './spellingWords.js';
 const key=new PluginKey('atlasSpanishSpelling');
 let dictionaryPromise;
 function dictionary() {
-  dictionaryPromise ||= Promise.all(['aff','dic'].map(async ext=>{
-    const response=await fetch('/static/spelling/es.'+ext);
-    if(!response.ok)throw Error('No se pudo cargar el diccionario español.');
-    return response.text();
-  })).then(([aff,dic])=>nspell(aff,dic)).catch(error=>{dictionaryPromise=null;throw error;});
+  dictionaryPromise ||= Promise.all(['es','en'].map(async language=>{
+    const [aff,dic]=await Promise.all(['aff','dic'].map(async ext=>{
+      const response=await fetch('/static/spelling/'+language+'.'+ext);
+      if(!response.ok)throw Error('No se pudo cargar el diccionario '+language+'.');
+      return response.text();
+    }));
+    return nspell(aff,dic);
+  })).then(([spanish,english])=>({
+    correct:word=>spanish.correct(word)||english.correct(word),
+    suggest:word=>{const spanishOptions=spanish.suggest(word);return spanishOptions.length?spanishOptions:english.suggest(word);}
+  })).catch(error=>{dictionaryPromise=null;throw error;});
   return dictionaryPromise;
 }
 const known=new Set(['Atlas','OmniRoute','Python','JavaScript','TypeScript','GitHub','CSS','HTML','SQL','API','APIs','BlockNote','DeepSeek','OpenCode','Teamspace','Teamspaces','Markdown','Windows','Linux','Java','Docker']);
-const ignored=new Set();
-try {JSON.parse(localStorage.getItem('atlas_spelling_ignored')||'[]').filter(w=>typeof w==='string'&&w.length<100).forEach(w=>ignored.add(w));}catch{}
+const ignored=new Set(),personal=new Set();
+for(const storageKey of ['atlas_spelling_dictionary','atlas_spelling_ignored']) {
+  try {JSON.parse(localStorage.getItem(storageKey)||'[]').filter(w=>typeof w==='string'&&w.length<100).forEach(w=>personal.add(w.toLocaleLowerCase('es')));}catch{}
+}
 
 /* Character positions retain styles and skip code, links and inline atoms. */
 function scan(doc,spell) {
@@ -32,7 +40,7 @@ function scan(doc,spell) {
       }else if(child.isLeaf){text+=' ';positions.push(pos+1+offset);blocked.push(true);}
     });
     for(const {word,offset}of wordRanges(text)){
-      if(word.length<2||word.length>60||known.has(word)||ignored.has(word.toLocaleLowerCase('es'))||blocked.slice(offset,offset+word.length).some(Boolean)||spell.correct(word))continue;
+      if(word.length<2||word.length>60||known.has(word)||ignored.has(word.toLocaleLowerCase('es'))||personal.has(word.toLocaleLowerCase('es'))||blocked.slice(offset,offset+word.length).some(Boolean)||spell.correct(word))continue;
       issues.push({word,offset,from:positions[offset],to:positions[offset+word.length-1]+1,paragraph:pos,text});
     }
     return false;
@@ -100,7 +108,8 @@ export function installInlineSpelling(tip) {
     if(!proposals.length){const empty=document.createElement('p');empty.textContent='Sin sugerencias. Puedes editar la palabra o ignorarla.';suggestions.append(empty);}
     const actions=document.createElement('div');actions.className='atlas-spelling-actions';popup.append(actions);
     button('Corregir párrafo…',()=>reviewParagraph(issue),actions);
-    button('Ignorar esta palabra',()=>{ignored.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_ignored',JSON.stringify([...ignored]));}catch{}closePopup();check();},actions);
+    button('Agregar al diccionario',()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');personal.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_dictionary',JSON.stringify([...personal]));}catch{}closePopup();check();},actions);
+    button('Ignorar esta palabra',()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');ignored.add(issue.word.toLocaleLowerCase('es'));closePopup();check();},actions);
     popupAnchor=node;document.body.append(popup);positionPopup();
   }
   function positionPopup(){

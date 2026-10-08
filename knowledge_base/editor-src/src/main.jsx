@@ -75,7 +75,7 @@ async function uploadFile(file) {
 }
 
 function EditorView({ instanceRef, onChange, onReady }) {
-  const editor = useCreateBlockNote({ schema, uploadFile, domAttributes: {editor: {spellcheck:"true", lang:"es"}} });
+  const editor = useCreateBlockNote({ schema, uploadFile, domAttributes: {editor: {spellcheck:"false", lang:"es"}} });
   const [theme, setTheme] = React.useState(currentAppTheme());
 
   React.useEffect(() => {
