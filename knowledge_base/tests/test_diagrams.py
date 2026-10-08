@@ -187,3 +187,48 @@ def test_hint_cannot_apply_proposal_and_provider_error_is_preserved(auth_client,
     r=auth_client.post('/api/diagrams/'+s['id']+'/assist',json={'revision':1,'action':'answer','message':'Inicio'})
     assert r.status_code==503 and r.json['error']=='No disponible'
     assert auth_client.get('/api/diagrams/'+s['id']).json['revision']==1
+
+
+def test_repeated_mentor_question_is_saved_once(auth_client,monkeypatch):
+    question='¿Podrías describir el proceso de login paso a paso?'
+    fake(monkeypatch,{'message':question,'question':question,'proposals':[]})
+    s=create(auth_client)
+    r=auth_client.post('/api/diagrams/'+s['id']+'/assist',json={'revision':1,'action':'start'})
+    assert r.status_code==200
+    turn=r.json['conversation'][-1]
+    assert turn['content']=='' and turn['question']==question
+    saved=auth_client.get('/api/diagrams/'+s['id']).json['conversation'][-1]
+    assert saved==turn
+
+
+def test_dedup_keeps_explanation_and_handles_formatting(auth_client,monkeypatch):
+    question='¿Qué debe ocurrir después?'
+    fake(monkeypatch,{'message':'El inicio representa la entrada.\n\n**¿Qué debe  ocurrir después?**','question':question,'proposals':[]})
+    s=create(auth_client)
+    r=auth_client.post('/api/diagrams/'+s['id']+'/assist',json={'revision':1,'action':'start'})
+    assert r.status_code==200
+    assert r.json['conversation'][-1]['content']=='El inicio representa la entrada.'
+    assert r.json['conversation'][-1]['question']==question
+
+
+def test_existing_saved_conversation_is_deduplicated_on_read(auth_client):
+    import sqlite3
+    s=create(auth_client)
+    question='¿Qué condición permite avanzar?'
+    with sqlite3.connect(app_module.INDEX_DB_FILE) as conn:
+        row=conn.execute('SELECT payload FROM atlas_diagrams WHERE id=?',(s['id'],)).fetchone()
+        payload=json.loads(row[0])
+        payload['conversation']=[{'role':'assistant','content':question,'question':question}]
+        conn.execute('UPDATE atlas_diagrams SET payload=? WHERE id=?',(json.dumps(payload),s['id']))
+    r=auth_client.get('/api/diagrams/'+s['id'])
+    assert r.status_code==200 and r.json['revision']==1
+    assert r.json['conversation'][0]=={'role':'assistant','content':'','question':question}
+
+
+def test_question_dedup_does_not_remove_related_explanation(auth_client,monkeypatch):
+    fake(monkeypatch,{'message':'Primero hay que entender por qué.','question':'¿Por qué?','proposals':[]})
+    s=create(auth_client)
+    r=auth_client.post('/api/diagrams/'+s['id']+'/assist',json={'revision':1,'action':'start'})
+    assert r.status_code==200
+    assert r.json['conversation'][-1]['content']=='Primero hay que entender por qué.'
+    assert r.json['conversation'][-1]['question']=='¿Por qué?'

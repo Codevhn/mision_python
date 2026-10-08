@@ -93,3 +93,34 @@
 [data-style=opencode] .dg-shape-figure {filter:none}
 @media(max-width:650px){.dg-palette{grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:10px}.diagram-area .dg-palette .dg-shape-tool{font-size:13px;min-height:90px}.dg-shape-figure{max-width:100px}}
 @media(prefers-reduced-motion:reduce){.diagram-area .dg-palette .dg-shape-tool{transition:none}}
+
+/* Quiet, grouped guidance and state feedback. */
+.dg-header>.dg-status {flex-basis:100%;width:fit-content;max-width:100%;margin:0;min-height:0}
+.dg-status:not(:empty) {display:flex;align-items:center;gap:7px;font-size:12px;line-height:1.5}
+.dg-status:empty {display:none}
+.dg-status:not(:empty)::before {content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;opacity:.75}
+.dg-status.dg-error {padding:8px 10px;background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid var(--border);border-radius:5px;color:var(--text)}
+.diagram-area details>summary {display:flex;align-items:center;gap:8px;list-style:none;font-size:13px;line-height:1.4;padding:9px 0;cursor:pointer}
+.diagram-area details>summary::-webkit-details-marker {display:none}
+.diagram-area details>summary::before {content:'+';display:grid;place-items:center;flex-shrink:0;width:16px;height:16px;border:1px solid var(--border);border-radius:3px;color:var(--text-muted);font-size:13px;line-height:1;background:var(--aero-button,var(--bg-elevated))}
+.diagram-area details[open]>summary::before {content:'−'}
+.diagram-area summary:focus-visible {outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.dg-canvas-footer {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:10px 0;color:var(--text-muted)}
+.dg-canvas-help {min-width:0;font-size:12px;line-height:1.6}
+.dg-canvas-help ul {margin:4px 0 8px;padding-left:24px}
+.dg-canvas-help>summary {color:var(--text-muted)}
+.diagram-area .dg-delete {font-size:12px;padding:6px 9px;color:var(--text-muted);flex-shrink:0}
+.dg-review-panels {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.dg-review-card {border:1px solid var(--border);border-radius:6px;background:var(--aero-glass,var(--bg-elevated));padding:0 12px;min-width:0;align-self:start}
+.dg-count {margin-left:auto;min-width:20px;box-sizing:border-box;padding:1px 5px;border-radius:4px;font-size:11px;text-align:center;border:1px solid var(--border);background:var(--aero-button,var(--bg-elevated));color:var(--text-muted)}
+.dg-empty-note,.dg-inspector-empty {font-size:12px;line-height:1.5;color:var(--text-muted);margin:8px 0 12px}
+.dg-inspector-empty {padding-top:10px;border-top:1px solid var(--border)}
+.dg-warnings ul.dg-check-list {list-style:none;padding:0;margin:0 0 12px}
+.dg-check-list li {padding:9px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text-muted)}
+.dg-decision {padding:9px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.5}
+.dg-decision p {margin:4px 0 0;color:var(--text-muted)}
+.dg-decision-list {margin-bottom:10px}
+.dg-connection-step {font-size:12px;line-height:1.5;margin:8px 0;color:var(--accent)}
+.dg-question {margin-top:10px;padding-left:10px;border-left:2px solid var(--accent);font-weight:500}
+.dg-message:has(>.dg-question:only-child) .dg-question {margin-top:0}
+@media(max-width:650px){.dg-review-panels{grid-template-columns:1fr}}
