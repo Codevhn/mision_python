@@ -23,43 +23,22 @@
 }
 
 .bn-block-content[data-content-type="codeBlock"] {
-  background-color: var(--bg-code) !important;
+  background-color: #1e232b !important;
   /* The native component owns its frame; BlockNote's default vertical
      padding otherwise exposes a dark strip above and below the header. */
   padding: 0 !important;
 }
 
-/* BlockNote's codeBlock frame hardcodes color:#fff (white text on a near-
-   black #161616 default bg), so any text node that isn't wrapped in a
-   shiki <span> (e.g. an empty/plain line) is invisible once --bg-code is
-   swapped to a light value above. */
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] {
-  color: var(--text) !important;
+/* Code keeps a neutral graphite canvas in every application theme.
+   Shiki uses github-dark; preserve those token colors even in light themes.
+   The surrounding header and controls still follow the application palette. */
+.bn-block-content[data-content-type="codeBlock"] .code-block-pre {
+  background: #1e232b;
+  color: #e1e4e8;
+  caret-color: #e1e4e8;
+  border-radius: 0 0 7px 7px;
+  color-scheme: dark;
 }
-
-/* The shiki highlighter (see editor-src/src/schema.js) is only able to
-   tokenize against a single static theme per process — it always picks
-   `github-dark`, the first theme in the `themes:` array, regardless of
-   the app's light/dark mode (a prosemirror-highlight/BlockNote
-   limitation, not something `createCodeBlockSpec` exposes a hook for).
-   github-dark's palette is tuned for a near-black background, so several
-   of its colors (most importantly the ~white default text/punctuation
-   color) are nearly invisible against this app's light --bg-code.
-   Rather than re-implement BlockNote's internal highlighter caching to
-   make it theme-reactive, we remap each dark-theme token color to its
-   official github-light counterpart (same TextMate scope, opposite
-   theme) directly, scoped to light mode only — dark mode is untouched
-   and keeps using github-dark's colors as-is, unchanged. */
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(225, 228, 232);"] { color: #24292e !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(121, 184, 255);"] { color: #005cc5 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(179, 146, 240);"] { color: #6f42c1 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(133, 232, 157);"] { color: #22863a !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(249, 117, 131);"] { color: #d73a49 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(158, 203, 255);"] { color: #032f62 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(255, 171, 112);"] { color: #e36209 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(253, 174, 183);"] { color: #b31d28 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(219, 237, 255);"] { color: #032f62 !important; }
-[data-theme="light"] .bn-block-content[data-content-type="codeBlock"] span[style="color: rgb(209, 213, 218);"] { color: #586069 !important; }
 
 /* ── Native codeBlock chrome (see codeBlock.jsx) ────────────────────────
    BlockNote's core codeBlock shipped its language picker as a near-invisible
@@ -75,7 +54,7 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: var(--bg-code);
+  background: #1e232b;
   border: 1px solid var(--border-color, var(--border, rgba(255, 255, 255, 0.12)));
   border-radius: 8px;
 }
