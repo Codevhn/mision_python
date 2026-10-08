@@ -200,7 +200,24 @@ function CodeBlockComponent({ block, editor, contentRef }) {
   const [search, setSearch] = useState("");
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState(null);
+  const [copyState, setCopyState] = useState("idle");
+  const copyTimer = useRef(null);
   const menuRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const copy = async () => {
+    clearTimeout(copyTimer.current);
+    let fresh;
+    try { fresh = editor.getBlock(block.id); } catch (_) { fresh = undefined; }
+    try {
+      await navigator.clipboard.writeText(codeText(fresh || block));
+      setCopyState("copied");
+    } catch (_) {
+      setCopyState("error");
+    }
+    copyTimer.current = setTimeout(() => setCopyState("idle"), 3000);
+  };
 
   const language = block.props.language || "text";
   const entry = SUPPORTED_LANGUAGES[language] || { name: language };
@@ -322,6 +339,21 @@ function CodeBlockComponent({ block, editor, contentRef }) {
           )}
         </div>
         <div className="code-block-header-spacer" />
+        <span className="code-block-copy-status" role="status">
+          {copyState === "copied" ? "Copiado" : copyState === "error" ? "No se pudo copiar" : ""}
+        </span>
+        <button
+          type="button"
+          className="code-block-copy"
+          title="Copiar código"
+          aria-label="Copiar código"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => { e.stopPropagation(); copy(); }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {copyState === "copied" ? <path d="m5 12 4 4L19 6" /> : <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></>}
+          </svg>
+        </button>
         {python && (
           <button
             type="button"
