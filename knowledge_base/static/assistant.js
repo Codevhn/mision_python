@@ -7,6 +7,58 @@
   let loadSequence = 0, pinnedContext = null, returnFocus = null;
   let selectedFragment = null, fragmentSent = false;
   let modelReady = Promise.resolve();
+  let modelNames = new Map();
+  const icons = {
+    copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
+    retry:'<path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5"/>',
+    edit:'<path d="m4 16-1 5 5-1L20 8l-4-4L4 16Zm10-10 4 4"/>',
+    more:'<circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/>'
+  };
+  const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
+  function actionButton(label, icon, handler) {
+    const button = document.createElement('button'); button.type='button'; button.className='assistant-icon-action';
+    button.title=label; button.setAttribute('aria-label',label); button.innerHTML=svg(icon);
+    button.addEventListener('click',()=>{try{Promise.resolve(handler()).catch(error=>status(error.message,true));}catch(error){status(error.message,true);}}); return button;
+  }
+  async function copyText(text, button) {
+    try { await navigator.clipboard.writeText(text); status('Copiado'); button?.setAttribute('aria-label','Contenido copiado'); }
+    catch { status('No se pudo copiar. Puedes seleccionar el texto manualmente.',true); }
+  }
+  function editDialog(title, fields, save) {
+    const dialog=document.createElement('dialog'); dialog.className='assistant-confirm-dialog assistant-edit-dialog';
+    dialog.innerHTML='<form><header class="assistant-confirm-header"><h2></h2></header><div class="assistant-confirm-body"></div><footer class="assistant-confirm-actions"><button type="button">Cancelar</button><button type="submit">Guardar</button></footer></form>';
+    dialog.querySelector('h2').textContent=title; dialog.setAttribute('aria-label',title);
+    const body=dialog.querySelector('.assistant-confirm-body'), inputs={};
+    fields.forEach(field=>{const label=document.createElement('label'),input=document.createElement(field.multiline?'textarea':'input'); label.textContent=field.label; input.value=field.value||'';input.required=!field.readonly;input.readOnly=!!field.readonly;input.maxLength=field.max||100;label.append(input);body.append(label);inputs[field.key]=input;});
+    const error=document.createElement('p');error.setAttribute('role','status');body.append(error);
+    let result=null, saving=false;
+    dialog.querySelector('button[type="button"]').addEventListener('click',()=>dialog.close());
+    dialog.addEventListener('cancel',e=>{if(saving)e.preventDefault();});
+    dialog.querySelector('form').addEventListener('submit',async e=>{
+      e.preventDefault(); if(saving)return; saving=true; dialog.querySelectorAll('button').forEach(b=>b.disabled=true);
+      try { result=await save(Object.fromEntries(Object.entries(inputs).map(([key,input])=>[key,input.value])));dialog.close(); }
+      catch(err){error.textContent=err.message;saving=false;dialog.querySelectorAll('button').forEach(b=>b.disabled=false);}
+    });
+    document.body.append(dialog);dialog.showModal();Object.values(inputs)[0]?.focus();
+    return new Promise(resolve=>dialog.addEventListener('close',()=>{dialog.remove();resolve(result);},{once:true}));
+  }
+  async function saveResponse(message, type) {
+    const title=message.content.match(/^#+\s+(.+)$/m)?.[1]?.replace(/\*+/g,'').slice(0,100)||'Respuesta de IA';
+    const fields=[{key:'title',label:'Título',value:title,max:100}];
+    if(type==='knowledge')fields.push({key:'category',label:'Categoría',value:'IA'},{key:'topic',label:'Tema',value:'Respuestas'});
+    fields.push({key:'raw_text',label:'Contenido que se guardará',value:message.content,multiline:true,readonly:true,max:1000000});
+    const saved=await editDialog(type==='page'?'Crear página desde la respuesta':'Guardar respuesta en Conocimiento',fields,
+      values=>api('/api/entry',post({...values,entry_type:type,already_markdown:true})));
+    if(saved){status('Respuesta guardada. La conversación se conserva.');window.loadTree?.();}
+  }
+  function retryMessage(message) {
+    if(busy)return;
+    const input=el('assistantInput');
+    if(input.value.trim()){status('Envía o limpia tu borrador antes de reintentar.',true);return;}
+    input.value=message.question||message.content;
+    input.dispatchEvent(new Event('input'));
+    send(null,{retry:true,selection:message.selection_context||null});
+  }
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
 
@@ -61,7 +113,7 @@
     article.className = `assistant-message assistant-message-${message.role}`;
     const label = document.createElement('div');
     label.className = 'assistant-message-label';
-    label.textContent = message.role === 'user' ? 'Tú' : 'Asistente';
+    label.textContent = message.role === 'user' ? 'Tú' : modelNames.get(`${message.provider}:${message.model}`) || message.model || 'IA · modelo no registrado';
     const content = document.createElement('div');
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
@@ -82,15 +134,22 @@
       quote.textContent = message.selection_context.text;
       detail.append(heading, quote); article.append(detail);
     }
-    if (message.role === 'assistant') {
-      const copy = document.createElement('button');
-      copy.type = 'button'; copy.className = 'assistant-copy'; copy.textContent = 'Copiar respuesta';
-      copy.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(message.content); copy.textContent = 'Copiado'; }
-        catch { status('No se pudo copiar. Puedes seleccionar el texto manualmente.', true); }
-      });
-      article.appendChild(copy);
+    if (message.role === 'assistant' && message.content !== 'Pensando…') {
+      const actions=document.createElement('div');actions.className='assistant-response-actions';
+      const copy=actionButton('Copiar respuesta completa','copy',()=>copyText(message.content,copy));copy.classList.add('assistant-copy');actions.append(copy);
+      const index=record?.messages.indexOf(message), question=index>0?record.messages[index-1]:null;
+      if(question?.role==='user')actions.append(actionButton('Reintentar con el modelo seleccionado','retry',()=>retryMessage(question)));
+      const menu=document.createElement('details');menu.className='assistant-response-menu';
+      const toggle=document.createElement('summary');toggle.innerHTML=svg('more');toggle.title='Opciones de respuesta';toggle.setAttribute('aria-label','Opciones de respuesta');menu.append(toggle);
+      const options=document.createElement('div');options.className='assistant-response-options';
+      [['Guardar como página',()=>saveResponse(message,'page')],['Guardar en Conocimiento',()=>saveResponse(message,'knowledge')],['Descargar Markdown',()=>{
+        const url=URL.createObjectURL(new Blob([message.content],{type:'text/markdown;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='respuesta-atlas.md';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
+        const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>{menu.open=false;handler();});options.append(button);
+      });menu.append(options);actions.append(menu);article.append(actions);
       sources(article, message.sources);
+    } else if(message.role==='user' && record?.messages.at(-1)===message) {
+      article.append(actionButton('Reintentar con el modelo seleccionado','retry',()=>retryMessage(message)));
     }
     el('assistantTranscript').appendChild(article);
     return content;
@@ -110,9 +169,15 @@
   function mountModel() {
     const container = el('assistantModel');
     container.querySelectorAll('.practice-cselect').forEach(node => { node._cselectClose?.(); node._cselectPortal?.remove(); });
-    modelReady = window._mountModelSelector(container, {
+    modelReady = window._getAvailableProviders().then(data=>{
+      modelNames=new Map((data.providers||[]).flatMap(p=>p.models.map(m=>[`${p.id}:${m.id}`,m.label])));
+      area.querySelectorAll('.assistant-message-assistant .assistant-message-label').forEach((label,index)=>{
+        const message=record?.messages.filter(m=>m.role==='assistant')[index]; if(message)label.textContent=modelNames.get(`${message.provider}:${message.model}`)||message.model||'IA · modelo no registrado';
+      });
+      return window._mountModelSelector(container, {
       context: 'assistant', warningContainer: el('assistantWarnings'), value: record?.provider && record?.model ? { provider: record.provider, model: record.model } : choice,
       onChange: value => { choice = value; },
+      });
     });
   }
   function confirmDeleteConversation(item, trigger) {
@@ -144,6 +209,11 @@
       const open = document.createElement('button'); open.type = 'button'; open.className = 'assistant-history-open';
       open.textContent = item.title; open.title = item.title; open.disabled = busy;
       open.addEventListener('click', () => loadConversation(item.id));
+      const rename=actionButton(`Renombrar ${item.title}`,'edit',async()=>{
+        if(busy)return;
+        const saved=await editDialog('Renombrar conversación',[{key:'title',label:'Nombre',value:item.title,max:100}],values=>api(`/api/assistant/conversations/${item.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)}));
+        if(saved){if(record?.id===item.id){record.title=saved.title;el('assistantTitle').textContent=saved.title;}await refreshHistory();}
+      });rename.disabled=busy;
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×';
       remove.className = 'assistant-history-delete'; remove.setAttribute('aria-label', `Eliminar ${item.title}`); remove.disabled = busy;
       remove.addEventListener('click', async () => {
@@ -157,7 +227,7 @@
         } catch (error) { status(error.message, true); }
         finally { setBusy(false); }
       });
-      row.append(open, remove); history.appendChild(row);
+      row.append(open, rename, remove); history.appendChild(row);
     });
   }
   async function loadConversation(id) {
@@ -174,25 +244,25 @@
     } catch (error) { status(error.message, true); }
     finally { setBusy(false); }
   }
-  async function send(event) {
+  async function send(event, options={}) {
     event?.preventDefault();
     const prompt = el('assistantInput').value.trim();
     if (busy || !prompt) return;
     if (!choice) { status('Selecciona un modelo configurado para empezar.', true); return; }
-    const selection = selectedFragment && !fragmentSent ? selectedFragment : null;
+    const selection = options.retry ? options.selection : selectedFragment && !fragmentSent ? selectedFragment : null;
     setBusy(true); controller = new AbortController();
     let completed = false, content = null, partial = '';
     try {
       if (!record) record = await api('/api/assistant/conversations', post({}));
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
-      bubble({ role: 'user', content: prompt, selection_context: selection });
-      content = bubble({ role: 'assistant', content: 'Pensando…' });
+      if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection });
+      content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, selection_context: selection, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? pinnedContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
-      if (selection) fragmentSent = true;
+      if (selection && !options.retry) fragmentSent = true;
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
       while (true) {
         const chunk = await reader.read(); if (chunk.done) break;
@@ -219,7 +289,7 @@
     } finally {
       controller = null;
       try {
-        if (record) { record = await api(`/api/assistant/conversations/${record.id}`); if (completed) renderConversation(); }
+        if (record) { record = await api(`/api/assistant/conversations/${record.id}`); renderConversation(); }
         await refreshHistory();
       } catch (error) { status(`No se pudo recuperar el historial: ${error.message}`, true); }
       setBusy(false);

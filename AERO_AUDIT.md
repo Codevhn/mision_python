@@ -54,3 +54,26 @@ de cambios al editor y paneles de Conocimiento/Cursos/Team/Páginas/Tableros
 en los tres temas. Revisión del asistente a 390 px y regresión de navegación,
 historial y selector de modelos. Respuestas de IA simuladas en estas pruebas;
 los permisos de combos OmniRoute requieren configuración del proveedor.
+
+## Controles del chat
+
+Implementados: copiar respuesta con icono, reintentar usando el modelo elegido,
+renombrar conversaciones, borrar con botón rojo compacto y ampliar a pantalla
+completa. La búsqueda global (Ctrl+K, Cambiar tema) funciona sobre el chat
+ampliado. El selector y el aviso inferior ocupan menos espacio.
+
+Cada respuesta nueva guarda su proveedor/modelo. Los mensajes antiguos sin
+esa información se muestran como modelo no registrado. El menú permite
+guardar una respuesta como página o conocimiento con título/destino revisables,
+descargar Markdown y copiar la conversación completa. La creación requiere
+pulsar Guardar; no modifica la respuesta ni borra la conversación.
+
+Los fallos ofrecen reintento. Una pregunta pendiente se reutiliza sin
+duplicarla; reintentar una respuesta terminada conserva la respuesta anterior
+y genera otro turno. Una respuesta que contiene exclusivamente las etiquetas
+«User Safety: safe Response Safety: safe» se trata como fallo del modelo.
+
+Validación: 94 pruebas del servidor y recorridos en Chromium de copiar,
+renombrar, ampliar, cambiar tema desde búsqueda, reintentar, crear página y
+conocimiento, selección y móvil. IA simulada; no se verificaron los servicios
+externos ni los permisos de los combos desde este entorno.

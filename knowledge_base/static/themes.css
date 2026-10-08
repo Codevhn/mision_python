@@ -455,3 +455,4 @@
 @media (max-width:1024px) { [data-style="aero"] #sidebar > .sidebar-space { height:auto; min-height:calc(100% - 56px); overflow:visible; } }
 @supports not (backdrop-filter:blur(1px)) { [data-style="aero"] #sidebar, [data-style="aero"] #sidebar > .sidebar-space { background:var(--bg-overlay) !important; } }
 [data-style="aero"] .ai-inline-bar { max-height:calc(100dvh - 16px); overflow-y:auto; max-width:calc(100vw - 16px); }
+[data-style="aero"] .assistant-area.assistant-expanded { border-radius:0; outline:none; }

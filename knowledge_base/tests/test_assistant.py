@@ -329,3 +329,42 @@ def test_selection_validation_does_not_write_message(auth_client):
         })
         assert response.status_code == 400
     assert auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'] == []
+
+
+def test_rename_is_persistent_and_preserves_messages(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    conversation = create(auth_client)
+    url = f'/api/assistant/conversations/{conversation}'
+    assert auth_client.patch(url, json={'title': '  Curso de Git  '}).json['title'] == 'Curso de Git'
+    for title in ['', 'x' * 101, 5]:
+        assert auth_client.patch(url, json={'title': title}).status_code == 400
+    response = auth_client.post(url + '/messages', json={'prompt': 'Explícame reset', 'provider': 'deepseek', 'model': 'deepseek-v4-pro', 'use_atlas': False})
+    assert 'event: done' in response.get_data(as_text=True)
+    saved = auth_client.get(url).json
+    assert saved['title'] == 'Curso de Git'
+    assert saved['messages'][1]['provider'] == 'deepseek'
+    assert saved['messages'][1]['model'] == 'deepseek-v4-pro'
+    assert len(saved['messages']) == 2
+
+
+def test_failed_answer_retry_does_not_duplicate_question(auth_client, monkeypatch):
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'test-key')
+    conversation = create(auth_client)
+    url = f'/api/assistant/conversations/{conversation}'
+    def invalid(*args, **kwargs):
+        yield 'User Safety: safe Response Safety: safe'
+        yield ('__done__', False, None)
+    monkeypatch.setattr(app_module, '_stream_call_ai', invalid)
+    body = {'prompt': 'Explícame subgrid', 'provider': 'deepseek', 'model': 'deepseek-v4-pro', 'use_atlas': False}
+    failed = auth_client.post(url + '/messages', json=body).get_data(as_text=True)
+    assert 'event: error' in failed
+    assert 'event: done' not in failed
+    assert len(auth_client.get(url).json['messages']) == 1
+    assert auth_client.post(url + '/messages', json={**body, 'prompt': 'Otra pregunta', 'retry': True}).status_code == 409
+    captured = []
+    setup_model(monkeypatch, captured)
+    good = auth_client.post(url + '/messages', json={**body, 'retry': True, 'model': 'deepseek-v4-flash'})
+    assert 'event: done' in good.get_data(as_text=True)
+    assert len(auth_client.get(url).json['messages']) == 2
+    assert captured[0][2]['model'] == 'deepseek-v4-flash'
