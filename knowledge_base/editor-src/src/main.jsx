@@ -274,6 +274,34 @@ updatePageBlock(blockId, title, pageId) {
       const target = ed.document.find((b) => b.id === blockId);
       if (target) ed.removeBlocks([target]);
     },
+    getInsertionTargets() {
+      const rows=[];
+      const text = content => Array.isArray(content) ? content.map(item=>item.type==='link'?text(item.content):(item.text||'')).join('') : '';
+      const visit = blocks => (blocks||[]).forEach(block=>{
+        const label=text(block.content).trim();
+        if(label && block.type!=='codeBlock') rows.push({block_id:block.id,text:label,type:block.type,level:block.props?.level||0});
+        visit(block.children);
+      });
+      visit(instanceRef.editor?.document);return rows;
+    },
+    getInsertionAnchor(query) {
+      if(!query?.trim() || !instanceRef.editor) return null;
+      const matches=api.getInsertionTargets().filter(row=>row.text.includes(query.trim()));
+      let cursor;
+      try { cursor=instanceRef.editor.getTextCursorPosition().block.id; } catch (_) {}
+      return matches.find(row=>row.block_id===cursor) || (matches.length===1?matches[0]:null);
+    },
+    insertMarkdownAtBlock(markdown, blockId) {
+      return whenReady().then(async()=>{
+        const editor=instanceRef.editor;
+        if(!editor || !api.getInsertionTargets().some(row=>row.block_id===blockId)) throw new Error('El concepto cambió o ya no existe. Selecciónalo de nuevo.');
+        const blocks=mdToBlocks(markdown);
+        if(!blocks.length) throw new Error('La respuesta no contiene texto para insertar.');
+        const inserted=await editor.insertBlocks(blocks,blockId,'after');
+        if(inserted?.[0]) editor.setTextCursorPosition(inserted[0].id,'start');
+        return true;
+      });
+    },
     // Insert generated markdown (Ask AI / inline AI results) as real editor
     // blocks immediately AFTER the block under the current cursor, instead
     // of appending a raw markdown string at the end of the document. Uses

@@ -178,6 +178,15 @@
       }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
         const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>{menu.open=false;handler();});options.append(button);
       });menu.append(options);actions.append(menu);article.append(actions);
+      if(!message.roadmap_draft){
+        const insert=document.createElement('button');insert.type='button';insert.className='assistant-insert-explanation';
+        insert.textContent='Insertar debajo del concepto';
+        insert.addEventListener('click',async()=>{
+          insert.disabled=true;
+          try{if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');}}
+          catch(error){status(error.message,true);}finally{insert.disabled=false;}
+        });article.append(insert);
+      }
       if(message.roadmap_draft){
         const apply=document.createElement('button');apply.type='button';apply.className='assistant-roadmap-apply';
         apply.textContent='Revisar y aplicar al curso';
@@ -399,13 +408,14 @@
   async function askSelection(text, action = null, source = null) {
     if (busy) { status('Espera a que termine la respuesta o detenla antes de cambiar la selección.', true); return; }
     const visible = source || window._getAssistantVisibleContext?.();
+    const insertionTarget=window._getAssistantInsertionTarget?.(text);
     await open();
     if (busy) return;
     if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
     clearSelection();
     if (text?.trim()) {
-      selectedFragment = {text, title: String(visible?.title || 'Texto seleccionado').slice(0,300)};
+      selectedFragment = {text, title: String(visible?.title || 'Texto seleccionado').slice(0,300),...(insertionTarget||{})};
       const strip = document.createElement('div'), details = document.createElement('details'), summary = document.createElement('summary'), quote = document.createElement('blockquote'), remove = document.createElement('button');
       strip.id = 'assistantSelection'; strip.className = 'assistant-selection';
       summary.textContent = `Selección · ${selectedFragment.title}`; quote.textContent = text;
@@ -475,12 +485,15 @@
     renderConversation();
     try { await refreshHistory(); } catch (error) { status(error.message, true); }
   }
+  document.addEventListener('pointerdown',event=>{
+    area.querySelectorAll('.assistant-response-menu[open]').forEach(menu=>{if(!menu.contains(event.target))menu.open=false;});
+  });
   el('assistantLauncher').addEventListener('click', open);
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented) return;
     if (event.key === 'Escape' && !document.querySelector('dialog[open]') && !area.classList.contains('hidden')) {
       if (document.querySelector('.ai-model-panel:not(.hidden)')) return;
-      const settings = area.querySelector('details[open]');
+      const settings = area.querySelector('.assistant-response-menu[open],.assistant-context-menu[open],.assistant-selection details[open]');
       if (settings) { settings.open = false; return; }
       close();
     }

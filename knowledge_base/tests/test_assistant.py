@@ -516,3 +516,19 @@ def test_legacy_pending_selection_can_be_retried_with_updated_instructions(auth_
     response = auth_client.post(route + '/messages', json={'prompt': 'Define', 'selection_context': selection, 'retry': True, 'use_atlas': False})
     assert 'event: done' in response.get_data(as_text=True)
     assert len(auth_client.get(route).json['messages']) == 2
+
+
+def test_selection_insertion_anchor_persists_for_editor_actions(auth_client, monkeypatch):
+    captured=[]
+    setup_model(monkeypatch,captured)
+    route='/api/assistant/conversations/'+create(auth_client)
+    selection={'text':'Definición y concepto central','title':'Agentes','entry_id':'agents','block_id':'block-1'}
+    response=auth_client.post(route+'/messages',json={'prompt':'Define el concepto','selection_context':selection,'use_atlas':False})
+    assert 'event: done' in response.get_data(as_text=True)
+    assert auth_client.get(route).json['messages'][0]['selection_context']==selection
+    assert "'Conclusión técnica'" in captured[0][0]
+    assert "'Definición formal'" in captured[0][0]
+    for key in ('entry_id','block_id'):
+        bad={**selection,key:[]}
+        assert auth_client.post(route+'/messages',json={'prompt':'Define','selection_context':bad}).status_code==400
+    assert len(auth_client.get(route).json['messages'])==2

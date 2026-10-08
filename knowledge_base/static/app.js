@@ -13326,3 +13326,52 @@ window._getAssistantVisibleContext = (selectedText = '') => {
   const names = {home:'Inicio',knowledge:'Conocimiento',courses:'Cursos',teamspace:'Team',pages:'Páginas'};
   return {type:'view',id:names[space] ? space : 'home',title:names[space] || 'Inicio'};
 };
+
+// Insert assistant explanations as native editor blocks under their concept.
+window._getAssistantInsertionTarget = text => {
+  if(window._getAssistantVisibleContext?.()?.type!=='entry' || !_inlineEditor) return null;
+  const anchor=_inlineEditor.getInsertionAnchor(text);
+  return {entry_id:currentEntryId,...(anchor?{block_id:anchor.block_id}:{})};
+};
+window._insertAssistantExplanation = async (markdown, selection) => {
+  if(!currentEntryId || !_inlineEditor || window._getAssistantVisibleContext?.()?.type!=='entry') throw new Error('Abre la lección o página donde quieres insertar la explicación.');
+  if(selection?.entry_id && selection.entry_id!==currentEntryId) throw new Error('Abre la lección de la selección original antes de insertar.');
+  const entryId=currentEntryId, editor=_inlineEditor;
+  let target=selection?.block_id && editor.getInsertionTargets().find(row=>row.block_id===selection.block_id);
+  if(selection?.block_id && !target){
+    const matches=editor.getInsertionTargets().filter(row=>row.text.includes(selection.text.trim()));
+    if(matches.length===1)target=matches[0];
+  }
+  if(selection?.block_id && (!target || !target.text.includes(selection.text.trim()))) throw new Error('El concepto seleccionado cambió. Selecciónalo de nuevo antes de insertar.');
+  if(!target){
+    const rows=editor.getInsertionTargets(), headings=rows.filter(row=>row.type==='heading');
+    const choices=headings.length?headings:rows;
+    if(!choices.length) throw new Error('Escribe un concepto o encabezado en el editor para indicar dónde insertar.');
+    const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
+    dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Insertar explicación</h2></header><div class="assistant-confirm-body"><p id="assistantInsertPage"></p><label for="assistantInsertTarget">Insertar debajo de</label><select id="assistantInsertTarget"></select></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="insert">Insertar</button></footer></form>';
+    dialog.querySelector('#assistantInsertPage').textContent=currentEntryMeta?.title||'Página abierta';
+    const select=dialog.querySelector('select');
+    choices.forEach(row=>{const option=document.createElement('option');option.value=row.block_id;option.textContent=row.text.slice(0,160);select.append(option)});
+    document.body.append(dialog);dialog.showModal();
+    const chosen=await new Promise(resolve=>dialog.addEventListener('close',()=>resolve(dialog.returnValue==='insert'?select.value:null),{once:true}));
+    dialog.remove();if(!chosen)return false;target=rows.find(row=>row.block_id===chosen);
+  }
+  if(currentEntryId!==entryId || editor!==_inlineEditor) throw new Error('La página abierta cambió. Vuelve a elegir el destino.');
+  let content=_sanitizeMarkdownForEditor(markdown).trim();
+  const first=content.match(/^#{1,6}\s+([^\n]+)\n*/);
+  if(first && first[1].trim().toLocaleLowerCase()===target.text.trim().toLocaleLowerCase()) content=content.slice(first[0].length);
+  if(target.type==='heading'){
+    // Preserve relative depth under the selected heading; never alter code.
+    let fenced=false;const levels=[];
+    content.split('\n').forEach(line=>{if(/^\s*(`{3,}|~{3,})/.test(line))fenced=!fenced;else if(!fenced){const match=line.match(/^(#{1,6})\s+/);if(match)levels.push(match[1].length)}});
+    const minimum=levels.length?Math.min(...levels):1;fenced=false;
+    content=content.split('\n').map(line=>{
+      if(/^\s*(`{3,}|~{3,})/.test(line)){fenced=!fenced;return line;}
+      return fenced?line:line.replace(/^(#{1,6})(\s+)/,(_,marks,gap)=>'#'.repeat(Math.min(4,Math.max(1,target.level+1+marks.length-minimum)))+gap);
+    }).join('\n');
+  }
+  await editor.insertMarkdownAtBlock(content,target.block_id);
+  _scheduleAutoSave(editor.getMarkdown());
+  document.getElementById('entryBody')?.querySelector(`[data-id="${CSS.escape(target.block_id)}"]`)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'center'});
+  return true;
+};

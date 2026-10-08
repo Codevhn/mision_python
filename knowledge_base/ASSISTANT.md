@@ -74,8 +74,29 @@ cada envío, con prioridad para la vista actual al cambiar de tema. Las respuest
 antiguas no se reescriben. El cumplimiento lingüístico depende del modelo; no se
 borran párrafos automáticamente mediante coincidencias de texto.
 
-Validación adicional: 119 pruebas de backend y Chromium con selección real,
+Validación adicional: 120 pruebas de backend y Chromium con selección real,
 consulta posterior, otra selección al final de un documento largo, contexto
 visible sin guardar, reintentos de mensajes antiguos y controles móviles. Las
 pruebas usan respuestas simuladas y comprueban las instrucciones y el contexto
 enviados; no acreditan el estilo de salida de un proveedor real.
+
+## Insertar una explicación en la lección
+
+Cada respuesta normal incluye «Insertar debajo del concepto», fuera del menú
+secundario. La selección conserva el identificador de la página y el bloque de
+origen. Insertar agrega bloques nativos de texto, títulos, listas, tablas y código,
+sin sustituir el concepto. Los títulos se ajustan bajo el nivel del destino y un
+título inicial idéntico al concepto no se duplica. El cambio se guarda mediante
+el autoguardado del editor y puede deshacerse con sus controles habituales.
+
+Cuando una respuesta antigua no tiene un bloque asociado, se elige el encabezado
+mediante un diálogo. No se inserta en otra página por accidente. Tras recargar,
+se recupera el concepto si su texto identifica un solo bloque; un destino que
+cambió o es ambiguo exige volver a seleccionarlo. El menú de respuesta se cierra
+al pulsar fuera y con Escape.
+
+Las instrucciones también prohíben cierres equivalentes, como «Conclusión
+técnica», y encabezados genéricos como «Definición formal». Una definición empieza
+por su contenido, sin anunciar su categoría. La verificación usa proveedor
+simulado: comprueba inserción, estructura, guardado, recuperación desde historial,
+elección de destino y cierre del menú; no certifica el estilo de un modelo externo.
