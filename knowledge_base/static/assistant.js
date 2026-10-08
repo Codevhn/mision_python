@@ -140,6 +140,19 @@
       }
     }
   }
+  function isStudySelection(message) {
+    if (message.role !== 'user' || !message.selection_context?.text) return false;
+    if (['explain', 'summarize', 'example'].includes(message.selection_action)) return true;
+    // Older quick actions were saved before selection_action was introduced.
+    const prompt = message.question || message.content || '';
+    return ['Define y desarrolla el concepto o tema seleccionado en el contexto de la lección,',
+      'Desarrolla el concepto o tema seleccionado en el contexto de la lección,',
+      'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales',
+      'Desarrolla un ejemplo aplicado del concepto o tema seleccionado,'].some(prefix => prompt.startsWith(prefix));
+  }
+  function visibleMessageText(message) {
+    return isStudySelection(message) ? message.selection_context.text : message.question || message.content;
+  }
   function bubble(message) {
     const article = document.createElement('article');
     article.className = `assistant-message assistant-message-${message.role}`;
@@ -149,7 +162,7 @@
     const content = document.createElement('div');
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
-    else content.textContent = message.question || message.content;
+    else content.textContent = visibleMessageText(message);
     if(message.role==='assistant' && message.roadmap_draft?.modules) formatRoadmap(content,message.roadmap_draft);
     content.querySelectorAll('table').forEach(table => {
       const scroll = document.createElement('div');
@@ -160,7 +173,7 @@
       table.before(scroll); scroll.appendChild(table);
     });
     article.append(label, content);
-    if (message.selection_context) {
+    if (message.selection_context && !isStudySelection(message)) {
       const detail = document.createElement('details'), heading = document.createElement('summary'), quote = document.createElement('blockquote');
       detail.className = 'assistant-selection-detail';
       heading.textContent = `Selección · ${message.selection_context.title || 'Texto seleccionado'}`;
@@ -177,7 +190,7 @@
       const options=document.createElement('div');options.className='assistant-response-options';
       [['Guardar como página',()=>saveResponse(message,'page')],['Guardar en Conocimiento',()=>saveResponse(message,'knowledge')],['Descargar Markdown',()=>{
         const url=URL.createObjectURL(new Blob([message.content],{type:'text/markdown;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='respuesta-atlas.md';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-      }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
+      }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${isStudySelection(m)?visibleMessageText(m):m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
         const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>{menu.open=false;handler();});options.append(button);
       });menu.append(options);actions.append(menu);article.append(actions);
       if(!message.roadmap_draft){
@@ -362,14 +375,17 @@
     try {
       if (!record) record = await api('/api/assistant/conversations', post({}));
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
-      if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection });
+      if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction });
       content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
         ...post({ prompt, retry:!!options.retry, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
-      if (selection && !options.retry) fragmentSent = true;
+      if (selection && !options.retry) {
+        fragmentSent = true;
+        if (options.selectionAction) el('assistantSelection')?.remove();
+      }
       const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
       while (true) {
         const chunk = await reader.read(); if (chunk.done) break;
