@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="/static/conceptmap.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/assistant.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/themes.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/reader.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/proofreading.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/blocknote/editor.bundle.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/codemirror/lib/codemirror.css" />
@@ -501,18 +502,31 @@
            pdf.js/epub.js vendorizados en /static/vendor, sin CDN. -->
       <div class="reader-shell hidden" id="libraryReaderView">
         <div class="reader-bar">
-          <div class="r-back" id="readerBackBtn">
+          <button type="button" class="r-back" id="readerBackBtn" title="Volver a Biblioteca">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg> Biblioteca
-          </div>
+          </button>
           <div class="r-title" id="readerTitle">—</div>
           <div class="r-tools">
-            <span id="readerTocBtn" title="Índice"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h8"/></svg></span>
-            <span id="readerBookmarkBtn" title="Marcador"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-2.6-4 2.6z"/></svg></span>
-            <span id="readerZoomOutBtn" class="hidden" title="Reducir zoom">−</span>
+            <button type="button" id="readerTocBtn" title="Índice" aria-label="Mostrar índice"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h8"/></svg></button>
+            <button type="button" id="readerBookmarkBtn" title="Marcador" aria-label="Agregar marcador"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-2.6-4 2.6z"/></svg></button>
+            <button type="button" id="readerZoomOutBtn" class="hidden" title="Reducir zoom" aria-label="Reducir zoom">−</button>
+            <button type="button" id="readerFitBtn" class="hidden" title="Ajustar PDF al ancho">Ajustar</button>
             <span id="readerZoomLabel" class="hidden">100%</span>
-            <span id="readerZoomInBtn" class="hidden" title="Aumentar zoom">+</span>
-            <span id="readerFontBtn" title="Tamaño de letra" style="font-weight:700;">Aa</span>
+            <button type="button" id="readerZoomInBtn" class="hidden" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
+            <button type="button" id="readerFontBtn" title="Tamaño de letra" style="font-weight:700;" aria-label="Ajustes de lectura">Aa</button>
+            <button type="button" id="readerFocusBtn" aria-label="Activar lectura sin distracciones" aria-pressed="false" title="Lectura sin distracciones">⛶</button>
+            <button type="button" id="readerAssistantBtn" title="Abrir asistente con este libro">✦ <span>Asistente</span></button>
           </div>
+        </div>
+        <div id="readerSettings" class="reader-settings hidden" role="region" aria-label="Ajustes de lectura">
+          <div class="reader-settings-heading"><strong>Lectura a tu gusto</strong><button type="button" id="readerSettingsClose" aria-label="Cerrar ajustes">×</button></div>
+          <label>Apariencia<select id="readerAppearance"><option value="auto">Seguir tema de Atlas</option><option value="paper">Papel claro</option><option value="sepia">Sepia</option><option value="night">Noche</option></select></label>
+          <div id="readerEpubSettings">
+            <label>Tamaño de texto <output id="readerFontValue">100%</output><input id="readerFontSize" type="range" min="90" max="160" step="5" value="100"></label>
+            <label>Interlineado<select id="readerLineHeight"><option value="1.6">Compacto</option><option value="1.85">Cómodo</option><option value="2.1">Amplio</option></select></label>
+            <label>Distribución<select id="readerSpread"><option value="none">Una página</option><option value="auto">Dos páginas en pantallas amplias</option></select></label>
+          </div>
+          <label id="readerPdfSettings" class="hidden"><input id="readerDimPdf" type="checkbox"> Atenuar el papel del PDF</label>
         </div>
         <div class="scan-banner hidden" id="readerScanBanner">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5 15 14H1z"/><path d="M8 6.5v3.2M8 12v.1"/></svg>
@@ -523,13 +537,13 @@
           <aside class="reader-toc-panel hidden" id="readerTocPanel"></aside>
           <div class="reader-page" id="readerPage"></div>
         </div>
-        <div class="reader-footer">
-          <button class="r-page-btn" id="readerPrevBtn" title="Anterior">‹</button>
-          <span id="readerLocLabel">—</span>
+        <div class="reader-footer"><nav class="reader-navigation" aria-label="Navegación del libro">
+          <button class="r-page-btn" id="readerPrevBtn" title="Página anterior (←)" aria-label="Página anterior">‹</button>
+          <div class="reader-location"><span id="readerLocLabel" aria-live="polite">—</span>
           <div class="r-progress-bar"><div class="r-progress-fill" id="readerProgressFill" style="width:0%"></div></div>
-          <span id="readerPctLabel">0%</span>
-          <button class="r-page-btn" id="readerNextBtn" title="Siguiente">›</button>
-        </div>
+          </div><span id="readerPctLabel">0%</span>
+          <button class="r-page-btn" id="readerNextBtn" title="Página siguiente (→)" aria-label="Página siguiente">›</button>
+        </nav></div>
       </div>
 
       <!-- Entry cover banner (outside entry-view for full-width) -->
