@@ -163,3 +163,24 @@ búsqueda. Recorrido en Chromium con tablero → página → mapa → listado de
 → Biblioteca manteniendo el asistente abierto; comprobación de las solicitudes
 reales y de desactivar ambos contextos, cerrar y reabrir el asistente. Datos y
 modelo de prueba aislados.
+
+### Ortografía y contraste en superficies claras
+
+El menú ortográfico separa la cabecera «Ortografía» y la palabra original,
+las sugerencias bajo «Reemplazar por» y las acciones del párrafo mediante un
+separador. Las sugerencias conservan nombres accesibles y corrección/deshacer.
+
+Los botones laterales de BlockNote y sus SVG reciben colores de la paleta Aero;
+los valores originales del editor claro dejaban los iconos casi blancos. El
+editor reserva espacio para que ambos botones se vean completos en escritorio.
+Aero azul usa fondos claros en las etiquetas sobre el escritorio azul; los
+textos secundarios y los indicadores de Inicio tienen colores más contrastados.
+El texto tenue de las superficies claras también se oscurece.
+
+Validación: compilación del editor y sus cuatro suites, recorrido ortográfico
+en Chromium (corrección individual, párrafo, deshacer, exclusión de código y
+protección contra cambios concurrentes). Comprobación en los tres temas de los
+iconos SVG, sugerencias y grupos del menú; contraste mínimo 3:1 en los iconos
+sobre la superficie del editor y 4,5:1 en sugerencias y etiquetas de dominio
+de Aero azul. Esta comprobación cubre esos componentes, no certifica toda la
+aplicación.

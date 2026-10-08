@@ -468,6 +468,50 @@
 .atlas-spelling-popover strong { display:block; padding:7px 9px; overflow-wrap:anywhere; }
 .atlas-spelling-popover button { display:block; width:100%; padding:8px 9px; text-align:left; background:none; color:var(--text); border-radius:3px; }
 .atlas-spelling-popover button:is(:hover,:focus-visible) { background:var(--aero-nav-hover); outline:1px solid var(--border); }
+.atlas-spelling-heading { padding:8px 10px; background:var(--aero-toolbar,var(--bg-elevated)); border-bottom:1px solid var(--border); margin:-6px -6px 5px; }
+.atlas-spelling-heading > span, .atlas-spelling-section-label { display:block; color:var(--text-muted); font-size:.72rem; font-weight:500; }
+.atlas-spelling-heading strong { padding:3px 0 0; font-size:.9rem; color:var(--text); }
+.atlas-spelling-section-label { padding:6px 9px 4px; }
+.atlas-spelling-suggestions button { font-weight:600; color:var(--text); padding-left:24px; position:relative; }
+.atlas-spelling-suggestions button::before { content:'→'; position:absolute; left:9px; color:var(--accent); }
+.atlas-spelling-actions { border-top:1px solid var(--border); margin-top:7px; padding-top:5px; }
+.atlas-spelling-popover button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+
+/* BlockNote's light defaults use nearly white side-menu icons. Keep the
+   native hover visibility, but give both editing controls readable ink. */
+[data-style="aero"] .bn-container {
+ --bn-colors-side-menu:var(--text-muted);
+ --bn-colors-menu-text:var(--text);
+ --bn-colors-menu-background:var(--bg-overlay);
+ --bn-colors-hovered-text:var(--text);
+ --bn-colors-hovered-background:var(--layer-2);
+}
+[data-style="aero"] .bn-side-menu button {
+ color:var(--text-muted) !important; background:var(--aero-button);
+ border:1px solid var(--aero-edge); border-radius:4px; box-shadow:inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] .bn-side-menu button:is(:hover,:focus-visible) { color:var(--text) !important; background:var(--aero-nav-hover); border-color:var(--accent); }
+[data-style="aero"] .bn-side-menu button svg { color:var(--text-muted) !important; }
+[data-style="aero"] .bn-side-menu button:is(:hover,:focus-visible) svg { color:var(--text) !important; }
+[data-style="aero"] .bn-side-menu button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+@media (min-width:769px) {
+ [data-style="aero"] .entry-body:has(.bn-editor) { padding-left:56px !important; }
+}
+
+/* Blue has a dark desktop and light reading surfaces. Labels on the desktop
+   need their own backing instead of inheriting light-surface muted text. */
+:root[data-style="aero"]:not([data-variant="night"]) { --text-muted:#29465d; --text-faint:#365269; }
+[data-style="aero"][data-variant="blue"] :is(.home-section-label,.hdr-ring-label) {
+ color:var(--text) !important; background:var(--aero-content); border-radius:4px;
+ padding:4px 7px; width:fit-content; opacity:1;
+}
+[data-style="aero"][data-variant="blue"] .hdr-ring-label { padding:0 5px; }
+[data-style="aero"]:not([data-variant="night"]) :is(.hsf-time,.hsc-time,.hsf-module,.home-stat-label) { color:#203e55; opacity:1; }
+[data-style="aero"]:not([data-variant="night"]) :is(.hsf-course,.hsc-course,.hsf-cta) { color:#07436b; }
+[data-style="aero"]:not([data-variant="night"]) .home-stat[data-stat="entries"] .home-stat-num { color:#07548c; }
+[data-style="aero"]:not([data-variant="night"]) .home-stat[data-stat="courses"] .home-stat-num { color:#086850; }
+[data-style="aero"]:not([data-variant="night"]) .home-stat[data-stat="categories"] .home-stat-num { color:#6540a8; }
+[data-style="aero"]:not([data-variant="night"]) .home-stat[data-stat="starred"] .home-stat-num { color:#805000; }
 .atlas-spelling-review { width:min(560px,calc(100vw - 24px)); }
 .atlas-spelling-review .assistant-confirm-body { max-height:65dvh; overflow:auto; }
 .atlas-spelling-proposals label { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:12px; margin:10px 0; font-size:.85rem; }

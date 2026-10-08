@@ -89,13 +89,18 @@ export function installInlineSpelling(tip) {
     const issue=issues[Number(node.dataset.spellingIndex)];if(!issue||!valid(issue))return;
     if(popup?.dataset.from===String(issue.from)){clearTimeout(closeTimer);return;}
     closePopup();popup=document.createElement('div');popup.className='atlas-spelling-popover';popup.dataset.from=String(issue.from);popup.setAttribute('role','group');popup.setAttribute('aria-label','Sugerencias ortográficas');
-    const heading=document.createElement('strong');heading.textContent='Corregir «'+issue.word+'»';popup.append(heading);
-    function button(label,handler){const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>{try{handler();}catch(error){window.showToast?.(error.message,'error');closePopup();}});popup.append(b);}
+    const heading=document.createElement('header');heading.className='atlas-spelling-heading';
+    const title=document.createElement('span');title.textContent='Ortografía';
+    const word=document.createElement('strong');word.textContent='«'+issue.word+'»';heading.append(title,word);popup.append(heading);
+    const suggestions=document.createElement('div');suggestions.className='atlas-spelling-suggestions';
+    const label=document.createElement('div');label.className='atlas-spelling-section-label';label.textContent='Reemplazar por';suggestions.append(label);popup.append(suggestions);
+    function button(label,handler,parent=popup){const b=document.createElement('button');b.type='button';b.textContent=label;b.setAttribute('aria-label',label);b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>{try{handler();}catch(error){window.showToast?.(error.message,'error');closePopup();}});parent.append(b);}
     const proposals=suggestionsFor(spell,issue.word);
-    proposals.forEach(replacement=>button(replacement,()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');apply([{...issue,text:replacement}],scannedDoc);closePopup();}));
-    if(!proposals.length){const empty=document.createElement('p');empty.textContent='Sin sugerencias. Puedes editar la palabra o ignorarla.';popup.append(empty);}
-    button('Corregir párrafo…',()=>reviewParagraph(issue));
-    button('Ignorar esta palabra',()=>{ignored.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_ignored',JSON.stringify([...ignored]));}catch{}closePopup();check();});
+    proposals.forEach(replacement=>button(replacement,()=>{if(!valid(issue))throw Error('El texto cambió. Revisa la palabra de nuevo.');apply([{...issue,text:replacement}],scannedDoc);closePopup();},suggestions));
+    if(!proposals.length){const empty=document.createElement('p');empty.textContent='Sin sugerencias. Puedes editar la palabra o ignorarla.';suggestions.append(empty);}
+    const actions=document.createElement('div');actions.className='atlas-spelling-actions';popup.append(actions);
+    button('Corregir párrafo…',()=>reviewParagraph(issue),actions);
+    button('Ignorar esta palabra',()=>{ignored.add(issue.word.toLocaleLowerCase('es'));try{localStorage.setItem('atlas_spelling_ignored',JSON.stringify([...ignored]));}catch{}closePopup();check();},actions);
     popup.addEventListener('mouseenter',()=>clearTimeout(closeTimer));popup.addEventListener('mouseleave',()=>{closeTimer=setTimeout(closePopup,250);});
     document.body.append(popup);const rect=node.getBoundingClientRect(),box=popup.getBoundingClientRect();
     popup.style.left=Math.max(8,Math.min(rect.left,innerWidth-box.width-8))+'px';popup.style.top=(rect.bottom+box.height+8<innerHeight?rect.bottom+6:Math.max(8,rect.top-box.height-6))+'px';
