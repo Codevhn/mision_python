@@ -712,6 +712,16 @@
 .theme-options button[aria-pressed="true"] strong::after { content:' · Actual'; color:var(--accent); font-size:.68rem; }
 .assistant-roadmap-progress { padding:12px 14px; margin:12px 18px; border:1px solid var(--border); border-radius:5px; background:var(--aero-toolbar); color:var(--text-muted); font-size:.82rem; line-height:1.5; }
 .assistant-roadmap-progress-error { color:var(--text); border-color:var(--accent); }
+.assistant-roadmap-progress { position:relative; overflow:hidden; padding-bottom:27px; }
+.assistant-roadmap-progress::before { content:''; position:absolute; left:14px; right:14px; bottom:9px; height:8px; border:1px solid var(--border); border-radius:3px; background:linear-gradient(#05190b45,#163b1e30); box-shadow:inset 0 1px 2px #0003,0 1px 0 var(--aero-inset); }
+.assistant-roadmap-progress::after { content:''; position:absolute; left:14px; right:14px; bottom:10px; height:6px; border-radius:2px; background:linear-gradient(100deg,transparent,#aaffbd80 42%,#efffe7b3 50%,#8de86555 60%,transparent),linear-gradient(#b9f891,#48cc39 45%,#0a951a 46%,#6fdc49); background-size:34% 100%,34% 100%; background-repeat:no-repeat; filter:drop-shadow(0 0 3px #63ed6b66); animation:atlas-transfer-glow 1.9s linear infinite; }
+@keyframes atlas-transfer-glow { from { background-position:-60% 0,-60% 0; } to { background-position:160% 0,160% 0; } }
+.assistant-roadmap-progress-error { padding-bottom:12px; }
+.assistant-roadmap-progress-error::before,.assistant-roadmap-progress-error::after { display:none; animation:none; }
+.assistant-roadmap-raw { margin:12px 18px; color:var(--text-muted); font-size:.82rem; }
+.assistant-roadmap-raw summary { cursor:pointer; padding:8px 0; }
+.assistant-roadmap-raw pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:260px; overflow:auto; padding:12px; background:var(--bg-code); color:var(--text); border:1px solid var(--border); border-radius:4px; }
+@media(prefers-reduced-motion:reduce) { .assistant-roadmap-progress::after { animation:none; background-position:50% 0,50% 0; } }
 .theme-options strong { font-size:.82rem; }
 .theme-options small { font-size:.7rem; line-height:1.4; }
 .theme-swatch { position:relative; width:66px; height:52px; flex-shrink:0; border-radius:5px; overflow:hidden; }

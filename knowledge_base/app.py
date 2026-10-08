@@ -3821,6 +3821,67 @@ def _ensure_numbered_modules(modules):
     return modules
 
 
+def _parse_generated_course_roadmap(content):
+    """Accept common outline shapes without inventing missing lessons."""
+    if not isinstance(content, str) or not content.strip():
+        return []
+    text = content.strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.S)
+    json_text = fenced.group(1) if fenced else text
+    try:
+        document = json.loads(json_text)
+    except (ValueError, TypeError):
+        document = None
+    if isinstance(document, dict):
+        document = document.get("modules", document.get("modulos"))
+    if isinstance(document, list):
+        modules = []
+        for module in document:
+            if not isinstance(module, dict):
+                return []
+            title = module.get("title", module.get("titulo"))
+            lessons = module.get("lessons", module.get("lecciones"))
+            if not isinstance(title, str) or not title.strip() or not isinstance(lessons, list) or not lessons:
+                return []
+            rows = []
+            for lesson in lessons:
+                if isinstance(lesson, str):
+                    lesson = {"title": lesson}
+                if not isinstance(lesson, dict):
+                    return []
+                label = lesson.get("title", lesson.get("titulo"))
+                body = lesson.get("content", "")
+                topics = lesson.get("subtopics", lesson.get("subtemas", []))
+                if not isinstance(label, str) or not label.strip() or not isinstance(body, str):
+                    return []
+                if not isinstance(topics, list) or any(not isinstance(t, str) for t in topics):
+                    return []
+                rows.append({"title": label.strip(), "content": body.strip() or "\n\n".join("## " + t.strip() for t in topics if t.strip())})
+            modules.append({"title": title.strip(), "lessons": rows})
+        return modules
+
+    lines = re.sub(r"(?m)^ {1,3}(?=#)", "", text).replace("\r\n", "\n").split("\n")
+    # Normalize explicit module labels before parsing: otherwise bold modules
+    # with heading-style lessons would collapse into one default module.
+    outline = []
+    in_module = False
+    for line in lines:
+        heading = re.match(r"^\s*(#{1,6})\s+", line)
+        label = re.sub(r"^\s*#{1,6}\s+", "", line)
+        label = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)?", "", label).strip().strip("*").strip()
+        if re.match(r"(?i)^m[oó]dulo\s+\d+\b", label) and (not heading or len(heading[1]) <= 2):
+            outline.append("## " + label)
+            in_module = True
+        elif in_module and re.match(r"(?i)^(?:lecci[oó]n\s+)?\d+\.\d+(?![\d.])\s*[:.)-]?\s+\S", label) and (not heading or len(heading[1]) <= 3):
+            outline.append("### " + label)
+        else:
+            outline.append(line)
+            if heading and len(heading[1]) == 2:
+                in_module = True
+    modules = _parse_headings_at_levels(outline, 2, 3)
+    return modules or _parse_canonical_course_md("\n".join(outline))
+
+
 @app.route("/api/courses/<course_id>/generate_roadmap", methods=["POST"])
 def generate_course_roadmap(course_id):
     data = request.json or {}
@@ -3862,24 +3923,18 @@ def generate_course_roadmap(course_id):
     content, err = _call_ai_with_fallback(
         system, user_msg, max_tokens=depth_cfg["max_tokens"],
         provider=data.get("provider"), model=data.get("model"),
+        content_validator=_parse_generated_course_roadmap,
     )
     if err:
-        return jsonify({"error": f"No se pudo generar el roadmap: {err}"}), 502
+        return jsonify({"error": f"No se pudo generar el roadmap: {err}",
+                        "raw_response": (content or "")[:30000]}), 502
 
-    # The prompt mandates an exact shape (module='##', lesson='###',
-    # subtopic='####'), so unlike the paste-import path there's no real
-    # ambiguity to guess at — parsing directly at (2, 3) avoids the
-    # multi-candidate heuristic in _parse_canonical_course_md potentially
-    # picking (2, 4) instead (subtopics outnumbering lessons would make
-    # that candidate "win" on raw count, misreading every subtopic as its
-    # own lesson). Only falls back to guessing if the model deviated from
-    # the mandated shape badly enough that (2, 3) found nothing at all.
-    lines = content.replace("\r\n", "\n").split("\n")
-    modules = _parse_headings_at_levels(lines, 2, 3)
+    # Preserve canonical lesson/subtopic levels while also accepting
+    # structured JSON and explicit numbered outlines from other models.
+    modules = _parse_generated_course_roadmap(content)
     if not modules:
-        modules = _parse_canonical_course_md(content)
-    if not modules:
-        return jsonify({"error": "La IA no devolvió un formato reconocible. Intenta de nuevo o ajusta el tema."}), 502
+        return jsonify({"error": "El modelo no devolvió módulos y lecciones utilizables. Prueba con otro modelo; tus opciones se conservan.",
+                        "raw_response": (content or "")[:30000]}), 502
 
     _ensure_numbered_modules(modules)
     _flag_existing_duplicates(modules, course_id)
@@ -5410,15 +5465,16 @@ def _list_available_ai_models():
 
 _AI_FALLBACK_MAX_ATTEMPTS = 6
 
-def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False):
+def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, provider=None, model=None, fail_on_truncation=False, content_validator=None):
     """Like _call_ai, but a single failure (rate limit, a free-tier model
     being temporarily unavailable, or — with fail_on_truncation=True — a
     response cut off before it finished) isn't enough to give up — tries the
     caller's preferred provider/model first, then falls through other
     configured provider/model combos (capped at _AI_FALLBACK_MAX_ATTEMPTS, to
     bound worst-case latency) before reporting failure. Returns (content,
-    None) on the first success, or (None, error_message) once every attempt
-    tried has failed."""
+    None) on the first usable success. With a content validator, failure
+    preserves the last unusable response alongside the error for inspection;
+    otherwise failure returns (None, error_message)."""
     attempts = []
     if provider and model:
         attempts.append((provider, model))
@@ -5430,18 +5486,23 @@ def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, p
     attempts = attempts[:_AI_FALLBACK_MAX_ATTEMPTS]
 
     last_error = "Error desconocido de la IA"
+    last_unusable = None
     for pid, mid in attempts:
         content, err = _call_ai(system, user_msg, max_tokens=max_tokens, json_mode=json_mode, provider=pid, model=mid, fail_on_truncation=fail_on_truncation)
         if not err:
-            return content, None
+            if content_validator is None or content_validator(content):
+                return content, None
+            last_unusable = content
+            last_error = "El modelo respondió sin módulos y lecciones utilizables. Prueba con otro modelo; tus opciones se conservan."
+            continue
         resp, _status = err
         try:
             last_error = resp.get_json().get("error", last_error)
         except Exception:
             pass
     if len(attempts) > 1:
-        return None, f"Se probaron {len(attempts)} modelos y todos fallaron. Último error: {last_error}"
-    return None, last_error
+        return last_unusable, f"Se probaron {len(attempts)} modelos y todos fallaron. Último error: {last_error}"
+    return last_unusable, last_error
 
 
 _MINDMAP_SHORTEN_PROMPT = (

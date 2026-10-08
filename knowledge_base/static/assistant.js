@@ -68,7 +68,11 @@
   async function api(url, init) {
     const response = await fetch(url, init);
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    if (!response.ok) {
+      const error = new Error(data.error || `Error HTTP ${response.status}`);
+      error.rawResponse = typeof data.raw_response === 'string' ? data.raw_response : '';
+      throw error;
+    }
     return data;
   }
   const post = body => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -279,7 +283,14 @@
       status('Propuesta lista. Puedes revisarla y aplicarla al curso.');
     }catch(error){
       status(error.name==='AbortError'?'Generación detenida.':error.message,true);
-      if(progress){progress.textContent=error.name==='AbortError'?'Generación detenida. Puedes reintentar con las mismas opciones.':`No se pudo generar el roadmap. ${error.message}`;progress.classList.add('assistant-roadmap-progress-error');}
+      if(progress){progress.textContent=error.name==='AbortError'?'Generación detenida. Puedes reintentar con las mismas opciones.':(/^No se pudo generar el roadmap/i.test(error.message)?error.message:`No se pudo generar el roadmap. ${error.message}`);progress.classList.add('assistant-roadmap-progress-error');}
+      if(error.rawResponse){
+        const details=document.createElement('details');details.className='assistant-roadmap-raw';
+        const summary=document.createElement('summary');summary.textContent='Ver respuesta recibida del modelo';
+        const raw=document.createElement('pre');raw.textContent=error.rawResponse;
+        details.append(summary,raw,actionButton('Copiar respuesta recibida','copy',()=>copyText(error.rawResponse)));
+        el('assistantTranscript').append(details);
+      }
       const retry=actionButton('Reintentar roadmap con el modelo seleccionado','retry',()=>generateRoadmap(courseId,{...options,provider:choice?.provider,model:choice?.model},true));
       retry.classList.add('assistant-roadmap-retry');el('assistantTranscript').append(retry);
     }finally{setBusy(false);controller=null;}
