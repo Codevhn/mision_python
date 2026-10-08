@@ -2441,6 +2441,7 @@ async function loadEntry(id, opts = {}) {
   $("welcome").classList.add("hidden");
   _setHomeAmbient(false);
   $("kanbanArea").classList.add("hidden");
+  $("diagramArea")?.classList.add("hidden");
   $("entryView").classList.remove("hidden");
   if ($("ctxBar")) $("ctxBar").classList.remove("hidden");
 
@@ -6582,14 +6583,14 @@ function setSidebarVisible(visible) {
 })();
 
 (function() {
-  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'conceptmaps', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
+  const SPACES = ['knowledge', 'courses', 'boards', 'mindmaps', 'conceptmaps', 'diagrams', 'teamspace', 'pages', 'graph', 'radar', 'practice', 'quiz'];
 
   // practice/quiz have no matching #space* panel (their own controls live in
   // .practice-rail, inside the content area) — the floating #sidebar must
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library', 'diagrams'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6678,6 +6679,7 @@ function setSidebarVisible(visible) {
     if (kanbanArea)     kanbanArea.classList.add('hidden');
     if (mindmapArea)    mindmapArea.classList.add('hidden');
     if (conceptMapArea) conceptMapArea.classList.add('hidden');
+    document.getElementById('diagramArea')?.classList.add('hidden');
     if (entryView)      entryView.classList.add('hidden');
     if (entryCover)     entryCover.classList.add('hidden');
     if (entryAddCover)  entryAddCover.classList.add('hidden');
@@ -6723,6 +6725,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'mindmaps') {
       // Land directly on the prompt-first screen — no intermediate empty state
       if (window.MindmapApp) targetMapId ? window.MindmapApp.showMap(targetMapId) : window.MindmapApp.showList();
+    } else if (space === 'diagrams') {
+      document.getElementById('diagramArea')?.classList.remove('hidden');
+      window.DiagramApp?.showList();
     } else if (space === 'conceptmaps') {
       if (window.ConceptMapApp) targetMapId ? window.ConceptMapApp.showMap(targetMapId) : window.ConceptMapApp.showList();
     } else if (space === 'practice') {
@@ -13412,7 +13417,11 @@ window._getAssistantVisibleContext = (selectedText = '') => {
     const map = window.ConceptMapApp?.getAssistantContext?.();
     if (map) return map;
   }
-  const views = {kanbanArea:'Tableros',mindmapArea:'Mapas Mentales',conceptMapArea:'Mapas Conceptuales',
+  if (visible('diagramArea')) {
+    const diagram = window.DiagramApp?.getAssistantContext?.();
+    if (diagram) return diagram;
+  }
+  const views = {diagramArea:'Diagramas',kanbanArea:'Tableros',mindmapArea:'Mapas Mentales',conceptMapArea:'Mapas Conceptuales',
     libraryReaderView:'Lector de Biblioteca',libraryView:'Biblioteca',radarView:'Radar Tech',graphView:'Grafo',
     courseView:'Cursos',practiceView:'Práctica',quizView:'Quiz',labView:'Centro de Práctica'};
   for (const [id,title] of Object.entries(views)) {

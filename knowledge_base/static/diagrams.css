@@ -1,0 +1,57 @@
+.diagram-area {padding:20px;min-width:0;color:var(--text)}
+.dg-header,.dg-toolbar,.dg-buttons {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dg-header {justify-content:space-between;margin-bottom:16px}
+.dg-header h1 {font-size:1.5rem;margin:0}
+.diagram-area button,.dg-card {border:1px solid var(--aero-edge,var(--border));background:var(--aero-button,var(--bg-elevated));color:var(--text);border-radius:5px;padding:8px 11px;cursor:pointer;font:inherit}
+.diagram-area button:hover {filter:brightness(1.15)}
+.diagram-area button:disabled {opacity:.45;cursor:default}
+.diagram-area :is(button,input,select,textarea):focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+.diagram-area :is(input,select,textarea) {background:var(--bg-elevated,var(--layer-2));color:var(--text);border:1px solid var(--border);border-radius:5px;padding:8px;font:inherit;min-width:0;max-width:100%;box-sizing:border-box}
+.diagram-area option {background:var(--bg-elevated);color:var(--text)}
+.dg-list {display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.dg-card {text-align:left;display:flex;flex-direction:column;gap:8px;min-height:100px;overflow-wrap:anywhere}
+.dg-muted {color:var(--text-muted);font-size:.85rem}
+.dg-form {max-width:760px;margin:24px auto;padding:24px;border:1px solid var(--border);border-radius:8px;background:var(--aero-glass,var(--bg-elevated))}
+.dg-form label,.dg-inspector label,.dg-settings label {display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.dg-form textarea {min-height:85px}
+.dg-config-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.dg-layout {display:grid;grid-template-columns:160px minmax(250px,1fr) 310px;gap:12px;align-items:start}
+.dg-panel {border:1px solid var(--border);border-radius:7px;background:var(--aero-glass,var(--bg-elevated));padding:12px;min-width:0}
+.dg-panel h2 {font-size:1rem;margin:0 0 12px}
+.dg-palette {display:flex;flex-direction:column;gap:6px}
+.dg-palette button {text-align:left}
+.dg-canvas {height:520px;width:100%;display:block;touch-action:none;background:radial-gradient(circle,var(--border) .6px,transparent .8px) 0 0/20px 20px;border:1px solid var(--border);border-radius:7px}
+:is(.dg-canvas,.dg-proposal-canvas) .dg-node {cursor:grab;fill:var(--layer-2,var(--bg-elevated));stroke:var(--text-muted);stroke-width:1.5}
+.dg-canvas .dg-selected {stroke:var(--accent);stroke-width:3}
+:is(.dg-canvas,.dg-proposal-canvas) text {fill:var(--text);font:13px system-ui,sans-serif;stroke:none;pointer-events:none}
+:is(.dg-canvas,.dg-proposal-canvas) .dg-edge {stroke:var(--text-muted);fill:none;stroke-width:1.8;cursor:pointer}
+.dg-canvas .dg-hit {stroke:transparent;stroke-width:16;fill:none;cursor:pointer}
+:is(.dg-canvas,.dg-proposal-canvas) marker path {stroke:var(--text-muted);fill:var(--layer-2,var(--bg-elevated))}
+:is(.dg-canvas,.dg-proposal-canvas) marker .dg-filled {fill:var(--text-muted)}
+:is(.dg-canvas,.dg-proposal-canvas) .dg-edge-label {paint-order:stroke;stroke:var(--bg-elevated,var(--layer-1));stroke-width:5px}
+.dg-toolbar {margin-bottom:10px}
+.dg-inspector {margin-top:12px}
+.dg-inspector textarea {min-height:80px;width:100%}
+.dg-mentor-log {max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:12px;margin:12px 0;scrollbar-width:thin}
+.dg-message {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.dg-message-user {padding:9px;border:1px solid var(--border);border-radius:6px;background:var(--aero-button,var(--bg-elevated))}
+.dg-question {margin-top:8px;font-weight:600}
+.dg-mentor textarea {width:100%;min-height:74px;resize:vertical}
+.dg-proposal {border:1px solid var(--accent);border-radius:6px;padding:10px;margin:12px 0}
+.dg-proposal p {font-size:.88rem;line-height:1.45}
+.dg-preview {max-height:210px;overflow:auto;font-size:.8rem;white-space:pre-wrap;margin-bottom:8px}
+.dg-status {min-height:24px;margin:8px 0;font-size:.85rem;color:var(--text-muted)}
+.dg-error {color:var(--accent)}
+.dg-warnings {font-size:.85rem;line-height:1.5}
+.dg-warnings ul {padding-left:20px}
+.dg-settings {margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:6px}
+.dg-spacer {flex:1}
+.dg-layout .practice-cselect {width:100%}
+.dg-form details>summary,.dg-panel details>summary {cursor:pointer;padding:8px 0}
+@media(min-width:1500px){.dg-layout{grid-template-columns:175px minmax(250px,1fr) 360px}.dg-canvas{height:620px}}
+@media(max-width:1100px){.dg-layout{grid-template-columns:140px minmax(250px,1fr)}.dg-mentor{grid-column:1/-1}.dg-mentor-log{max-height:280px}}
+@media(max-width:650px){.diagram-area{padding:10px}.dg-layout{display:flex;flex-direction:column}.dg-layout>*{width:100%;box-sizing:border-box}.dg-palette{flex-direction:row;flex-wrap:wrap}.dg-canvas{height:400px}.dg-config-grid{grid-template-columns:1fr}.dg-form{padding:16px}.dg-header h1{font-size:1.2rem}}
+
+.dg-proposal-canvas {width:100%;height:220px;pointer-events:none;border:1px solid var(--border);border-radius:5px;margin:8px 0;background:var(--layer-1)}
+
+.dg-canvas .dg-selected {stroke:var(--accent);stroke-width:3}

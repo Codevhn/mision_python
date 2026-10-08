@@ -8534,6 +8534,9 @@ def library_ocr_status(book_id):
     return jsonify(_OCR_JOBS.get(book_id, {"status": "idle", "progress": 0, "error": None}))
 
 
+from diagrams import register_diagrams
+register_diagrams(app, globals())
+
 from assistant import register_assistant
 register_assistant(app, globals())
 from proofreading import register_proofreading

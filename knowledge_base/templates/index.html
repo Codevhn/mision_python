@@ -113,6 +113,9 @@
           <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#conceptmaps"></use></svg></span>
           <span class="ab-label">Mapas Conceptuales</span>
         </button>
+        <button class="ab-item" id="abDiagrams" data-space="diagrams" title="Diagramas">
+          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="/static/aero-icons.svg#diagrams"></use></svg></span><span class="ab-label">Diagramas</span>
+        </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
           <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#graph"></use></svg></span>
           <span class="ab-label">Grafo</span>
@@ -177,6 +180,7 @@
         <button class="msn-item" data-space="teamspace"><span class="msn-icon">👥</span><span class="msn-label">Teamspace</span></button>
         <button class="msn-item" data-space="pages"><span class="msn-icon">📄</span><span class="msn-label">Páginas</span></button>
         <button class="msn-item" data-space="mindmaps"><span class="msn-icon">✺</span><span class="msn-label">Mapas Mentales</span></button>
+        <button class="msn-item" data-space="diagrams"><span class="msn-icon">▱</span><span class="msn-label">Diagramas</span></button>
         <button class="msn-item" data-space="conceptmaps"><span class="msn-icon">◈</span><span class="msn-label">Mapas Conceptuales</span></button>
         <button class="msn-item" data-space="radar"><span class="msn-icon">⦿</span><span class="msn-label">Radar</span></button>
         <button class="msn-item" data-space="graph"><span class="msn-icon">◎</span><span class="msn-label">Grafo</span></button>
@@ -564,6 +568,7 @@
       <!-- MINDMAP VIEW -->
       <div class="mindmap-area hidden" id="mindmapArea"></div>
       <div class="concept-map-area hidden" id="conceptMapArea"></div>
+      <div class="diagram-area hidden" id="diagramArea"></div>
 
 
       <!-- NAV BACK BAR (shared, visible when there's history) -->
@@ -1503,6 +1508,8 @@
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
+  <link rel="stylesheet" href="/static/diagrams.css?v={{ v }}">
+  <script src="/static/diagrams.js?v={{ v }}"></script>
   <script src="/static/conceptmap.js?v={{ v }}"></script>
   <dialog id="themePicker" class="theme-picker" aria-labelledby="themePickerTitle">
     <div class="theme-picker-heading"><h2 id="themePickerTitle">Apariencia</h2><button type="button" id="themePickerClose" aria-label="Cerrar temas">×</button></div>

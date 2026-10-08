@@ -11,7 +11,7 @@ from flask import Response, jsonify, request, stream_with_context
 
 VIEW_NAMES = {
     "home": "Inicio", "knowledge": "Conocimiento", "courses": "Cursos", "teamspace": "Team", "pages": "Páginas",
-    "kanbanArea": "Tableros", "mindmapArea": "Mapas Mentales", "conceptMapArea": "Mapas Conceptuales",
+    "kanbanArea": "Tableros", "mindmapArea": "Mapas Mentales", "diagramArea": "Diagramas", "conceptMapArea": "Mapas Conceptuales",
     "libraryReaderView": "Lector de Biblioteca", "libraryView": "Biblioteca", "radarView": "Radar Tech", "graphView": "Grafo",
     "courseView": "Cursos", "practiceView": "Práctica", "quizView": "Quiz", "labView": "Centro de Práctica",
 }
