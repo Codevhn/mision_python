@@ -510,7 +510,7 @@
       strip.append(details,remove); el('assistantTranscript').before(strip);
     }
     captureContext();
-    const prompts = {explain:'Explica el subtema seleccionado como parte de esta lección, con profundidad moderada y suficiente para comprenderlo.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales, sin preámbulos ni un segundo resumen al final.',example:'Desarrolla un ejemplo representativo del subtema seleccionado, explicando su funcionamiento dentro de esta lección.'};
+    const prompts = {explain:'Desarrolla el término o subtema seleccionado con profundidad moderada. Empieza identificándolo y definiéndolo; usa el contexto de la página y del curso de origen para ajustar el nivel, manteniendo el foco en lo seleccionado.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales, sin preámbulos ni un segundo resumen al final.',example:'Desarrolla un ejemplo representativo del subtema seleccionado, explicando su funcionamiento dentro de esta lección.'};
     const input = el('assistantInput');
     if (action && prompts[action] && !input.value.trim()) {
       input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send(null,{selectionAction:action});
