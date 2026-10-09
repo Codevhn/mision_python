@@ -192,3 +192,6 @@
 .assistant-response-options { max-height:min(440px,65vh); overflow-y:auto; }
 .assistant-response-options hr { border:0; border-top:1px solid var(--border); margin:5px 4px; }
 .assistant-message:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+.assistant-documentation a {display:block;margin:8px 0;color:var(--accent);overflow-wrap:anywhere;font: .8rem/1.5 var(--font-ui)}
+.assistant-documentation p {font: .8rem/1.5 var(--font-ui);color:var(--text-muted);margin:8px 0}

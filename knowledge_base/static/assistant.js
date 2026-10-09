@@ -191,6 +191,19 @@
         target?.focus({preventScroll:true});
       });article.append(original);
     }
+    if(message.documentation){
+      const report=document.createElement('details');report.className='assistant-sources assistant-documentation';
+      const summary=document.createElement('summary');
+      summary.textContent=message.documentation.status==='consulted'?'Revisión con documentación consultada':'Revisión sin contraste documental';
+      report.append(summary);
+      const note=document.createElement('p');note.textContent='Consultar fuentes no garantiza que todas las afirmaciones estén verificadas. Se contrastan extractos de hasta 12.000 caracteres por página.';report.append(note);
+      (message.documentation.sources||[]).forEach(source=>{
+        const link=document.createElement('a');link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=source.url+(source.truncated?' · Extracto parcial':'');report.append(link);
+      });
+      (message.documentation.failures||[]).forEach(source=>{
+        const row=document.createElement('p');row.textContent=`No consultada: ${source.url}`;report.append(row);
+      });article.append(report);
+    }
     const savedIndex=record?.messages.indexOf(message);
     if(savedIndex>=0){article.dataset.messageIndex=savedIndex;article.tabIndex=-1;}
     if (message.selection_context && !isStudySelection(message)) {
@@ -253,8 +266,24 @@
     if(el('assistantInput').value.trim()){status('Envía o guarda tu borrador antes de revisar una respuesta.',true);return;}
     const conversationId=record?.id,sourceIndex=record?.messages.indexOf(message);
     if(sourceIndex<1)return;
-    let mode='',instruction='';
-    if(action==='expand'){
+    let mode='',instruction='',referenceUrls;
+    if(action==='accuracy'){
+      const question=record.messages[sourceIndex-1];
+      const context=question?.study_context||record.context_scope;
+      const entryId=context?.type==='entry'?context.id:null;
+      const endpoint=entryId?`/api/assistant/entries/${encodeURIComponent(entryId)}/reference-sources`:null;
+      const existing=endpoint?await api(endpoint):{urls:[]};
+      const result=await editDialog('Revisar precisión técnica',[
+        {key:'urls',label:'Enlaces de documentación · uno por línea, máximo tres',multiline:true,optional:true,max:6000,value:existing.urls.join('\n')}
+      ],async values=>{
+        const urls=values.urls.split(/\n/).map(url=>url.trim()).filter(Boolean);
+        if(urls.length>3)throw new Error('Usa hasta tres enlaces.');
+        for(const url of urls){let parsed;try{parsed=new URL(url);}catch{throw new Error('Enlace no válido.');}if(parsed.protocol!=='https:'||parsed.username||parsed.password)throw new Error('Usa enlaces HTTPS sin credenciales.');}
+        if(endpoint)await api(endpoint,post({urls}));
+        return {urls};
+      },{submitLabel:'Consultar y revisar',description:'Atlas leerá estas páginas y contrastará la respuesta con extractos de su contenido. Los enlaces se guardan en esta entrada. Sin enlaces o si fallan, la revisión se identificará como sin contraste documental. La versión anterior se conserva.'});
+      if(!result)return;referenceUrls=result.urls;
+    } else if(action==='expand'){
       const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
       dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Ampliar contenido</h2></header><div class="assistant-confirm-body"><p class="atlas-dialog-notice">La versión anterior se conserva. Elige qué quieres añadir.</p><label>Enfoque<select><option value="depth">Más profundidad</option><option value="examples">Más ejemplos</option><option value="limits">Casos y limitaciones</option></select></label></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="expand">Ampliar</button></footer></form>';
       document.body.append(dialog);dialog.showModal();window.mountAtlasSelects?.(dialog);
@@ -267,7 +296,7 @@
     if(record?.id!==conversationId||record.messages[sourceIndex]!==message){status('La conversación cambió. Vuelve a elegir la respuesta.',true);return;}
     if(busy||el('assistantInput').value.trim()){status('Termina la consulta o conserva tu borrador antes de revisar.',true);return;}
     el('assistantInput').value=revisionLabels[action];
-    await send(null,{revision:{action,source_index:sourceIndex,mode,instruction}});
+    await send(null,{revision:{action,source_index:sourceIndex,mode,instruction,...(referenceUrls!==undefined?{reference_urls:referenceUrls}:{})}});
   }
   function renderConversation() {
     el('assistantTitle').textContent = record?.messages.length ? record.title : 'Conversación nueva';
@@ -659,7 +688,7 @@
     if (window._getAssistantVisibleContext?.()?.id !== entryId) return;
     const card = document.createElement('div'); card.className = 'assistant-welcome knowledge-development';
     const heading = document.createElement('h2'); heading.textContent = `¿Quieres que desarrolle ${title}?`;
-    const note = document.createElement('p'); note.textContent = 'Usaré el contexto de origen. Podrás revisar la explicación antes de insertarla.';
+    const note = document.createElement('p'); note.textContent = 'Desarrollaré este término como una entrada independiente. Podrás revisar la explicación antes de insertarla.';
     const actions = document.createElement('div'); actions.className = 'assistant-suggestions';
     const develop = document.createElement('button'); develop.type = 'button'; develop.textContent = 'Desarrollar tema';
     const later = document.createElement('button'); later.type = 'button'; later.textContent = 'Ahora no';
