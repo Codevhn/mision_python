@@ -801,6 +801,74 @@ def test_simple_math_is_readable_and_code_and_complex_math_are_preserved():
         assert readable_math(literal) == literal
 
 
+@pytest.mark.parametrize('action,mode,instruction', [
+    ('improve', '', ''), ('expand', 'depth', ''), ('expand', 'examples', ''), ('expand', 'limits', ''),
+    ('simplify', '', ''), ('steps', '', ''), ('accuracy', '', ''), ('example', '', ''), ('custom', '', 'Céntralo en Linux'),
+])
+def test_response_revision_preserves_original_and_its_study_context(auth_client, monkeypatch, action, mode, instruction):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, 'load_index', lambda: {
+        'python': {'title': 'venv', 'category': 'programacion', 'topic': 'python'},
+        'sql': {'title': 'SQL', 'category': 'datos', 'topic': 'sql'},
+    })
+    route = '/api/assistant/conversations/' + create(auth_client)
+    base = {'prompt': 'Explica venv', 'selection_context': {'text': 'venv', 'title': 'venv', 'entry_id': 'python'},
+            'selection_action': 'explain', 'current_context': {'type': 'entry', 'id': 'python'}, 'use_atlas': False}
+    assert 'event: done' in auth_client.post(route + '/messages', json=base).get_data(as_text=True)
+    original = auth_client.get(route).json['messages']
+    revision = {'action': action, 'source_index': 1, 'mode': mode, 'instruction': instruction}
+    response = auth_client.post(route + '/messages', json={'prompt': 'Revisar respuesta', 'revision': revision,
+        'current_context': {'type': 'entry', 'id': 'sql'}, 'use_atlas': False})
+    assert 'event: done' in response.get_data(as_text=True)
+    result = auth_client.get(route).json['messages']
+    assert result[:2] == original
+    assert len(result) == 4
+    assert result[-1]['revision'] == revision
+    assert result[-2]['selection_context'] == original[0]['selection_context']
+    assert result[-2]['study_context'] == {'type': 'entry', 'id': 'python'}
+    system, messages, _ = captured[-1]
+    assert json.loads(system.split('\n')[-1])['current_context']['id'] == 'python'
+    assert original[1]['content'] in messages[-1]['content']
+    if action == 'accuracy':
+        assert 'no afirmes verificación externa' in messages[-1]['content']
+    if action == 'custom':
+        assert instruction in messages[-1]['content']
+
+
+def test_invalid_revisions_do_not_append_messages(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    route = '/api/assistant/conversations/' + create(auth_client)
+    assert 'event: done' in auth_client.post(route + '/messages', json={'prompt': 'Explica venv', 'use_atlas': False}).get_data(as_text=True)
+    for revision in [[], {'action':'other','source_index':1}, {'action':'improve','source_index':True},
+                     {'action':'improve','source_index':0}, {'action':'improve','source_index':99},
+                     {'action':'expand','source_index':1,'mode':'invalid'}, {'action':'custom','source_index':1},
+                     {'action':'improve','source_index':1,'instruction':'x'*3001}]:
+        response = auth_client.post(route + '/messages', json={'prompt': 'Revisar', 'revision': revision})
+        assert response.status_code == 400
+    assert len(auth_client.get(route).json['messages']) == 2
+
+
+def test_failed_revision_can_be_retried_without_duplicate_turn(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    route = '/api/assistant/conversations/' + create(auth_client)
+    auth_client.post(route + '/messages', json={'prompt':'Explica venv', 'use_atlas':False}).get_data()
+    def fail(*args, **kwargs):
+        yield ('__error__', {'error':'Proveedor no disponible'})
+    monkeypatch.setattr(app_module, '_stream_call_ai', fail)
+    revision = {'action':'improve', 'source_index':1, 'mode':'', 'instruction':''}
+    body = {'prompt':'Mejorar explicación', 'revision':revision, 'use_atlas':False}
+    assert 'event: error' in auth_client.post(route + '/messages', json=body).get_data(as_text=True)
+    assert len(auth_client.get(route).json['messages']) == 3
+    setup_model(monkeypatch, captured)
+    assert 'event: done' in auth_client.post(route + '/messages', json={**body,'retry':True}).get_data(as_text=True)
+    result = auth_client.get(route).json['messages']
+    assert len(result) == 4
+    assert result[-1]['revision'] == revision
+
+
 def test_knowledge_entry_retains_origin_context_for_development(auth_client, monkeypatch):
     captured = []
     setup_model(monkeypatch, captured)

@@ -187,3 +187,8 @@
 @media(max-width:520px) { #assistantModel { max-width:48%; } .assistant-composer-footer { gap:3px; } }
 .assistant-composer { padding-bottom:max(4px,env(safe-area-inset-bottom)); }
 @media(max-width:700px) { .assistant-area.assistant-expanded { top:var(--assistant-vtop,0px); bottom:auto; height:var(--assistant-vh,100dvh); } }
+.assistant-revision-origin { display:block; margin:8px 0; padding:4px 0; background:transparent; border:0; color:var(--text-muted); font:0.75rem var(--font-ui); cursor:pointer; text-align:left; }
+.assistant-revision-origin:hover { color:var(--accent); }
+.assistant-response-options { max-height:min(440px,65vh); overflow-y:auto; }
+.assistant-response-options hr { border:0; border-top:1px solid var(--border); margin:5px 4px; }
+.assistant-message:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }

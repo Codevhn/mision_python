@@ -15,7 +15,8 @@
     copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
     retry:'<path d="M20 7v5h-5M20 12a8 8 0 1 0-2 5"/>',
     edit:'<path d="m4 16-1 5 5-1L20 8l-4-4L4 16Zm10-10 4 4"/>',
-    more:'<circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/>'
+    more:'<circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/>',
+    improve:'<path d="m4 20 12-12 4 4-12 12M14 4V1M20 6h3M7 5V2M2 10h3"/>'
   };
   const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
   function actionButton(label, icon, handler) {
@@ -63,7 +64,7 @@
     if(message.roadmap_request){ const {course_id,...options}=message.roadmap_request; generateRoadmap(course_id,options,true); return; }
     input.value=message.question||message.content;
     input.dispatchEvent(new Event('input'));
-    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null});
+    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null,revision:message.revision_request||null});
   }
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
@@ -142,6 +143,7 @@
     }
   }
   function isStudySelection(message) {
+    if (message.revision_request) return false;
     if (message.role !== 'user' || !message.selection_context?.text) return false;
     if (['explain', 'summarize', 'example'].includes(message.selection_action)) return true;
     // Older quick actions were saved before selection_action was introduced.
@@ -152,6 +154,11 @@
       'Desarrolla un ejemplo aplicado del concepto o tema seleccionado,'].some(prefix => prompt.startsWith(prefix));
   }
   function visibleMessageText(message) {
+    if (message.revision_request) {
+      const request=message.revision_request;
+      const detail=request.action==='custom'?request.instruction:request.action==='expand'?{depth:'Más profundidad',examples:'Más ejemplos',limits:'Casos y limitaciones'}[request.mode]:'';
+      return (revisionLabels[request.action] || 'Revisar respuesta') + (detail?` · ${detail}`:'');
+    }
     return isStudySelection(message) ? message.selection_context.text : message.question || message.content;
   }
   function bubble(message) {
@@ -174,6 +181,18 @@
       table.before(scroll); scroll.appendChild(table);
     });
     article.append(label, content);
+    if(message.revision){
+      const original=document.createElement('button');original.type='button';original.className='assistant-revision-origin';
+      original.textContent=`${revisionLabels[message.revision.action]} · Ver respuesta anterior`;
+      original.addEventListener('click',()=>{
+        const index=message.revision.source_index;
+        const target=el('assistantTranscript').querySelector(`[data-message-index="${index}"]`);
+        target?.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+        target?.focus({preventScroll:true});
+      });article.append(original);
+    }
+    const savedIndex=record?.messages.indexOf(message);
+    if(savedIndex>=0){article.dataset.messageIndex=savedIndex;article.tabIndex=-1;}
     if (message.selection_context && !isStudySelection(message)) {
       const detail = document.createElement('details'), heading = document.createElement('summary'), quote = document.createElement('blockquote');
       detail.className = 'assistant-selection-detail';
@@ -185,10 +204,18 @@
       const actions=document.createElement('div');actions.className='assistant-response-actions';
       const copy=actionButton('Copiar respuesta completa','copy',()=>copyText(message.content,copy));copy.classList.add('assistant-copy');actions.append(copy);
       const index=record?.messages.indexOf(message), question=index>0?record.messages[index-1]:null;
-      if(question?.role==='user')actions.append(actionButton('Reintentar con el modelo seleccionado','retry',()=>retryMessage(question)));
+      if(question?.role==='user')actions.append(actionButton('Regenerar con el modelo seleccionado','retry',()=>retryMessage(question)));
+      if(!message.roadmap_draft){const improve=actionButton('Mejorar explicación','improve',()=>reviseResponse(message,'improve'));improve.classList.add('assistant-improve');actions.append(improve);}
       const menu=document.createElement('details');menu.className='assistant-response-menu';
       const toggle=document.createElement('summary');toggle.innerHTML=svg('more');toggle.title='Opciones de respuesta';toggle.setAttribute('aria-label','Opciones de respuesta');menu.append(toggle);
       const options=document.createElement('div');options.className='assistant-response-options';
+      if(!message.roadmap_draft){
+        [['expand','Ampliar contenido…'],['simplify','Explicar más sencillo'],['steps','Completar pasos prácticos'],['accuracy','Revisar precisión técnica'],['example','Añadir ejemplo aplicado'],['custom','Ajustar desarrollo…']].forEach(([action,label])=>{
+          const button=document.createElement('button');button.type='button';button.textContent=label;
+          button.addEventListener('click',()=>{menu.open=false;reviseResponse(message,action);});options.append(button);
+        });
+        const separator=document.createElement('hr');options.append(separator);
+      }
       [['Guardar como página',()=>saveResponse(message,'page')],['Guardar en Conocimiento',()=>saveResponse(message,'knowledge')],['Descargar Markdown',()=>{
         const url=URL.createObjectURL(new Blob([message.content],{type:'text/markdown;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='respuesta-atlas.md';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
       }],['Copiar conversación completa',()=>copyText((record?.messages||[]).map(m=>`${m.role==='user'?'Tú':modelNames.get(`${m.provider}:${m.model}`)||m.model||'IA'}:\n${isStudySelection(m)?visibleMessageText(m):m.content}`).join('\n\n'))]].forEach(([label,handler])=>{
@@ -220,6 +247,28 @@
     return content;
   }
   function scrollBottom() { const transcript = el('assistantTranscript'); transcript.scrollTop = transcript.scrollHeight; }
+  const revisionLabels={improve:'Mejorar explicación',expand:'Ampliar contenido',simplify:'Explicar más sencillo',steps:'Completar pasos prácticos',accuracy:'Revisar precisión técnica',example:'Añadir ejemplo aplicado',custom:'Ajustar desarrollo'};
+  async function reviseResponse(message,action){
+    if(busy){status('Espera a que termine la respuesta antes de revisarla.',true);return;}
+    if(el('assistantInput').value.trim()){status('Envía o guarda tu borrador antes de revisar una respuesta.',true);return;}
+    const conversationId=record?.id,sourceIndex=record?.messages.indexOf(message);
+    if(sourceIndex<1)return;
+    let mode='',instruction='';
+    if(action==='expand'){
+      const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
+      dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Ampliar contenido</h2></header><div class="assistant-confirm-body"><p class="atlas-dialog-notice">La versión anterior se conserva. Elige qué quieres añadir.</p><label>Enfoque<select><option value="depth">Más profundidad</option><option value="examples">Más ejemplos</option><option value="limits">Casos y limitaciones</option></select></label></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="expand">Ampliar</button></footer></form>';
+      document.body.append(dialog);dialog.showModal();window.mountAtlasSelects?.(dialog);
+      await new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+      if(dialog.returnValue!=='expand'){dialog.remove();return;}mode=dialog.querySelector('select').value;dialog.remove();
+    } else if(action==='custom'){
+      const result=await editDialog('Ajustar desarrollo',[{key:'instruction',label:'¿Qué quieres cambiar?',multiline:true,max:3000}],values=>values,{submitLabel:'Aplicar ajuste',description:'Por ejemplo: céntralo en Linux o explica los términos que todavía no conozco. La versión anterior se conserva.'});
+      if(!result)return;instruction=result.instruction.trim();
+    }
+    if(record?.id!==conversationId||record.messages[sourceIndex]!==message){status('La conversación cambió. Vuelve a elegir la respuesta.',true);return;}
+    if(busy||el('assistantInput').value.trim()){status('Termina la consulta o conserva tu borrador antes de revisar.',true);return;}
+    el('assistantInput').value=revisionLabels[action];
+    await send(null,{revision:{action,source_index:sourceIndex,mode,instruction}});
+  }
   function renderConversation() {
     el('assistantTitle').textContent = record?.messages.length ? record.title : 'Conversación nueva';
     el('assistantTitle').parentElement.title = el('assistantTitle').textContent;
@@ -395,11 +444,11 @@
       if (!record) record = await api('/api/assistant/conversations', post({}));
       forceNewConversation = false;
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
-      if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction });
+      if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction,revision_request:options.revision });
       content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) {
