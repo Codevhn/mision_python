@@ -95,6 +95,34 @@ def test_canonical_category_label_reused(auth_client):
     assert meta["category_label"] == "Bases de Datos"
 
 
+def test_taxonomy_reuses_existing_accent_variants_for_create_update_and_move(auth_client):
+    _create(auth_client, 'Referencia', 'Programacion', 'Introduccion')
+    created = _create(auth_client, 'Nuevo', 'Programación', 'Introducción').json['id']
+    saved = auth_client.get('/api/entry/' + created).json
+    assert saved['meta']['category'] == 'programacion'
+    assert saved['meta']['topic'] == 'introduccion'
+    auth_client.put('/api/entry/' + created, json={'category': 'Programación', 'topic': 'Introducción'})
+    assert auth_client.get('/api/entry/' + created).json['meta']['category'] == 'programacion'
+    page = auth_client.post('/api/entry', json={'title': 'Página', 'entry_type': 'page', 'raw_text': 'Texto intacto'}).json['id']
+    moved = auth_client.post('/api/entry/' + page + '/move-to', json={
+        'dest': 'knowledge_root', 'category': 'Programación', 'topic': 'Introducción'})
+    assert moved.status_code == 200
+    assert auth_client.get('/api/entry/' + page).json['meta']['topic'] == 'introduccion'
+    assert len(auth_client.get('/api/tree').json) == 1
+    from app import _taxonomy_key
+    assert _taxonomy_key('Año') != _taxonomy_key('Ano')
+
+
+def test_course_selection_reuses_unaccented_existing_area(auth_client, monkeypatch):
+    _create(auth_client, 'Existente', 'Programacion', 'POO')
+    index = app_module.load_index()
+    index['lesson'] = {'title': 'Python', 'type': 'course', 'course': 'python'}
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    monkeypatch.setattr(app_module, 'load_courses', lambda: {'courses': {'python': {'domain': 'python'}}})
+    preview = auth_client.post('/api/knowledge/selection', json={'title': 'venv', 'source_entry_id': 'lesson'}).json
+    assert preview['category'] == 'Programacion'
+
+
 def test_update_persists_tags(auth_client):
     entry_id = _create(auth_client, "Con tags", "Python", "Básico").get_json()["id"]
     resp = auth_client.put(f"/api/entry/{entry_id}", json={

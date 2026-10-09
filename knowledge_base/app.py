@@ -1252,13 +1252,15 @@ def move_entry_to(entry_id):
         topic = (data.get("topic") or "").strip()
         if not category or not topic:
             return jsonify({"error": "Falta categoría o tema de destino"}), 400
+        category = _canonical_category_label(index, slugify(category)) or category
         category_slug = slugify(category)
+        topic = _canonical_topic_label(index, category_slug, slugify(topic)) or topic
         topic_slug = slugify(topic)
         meta.pop("type", None)
         meta["category"] = category_slug
-        meta["category_label"] = _canonical_category_label(index, category_slug) or category
+        meta["category_label"] = category
         meta["topic"] = topic_slug
-        meta["topic_label"] = _canonical_topic_label(index, category_slug, topic_slug) or topic
+        meta["topic_label"] = topic
         meta["parent_id"] = None
 
     elif dest == "nested":
@@ -1484,7 +1486,19 @@ def _canonical_category_label(index, category_slug):
             continue
         if meta.get("category") == category_slug and meta.get("category_label"):
             return meta["category_label"]
+    matches = [meta for meta in index.values() if meta.get("type") not in ("course", "teamspace", "page") and
+               _taxonomy_key(meta.get("category", "")) == _taxonomy_key(category_slug)]
+    if len({meta.get("category") for meta in matches}) == 1:
+        return matches[0].get("category_label") or matches[0]["category"].replace("-", " ")
     return None
+
+
+def _taxonomy_key(text):
+    # Accent-insensitive comparison for classifications only. Entry IDs,
+    # URLs and existing folder paths retain their current Unicode spelling.
+    # Keep ñ distinct from n: they are different letters, not accent variants.
+    decomposed = unicodedata.normalize("NFD", text)
+    return slugify("".join(c for c in decomposed if not unicodedata.combining(c) or c == '\u0303'))
 
 
 def _canonical_topic_label(index, category_slug, topic_slug):
@@ -1493,6 +1507,10 @@ def _canonical_topic_label(index, category_slug, topic_slug):
             continue
         if meta.get("category") == category_slug and meta.get("topic") == topic_slug and meta.get("topic_label"):
             return meta["topic_label"]
+    matches = [meta for meta in index.values() if meta.get("type") not in ("course", "teamspace", "page") and
+               meta.get("category") == category_slug and _taxonomy_key(meta.get("topic", "")) == _taxonomy_key(topic_slug)]
+    if len({meta.get("topic") for meta in matches}) == 1:
+        return matches[0].get("topic_label") or matches[0]["topic"].replace("-", " ")
     return None
 
 
@@ -1527,6 +1545,10 @@ def preview_knowledge_selection():
                  topic and _knowledge_title_key(m.get("topic_label", "")) == _knowledge_title_key(topic)]
         if known and len({m.get("category") for m in known}) == 1:
             category = known[0].get("category_label", category)
+    if category:
+        category = _canonical_category_label(index, slugify(category)) or category
+    if category and topic:
+        topic = _canonical_topic_label(index, slugify(category), slugify(topic)) or topic
     knowledge = [m for m in index.values() if m.get("type") not in ("course", "page", "teamspace")]
     duplicates = [{"id": key, "title": m.get("title", ""), "category": m.get("category_label", ""), "topic": m.get("topic_label", "")}
                   for key, m in index.items() if m.get("type") not in ("course", "page", "teamspace") and
@@ -1643,12 +1665,12 @@ def create_entry():
     if not all([category, topic]):
         return jsonify({"error": "Missing fields"}), 400
 
-    category_slug = slugify(category)
-    topic_slug = slugify(topic)
     # Reuse the label already on file for this slug, if any, instead of
     # whatever casing was just typed (see _canonical_category_label).
-    category = _canonical_category_label(index, category_slug) or category
-    topic = _canonical_topic_label(index, category_slug, topic_slug) or topic
+    category = _canonical_category_label(index, slugify(category)) or category
+    category_slug = slugify(category)
+    topic = _canonical_topic_label(index, category_slug, slugify(topic)) or topic
+    topic_slug = slugify(topic)
 
     folder = KNOWLEDGE_DIR / category_slug / topic_slug
     folder.mkdir(parents=True, exist_ok=True)
@@ -1785,8 +1807,10 @@ def update_entry(entry_id):
     # _canonical_category_label) — same reasoning as create_entry.
     if category:
         category = _canonical_category_label(index, new_category) or category
+        new_category = slugify(category)
     if topic:
         topic = _canonical_topic_label(index, new_category, new_topic) or topic
+        new_topic = slugify(topic)
     new_folder   = KNOWLEDGE_DIR / new_category / new_topic
     new_folder.mkdir(parents=True, exist_ok=True)
     new_path     = new_folder / f"{entry_id}.md"
