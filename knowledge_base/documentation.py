@@ -132,6 +132,9 @@ def suggested_urls(title, body=''):
     defaults = {
         'pip': ['https://pip.pypa.io/en/stable/user_guide/', 'https://pip.pypa.io/en/stable/cli/pip_install/'],
         'venv': ['https://docs.python.org/3/library/venv.html'],
+        'requirements.txt': ['https://pip.pypa.io/en/stable/reference/requirements-file-format/',
+                             'https://pip.pypa.io/en/stable/cli/pip_freeze/',
+                             'https://pip.pypa.io/en/stable/topics/repeatable-installs/'],
     }
     links = re.findall(r'https://[^\s<>\)\]"\x27]+', body)
     candidates = defaults.get(term, []) + links

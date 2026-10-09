@@ -43,6 +43,7 @@ def create(client):
 def setup_model(monkeypatch, captured):
     monkeypatch.setattr(assistant_module, 'consult_documents', lambda urls: {'status':'unavailable', 'sources':[], 'failures':[{'url':url,'reason':'Unavailable test fixture'} for url in urls]})
     monkeypatch.setenv('DEEPSEEK_API_KEY', 'test-key')
+    monkeypatch.setattr(app_module, '_call_ai', lambda *a, **k: (json.dumps({'claims':[{'claim':'Respuesta de prueba','status':'unconfirmed','correction':'No confirmada'}]}), None))
 
     def stream(system, messages, **kwargs):
         captured.append((system, messages, kwargs))
@@ -973,3 +974,38 @@ def test_accuracy_revision_supplies_real_evidence_and_preserves_report(auth_clie
 def test_documentation_reference_endpoint_requires_auth(client):
     assert client.get('/api/assistant/entries/pip/reference-sources').status_code == 401
     assert client.post('/api/assistant/entries/pip/reference-sources', json={'urls':[]}).status_code == 401
+
+
+def test_accuracy_builds_claim_plan_before_rewriting_and_keeps_evidence(auth_client, monkeypatch):
+    from test_technical_review import ORIGINAL, DOCS
+    captured, audits = [], []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(assistant_module, 'consult_documents', lambda urls: {'status':'consulted','sources':DOCS,'failures':[]})
+    corrected = 'requirements.txt declara requisitos para pip. No garantiza un entorno idéntico por sí solo.'
+    def stream(system, messages, **kwargs):
+        captured.append((system, messages, kwargs))
+        yield ORIGINAL if len(captured)==1 else corrected
+        yield ('__done__',False,None)
+    monkeypatch.setattr(app_module,'_stream_call_ai',stream)
+    def audit(system, prompt, **kwargs):
+        audits.append(json.loads(prompt))
+        return json.dumps({'claims':[{'claim':'pip freeze captura todos los paquetes con versiones exactas.','status':'contradicted','source_url':DOCS[0]['url'],'quote':'By default some packaging tools are omitted.','correction':'Incluye exclusiones por defecto.'}]}), None
+    monkeypatch.setattr(app_module,'_call_ai',audit)
+    route='/api/assistant/conversations/'+create(auth_client)
+    assert 'event: done' in auth_client.post(route+'/messages',json={'prompt':'requirements.txt','use_atlas':False,'selection_context':{'text':'requirements.txt','title':'requirements.txt'},'selection_action':'explain'}).get_data(as_text=True)
+    response=auth_client.post(route+'/messages',json={'prompt':'Revisar','use_atlas':False,'revision':{'action':'accuracy','source_index':1,'reference_urls':[]}}).get_data(as_text=True)
+    assert 'event: done' in response
+    assert '"delta"' not in response  # no unvalidated rewrite is streamed to the UI
+    assert audits[0]['original']==ORIGINAL
+    assert 'Incluye exclusiones por defecto.' in captured[-1][1][-1]['content']
+    assert 'son opciones de pip freeze' in captured[-1][1][-1]['content']
+    messages=auth_client.get(route).json['messages']
+    assert messages[1]['content']==ORIGINAL
+    assert messages[-1]['content']==corrected
+    assert messages[-1]['documentation']['audit']['claims'][0]['status']=='contradicted'
+    # A writer that repeats the original guarantee must not save another answer.
+    monkeypatch.setattr(app_module,'_stream_call_ai',lambda *a,**k:iter([ORIGINAL,('__done__',False,None)]))
+    failed=auth_client.post(route+'/messages',json={'prompt':'Revisar otra vez','use_atlas':False,'revision':{'action':'accuracy','source_index':1,'reference_urls':[]}}).get_data(as_text=True)
+    assert 'event: error' in failed and 'event: done' not in failed
+    assert '"delta"' not in failed
+    assert len([m for m in auth_client.get(route).json['messages'] if m['role']=='assistant'])==2

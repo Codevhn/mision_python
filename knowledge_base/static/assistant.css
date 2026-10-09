@@ -195,3 +195,9 @@
 
 .assistant-documentation a {display:block;margin:8px 0;color:var(--accent);overflow-wrap:anywhere;font: .8rem/1.5 var(--font-ui)}
 .assistant-documentation p {font: .8rem/1.5 var(--font-ui);color:var(--text-muted);margin:8px 0}
+.assistant-claim-audit {margin:10px 0}
+.assistant-claim {padding:8px 10px;margin:6px 0;border:1px solid var(--border);border-left:3px solid var(--text-muted);border-radius:3px;background:var(--bg-elevated);font: .8rem/1.5 var(--font-ui)}
+.assistant-claim[data-review-status=contradicted] {border-left-color:var(--danger)}
+.assistant-claim[data-review-status=supported] {border-left-color:var(--accent)}
+.assistant-claim summary {cursor:pointer;overflow-wrap:anywhere}
+.assistant-claim blockquote {margin:10px 0;padding-left:10px;border-left:2px solid var(--border);color:var(--text);white-space:pre-wrap}

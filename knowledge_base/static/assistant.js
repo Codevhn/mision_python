@@ -197,6 +197,20 @@
       summary.textContent=message.documentation.status==='consulted'?'Revisión con documentación consultada':'Revisión sin contraste documental';
       report.append(summary);
       const note=document.createElement('p');note.textContent='Consultar fuentes no garantiza que todas las afirmaciones estén verificadas. Se contrastan extractos de hasta 12.000 caracteres por página.';report.append(note);
+      if(message.documentation.audit?.claims?.length){
+        const audit=document.createElement('details');audit.className='assistant-claim-audit';
+        const heading=document.createElement('summary');heading.textContent='Contraste por afirmaciones';audit.append(heading);
+        const explanation=document.createElement('p');explanation.textContent='Evaluación del modelo con citas comprobadas contra los extractos. Puede contener errores de interpretación y no cubre necesariamente todas las afirmaciones.';audit.append(explanation);
+        const names={supported:'Respaldada en los extractos',contradicted:'Contradicha en los extractos',unconfirmed:'No confirmada'};
+        message.documentation.audit.claims.forEach(item=>{
+          const row=document.createElement('details');row.className='assistant-claim';row.dataset.reviewStatus=item.status;
+          const label=document.createElement('summary');label.textContent=`${names[item.status]||'No confirmada'} · ${item.claim}`;row.append(label);
+          if(item.quote){const quote=document.createElement('blockquote');quote.textContent=item.quote;row.append(quote);}
+          if(item.source_url){const link=document.createElement('a');link.href=item.source_url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Ver fuente de esta afirmación';row.append(link);}
+          if(item.correction){const correction=document.createElement('p');correction.textContent=item.correction;row.append(correction);}
+          audit.append(row);
+        });report.append(audit);
+      }
       (message.documentation.sources||[]).forEach(source=>{
         const link=document.createElement('a');link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=source.url+(source.truncated?' · Extracto parcial':'');report.append(link);
       });
