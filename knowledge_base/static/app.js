@@ -5507,18 +5507,27 @@ async function loadBacklinks(id) {
   const res = await fetch(`/api/entry/${id}/backlinks`);
   if (!res.ok) return;
   const backlinks = await res.json();
-  if (backlinks.length === 0) return;
-  const section = document.createElement("div");
+  if (backlinks.length === 0 || currentEntryId !== id) return;
+  const section = document.createElement("details");
   section.className = "backlinks-section";
-  section.innerHTML = `<div class="backlinks-header">← backlinks (${backlinks.length})</div>` +
+  const previewText = text => String(text || '').replace(/<\/?[a-z][^>]*>/gi, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`*#|]/g, '')
+    .replace(/\s+/g, ' ').trim().slice(0, 320);
+  const displayTitle = text => String(text || '').replace(/`|\*\*/g, '').trim();
+  section.innerHTML = `<summary class="backlinks-header">← Referencias <span class="backlinks-count">${backlinks.length}</span><span class="backlinks-toggle-hint">Ver referencias</span></summary><div class="backlinks-compact-list">` +
     backlinks.map(bl => `
-      <div class="backlink-item" data-id="${escapeHtml(bl.id)}">
-        <div class="backlink-title">${escapeHtml(bl.title)}</div>
-        <div class="backlink-path">${escapeHtml(bl.category_label)} › ${escapeHtml(bl.topic_label)}</div>
-        <div class="backlink-snippet">${escapeHtml(bl.snippet)}</div>
+      <div class="backlink-compact-item">
+        <button type="button" class="backlink-open" data-id="${escapeHtml(bl.id)}" title="${escapeHtml(displayTitle(bl.title))}">↗ ${escapeHtml(displayTitle(bl.title))}</button>
+        <details class="backlink-context"><summary aria-label="Ver contexto de ${escapeHtml(displayTitle(bl.title))}" title="Ver contexto">⋯</summary><div class="backlink-context-body">
+          ${[bl.category_label, bl.topic_label].filter(Boolean).length ? `<div class="backlink-path">${escapeHtml([bl.category_label, bl.topic_label].filter(Boolean).join(' › '))}</div>` : ''}
+          <p class="backlink-snippet">${escapeHtml(previewText(bl.snippet))}</p>
+        </div></details>
       </div>
-    `).join("");
-  section.querySelectorAll(".backlink-item").forEach(item => {
+    `).join("") + '</div>';
+  section.addEventListener('toggle', () => {
+    section.querySelector('.backlinks-toggle-hint').textContent = section.open ? 'Ocultar' : 'Ver referencias';
+  });
+  section.querySelectorAll(".backlink-open").forEach(item => {
     item.addEventListener("click", () => loadEntry(item.dataset.id));
   });
   // Insert as a sibling after entryBody (the BlockNote root), never as a child of it

@@ -3117,10 +3117,28 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
    FEATURE: BACKLINKS
    ============================================================ */
 .backlinks-section {
-  margin-top: 36px;
-  padding-top: 18px;
+  margin-top: 24px;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+.backlinks-section > summary.backlinks-header {
+  display:flex; align-items:center; gap:6px; margin:0;
+  min-height:32px; cursor:pointer; list-style:none; color:var(--text-muted);
+}
+.backlinks-section > summary::-webkit-details-marker { display:none; }
+.backlinks-toggle-hint { margin-left:auto; font-weight:400; text-transform:none; letter-spacing:0; font-size:0.75rem; }
+.backlinks-compact-list { margin-top:6px; display:flex; flex-direction:column; gap:2px; }
+.backlink-compact-item { display:grid; grid-template-columns:minmax(0,1fr) 30px; align-items:start; border-radius:var(--radius-xs); }
+.backlink-compact-item:hover { background:var(--accent-light); }
+.backlink-open { min-width:0; border:0; background:transparent; color:var(--text); font-family:var(--font-ui); font-size:0.82rem; text-align:left; padding:7px 8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:pointer; }
+.backlink-context { display:contents; }
+.backlink-context > summary { grid-column:2; grid-row:1; list-style:none; text-align:center; cursor:pointer; padding:5px; color:var(--text-muted); font-weight:700; }
+.backlink-context > summary::-webkit-details-marker { display:none; }
+.backlink-context-body { grid-column:1 / -1; padding:0 8px 8px; }
+.backlink-context:not([open]) > .backlink-context-body { display:none; }
+.backlink-context-body .backlink-snippet { margin:4px 0 0; white-space:normal; overflow-wrap:anywhere; font-size:0.78rem; }
+.backlink-context-body .backlink-path { font-size:0.73rem; }
+.backlinks-section summary:focus-visible, .backlink-open:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .backlinks-header {
   font-family: var(--font-ui);
   font-size: 0.72rem;
