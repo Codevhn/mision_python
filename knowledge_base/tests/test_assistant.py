@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import pytest
 
 import app as app_module
 from assistant import atlas_context
@@ -798,3 +799,47 @@ def test_simple_math_is_readable_and_code_and_complex_math_are_preserved():
     assert readable_math(r'\(x_{10}^2 \geq 0\)') == 'x₁₀² ≥ 0'
     for literal in [r'`\(x_1\)`', '```python\nprint("\\(x_1\\)")\n```', r'\(\frac{x}{y}\)', '    \\(x_1\\)', r'precio $10 y $20']:
         assert readable_math(literal) == literal
+
+
+@pytest.mark.parametrize('course_id,course_title,concept,prompt', [
+    ('java', 'Programación en Java', 'Variables', 'Explica las variables para comenzar.'),
+    ('python', 'Programación en Python', 'Instalación de Python', 'Cómo instalo Python en Ubuntu?'),
+    ('sql', 'Bases de datos con SQL', 'SQL y NoSQL', 'Compara SQL y NoSQL.'),
+    ('sql', 'Bases de datos con SQL', 'Aislamiento', 'Profundiza en anomalías de aislamiento.'),
+])
+def test_course_teaching_context_reaches_model_and_updates_each_turn(
+        auth_client, monkeypatch, course_id, course_title, concept, prompt):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, 'load_courses', lambda: {'courses': {
+        course_id: {'label': course_title, 'description': 'Objetivos del curso', 'level': 'avanzado'}}})
+    index = {
+        'previous': {'type': 'course', 'course': course_id, 'module': 'one', 'title': 'Antes', 'order': 0},
+        'lesson': {'type': 'course', 'course': course_id, 'module': 'one', 'module_label': 'Fundamentos', 'title': concept, 'order': 1},
+        'next': {'type': 'course', 'course': course_id, 'module': 'one', 'title': 'Después', 'order': 2},
+        'unrelated': {'type': 'course', 'course': 'other', 'module': 'one', 'title': 'No pertenece', 'order': 0},
+    }
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    for selected in ['lesson', 'next']:
+        response = auth_client.post(route, json={
+            'prompt': prompt, 'current_context': {'type': 'entry', 'id': selected}, 'use_atlas': False})
+        assert 'event: done' in response.get_data(as_text=True)
+        system = captured[-1][0]
+        current = json.loads(system.split('\n')[-1])['current_context']
+        assert current['course_title'] == course_title
+        assert current['course_description'] == 'Objetivos del curso'
+        assert current['course_level'] == 'avanzado'
+        assert current['module_lessons_total'] == 3
+        assert 'No pertenece' not in current['module_lessons']
+        assert 'no equivale al nivel del concepto actual' in system
+        assert 'no conocimientos dominados' in system
+        if selected == 'lesson':
+            assert current['module_title'] == 'Fundamentos'
+            assert current['lesson_position_in_module'] == 2
+            assert current['previous_module_lessons'] == ['Antes']
+            assert current['next_module_lessons'] == ['Después']
+        else:
+            assert current['lesson_position_in_module'] == 3
+            assert current['previous_module_lessons'] == ['Antes', concept]
+            assert current['next_module_lessons'] == []

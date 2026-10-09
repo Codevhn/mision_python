@@ -63,6 +63,27 @@ STUDY_GUIDANCE = (
     "a partir de la pregunta, el nivel indicado y el contexto disponible. No muestres ese plan ni inventes un temario. "
     "Usa lesson_outline, module_lessons, el contenido actual y el historial para delimitar el alcance; "
     "si faltan, infiere un alcance prudente a partir del título y reconoce la incertidumbre cuando sea relevante. "
+    "Dentro de un curso, actúa como tutor y autor de material de ese curso en Atlas. Usa course_title, "
+    "course_description, module_title y el título de la lección para identificar el dominio; "
+    "no reduzcas el contexto al término seleccionado ni conviertas la respuesta en un artículo independiente. "
+    "El nivel general course_level no equivale al nivel del concepto actual: un curso avanzado puede "
+    "contener una introducción. Ajusta los prerrequisitos, el vocabulario y los ejemplos al objetivo "
+    "del subtema, su posición y la petición actual. previous_module_lessons y next_module_lessons "
+    "indican orden del temario, no conocimientos dominados ni temas ya estudiados. No inventes "
+    "objetivos curriculares, experiencia del alumno ni conexiones con documentación o metodología "
+    "que la lección no respalde. Si falta nivel, comienza por lo necesario para entender el concepto. "
+    "Mantén los ejemplos en el lenguaje o tecnología del curso, salvo petición de comparación o "
+    "necesidad explícita. Una consulta introductoria sobre variables en Java no requiere clases "
+    "abstractas ni una exposición de POO; una consulta sobre SQL no necesita trasladarse a Python. "
+    "Distingue la acción: explicar desarrolla el concepto con profundidad moderada; ejemplificar "
+    "prioriza un ejemplo explicado; resumir conserva lo esencial del texto; ampliar añade lo que "
+    "falta; una pregunta puntual se responde directamente. Respeta la petición explícita de mayor "
+    "profundidad y permite preguntas fuera del curso sin forzar una relación artificial. "
+    "Antes de entregar, revisa internamente precisión, alcance y utilidad: cada afirmación debe "
+    "mantener sus condiciones y límites. No deduzcas causalidad histórica de una afinidad filosófica, "
+    "no conviertas preferencias de diseño en reglas universales ni compatibilidad esperada en "
+    "garantía absoluta. No inventes datos actuales de versiones o soporte; distingue datos verificados "
+    "de ejemplos y de información que requiere consulta oficial. No muestres esta revisión. "
     "Por defecto usa profundidad moderada: explica qué es, para qué sirve y cómo funciona en lo necesario "
     "para comprender el subtema. Incluye los conceptos esenciales y explica los términos nuevos; "
     "no los sustituyas por un inventario de nombres técnicos. Rigor significa precisión y comprensión, "
@@ -158,7 +179,7 @@ def _roadmap_additions(base, generated, count):
 SYSTEM = (
     "Eres un asistente académico y técnico de estudio y consulta. Responde en español "
     "salvo que el usuario pida otro idioma. Produce contenido completo, serio y profesional, "
-    "con definiciones formales, explicaciones rigurosas y ejemplos pertinentes. Ajusta la "
+    "con conceptos precisos, explicaciones rigurosas y ejemplos pertinentes. Ajusta la "
     "profundidad a la consulta; no confundas rigor con lenguaje innecesariamente complejo. "
     "Responde solo a lo solicitado: disponer de contexto no obliga a mostrarlo. "
     "Una pregunta puntual necesita una respuesta breve y directa; reserva el desarrollo completo "
@@ -355,12 +376,25 @@ def atlas_context(namespace, query, current_context=None):
         selected_meta = index[selected_id]
         if selected_meta.get("type") == "course":
             course_id, module_id = selected_meta.get("course"), selected_meta.get("module")
-            peers = [meta for meta in index.values() if meta.get("type") == "course" and
-                     meta.get("course") == course_id and meta.get("module") == module_id]
-            peers.sort(key=lambda meta: meta.get("order", 0))
+            ordered = sorted(((key, meta) for key, meta in index.items() if meta.get("type") == "course" and
+                              meta.get("course") == course_id and meta.get("module") == module_id),
+                             key=lambda item: item[1].get("order", 0))
+            peers = [meta for _, meta in ordered]
             current["module_lessons"] = [str(meta.get("title", ""))[:300] for meta in peers[:40]]
             current["module_lessons_truncated"] = len(peers) > 40
-            current["course_level"] = namespace["load_courses"]().get("courses", {}).get(course_id, {}).get("level", "")
+            course = namespace["load_courses"]().get("courses", {}).get(course_id, {})
+            current["course_title"] = str(course.get("label") or course_id or "")[:300]
+            current["course_description"] = str(course.get("description") or "")[:2000]
+            current["course_level"] = course.get("level", "")
+            current["module_title"] = str(selected_meta.get("module_label") or module_id or "")[:300]
+            # Order describes curriculum position, never learner mastery. Keep nearby
+            # lessons even when a large module exceeds the general 40-title excerpt.
+            position = next(i for i, (key, _) in enumerate(ordered) if key == selected_id)
+            current["lesson_position_in_module"] = position + 1
+            current["module_lessons_total"] = len(ordered)
+            current["previous_module_lessons"] = [str(meta.get("title", ""))[:300] for _, meta in ordered[max(0, position - 5):position]]
+            current["next_module_lessons"] = [str(meta.get("title", ""))[:300] for _, meta in ordered[position + 1:position + 6]]
+            current["adjacent_lessons_truncated"] = position > 5 or len(ordered) - position - 1 > 5
     elif selected_type == "board":
         board = next((item for item in boards.values() if item.get("id") == selected_id), None)
         if board:
