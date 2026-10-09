@@ -185,7 +185,33 @@ def test_python_organization_rolls_back_file_moves_when_save_fails(auth_client, 
         auth_client.post('/api/knowledge/organize-python')
     assert app_module.load_index() == before
     assert app_module._entry_path(entry_id, before[entry_id]).read_text() == 'contenido'
-    assert not (app_module.DATA_DIR / 'python-knowledge-organization-v1.json').exists()
+    assert not (app_module.DATA_DIR / 'python-knowledge-organization-v2.json').exists()
+
+
+def test_organization_v2_repairs_post_migration_aliases_and_visible_title_typos(auth_client):
+    entries = []
+    for title in ['Que es poetry', 'Que es un entorno virtual en Python', 'venv']:
+        entries.append(_create(auth_client, title, 'Programación', 'Temporal').json['id'])
+    index = app_module.load_index()
+    for entry_id, topic in zip(entries, ['Entornos virtuales en Python', 'Entonro virtual en Python', 'Entorno virtual en Python']):
+        old = app_module._entry_path(entry_id, index[entry_id])
+        index[entry_id].update(topic=app_module.slugify(topic), topic_label=topic)
+        new = app_module._entry_path(entry_id, index[entry_id]);new.parent.mkdir(parents=True,exist_ok=True);old.rename(new)
+    app_module.save_index(index)
+    (app_module.DATA_DIR / 'python-knowledge-organization-v1.json').write_text('{}')
+    response = auth_client.post('/api/knowledge/organize-python')
+    assert response.status_code == 200
+    after = app_module.load_index()
+    assert {after[entry]['topic_label'] for entry in entries} == {'Entornos virtuales en Python'}
+    assert after[entries[0]]['title'] == 'Qué es Poetry'
+    assert after[entries[1]]['title'] == 'Qué es un entorno virtual en Python'
+    for entry in entries:
+        assert after[entry]['uid'] == index[entry]['uid']
+        assert app_module._entry_path(entry, after[entry]).read_text() == 'contenido'
+    created = _create(auth_client, 'Otro', 'Programación', 'Entonro virtual en Python').json['id']
+    assert auth_client.get('/api/entry/' + created).json['meta']['topic_label'] == 'Entornos virtuales en Python'
+    preview = auth_client.post('/api/knowledge/selection', json={'title':'Algo nuevo','source_entry_id':entries[0]}).json
+    assert preview['topics_by_category']['Programación'] == ['Entornos virtuales en Python']
 
 
 def test_python_organization_requires_authentication(client):

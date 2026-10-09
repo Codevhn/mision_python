@@ -1,6 +1,45 @@
 /* Convert an editor selection into a classified, empty knowledge entry. */
 (() => {
   let active = false;
+  function classificationPicker(input, dialog, getValues) {
+    const list=document.createElement('div');list.className='atlas-select-popup knowledge-classification-options hidden';
+    list.id=`knowledge-options-${input.name}`;list.setAttribute('role','listbox');dialog.append(list);
+    input.autocomplete='off';input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');
+    input.setAttribute('aria-controls',list.id);input.setAttribute('aria-expanded','false');
+    let selected=-1;
+    const key=text=>text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    function close(){list.classList.add('hidden');input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');selected=-1;}
+    function position(){const rect=input.getBoundingClientRect();list.style.left=`${rect.left}px`;list.style.width=`${rect.width}px`;list.style.top=`${Math.min(rect.bottom+4,innerHeight-list.offsetHeight-12)}px`;}
+    function show(filter=''){
+      list.replaceChildren();selected=-1;
+      const values=[...new Set(getValues().filter(Boolean))].filter(value=>!filter||key(value).includes(key(filter))).slice(0,40);
+      if(!values.length){close();return;}
+      values.forEach((value,index)=>{
+        const option=document.createElement('button');option.className='atlas-select-option';option.type='button';option.setAttribute('role','option');
+        option.id=`${list.id}-${index}`;option.textContent=value;option.setAttribute('aria-selected','false');
+        option.addEventListener('mousedown',event=>event.preventDefault());
+        option.addEventListener('click',()=>{input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));close();input.focus();close();});list.append(option);
+      });
+      list.classList.remove('hidden');input.setAttribute('aria-expanded','true');position();
+    }
+    input.addEventListener('focus',()=>show());input.addEventListener('click',()=>show());input.addEventListener('input',()=>show(input.value));
+    input.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&!list.classList.contains('hidden')){event.preventDefault();event.stopPropagation();close();return;}
+      if(['ArrowDown','ArrowUp'].includes(event.key)){
+        event.preventDefault();if(list.classList.contains('hidden'))show();
+        const options=[...list.children];if(!options.length)return;
+        selected=(selected+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
+        options.forEach((option,i)=>option.setAttribute('aria-selected',String(i===selected)));
+        input.setAttribute('aria-activedescendant',options[selected].id);options[selected].scrollIntoView({block:'nearest'});
+      }else if(event.key==='Enter'&&selected>=0&&!list.classList.contains('hidden')){event.preventDefault();list.children[selected].click();}
+      else if(event.key==='Tab')close();
+    });
+    input.addEventListener('blur',()=>{if(!list.contains(document.activeElement))close();});
+    dialog.addEventListener('pointerdown',event=>{if(event.target!==input&&!list.contains(event.target))close();});
+    const reposition=()=>{if(!list.classList.contains('hidden'))position();};
+    window.addEventListener('resize',reposition);dialog.addEventListener('scroll',reposition,true);
+    dialog.addEventListener('close',()=>window.removeEventListener('resize',reposition),{once:true});
+  }
   async function request(url, body) {
     const response = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const data = await response.json();
@@ -24,9 +63,14 @@
       const inputs = Object.fromEntries(['title','category','topic'].map(key => [key, form.elements.namedItem(key)]));
       Object.entries(inputs).forEach(([key,input]) => { input.value = preview[key] || ''; });
       dialog.querySelector('.atlas-dialog-notice').textContent = `Origen: ${preview.source.title}`;
-      for (const [id, values] of [['knowledgeSelectionAreas',preview.categories],['knowledgeSelectionTopics',preview.topics]]) {
-        values.forEach(value => { const option=document.createElement('option'); option.value=value; dialog.querySelector(`#${id}`).append(option); });
-      }
+      dialog.querySelectorAll('datalist').forEach(node=>node.remove());
+      inputs.category.removeAttribute('list');inputs.topic.removeAttribute('list');
+      classificationPicker(inputs.category,dialog,()=>preview.categories);
+      classificationPicker(inputs.topic,dialog,()=>{
+        const normalize=text=>text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        const area=Object.keys(preview.topics_by_category||{}).find(label=>normalize(label)===normalize(inputs.category.value));
+        return area?preview.topics_by_category[area]:[];
+      });
       const duplicates = dialog.querySelector('.knowledge-duplicates');
       const submit = dialog.querySelector('button[type=submit]');
       const error = dialog.querySelector('.knowledge-selection-error');

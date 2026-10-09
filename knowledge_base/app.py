@@ -1502,6 +1502,9 @@ def _taxonomy_key(text):
 
 
 def _canonical_topic_label(index, category_slug, topic_slug):
+    if _taxonomy_key(category_slug) == _taxonomy_key("Programación") and _taxonomy_key(topic_slug) in {
+            _taxonomy_key(label) for label in ("Entorno virtual en Python", "Entorno virtual Python", "Entonro virtual en Python", "Entonro virtual Python", "Entornos virtuales Python", "Entornos virtuales en Python")}:
+        return "Entornos virtuales en Python"
     for meta in index.values():
         if meta.get("type") in ("course", "teamspace", "page"):
             continue
@@ -1556,7 +1559,9 @@ def preview_knowledge_selection():
     return jsonify(title=title.strip(), category=category, topic=topic,
                    source={"id": source_id, "title": source.get("title", source_id)}, duplicates=duplicates,
                    categories=sorted({m.get("category_label", "") for m in knowledge} - {""}),
-                   topics=sorted({m.get("topic_label", "") for m in knowledge} - {""}))
+                   topics=sorted({m.get("topic_label", "") for m in knowledge} - {""}),
+                   topics_by_category={label: sorted({m.get("topic_label", "") for m in knowledge if m.get("category_label") == label} - {""})
+                                       for label in {m.get("category_label", "") for m in knowledge} - {""}})
 
 
 @app.route("/api/entry", methods=["POST"])
@@ -2041,7 +2046,7 @@ def organize_python_knowledge():
     The authenticated client invokes this before loading its tree after deploy.
     """
     import fcntl
-    marker = DATA_DIR / "python-knowledge-organization-v1.json"
+    marker = DATA_DIR / "python-knowledge-organization-v2.json"
     with (DATA_DIR / "python-knowledge-organization.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if marker.exists():
@@ -2050,7 +2055,7 @@ def organize_python_knowledge():
         updated = {key: dict(meta) for key, meta in index.items()}
         programming = _taxonomy_key("Programación")
         virtual_areas = {_taxonomy_key(label) for label in ("Entornos virtuales Python", "Entornos virtuales en Python")}
-        virtual_topics = {_taxonomy_key(label) for label in ("Entorno virtual en Python", "Entornos virtuales Python", "Entornos virtuales en Python")}
+        virtual_topics = {_taxonomy_key(label) for label in ("Entorno virtual en Python", "Entorno virtual Python", "Entonro virtual en Python", "Entonro virtual Python", "Entornos virtuales Python", "Entornos virtuales en Python")}
         moves, missing, collisions = [], [], []
         for entry_id, meta in index.items():
             if meta.get("type") in ("course", "page", "teamspace"):
@@ -2064,6 +2069,15 @@ def organize_python_knowledge():
             target = updated[entry_id]
             target.update(category=slugify("Programación"), category_label="Programación",
                           topic=slugify(topic), topic_label=topic)
+            corrected_titles = {
+                "que-es-poetry": "Qué es Poetry",
+                "que-es-un-entorno-virtual": "Qué es un entorno virtual",
+                "que-es-un-entorno-virtual-en-python": "Qué es un entorno virtual en Python",
+                "que-es-un-entonro-virtual-en-python": "Qué es un entorno virtual en Python",
+            }
+            correction = corrected_titles.get(_taxonomy_key(meta.get("title", "")))
+            if correction:
+                target["title"] = correction
             old_path, new_path = _entry_path(entry_id, meta), _entry_path(entry_id, target)
             if target == meta:
                 continue

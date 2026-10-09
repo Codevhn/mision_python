@@ -10560,3 +10560,10 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 .knowledge-classification-note { color:var(--text-muted); font-size:0.9rem; }
 .knowledge-duplicates button { display:block; margin:8px 0; white-space:normal; text-align:left; }
 .knowledge-selection-error { color:var(--accent); }
+.knowledge-classification-options { position:fixed; z-index:20; max-height:180px; overflow-y:auto; padding:4px; border:1px solid var(--aero-frame); border-radius:4px; background:var(--bg-overlay); color:var(--text); box-shadow:0 8px 24px #0006,inset 0 0 0 1px var(--aero-inset); font-family:var(--font-ui); }
+.knowledge-classification-options.hidden { display:none; }
+.knowledge-classification-options button { display:block; width:100%; padding:8px 10px; border:0; border-radius:3px; background:transparent; color:var(--text); text-align:left; font:0.85rem var(--font-ui); cursor:pointer; }
+.knowledge-classification-options button:hover, .knowledge-classification-options button[aria-selected=true] { background:var(--aero-nav-hover); color:var(--text); box-shadow:inset 0 0 0 1px var(--aero-frame); }
+.knowledge-selection-dialog label:has(input[role=combobox]) { position:relative; }
+.knowledge-selection-dialog label:has(input[role=combobox])::after { content:'▾'; position:absolute; right:12px; bottom:10px; color:var(--text-muted); pointer-events:none; }
+.knowledge-selection-dialog input[role=combobox] { padding-right:32px; }
