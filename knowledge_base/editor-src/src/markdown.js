@@ -134,6 +134,7 @@ function colorProps(block) {
 }
 
 function isSpecialLine(l) {
+  l = l.trimStart();
   return (
     /^#{1,6} /.test(l) ||
     /^- \[[ x]\] /.test(l) ||
@@ -143,7 +144,7 @@ function isSpecialLine(l) {
     l === "---" || l === "***" ||
     /^\[\[.+\]\]$/.test(l.trim()) ||
     l.startsWith(":::") ||
-    l.startsWith("```") ||
+    /^(?:`{3,}|~{3,})/.test(l) ||
     l.trimStart().startsWith("|") ||
     l === "<!--blank-->" ||
     /^<!--\s*color:/.test(l)
@@ -248,21 +249,31 @@ function mdToFlat(md) {
       continue;
     }
 
-    if (l.startsWith("```")) {
-      const lang = l.slice(3).trim();
+    const fence = trimmedL.match(/^(`{3,}|~{3,})([^`]*)$/);
+    if (fence) {
+      const marker = fence[1];
+      const lang = fence[2].trim();
       const code = [];
       i++;
-      let fenceLines = 0;
-      while (i < lines.length && !lines[i].startsWith("```") && fenceLines < 500) { code.push(lines[i]); i++; fenceLines++; }
-      if (i < lines.length && lines[i].startsWith("```")) i++;
-      push({ id: uid(), type: "code", content: code.join("\n"), lang, indent: 0 });
+      const closes = line => new RegExp(`^\\s*${marker[0]}{${marker.length},}\\s*$`).test(line);
+      while (i < lines.length && !closes(lines[i])) {
+        // Remove only the list's structural indent; preserve source indentation.
+        const spaces = lines[i].match(/^ */)[0].length;
+        code.push(lines[i].slice(Math.min(spaces, leadingSpaces)));
+        i++;
+      }
+      if (i < lines.length) i++;
+      push({ id: uid(), type: "code", content: code.join("\n"), lang, indent: listIndent });
       continue;
     }
 
-    const paraLines = [l];
+    const paraLines = [trimmedL];
     i++;
-    while (i < lines.length && lines[i].trim() && !isSpecialLine(lines[i])) { paraLines.push(lines[i]); i++; }
-    push({ id: uid(), type: "paragraph", content: paraLines.join("\n"), indent: 0 });
+    while (i < lines.length && lines[i].trim() && !isSpecialLine(lines[i]) &&
+      Math.floor((lines[i].length - lines[i].trimStart().length) / 2) === listIndent) {
+      paraLines.push(lines[i].slice(leadingSpaces)); i++;
+    }
+    push({ id: uid(), type: "paragraph", content: paraLines.join("\n"), indent: listIndent });
   }
 
   return blocks.length ? blocks : [{ id: uid(), type: "paragraph", content: "", indent: 0 }];
@@ -390,8 +401,13 @@ function blockToMd(block, indentLevel = 0) {
       return prefix + "> " + text;
     case "divider":
       return prefix + "---";
-    case "codeBlock":
-      return prefix + "```" + (block.props.language || "") + "\n" + text + "\n```";
+    case "codeBlock": {
+      // A longer fence protects literal triple backticks inside source code.
+      const runs = text.match(/`{3,}/g) || [];
+      const fence = "`".repeat(Math.max(3, ...runs.map(run => run.length + 1)));
+      return prefix + [fence + (block.props.language || ""), ...text.split("\n"), fence]
+        .map(line => ind + line).join("\n");
+    }
     case "pageLink":
       return prefix + "[[" + (block.props.title || "") + (block.props.pageId ? "|" + block.props.pageId : "") + "]]";
     case "database":
@@ -416,7 +432,7 @@ function blockToMd(block, indentLevel = 0) {
     }
     case "paragraph":
     default:
-      if (text.trim()) return prefix + text;
+      if (text.trim()) return prefix + text.split("\n").map(line => ind + line).join("\n");
       return prefix ? prefix + "<!--blank-->" : null; // collapse pure-empty paragraphs below
   }
 }

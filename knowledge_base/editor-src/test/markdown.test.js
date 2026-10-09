@@ -73,3 +73,53 @@ check('display LaTeX becomes a readable formula', '\\[\nR \\subseteq D_1 \\times
 check('math inside inline code stays literal', '`\\(x_1\\)`');
 check('math inside fenced code stays literal', '```python\nprint("\\(x_1\\)")\n```');
 check('unsupported complex LaTeX stays intact', '\\(\\frac{x}{y}\\)');
+
+// CommonMark indents code and continuation prose under each numbered step.
+const pipSteps = [
+  '1. **Crear un entorno**',
+  '   ```bash',
+  '   # Linux/macOS',
+  '   python3 -m venv .venv',
+  '   # Windows',
+  '   py -m venv .venv',
+  '   ```',
+  '',
+  '2. **Activar el entorno**',
+  '   - **Linux/macOS:** `source .venv/bin/activate`',
+  '   - **Windows (cmd):** `.venv\\Scripts\\activate.bat`',
+  '',
+  '3. **Ejecutar pip**',
+  '   ```bash',
+  '   python -m pip install requests',
+  '   ```',
+  '   Usa el intérprete elegido con `python -m pip`.',
+  '',
+  '4. **Operaciones básicas**',
+  '   - **Listar:** `python -m pip list`',
+  '',
+  '5. **Verificar el paquete**',
+  '   ```bash',
+  '   python -m pip show requests',
+  '   ```',
+].join('\n');
+const pipBlocks = mdToBlocks(pipSteps);
+assert.strictEqual(pipBlocks.length, 5);
+assert(pipBlocks.every(block => block.type === 'numberedListItem'));
+assert.strictEqual(pipBlocks[0].children[0].type, 'codeBlock');
+assert.strictEqual(pipBlocks[0].children[0].props.language, 'bash');
+assert.strictEqual(pipBlocks[0].children[0].content[0].text, '# Linux/macOS\npython3 -m venv .venv\n# Windows\npy -m venv .venv');
+assert.strictEqual(pipBlocks[1].children.length, 2);
+assert.strictEqual(pipBlocks[2].children[1].type, 'paragraph');
+const savedPip = roundTrip(pipSteps);
+assert.strictEqual(roundTrip(savedPip), savedPip, 'nested code must survive repeated save/reload');
+const reloadedPip = mdToBlocks(savedPip);
+assert.strictEqual(reloadedPip.length, 5);
+assert.deepStrictEqual(reloadedPip.map(b => b.children.map(c => c.type)), [
+  ['codeBlock'], ['bulletListItem', 'bulletListItem'], ['codeBlock', 'paragraph'], ['bulletListItem'], ['codeBlock'],
+]);
+console.log('ok - assistant pip workflow keeps code, paragraphs and lists nested across save/reload');
+check('code indentation preserved inside list', '1. Run\n  ```python\n  if True:\n      print("ok")\n  ```');
+check('tilde fence inside list', '1. Run\n   ~~~bash\n   echo hello\n   ~~~', '1. Run\n  ```bash\n  echo hello\n  ```');
+check('long fence preserves embedded fence', '````text\n```\nliteral\n```\n````');
+const longCode = '```text\n' + Array.from({length: 510}, (_, i) => `line ${i}`).join('\n') + '\n```';
+check('long code is not truncated or leaked into paragraphs', longCode);
