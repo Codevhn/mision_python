@@ -11817,7 +11817,8 @@ function _mountPracticeCustomSelect(container, { options, value, placeholder, di
 // caller's own context string), since "practice" and "ask" are different
 // kinds of work with their own sensible defaults.
 let _aiProvidersPromise = null;
-function _getAvailableProviders() {
+function _getAvailableProviders(force = false) {
+  if (force) _aiProvidersPromise = null;
   if (!_aiProvidersPromise) {
     _aiProvidersPromise = fetch('/api/ai/providers').then(r => r.json())
       .catch(() => ({ providers: [], default: { provider: 'deepseek', model: 'deepseek-v4-pro' } }));

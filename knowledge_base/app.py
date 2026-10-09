@@ -1,4 +1,5 @@
 import os
+import koboldcpp
 import json
 import re
 import difflib
@@ -5034,6 +5035,10 @@ def delete_mindmap_node(map_id, node_id):
 # compatible chat-completions APIs and share one code path; Gemini's REST
 # API has its own request/response shape and gets its own.
 PROVIDERS = {
+    "koboldcpp": {
+        "label": "Local · KoboldCpp", "kind": "openai_compat",
+        "base_url": "", "env": "KOBOLDCPP_API_KEY", "models": [],
+    },
     "omniroute": {
         "label": "OmniRoute",
         "kind": "openai_compat",
@@ -5091,6 +5096,23 @@ PROVIDERS = {
 }
 DEFAULT_PROVIDER = "deepseek"
 DEFAULT_MODEL = "deepseek-v4-pro"
+
+def _provider_enabled(pid, cfg):
+    return bool(os.environ.get("KOBOLDCPP_BASE_URL")) if pid == "koboldcpp" else bool(os.environ.get(cfg["env"]))
+
+
+def _provider_config(pid):
+    cfg = PROVIDERS.get(pid)
+    if cfg and pid == "koboldcpp":
+        cfg = {**cfg, "base_url": koboldcpp.base_url() + "/chat/completions"}
+    return cfg
+
+
+def _provider_configuration_error(pid, cfg):
+    if pid == "koboldcpp":
+        return "Configura KOBOLDCPP_BASE_URL para conectar KoboldCpp."
+    return f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=..."
+
 
 # OpenRouter's public model catalog (no API key needed to list) — cached in
 # memory so every /api/ai/providers call doesn't refetch it. "Free" here
@@ -5213,7 +5235,7 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
         # attribution headers — harmless no-ops for DeepSeek/Groq, which
         # this function also serves.
         headers={
-            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
             "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
         },
     )
@@ -5266,7 +5288,7 @@ def _call_openai_compatible_stream(base_url, api_key, model, system, user_msg, m
         base_url,
         data=body,
         headers={
-            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
             "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
         },
     )
@@ -5333,12 +5355,13 @@ def _stream_ai(system, user_msg, max_tokens=2048, provider=None, model=None, tem
     generator and translates the exception into an SSE error event)."""
     provider = provider or DEFAULT_PROVIDER
     model = model or DEFAULT_MODEL
-    cfg = PROVIDERS.get(provider)
+    cfg = _provider_config(provider)
     if not cfg:
         raise RuntimeError(f"Proveedor de IA desconocido: {provider}")
+    max_tokens = koboldcpp.output_limit(max_tokens) if provider == "koboldcpp" else max_tokens
     api_key = os.environ.get(cfg["env"], "")
-    if not api_key:
-        raise RuntimeError(f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...")
+    if not _provider_enabled(provider, cfg):
+        raise RuntimeError(_provider_configuration_error(provider, cfg))
     if cfg["kind"] == "gemini":
         yield from _call_gemini_stream(cfg["base_url"], api_key, model, system, user_msg, max_tokens, temperature)
     else:
@@ -5420,20 +5443,22 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
     def _ret(content, err, usage):
         return (content, err, usage) if return_usage else (content, err)
 
-    cfg = PROVIDERS.get(provider)
+    try:
+        cfg = _provider_config(provider)
+    except ValueError as invalid:
+        return _ret(None, (jsonify({"error": str(invalid)}), 400), None)
     if not cfg:
         return _ret(None, (jsonify({"error": f"Proveedor de IA desconocido: {provider}"}), 400), None)
+    max_tokens = koboldcpp.output_limit(max_tokens) if provider == "koboldcpp" else max_tokens
     api_key = os.environ.get(cfg["env"], "")
-    if not api_key:
-        return _ret(None, (jsonify({
-            "error": f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...",
-        }), 503), None)
+    if not _provider_enabled(provider, cfg):
+        return _ret(None, (jsonify({"error": _provider_configuration_error(provider, cfg)}), 503), None)
     try:
         if cfg["kind"] == "gemini":
             content, truncated = _call_gemini(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
             usage = None
         else:
-            content, truncated, usage = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode, temperature)
+            content, truncated, usage = _call_openai_compatible(cfg["base_url"], api_key, model, system, user_msg, max_tokens, json_mode and provider != "koboldcpp", temperature)
         if truncated and fail_on_truncation:
             return _ret(None, (jsonify({
                 "error": f"La respuesta de {cfg['label']} se cortó por el límite de tokens antes de terminar.",
@@ -5443,7 +5468,7 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
         err_body = e.read().decode("utf-8", errors="replace")
         return _ret(None, (jsonify({"error": _clean_ai_error(e.code, err_body)}), 502), None)
     except Exception as e:
-        return _ret(None, (jsonify({"error": str(e)}), 500), None)
+        return _ret(None, (jsonify({"error": koboldcpp.connection_error() if provider == "koboldcpp" else str(e)}), 500), None)
 
 
 def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
@@ -5462,7 +5487,7 @@ def _call_deepseek(system, user_msg, max_tokens=1000, json_mode=False):
 # HTTPError/Exception and caught in _stream_call_ai, which yields
 # (None, {"error", "status"}) instead.
 
-def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, temperature=None):
+def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, temperature=None, include_usage=True):
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -5473,7 +5498,7 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
         # [DONE]. DeepSeek's usage block is where prompt_cache_hit_tokens/
         # prompt_cache_miss_tokens live — the only way to see, per request,
         # how much of it actually hit DeepSeek's automatic disk cache.
-        "stream_options": {"include_usage": True},
+        **({"stream_options": {"include_usage": True}} if include_usage else {}),
     }
     if temperature is not None:
         payload["temperature"] = temperature
@@ -5482,7 +5507,7 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
         base_url,
         data=body,
         headers={
-            **_AI_HTTP_HEADERS, "Content-Type": "application/json", "Authorization": f"Bearer {api_key}",
+            **_AI_HTTP_HEADERS, "Content-Type": "application/json", **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
             "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
         },
     )
@@ -5570,30 +5595,37 @@ def _stream_call_ai(system, messages, max_tokens=1000, provider=None, model=None
     yields (None, {"error": msg, "status": code}) and stops."""
     provider = provider or DEFAULT_PROVIDER
     model = model or DEFAULT_MODEL
-    cfg = PROVIDERS.get(provider)
+    try:
+        cfg = _provider_config(provider)
+    except ValueError as invalid:
+        yield None, {"error": str(invalid), "status": 400}
+        return
     if not cfg:
         yield None, {"error": f"Proveedor de IA desconocido: {provider}", "status": 400}
         return
+    max_tokens = koboldcpp.output_limit(max_tokens) if provider == "koboldcpp" else max_tokens
     api_key = os.environ.get(cfg["env"], "")
-    if not api_key:
-        yield None, {"error": f"{cfg['env']} no configurada. Añádela con: fly secrets set {cfg['env']}=...", "status": 503}
+    if not _provider_enabled(provider, cfg):
+        yield None, {"error": _provider_configuration_error(provider, cfg), "status": 503}
         return
     try:
         if cfg["kind"] == "gemini":
             inner = _stream_gemini(cfg["base_url"], api_key, model, system, messages, max_tokens, temperature)
         else:
             request_messages = ([{"role": "system", "content": system}] if system else []) + list(messages)
-            inner = _stream_openai_compatible(cfg["base_url"], api_key, model, request_messages, max_tokens, temperature)
+            inner = _stream_openai_compatible(cfg["base_url"], api_key, model, request_messages, max_tokens, temperature, include_usage=provider != "koboldcpp")
         for part in inner:
             yield part
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
         yield None, {"error": _clean_ai_error(e.code, err_body), "status": 502}
     except Exception as e:
-        yield None, {"error": str(e), "status": 500}
+        yield None, {"error": koboldcpp.connection_error() if provider == "koboldcpp" else str(e), "status": 500}
 
 
 def _provider_models(pid, cfg):
+    if pid == "koboldcpp":
+        return koboldcpp.models()[0]
     if pid == "omniroute":
         return _fetch_omniroute_models()
     # OpenRouter is available through the user's OmniRoute combo. Its full
@@ -5603,6 +5635,18 @@ def _provider_models(pid, cfg):
     return cfg["models"]
 
 
+@app.route("/api/ai/koboldcpp/status")
+def koboldcpp_status():
+    if not os.environ.get("KOBOLDCPP_BASE_URL"):
+        return jsonify({"configured": False, "connected": False, "models": [],
+                        "error": "KOBOLDCPP_BASE_URL no está configurada."})
+    try:
+        models, error = koboldcpp.models()
+    except ValueError as invalid:
+        models, error = [], str(invalid)
+    return jsonify({"configured": True, "connected": bool(models), "models": models, "error": error})
+
+
 @app.route("/api/ai/providers")
 def list_ai_providers():
     """Only lists providers whose API key is actually configured, so the
@@ -5610,17 +5654,25 @@ def list_ai_providers():
     available = []
     warnings = []
     for pid, cfg in PROVIDERS.items():
-        if not os.environ.get(cfg["env"]):
+        if not _provider_enabled(pid, cfg):
             if pid == "omniroute":
                 warnings.append({"provider": pid, "message": "OmniRoute: falta configurar OMNIROUTE_API_KEY en Fly.io."})
             continue
-        models = _provider_models(pid, cfg)
+        if pid == "koboldcpp":
+            try:
+                models, error = koboldcpp.models()
+            except ValueError as invalid:
+                models, error = [], str(invalid)
+            if error:
+                warnings.append({"provider": pid, "message": error})
+        else:
+            models = _provider_models(pid, cfg)
         if pid == "omniroute" and _OMNIROUTE_MODELS_CACHE.get("error"):
             warnings.append({"provider": pid, "message": _OMNIROUTE_MODELS_CACHE["error"]})
         if not models:
             continue  # OpenRouter's catalog fetch failed / returned nothing free right now
         available.append({"id": pid, "label": cfg["label"], "models": models})
-    return jsonify({"providers": available, "warnings": warnings, "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
+    return jsonify({"providers": available, "warnings": warnings, "local_configured": bool(os.environ.get("KOBOLDCPP_BASE_URL")), "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
 
 
 def _list_available_ai_models():
@@ -5631,7 +5683,7 @@ def _list_available_ai_models():
     list, which can be dozens of models long — before ever trying the rest."""
     per_provider = []
     for pid, cfg in PROVIDERS.items():
-        if not os.environ.get(cfg["env"]):
+        if pid == "koboldcpp" or not _provider_enabled(pid, cfg):
             continue
         models = _provider_models(pid, cfg)
         if models:
@@ -5661,7 +5713,7 @@ def _call_ai_with_fallback(system, user_msg, max_tokens=1000, json_mode=False, p
     attempts = []
     if provider and model:
         attempts.append((provider, model))
-    for pm in _list_available_ai_models():
+    for pm in ([] if provider == "koboldcpp" else _list_available_ai_models()):
         if pm not in attempts:
             attempts.append(pm)
     if not attempts:
@@ -6484,10 +6536,8 @@ def ai_ask():
             stream_cfg = PROVIDERS.get(data.get("provider") or DEFAULT_PROVIDER)
             if not stream_cfg:
                 return jsonify({"error": f"Proveedor de IA desconocido: {data.get('provider')}"}), 400
-            if not os.environ.get(stream_cfg["env"]):
-                return jsonify({
-                    "error": f"{stream_cfg['env']} no configurada. Añádela con: fly secrets set {stream_cfg['env']}=...",
-                }), 503
+            if not _provider_enabled(data.get("provider") or DEFAULT_PROVIDER, stream_cfg):
+                return jsonify({"error": _provider_configuration_error(data.get("provider") or DEFAULT_PROVIDER, stream_cfg)}), 503
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

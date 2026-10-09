@@ -201,3 +201,8 @@
 .assistant-claim[data-review-status=supported] {border-left-color:var(--accent)}
 .assistant-claim summary {cursor:pointer;overflow-wrap:anywhere}
 .assistant-claim blockquote {margin:10px 0;padding-left:10px;border-left:2px solid var(--border);color:var(--text);white-space:pre-wrap}
+
+.assistant-model-alerts:has(#assistantLocalCheck:not([hidden])) { display:block; }
+#assistantLocalCheck { margin:6px 0; padding:5px 9px; font:inherit; color:var(--text); background:var(--aero-button,var(--bg-elevated)); border:1px solid var(--border); border-radius:4px; cursor:pointer; }
+#assistantLocalStatus:empty { display:none; }
+#assistantLocalStatus { margin:4px 0; font-size:.8rem; }

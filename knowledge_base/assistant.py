@@ -804,7 +804,7 @@ def register_assistant(app, namespace):
         if not isinstance(provider, str) or provider not in namespace["PROVIDERS"] or not isinstance(model, str) or len(model) > 300:
             return jsonify({"error": "Proveedor o modelo inválido"}), 400
         import os
-        if (revision or not is_location_query(prompt)) and not os.environ.get(namespace["PROVIDERS"][provider]["env"]):
+        if (revision or not is_location_query(prompt)) and not namespace["_provider_enabled"](provider, namespace["PROVIDERS"][provider]):
             return jsonify({"error": "El proveedor seleccionado no está configurado."}), 503
         if len(record["messages"]) >= 999:
             return jsonify({"error": "Esta conversación llegó a 1.000 mensajes. Inicia una nueva para continuar."}), 400
