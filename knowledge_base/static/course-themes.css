@@ -1,4 +1,6 @@
-/* Dual-color language palettes retain the shared Windows 7 surfaces. */
+/* Language and subject palettes retain the shared Windows 7 surfaces. */
+:root[data-language-theme="cybersecurity"] { --language-hue:145; --language-saturation:26%; --language-dark-accent:#83efad; --language-light-accent:#16643a; }
+:root[data-language-theme="skills"] { --language-hue:269; --language-saturation:32%; --language-dark-accent:#d9b2ff; --language-light-accent:#7334a2; }
 :root[data-language-theme="python"] { --language-hue:210; --language-saturation:48%; --language-dark-accent:#ffd56b; --language-light-accent:#815800; }
 :root[data-language-theme="sql"] { --language-hue:208; --language-saturation:21%; --language-dark-accent:#ffc778; --language-light-accent:#805009; }
 :root[data-language-theme="javascript"] { --language-hue:48; --language-saturation:16%; --language-dark-accent:#ffe66d; --language-light-accent:#705500; }

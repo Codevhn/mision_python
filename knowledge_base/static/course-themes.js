@@ -1,5 +1,7 @@
 /* Language themes and browser-local course preferences. */
 const ATLAS_LANGUAGE_THEMES = [
+  ['cybersecurity','Hacking Ético · Obsidiana y Verde','Cristal oscuro y reflejos verde terminal',145,26,'#83efad','#16643a',/\b(hacking|ciberseguridad|cybersecurity|pentesting|ethical\s+hacking)\b/i],
+  ['skills','Desarrollo de Skills · Amatista','Cristal violeta y reflejos lavanda',269,32,'#d9b2ff','#7334a2',/\b(?:desarrollo|development|creacion|creation)\s+(?:(?:de|of)\s+)?skills?\b/i],
   ['python','Python · Zafiro y Oro','Cristal azul profundo y reflejos dorados',210,48,'#ffd56b','#815800',/\bpython\b/i],
   ['sql','SQL · Acero y Ámbar','Acero azulado y luz ámbar',208,21,'#ffc778','#805009',/\b(sql|mysql|postgres(?:ql)?|sqlite|oracle)\b/i],
   ['javascript','JavaScript · Oro Eléctrico','Cristal ahumado y oro eléctrico',48,16,'#ffe66d','#705500',/\b(java\s?script|javascript|js|node(?:js|\.js)?)\b/i],
@@ -14,7 +16,7 @@ const ATLAS_LANGUAGE_THEMES = [
   ['git','Git · Obsidiana y Coral','Cristal carbón con reflejos coral',8,22,'#ffae9f','#963e31',/\b(git|github|gitlab)\b/i],
 ];
 function registerAtlasLanguageThemes(registry,catalog,groups) {
-  groups.languages='Lenguajes · Windows 7';
+  groups.languages='Lenguajes y temáticas · Windows 7';
   for(const [language,title,description,hue,saturation,darkAccent,lightAccent] of ATLAS_LANGUAGE_THEMES) {
     for(const scheme of ['dark','light']) {
       const id=`language-${language}-${scheme}`;
@@ -36,9 +38,9 @@ function _readCourseTheme(slug) {
 function _saveCourseTheme(slug,value) {try{localStorage.setItem('kb_course_theme:'+slug,JSON.stringify(value));}catch{}}
 function _generalAtlasTheme() {try{return localStorage.getItem('kb_theme')||'aero-night';}catch{return 'aero-night';}}
 function _languageForCourse(slug,label) {
-  const text=(label||slug).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[_-]/g,' ');
+  const text=([label,slug].filter(Boolean).join(' ')).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[_-]/g,' ');
   // More specific names precede C and Java, and SQL wins over a language mentioned in passing.
-  for(const id of ['sql','typescript','javascript','python','csharp','cpp','java','css','html','rust','go','git']) {
+  for(const id of ['cybersecurity','skills','sql','typescript','javascript','python','csharp','cpp','java','css','html','rust','go','git']) {
     const spec=ATLAS_LANGUAGE_THEMES.find(item=>item[0]===id);if(spec[7].test(text))return id;
   }
   return null;
@@ -74,7 +76,7 @@ function _renderCourseThemeControls() {
   const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=preference.mode!=='general';
   label.append(toggle,document.createTextNode('Aplicar un tema propio al abrir este curso'));
   const hint=document.createElement('small');hint.textContent=toggle.checked?'El tema que elijas abajo quedará asignado a este curso en este navegador.':'Usarás tu tema general de Atlas.';
-  const reset=document.createElement('button');reset.type='button';reset.className='btn-ghost';reset.textContent='Usar tema automático del lenguaje';
+  const reset=document.createElement('button');reset.type='button';reset.className='btn-ghost';reset.textContent='Usar tema automático del curso';
   toggle.addEventListener('change',()=>{_saveCourseTheme(context.slug,{mode:toggle.checked?'auto':'general'});_enterCourseTheme(context.slug,context.label);_renderCourseThemeControls();});
   reset.addEventListener('click',()=>{_saveCourseTheme(context.slug,{mode:'auto'});_enterCourseTheme(context.slug,context.label);_renderCourseThemeControls();});
   host.append(title,label,hint,reset);
