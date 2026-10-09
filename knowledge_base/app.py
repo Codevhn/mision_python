@@ -1028,14 +1028,14 @@ def login_page():
     if request.method == "POST":
         ip = _client_ip()
         if _login_throttled(ip):
-            return render_template("login.html", error="Demasiados intentos. Espera 60 segundos e inténtalo de nuevo."), 429
+            return render_template("login.html", error="Demasiados intentos. Espera 60 segundos e inténtalo de nuevo.", v=_build_id()), 429
         if request.form.get("password") == KB_PASSWORD:
             _LOGIN_ATTEMPTS.pop(ip, None)
             session["authenticated"] = True
             return redirect(url_for("index"))
         _record_login_failure(ip)
         error = "Contraseña incorrecta."
-    return render_template("login.html", error=error)
+    return render_template("login.html", error=error, v=_build_id())
 
 @app.route("/logout")
 def logout():
