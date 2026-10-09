@@ -2033,6 +2033,75 @@ def get_categories():
     return jsonify(cats)
 
 
+@app.route("/api/knowledge/organize-python", methods=["POST"])
+def organize_python_knowledge():
+    """One-time organization requested for the existing Python knowledge tree.
+
+    Keep entry IDs/UIDs and all other metadata; only relocate classification.
+    The authenticated client invokes this before loading its tree after deploy.
+    """
+    import fcntl
+    marker = DATA_DIR / "python-knowledge-organization-v1.json"
+    with (DATA_DIR / "python-knowledge-organization.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if marker.exists():
+            return jsonify(moved=0, already_applied=True)
+        index = load_index()
+        updated = {key: dict(meta) for key, meta in index.items()}
+        programming = _taxonomy_key("Programación")
+        virtual_areas = {_taxonomy_key(label) for label in ("Entornos virtuales Python", "Entornos virtuales en Python")}
+        virtual_topics = {_taxonomy_key(label) for label in ("Entorno virtual en Python", "Entornos virtuales Python", "Entornos virtuales en Python")}
+        moves, missing, collisions = [], [], []
+        for entry_id, meta in index.items():
+            if meta.get("type") in ("course", "page", "teamspace"):
+                continue
+            category = _taxonomy_key(meta.get("category_label") or meta.get("category", ""))
+            if category != programming and category not in virtual_areas:
+                continue
+            topic = meta.get("topic_label") or meta.get("topic", "")
+            if category in virtual_areas or _taxonomy_key(topic) in virtual_topics:
+                topic = "Entornos virtuales en Python"
+            target = updated[entry_id]
+            target.update(category=slugify("Programación"), category_label="Programación",
+                          topic=slugify(topic), topic_label=topic)
+            old_path, new_path = _entry_path(entry_id, meta), _entry_path(entry_id, target)
+            if target == meta:
+                continue
+            if not old_path.is_file():
+                missing.append(entry_id)
+            elif old_path != new_path and new_path.exists():
+                collisions.append(entry_id)
+            moves.append((old_path, new_path))
+        if missing or collisions:
+            return jsonify(error="La reorganización requiere revisar archivos ausentes o destinos ocupados; no se cambió ninguna entrada.",
+                           missing=missing, collisions=collisions), 409
+        if not moves:
+            return jsonify(moved=0, already_applied=False)
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        backup = BACKUP_DIR / f"before-python-organization-{uuid.uuid4().hex}.zip"
+        backup.write_bytes(_build_backup_zip_bytes())
+        relocated = []
+        try:
+            for old_path, new_path in moves:
+                if old_path != new_path:
+                    new_path.parent.mkdir(parents=True, exist_ok=True)
+                    old_path.rename(new_path)
+                    relocated.append((old_path, new_path))
+            save_index(updated)
+            report = {"moved": len(moves), "backup": backup.name, "applied_at": datetime.now().isoformat(timespec="seconds")}
+            temporary = marker.with_suffix(".tmp")
+            temporary.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
+            temporary.replace(marker)
+        except Exception:
+            for old_path, new_path in reversed(relocated):
+                old_path.parent.mkdir(parents=True, exist_ok=True)
+                new_path.rename(old_path)
+            save_index(index)
+            raise
+        _cleanup_vacated_folders({old.parent for old, new in relocated})
+        return jsonify(**report, already_applied=False)
+
+
 def _reassign_category_topic(index, match_category, match_topic, new_category_label, new_topic_label, vacated_folders):
     """Reassign every entry matching (category[, tema]) to a new category/tema
     label — the single primitive behind renaming a category, merging two

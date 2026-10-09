@@ -1,4 +1,5 @@
 import app as app_module
+import zipfile
 
 
 def _create(auth_client, title, category, topic, **extra):
@@ -121,6 +122,74 @@ def test_course_selection_reuses_unaccented_existing_area(auth_client, monkeypat
     monkeypatch.setattr(app_module, 'load_courses', lambda: {'courses': {'python': {'domain': 'python'}}})
     preview = auth_client.post('/api/knowledge/selection', json={'title': 'venv', 'source_entry_id': 'lesson'}).json
     assert preview['category'] == 'Programacion'
+
+
+def test_requested_python_organization_preserves_ids_content_and_metadata(auth_client):
+    first = _create(auth_client, 'POO', 'Programacion', 'POO').json['id']
+    # Existing deployed data predates accent-alias reuse.
+    second = _create(auth_client, 'venv', 'Otra área', 'Entorno virtual en Python').json['id']
+    poetry = _create(auth_client, 'Poetry', 'Entornos virtuales Python', 'Poetry').json['id']
+    untouched = _create(auth_client, 'Linux', 'Linux', 'Sistema').json['id']
+    index = app_module.load_index()
+    old = app_module._entry_path(second, index[second])
+    index[second].update(category='programación', category_label='Programación',
+                         source_entry_id=first, parent_id=None, properties={'custom': 'preservar'})
+    new = app_module._entry_path(second, index[second]);new.parent.mkdir(parents=True, exist_ok=True);old.rename(new)
+    app_module.save_index(index)
+    before = app_module.load_index()
+    response = auth_client.post('/api/knowledge/organize-python')
+    assert response.status_code == 200
+    assert response.json['moved'] == 3
+    after = app_module.load_index()
+    assert set(after) == set(before)
+    for entry_id in [first, second, poetry]:
+        assert after[entry_id]['uid'] == before[entry_id]['uid']
+        assert app_module._entry_path(entry_id, after[entry_id]).read_text() == 'contenido'
+        assert after[entry_id]['category_label'] == 'Programación'
+        for field in ['title', 'source_entry_id', 'properties', 'parent_id', 'created_at']:
+            assert after[entry_id].get(field) == before[entry_id].get(field)
+    assert after[second]['topic_label'] == after[poetry]['topic_label'] == 'Entornos virtuales en Python'
+    assert after[first]['topic_label'] == 'POO'
+    assert after[untouched] == before[untouched]
+    with zipfile.ZipFile(app_module.BACKUP_DIR / response.json['backup']) as backup:
+        assert 'data/index.db' in backup.namelist()
+        assert len([name for name in backup.namelist() if name.endswith('.md')]) == 4
+    assert auth_client.post('/api/knowledge/organize-python').json == {'moved': 0, 'already_applied': True}
+
+
+def test_python_organization_refuses_to_overwrite_existing_files(auth_client):
+    entry_id = _create(auth_client, 'venv', 'Entornos virtuales Python', 'Entorno virtual en Python').json['id']
+    before = app_module.load_index()
+    occupied = app_module.KNOWLEDGE_DIR / 'programación' / 'entornos-virtuales-en-python' / (entry_id + '.md')
+    occupied.parent.mkdir(parents=True);occupied.write_text('Archivo distinto')
+    response = auth_client.post('/api/knowledge/organize-python')
+    assert response.status_code == 409
+    assert app_module.load_index() == before
+    assert occupied.read_text() == 'Archivo distinto'
+    assert app_module._entry_path(entry_id, before[entry_id]).read_text() == 'contenido'
+
+
+def test_python_organization_rolls_back_file_moves_when_save_fails(auth_client, monkeypatch):
+    entry_id = _create(auth_client, 'venv', 'Entornos virtuales Python', 'Poetry').json['id']
+    before = app_module.load_index()
+    save = app_module.save_index
+    calls = []
+    def fail_once(index):
+        calls.append(index)
+        if len(calls) == 1:
+            raise OSError('Simulated database failure')
+        save(index)
+    monkeypatch.setattr(app_module, 'save_index', fail_once)
+    import pytest
+    with pytest.raises(OSError):
+        auth_client.post('/api/knowledge/organize-python')
+    assert app_module.load_index() == before
+    assert app_module._entry_path(entry_id, before[entry_id]).read_text() == 'contenido'
+    assert not (app_module.DATA_DIR / 'python-knowledge-organization-v1.json').exists()
+
+
+def test_python_organization_requires_authentication(client):
+    assert client.post('/api/knowledge/organize-python').status_code == 401
 
 
 def test_update_persists_tags(auth_client):

@@ -797,7 +797,19 @@ let _entriesById = {};
 let _navStack = [];  // [{ type, id, label, space }]
 let _navPos   = -1;  // current position in stack
 
+let _knowledgeOrganizationReady = null;
 async function loadTree() {
+  if (!_knowledgeOrganizationReady) {
+    _knowledgeOrganizationReady = (async () => {
+      try {
+        const response = await fetch('/api/knowledge/organize-python', {method:'POST'});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo reorganizar Conocimiento.');
+        if (result.moved) showToast(`Conocimiento organizado: ${result.moved} entradas. Copia de seguridad guardada.`);
+      } catch (error) { showToast(error.message, 'error'); }
+    })();
+  }
+  await _knowledgeOrganizationReady;
   const [r1, r2, r3, r4, r5, r6] = await Promise.all([fetch("/api/tree"), fetch("/api/courses/tree"), fetch("/api/teamspace/tree"), fetch("/api/entries"), fetch("/api/courses"), fetch("/api/pages/tree")]);
   const knowledgeTree  = await r1.json();
   const coursesTree    = await r2.json();
