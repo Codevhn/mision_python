@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote, SuggestionMenuController, SideMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
 import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
+import { es } from "@blocknote/core/locales";
 import "@blocknote/mantine/style.css";
 import "./custom-blocks.css";
 import { schema } from "./schema.js";
@@ -75,7 +76,7 @@ async function uploadFile(file) {
 }
 
 function EditorView({ instanceRef, onChange, onReady }) {
-  const editor = useCreateBlockNote({ schema, uploadFile, domAttributes: {editor: {spellcheck:"false", lang:"es"}} });
+  const editor = useCreateBlockNote({ schema, uploadFile, dictionary: es, domAttributes: {editor: {spellcheck:"false", lang:"es"}} });
   const [theme, setTheme] = React.useState(currentAppTheme());
 
   React.useEffect(() => {
