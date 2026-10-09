@@ -194,12 +194,13 @@
     if(message.documentation){
       const report=document.createElement('details');report.className='assistant-sources assistant-documentation';
       const summary=document.createElement('summary');
-      summary.textContent=message.documentation.status==='consulted'?'Revisión con documentación consultada':'Revisión sin contraste documental';
+      const phase=message.documentation.phase==='initial'?'Desarrollo':'Revisión';
+      summary.textContent=message.documentation.status==='consulted'?`${phase} con documentación consultada`:`${phase} sin contraste documental`;
       report.append(summary);
       const note=document.createElement('p');note.textContent='Consultar fuentes no garantiza que todas las afirmaciones estén verificadas. Se contrastan extractos de hasta 12.000 caracteres por página.';report.append(note);
       if(message.documentation.audit?.claims?.length){
         const audit=document.createElement('details');audit.className='assistant-claim-audit';
-        const heading=document.createElement('summary');heading.textContent='Contraste por afirmaciones';audit.append(heading);
+        const heading=document.createElement('summary');heading.textContent=message.documentation.phase==='initial'?'Contraste del borrador por afirmaciones':'Contraste por afirmaciones';audit.append(heading);
         const explanation=document.createElement('p');explanation.textContent='Evaluación del modelo con citas comprobadas contra los extractos. Puede contener errores de interpretación y no cubre necesariamente todas las afirmaciones.';audit.append(explanation);
         const names={supported:'Respaldada en los extractos',contradicted:'Contradicha en los extractos',unconfirmed:'No confirmada'};
         message.documentation.audit.claims.forEach(item=>{
@@ -286,7 +287,10 @@
       const context=question?.study_context||record.context_scope;
       const entryId=context?.type==='entry'?context.id:null;
       const endpoint=entryId?`/api/assistant/entries/${encodeURIComponent(entryId)}/reference-sources`:null;
-      const existing=endpoint?await api(endpoint):{urls:[]};
+      const existing=endpoint?await api(endpoint):{urls:[],saved:false};
+      if(!existing.saved && !existing.urls.length && message.documentation?.sources?.length){
+        existing.urls=message.documentation.sources.map(source=>source.url).slice(0,3);
+      }
       const result=await editDialog('Revisar precisión técnica',[
         {key:'urls',label:'Enlaces de documentación · uno por línea, máximo tres',multiline:true,optional:true,max:6000,value:existing.urls.join('\n')}
       ],async values=>{

@@ -80,7 +80,17 @@ class PinnedHTTPS(http.client.HTTPSConnection):
             raise
 
 
-def fetch_document(url):
+def focused_excerpt(text, query):
+    words = [w.lower() for w in re.findall(r'[\w.-]+', query) if len(w) > 2][:12]
+    if len(text) <= 12000 or not words:
+        return text[:12000]
+    chunks = [(i, text[i:i+3000]) for i in range(0,len(text),2500)]
+    ranked = sorted(chunks, key=lambda item:sum(item[1].lower().count(w) for w in words), reverse=True)
+    chosen = sorted({0, *(i for i,_ in ranked[:3])})
+    return '\n[… fragmento …]\n'.join(text[i:i+2800] for i in chosen)[:12000]
+
+
+def fetch_document(url, query=''):
     current = validate_urls([url])[0]
     for _ in range(3):
         p = urlsplit(current)
@@ -111,17 +121,17 @@ def fetch_document(url):
                 text = parser.text()
             if len(text.strip()) < 80:
                 raise ValueError('No se pudo extraer contenido suficiente.')
-            return {'url': current, 'excerpt': text[:12000], 'truncated': len(text) > 12000}
+            return {'url': current, 'excerpt': focused_excerpt(text, query), 'truncated': len(text) > 12000}
         finally:
             conn.close()
     raise ValueError('Demasiadas redirecciones.')
 
 
-def consult_documents(urls):
+def consult_documents(urls, query=''):
     sources, failures = [], []
     for url in urls:
         try:
-            sources.append(fetch_document(url))
+            sources.append(fetch_document(url, query) if query else fetch_document(url))
         except (OSError, ValueError, http.client.HTTPException):
             failures.append({'url': url, 'reason': 'No se pudo consultar esta fuente.'})
     return {'status': 'consulted' if sources else 'unavailable', 'sources': sources, 'failures': failures}

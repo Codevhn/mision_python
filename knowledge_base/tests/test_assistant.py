@@ -41,7 +41,7 @@ def create(client):
 
 
 def setup_model(monkeypatch, captured):
-    monkeypatch.setattr(assistant_module, 'consult_documents', lambda urls: {'status':'unavailable', 'sources':[], 'failures':[{'url':url,'reason':'Unavailable test fixture'} for url in urls]})
+    monkeypatch.setattr(assistant_module, 'consult_documents', lambda urls, **kwargs: {'status':'unavailable', 'sources':[], 'failures':[{'url':url,'reason':'Unavailable test fixture'} for url in urls]})
     monkeypatch.setenv('DEEPSEEK_API_KEY', 'test-key')
     monkeypatch.setattr(app_module, '_call_ai', lambda *a, **k: (json.dumps({'claims':[{'claim':'Respuesta de prueba','status':'unconfirmed','correction':'No confirmada'}]}), None))
 
@@ -1009,3 +1009,51 @@ def test_accuracy_builds_claim_plan_before_rewriting_and_keeps_evidence(auth_cli
     assert 'event: error' in failed and 'event: done' not in failed
     assert '"delta"' not in failed
     assert len([m for m in auth_client.get(route).json['messages'] if m['role']=='assistant'])==2
+
+
+@pytest.mark.parametrize('available',[True,False])
+def test_initial_knowledge_is_grounded_before_display_and_saved_once(auth_client,monkeypatch,available):
+    captured=[]
+    setup_model(monkeypatch,captured)
+    id=auth_client.post('/api/entry',json={'title':'pathlib','entry_type':'knowledge','category':'Programación','topic':'Python','raw_text':''}).json['id']
+    docs=[{'url':'https://docs.python.org/3/library/pathlib.html','excerpt':'Path objects represent filesystem paths and provide operations to manipulate paths.','truncated':False}] if available else []
+    fetched=[]
+    def consult(urls,query=''):
+        fetched.append((urls,query))
+        return {'status':'consulted' if docs else 'unavailable','sources':docs,'failures':[]}
+    monkeypatch.setattr(assistant_module,'consult_documents',consult)
+    calls=[]
+    def call(system,prompt,**kwargs):
+        calls.append((system,prompt))
+        if system.startswith('Clasifica una entrada'):
+            return json.dumps({'technology':'python','kind':'module','canonical':'pathlib','section':'files','keywords':['path']}),None
+        if system.startswith('Eres un revisor factual'):
+            return json.dumps({'claims':[{'claim':'Respuesta de prueba','status':'unconfirmed'}]}),None
+        return 'pathlib proporciona objetos para trabajar con rutas; la evidencia consultada describe operaciones sobre rutas.',None
+    monkeypatch.setattr(app_module,'_call_ai',call)
+    route='/api/assistant/conversations/'+create(auth_client)
+    response=auth_client.post(route+'/messages',json={'prompt':'Desarrolla pathlib','current_context':{'type':'entry','id':id},'selection_context':{'text':'pathlib','title':'pathlib'},'selection_action':'explain'}).get_data(as_text=True)
+    assert 'event: done' in response and '"delta"' not in response
+    assert any('library/pathlib.html' in url for url in fetched[0][0])
+    saved=auth_client.get(route).json['messages']
+    assert len(saved)==2 and saved[0]['selection_context']['text']=='pathlib'
+    assert saved[-1]['documentation']['phase']=='initial'
+    assert saved[-1]['documentation']['routing']['kind']=='module'
+    if available:
+        assert len(calls)==3  # routing, evidence audit, final rewrite
+        assert saved[-1]['content'].startswith('pathlib proporciona')
+        assert saved[-1]['documentation']['audit']['claims'][0]['status']=='unconfirmed'
+    else:
+        assert len(calls)==1 and saved[-1]['documentation']['status']=='unavailable'
+    assert auth_client.get('/api/entry/'+id).json['markdown']==''
+
+
+def test_course_generation_does_not_run_independent_knowledge_pipeline(auth_client,monkeypatch):
+    captured=[]
+    setup_model(monkeypatch,captured)
+    monkeypatch.setattr(app_module,'load_index',lambda:{'lesson':{'type':'course','title':'Variables'}})
+    monkeypatch.setattr(app_module,'_call_ai',lambda *a,**k:pytest.fail('No standalone Knowledge routing for a course'))
+    route='/api/assistant/conversations/'+create(auth_client)
+    response=auth_client.post(route+'/messages',json={'prompt':'Explica variables','current_context':{'type':'entry','id':'lesson'},'use_atlas':False}).get_data(as_text=True)
+    assert 'event: done' in response and '"delta"' in response
+    assert 'documentation' not in auth_client.get(route).json['messages'][-1]
