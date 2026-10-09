@@ -780,6 +780,7 @@
     <button class="ai-inline-btn" data-action="quiz">? Quiz</button>
     <button class="ai-inline-btn" data-action="translate_en">⇌ Traducir al inglés</button>
     <div class="ai-inline-sep"></div>
+    <button class="ai-inline-btn" data-action="knowledge">▤ Crear entrada en Conocimiento…</button>
     <button class="ai-inline-btn ai-inline-btn--panel" data-action="panel">⋯ Preguntar al asistente</button>
     <div class="ai-inline-loading hidden" id="aiInlineLoading">✦ procesando…</div>
   </div>
@@ -1538,6 +1539,7 @@
   <button type="button" class="assistant-launcher" id="assistantLauncher" aria-label="Abrir asistente Atlas" aria-controls="assistantArea" aria-expanded="false"><span aria-hidden="true">✦</span><span>Asistente</span></button>
   <section class="assistant-area hidden" id="assistantArea" role="region" aria-label="Asistente Atlas"></section>
   <script src="/static/assistant.js?v={{ v }}"></script>
+  <script src="/static/selection-knowledge.js?v={{ v }}"></script>
   <dialog id="proofreadingDialog" class="proofreader" aria-labelledby="proofreadingTitle">
     <header class="proofreader-header"><h2 id="proofreadingTitle">Abc✓ Corrector ortográfico</h2><button type="button" id="proofreadingClose" aria-label="Cerrar corrector">×</button></header>
     <div class="proofreader-body">

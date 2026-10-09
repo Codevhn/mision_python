@@ -2457,6 +2457,14 @@ async function loadEntry(id, opts = {}) {
 
   const m = data.meta;
   currentEntryMeta = m;
+  document.getElementById('knowledgeOriginLink')?.remove();
+  if (data.knowledge_origin) {
+    const link = document.createElement('button');
+    link.id = 'knowledgeOriginLink'; link.type = 'button'; link.className = 'btn-ghost knowledge-origin-link';
+    link.textContent = `← Origen: ${data.knowledge_origin.title}`;
+    link.addEventListener('click', () => loadEntry(data.knowledge_origin.id));
+    $('inlineTitle')?.after(link);
+  }
   if (m.course) _enterCourseTheme(m.course, m.course_label || _coursesTreeData[m.course]?.label);
   else _leaveCourseTheme();
   const date = m.created_at ? m.created_at.slice(0, 10) : "—";
@@ -10283,6 +10291,14 @@ function initAIPanel() {
         const selText = _barSelText;
         const selRect = _barSelRect;
 
+        if (action === 'knowledge') {
+          const source = window._getAssistantVisibleContext?.(selText);
+          _hideBar();
+          try { await window.SelectionKnowledge?.create(selText, source); }
+          catch (error) { showToast(error.message, 'error'); }
+          return;
+        }
+
         if (action === 'proofread') {
           window.AtlasProofreader?.open();
           _hideBar();
@@ -13503,6 +13519,13 @@ window._insertAssistantExplanation = async (markdown, selection) => {
   if(!target){
     const rows=editor.getInsertionTargets(), headings=rows.filter(row=>row.type==='heading');
     const choices=headings.length?headings:rows;
+    if (!editor.getMarkdown().trim()) {
+      const content = _sanitizeMarkdownForEditor(markdown).trim();
+      if (!content) throw new Error('La respuesta no contiene texto para insertar.');
+      editor.loadMarkdown(content);
+      _scheduleAutoSave(editor.getMarkdown());
+      return true;
+    }
     if(!choices.length) throw new Error('Escribe un concepto o encabezado en el editor para indicar dónde insertar.');
     const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
     dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Insertar explicación</h2></header><div class="assistant-confirm-body"><p id="assistantInsertPage"></p><label for="assistantInsertTarget">Insertar debajo de</label><select id="assistantInsertTarget"></select></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="insert">Insertar</button></footer></form>';

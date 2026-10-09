@@ -1338,7 +1338,11 @@ def get_entry(entry_id):
     html = render_markdown(raw)
     meta["last_viewed_at"] = datetime.now().isoformat(timespec="seconds")
     save_index(index)
-    return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": raw, "html": html})
+    source_id = next((key for key, item in index.items() if meta.get("source_entry_uid") and
+                      item.get("uid") == meta["source_entry_uid"]), meta.get("source_entry_id"))
+    origin = {"id": source_id, "title": index[source_id].get("title", source_id)} if source_id in index else None
+    return jsonify({"id": entry_id, "uid": meta.get("uid"), "meta": meta, "markdown": raw, "html": html,
+                    "knowledge_origin": origin})
 
 
 # ── Public sharing: a Notion-style read-only link for one entry, exempt from
@@ -1492,6 +1496,47 @@ def _canonical_topic_label(index, category_slug, topic_slug):
     return None
 
 
+def _knowledge_title_key(title):
+    return unicodedata.normalize("NFKC", title).strip().casefold()
+
+
+@app.route("/api/knowledge/selection", methods=["POST"])
+def preview_knowledge_selection():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify(error="Datos de selección no válidos."), 400
+    title, source_id = data.get("title"), data.get("source_entry_id")
+    if not isinstance(title, str) or not 1 <= len(title.strip()) <= 300 or not isinstance(source_id, str):
+        return jsonify(error="Selecciona un término de hasta 300 caracteres."), 400
+    index = load_index()
+    source = index.get(source_id)
+    if not source:
+        return jsonify(error="La entrada de origen ya no existe."), 404
+    category, topic = source.get("category_label", ""), source.get("topic_label", "")
+    if source.get("type") == "course":
+        course = load_courses().get("courses", {}).get(source.get("course"), {})
+        domain = course.get("domain", "")
+        if not domain:
+            domains = re.findall(r"\b(python|sql|javascript|java|css|html|git)\b", course.get("label", ""), re.I)
+            domain = domains[0].lower() if len(set(d.lower() for d in domains)) == 1 else ""
+        labels = {"python": "Python", "sql": "SQL", "javascript": "JavaScript", "java": "Java", "css": "CSS", "html": "HTML", "git": "Git"}
+        topic = labels.get(domain, "")
+        category = "Bases de datos" if domain == "sql" else ("Programación" if domain in labels else "")
+        # Prefer the user's existing classification for that language/domain.
+        known = [m for m in index.values() if m.get("type") not in ("course", "page", "teamspace") and
+                 topic and _knowledge_title_key(m.get("topic_label", "")) == _knowledge_title_key(topic)]
+        if known and len({m.get("category") for m in known}) == 1:
+            category = known[0].get("category_label", category)
+    knowledge = [m for m in index.values() if m.get("type") not in ("course", "page", "teamspace")]
+    duplicates = [{"id": key, "title": m.get("title", ""), "category": m.get("category_label", ""), "topic": m.get("topic_label", "")}
+                  for key, m in index.items() if m.get("type") not in ("course", "page", "teamspace") and
+                  _knowledge_title_key(m.get("title", "")) == _knowledge_title_key(title)]
+    return jsonify(title=title.strip(), category=category, topic=topic,
+                   source={"id": source_id, "title": source.get("title", source_id)}, duplicates=duplicates,
+                   categories=sorted({m.get("category_label", "") for m in knowledge} - {""}),
+                   topics=sorted({m.get("topic_label", "") for m in knowledge} - {""}))
+
+
 @app.route("/api/entry", methods=["POST"])
 def create_entry():
     data = request.json
@@ -1509,6 +1554,21 @@ def create_entry():
     md_content = raw_text if already_markdown else (smart_parse(raw_text) if raw_text else "")
     entry_id = slugify(title)
     index = load_index()
+    source_id = data.get("source_entry_id")
+    source = None
+    if source_id is not None:
+        if not isinstance(source_id, str) or source_id not in index or entry_type != "knowledge":
+            return jsonify(error="Origen de la entrada no válido."), 400
+        if len(title) > 300 or md_content:
+            return jsonify(error="La entrada desde una selección debe crearse vacía."), 400
+        excerpt = data.get("source_excerpt", "")
+        if not isinstance(excerpt, str) or len(excerpt) > 8000:
+            return jsonify(error="Contexto de origen no válido."), 400
+        duplicates = [key for key, m in index.items() if m.get("type") not in ("course", "page", "teamspace") and
+                      _knowledge_title_key(m.get("title", "")) == _knowledge_title_key(title)]
+        if duplicates:
+            return jsonify(error="Ya existe una entrada de Conocimiento con ese título.", duplicates=duplicates), 409
+        source = index[source_id]
 
     base_id = entry_id
     counter = 1
@@ -1609,6 +1669,9 @@ def create_entry():
         "parent_id": parent_id,
         "icon": icon,
     }
+    if source:
+        index[entry_id].update(source_entry_id=source_id, source_entry_uid=source.get("uid"),
+                               source_excerpt=excerpt[:2500])
     save_index(index)
     return jsonify({"id": entry_id, "uid": new_uid, "message": "Saved"})
 

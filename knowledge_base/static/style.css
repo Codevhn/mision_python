@@ -10537,3 +10537,8 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   .reader-toc-panel { position: absolute; z-index: 20; height: 100%; background: var(--bg-surface); }
   .lib-upload-tray { left: 12px; right: 12px; width: auto; bottom: 12px; }
 }
+.knowledge-origin-link { display:block; margin:8px 0 14px; max-width:100%; text-align:left; white-space:normal; }
+.knowledge-selection-dialog { width:min(560px,calc(100vw - 32px)); }
+.knowledge-classification-note { color:var(--text-muted); font-size:0.9rem; }
+.knowledge-duplicates button { display:block; margin:8px 0; white-space:normal; text-align:left; }
+.knowledge-selection-error { color:var(--accent); }

@@ -801,6 +801,26 @@ def test_simple_math_is_readable_and_code_and_complex_math_are_preserved():
         assert readable_math(literal) == literal
 
 
+def test_knowledge_entry_retains_origin_context_for_development(auth_client, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, 'load_courses', lambda: {'courses': {'python': {'label': 'Python Profesional', 'level': 'principiante'}}})
+    index = {
+        'origin-renamed': {'uid': 'source-uid', 'title': 'Entornos virtuales', 'type': 'course', 'course': 'python', 'module_label': 'Fundamentos'},
+        'knowledge': {'title': 'requirements.txt', 'category': 'programacion', 'topic': 'python',
+                      'source_entry_id': 'old-id', 'source_entry_uid': 'source-uid', 'source_excerpt': 'Usar un entorno aislado'},
+    }
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    response = auth_client.post('/api/assistant/conversations/' + create(auth_client) + '/messages', json={
+        'prompt': 'Desarrolla requirements.txt', 'current_context': {'type': 'entry', 'id': 'knowledge'}, 'use_atlas': False})
+    assert 'event: done' in response.get_data(as_text=True)
+    origin = json.loads(captured[0][0].split('\n')[-1])['current_context']['knowledge_origin']
+    assert origin['id'] == 'origin-renamed'
+    assert origin['course_title'] == 'Python Profesional'
+    assert origin['course_level'] == 'principiante'
+    assert origin['excerpt'] == 'Usar un entorno aislado'
+
+
 @pytest.mark.parametrize('course_id,course_title,concept,prompt', [
     ('java', 'Programación en Java', 'Variables', 'Explica las variables para comenzar.'),
     ('python', 'Programación en Python', 'Instalación de Python', 'Cómo instalo Python en Ubuntu?'),

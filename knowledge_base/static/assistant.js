@@ -604,5 +604,24 @@
   window.visualViewport?.addEventListener('resize', updateViewport);
   window.visualViewport?.addEventListener('scroll', updateViewport);
   updateViewport();
-  window.AssistantApp = { open, close, minimize, askSelection, generateRoadmap };
+  async function offerKnowledgeDevelopment(title, entryId) {
+    if (busy) { status('Entrada creada. Termina la respuesta actual antes de desarrollar el tema.'); return; }
+    await askSelection(title);
+    if (window._getAssistantVisibleContext?.()?.id !== entryId) return;
+    const card = document.createElement('div'); card.className = 'assistant-welcome knowledge-development';
+    const heading = document.createElement('h2'); heading.textContent = `¿Quieres que desarrolle ${title}?`;
+    const note = document.createElement('p'); note.textContent = 'Usaré el contexto de origen. Podrás revisar la explicación antes de insertarla.';
+    const actions = document.createElement('div'); actions.className = 'assistant-suggestions';
+    const develop = document.createElement('button'); develop.type = 'button'; develop.textContent = 'Desarrollar tema';
+    const later = document.createElement('button'); later.type = 'button'; later.textContent = 'Ahora no';
+    develop.addEventListener('click', async () => {
+      if (window._getAssistantVisibleContext?.()?.id !== entryId) { card.remove(); return; }
+      card.remove(); await askSelection(title, 'explain');
+    });
+    later.addEventListener('click', () => { card.remove(); clearSelection(); minimize(); });
+    actions.append(develop, later); card.append(heading, note, actions);
+    el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
+    el('assistantTranscript').append(card);
+  }
+  window.AssistantApp = { open, close, minimize, askSelection, generateRoadmap, offerKnowledgeDevelopment };
 })();

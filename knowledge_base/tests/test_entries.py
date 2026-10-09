@@ -43,6 +43,48 @@ def test_duplicate_title_gets_suffixed_id(auth_client):
     assert first.get_json()["id"] != second.get_json()["id"]
 
 
+def test_selection_creates_empty_knowledge_with_origin_and_blocks_duplicates(auth_client):
+    origin = _create(auth_client, 'Lección Python', 'Programación', 'Python').json['id']
+    preview = auth_client.post('/api/knowledge/selection', json={'title': 'requirements.txt', 'source_entry_id': origin}).json
+    assert (preview['category'], preview['topic']) == ('Programación', 'Python')
+    assert preview['duplicates'] == []
+    body = {'title': 'requirements.txt', 'category': 'Programación', 'topic': 'Python',
+            'source_entry_id': origin, 'source_excerpt': 'Contexto de la lección', 'raw_text': ''}
+    created = auth_client.post('/api/entry', json=body)
+    assert created.status_code == 200
+    saved = auth_client.get('/api/entry/' + created.json['id']).json
+    assert saved['markdown'] == ''
+    assert saved['meta'].get('type') != 'page'
+    assert saved['meta']['source_entry_id'] == origin
+    assert saved['meta']['source_excerpt'] == 'Contexto de la lección'
+    assert saved['knowledge_origin'] == {'id': origin, 'title': 'Lección Python'}
+    assert auth_client.post('/api/entry', json=body).status_code == 409
+    preview = auth_client.post('/api/knowledge/selection', json={'title': 'REQUIREMENTS.TXT', 'source_entry_id': origin}).json
+    assert preview['duplicates'][0]['id'] == created.json['id']
+    # Ordinary entry creation retains its established behavior.
+    assert _create(auth_client, 'requirements.txt', 'Programación', 'Python').status_code == 200
+
+
+def test_selection_origin_and_preview_validation(auth_client):
+    assert auth_client.post('/api/knowledge/selection', json={'title': 'x', 'source_entry_id': 'missing'}).status_code == 404
+    for title in ['', 'x' * 301, [], None]:
+        assert auth_client.post('/api/knowledge/selection', json={'title': title, 'source_entry_id': 'missing'}).status_code == 400
+    assert auth_client.post('/api/entry', json={'title': 'x', 'category': 'A', 'topic': 'B', 'source_entry_id': 'missing'}).status_code == 400
+
+
+def test_course_selection_classification_is_suggested_and_ambiguous_domain_left_blank(auth_client, monkeypatch):
+    index = {'lesson': {'title': 'Instalación', 'type': 'course', 'course': 'python', 'module': 'intro'}}
+    monkeypatch.setattr(app_module, 'load_index', lambda: index)
+    courses = {'courses': {'python': {'label': 'Python Profesional', 'domain': 'python'}}}
+    monkeypatch.setattr(app_module, 'load_courses', lambda: courses)
+    body = {'title': 'requirements.txt', 'source_entry_id': 'lesson'}
+    preview = auth_client.post('/api/knowledge/selection', json=body).json
+    assert (preview['category'], preview['topic']) == ('Programación', 'Python')
+    courses['courses']['python'] = {'label': 'Python y SQL'}
+    preview = auth_client.post('/api/knowledge/selection', json=body).json
+    assert (preview['category'], preview['topic']) == ('', '')
+
+
 def test_canonical_category_label_reused(auth_client):
     """A category's label is set by whoever files into it first; a later
     entry using different casing for the same slug doesn't overwrite it."""
