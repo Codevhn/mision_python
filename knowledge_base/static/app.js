@@ -1146,7 +1146,7 @@ function renderTeamspaceTree(tree) {
     });
 
     const entryList = document.createElement("div");
-    entryList.className = "tree-topic";
+    entryList.className = "tree-topic ts-space-entries";
     entryList.id = `ts-entries-${spaceSlug}`;
     entryList.style.display = spaceOpen ? "" : "none";
     for (const entry of entries) {
@@ -1201,6 +1201,7 @@ function renderPagesTree(tree) {
     row.draggable = true;
 
     const hasChildren = node.children && node.children.length > 0;
+    item.classList.toggle("has-children", Boolean(hasChildren));
     const toggle = document.createElement("button");
     toggle.type="button";
     toggle.className = "tree-page-toggle";
