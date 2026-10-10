@@ -203,19 +203,33 @@
     _area.innerHTML = `
       <div class="cm-generating">
         <span class="cm-spinner"></span>
-        <p>${isSummarize ? 'Organizando los conceptos de la lección…' : 'Generando tu mapa conceptual…'}</p>
+        <p id="cmGenerationStatus" role="status">${isSummarize ? 'Organizando los conceptos de la lección…' : 'Generando tu mapa conceptual…'}</p>
         <p class="cm-generating-sub">"${_esc(prompt)}"</p>
       </div>`;
 
     try {
-      const res = await fetch('/api/concept-maps/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore', provider: modelChoice?.provider, model: modelChoice?.model }),
-      });
+      const requestMap = async compact => {
+        const res = await fetch('/api/concept-maps/generate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore', provider: modelChoice?.provider, model: modelChoice?.model, compact }),
+        });
+        let data;
+        try { data = await res.json(); }
+        catch { const error = new Error(res.ok ? 'Respuesta con formato inesperado.' : `HTTP ${res.status}`); error.status = res.status; throw error; }
+        if (!res.ok) { const error = new Error(data.error || `HTTP ${res.status}`); error.status = res.status; error.code = data.code; throw error; }
+        return data;
+      };
       let data;
-      try { data = await res.json(); }
-      catch { const error = new Error(res.ok ? 'Respuesta con formato inesperado.' : `HTTP ${res.status}`); error.status = res.status; throw error; }
-      if (!res.ok) { const error = new Error(data.error || `HTTP ${res.status}`); error.status = res.status; throw error; }
+      try { data = await requestMap(false); }
+      catch (error) {
+        if (sequence !== _generationSequence) return;
+        if (error.code !== 'ai_output_truncated' && !/se cortó por el límite de tokens|output.*truncat/i.test(error.message)) throw error;
+        const progress = document.getElementById('cmGenerationStatus');
+        if (progress) progress.textContent = 'La respuesta se cortó. Preparando un mapa más compacto con explicaciones…';
+        // One retry, same provider/model/source. Each request has its own timeout.
+        try { data = await requestMap(true); }
+        catch (retryError) { retryError.compactAttempted = true; throw retryError; }
+      }
       if (!data?.id || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) throw new Error('Respuesta con formato inesperado.');
       if (sequence !== _generationSequence) return;
       _currentMap = data;
@@ -230,7 +244,12 @@
   function showGenerationFailure(error, prompt, opts, modelChoice) {
     const message = String(error.message || 'Error desconocido');
     let title = 'No pudimos generar tu mapa', reason = 'El proveedor no completó la solicitud. Puedes reintentar o elegir otro modelo.';
-    if (/timed?\s*out|timeout|tiempo.*(espera|agot)|HTTP (408|504)/i.test(message)) {
+    if (error.code === 'ai_output_truncated' || /se cortó por el límite de tokens|output.*truncat/i.test(message)) {
+      title = 'El modelo cortó la respuesta';
+      reason = error.compactAttempted
+        ? 'El proveedor agotó su límite incluso con un mapa más compacto. Elige otro modelo para volver a intentarlo.'
+        : 'El proveedor agotó su límite antes de terminar el mapa. Puedes elegir otro modelo para volver a intentarlo.';
+    } else if (/timed?\s*out|timeout|tiempo.*(espera|agot)|HTTP (408|504)/i.test(message)) {
       title = 'El modelo tardó demasiado';
       reason = 'Se agotó el tiempo de espera antes de recibir el mapa. Puedes volver a intentarlo o probar con otro modelo.';
     } else if (error.status === 429 || /rate.?limit|quota|cuota/i.test(message)) {
@@ -246,12 +265,14 @@
     }
     const make = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls || ''; if (text != null) el.textContent = text; return el; };
     const panel = make('section', 'cm-generation-failure'); panel.setAttribute('aria-labelledby', 'cmFailureTitle');
-    const icon = make('div', 'cm-failure-icon', '✦'); icon.setAttribute('aria-hidden', 'true');
+    const icon = make('div', 'cm-failure-icon'); icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = '<svg class="atlas-system-icon" viewBox="0 0 24 24" focusable="false"><use href="/static/aero-icons.svg#conceptmaps"></use></svg>';
+    const chrome = make('header', 'cm-failure-chrome'), body = make('div', 'cm-failure-body'), footer = make('footer', 'cm-failure-footer');
     const heading = make('h2', '', title); heading.id = 'cmFailureTitle'; heading.tabIndex = -1;
     const description = make('p', 'cm-failure-reason', reason); description.setAttribute('role', 'status');
     const preserved = make('p', 'cm-failure-preserved', 'Tu solicitud se conserva abajo. Puedes ajustarla antes de reintentar.');
     const label = make('label', 'cm-failure-label', 'Tema o solicitud'), input = make('textarea', 'cm-failure-input');
-    input.id = 'cmFailurePrompt'; input.value = prompt; input.rows = 3; label.htmlFor = input.id;
+    input.id = 'cmFailurePrompt'; input.value = prompt; input.rows = 2; label.htmlFor = input.id;
     const modelLabel = make('div', 'cm-failure-label', 'Modelo para el próximo intento'), selector = make('div', 'practice-cselect'), warnings = make('div', 'cm-model-warnings');
     const actions = make('div', 'cm-failure-actions'), retry = make('button', 'cm-failure-retry', 'Reintentar'), back = make('button', '', 'Volver a mis mapas'), blank = make('button', '', 'Crear mapa vacío');
     [retry, back, blank].forEach(button => { button.type = 'button'; });
@@ -267,7 +288,11 @@
       catch { if (sequence === _generationSequence) { feedback.textContent = 'No se pudo crear el mapa vacío. Tu solicitud sigue aquí; vuelve a intentarlo.'; update(); } }
     });
     const details = make('details', 'cm-failure-details'); details.append(make('summary', '', 'Detalles técnicos'), make('pre', '', message));
-    actions.append(retry, back, blank); panel.append(icon, heading, description, preserved, label, input, modelLabel, selector, warnings, actions, feedback, details);
+    blank.className = 'cm-failure-blank';
+    chrome.append(icon, heading);
+    body.append(description, preserved, label, input, modelLabel, selector, warnings, details);
+    actions.append(retry, back, blank); footer.append(actions, feedback);
+    panel.append(chrome, body, footer);
     _area.replaceChildren(panel);
     if (window._mountModelSelector) window._mountModelSelector(selector, { context: 'conceptmap', value: modelChoice, warningContainer: warnings, onChange: choice => { nextChoice = choice; } });
     else { modelLabel.textContent = 'Se reutilizará el modelo del intento anterior.'; }

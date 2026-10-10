@@ -101,3 +101,44 @@ def test_ai_does_not_overwrite_manual_definition_during_wait(auth_client, monkey
 def test_explanation_requires_session(client, monkeypatch):
     monkeypatch.setattr(app_module, '_call_ai', lambda *a, **k: (_ for _ in ()).throw(AssertionError('unauthorized AI call')))
     assert client.post('/api/concept-maps/m/nodes/n/explanation', json={}).status_code == 401
+
+
+def test_truncation_has_recoverable_code_and_no_partial_map(auth_client, monkeypatch):
+    monkeypatch.setattr(app_module, '_provider_config', lambda provider: {'label': 'OmniRoute', 'kind': 'openai', 'env': 'TEST_NO_KEY', 'base_url': 'unused'})
+    monkeypatch.setattr(app_module, '_provider_enabled', lambda *args: True)
+    seen = []
+    def truncated(*args):
+        seen.append(args)
+        return '{"nodes":[', True, None
+    monkeypatch.setattr(app_module, '_call_openai_compatible', truncated)
+    response = auth_client.post('/api/concept-maps/generate', json={'prompt': 'Subgrid', 'provider': 'omniroute', 'model': 'ds-web/deepseek-v4-pro'})
+    assert response.status_code == 502
+    assert response.json['code'] == 'ai_output_truncated'
+    assert seen[0][5] == 8000
+    assert auth_client.get('/api/concept-maps').json == []
+
+
+def test_compact_generation_keeps_definitions_model_and_source(auth_client, monkeypatch):
+    def ai(system, user, **kwargs):
+        assert '8 nodos' in system
+        assert '8 a 16 nodos' not in system
+        assert 'de 15 a 25 palabras' in system
+        assert 'de 40 a 70 palabras' not in system
+        assert 'description' in system
+        assert 'subgrid comparte las pistas' in user
+        assert kwargs['model'] == 'ds-web/deepseek-v4-pro'
+        assert kwargs['provider'] == 'omniroute'
+        assert kwargs['max_tokens'] == 8000
+        return json.dumps({'title': 'Subgrid', 'nodes': [{'id': 'n1', 'text': 'Subgrid', 'description': 'Comparte las pistas de una rejilla superior.'}], 'edges': []}), None
+    monkeypatch.setattr(app_module, '_call_ai', ai)
+    response = auth_client.post('/api/concept-maps/generate', json={'prompt': 'Subgrid', 'mode': 'summarize', 'content': 'subgrid comparte las pistas', 'compact': True, 'provider': 'omniroute', 'model': 'ds-web/deepseek-v4-pro'})
+    assert response.status_code == 201
+    assert response.json['generation_variant'] == 'compact'
+    saved = auth_client.get('/api/concept-maps/' + response.json['id']).json
+    assert saved['nodes'][0]['description'] == 'Comparte las pistas de una rejilla superior.'
+
+
+def test_compact_generation_also_rejects_missing_definitions(auth_client, monkeypatch):
+    monkeypatch.setattr(app_module, '_call_ai', lambda *a, **k: (json.dumps({'nodes': [{'id': 'a', 'text': 'Subgrid'}], 'edges': []}), None))
+    assert auth_client.post('/api/concept-maps/generate', json={'prompt': 'Subgrid', 'compact': True}).status_code == 502
+    assert auth_client.get('/api/concept-maps').json == []

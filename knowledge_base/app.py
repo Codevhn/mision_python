@@ -5462,6 +5462,7 @@ def _call_ai(system, user_msg, max_tokens=1000, json_mode=False, provider=None, 
         if truncated and fail_on_truncation:
             return _ret(None, (jsonify({
                 "error": f"La respuesta de {cfg['label']} se cortó por el límite de tokens antes de terminar.",
+                "code": "ai_output_truncated",
             }), 502), None)
         return _ret(content, None, usage)
     except urllib.error.HTTPError as e:
@@ -6323,6 +6324,19 @@ def generate_concept_map():
         system = _CONCEPT_MAP_SYSTEM_PROMPT
         user_msg = prompt
 
+    compact = data.get("compact") is True
+    if compact:
+        # Reduce the requested content, rather than increasing a provider limit
+        # we may not control. Definitions remain mandatory in the smaller map.
+        system = system.replace("8 a 16 nodos", "8 nodos").replace(
+            "de 40 a 70 palabras", "de 15 a 25 palabras")
+        system += (
+            "\n- Esta es una versión compacta: selecciona los 8 conceptos esenciales "
+            "y hasta 12 relaciones necesarias. Definiciones directas en un párrafo, "
+            "sin introducciones ni ejemplos extensos. Usa identificadores n1, n2… "
+            "y JSON compacto, sin sangría. No elimines las definiciones."
+        )
+
     # Budget includes definitions for every concept; never save truncated JSON.
     content, err = _call_ai(system, user_msg, max_tokens=8000, json_mode=True, fail_on_truncation=True, provider=data.get("provider"), model=data.get("model"))
     if err:
@@ -6383,7 +6397,7 @@ def generate_concept_map():
     maps_data = load_concept_maps()
     map_id = uuid.uuid4().hex[:8]
     now = datetime.utcnow().isoformat(timespec="seconds")
-    cmap = {"id": map_id, "title": title, "created": now, "updated": now, "nodes": nodes, "edges": edges, "model_choice": {"provider": data.get("provider"), "model": data.get("model")}}
+    cmap = {"id": map_id, "title": title, "created": now, "updated": now, "nodes": nodes, "edges": edges, "model_choice": {"provider": data.get("provider"), "model": data.get("model")}, "generation_variant": "compact" if compact else "standard"}
     maps_data["maps"][map_id] = cmap
     save_concept_maps(maps_data)
     return jsonify(_concept_map_payload(cmap)), 201
