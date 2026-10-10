@@ -201,11 +201,21 @@
     if (window.showConceptMapArea) window.showConceptMapArea();
     _currentMap = null;
     _area.innerHTML = `
-      <div class="cm-generating">
-        <span class="cm-spinner"></span>
+      <section class="cm-generating" aria-busy="true" aria-labelledby="cmGeneratingTopic">
+        <div class="cm-generation-constellation" aria-hidden="true">
+          <svg viewBox="0 0 400 200" focusable="false">
+            <defs><linearGradient id="cmLoadingGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".2"/><stop offset=".48" stop-color="currentColor" stop-opacity=".06"/><stop offset=".5" stop-color="currentColor" stop-opacity=".22"/><stop offset="1" stop-color="currentColor" stop-opacity=".04"/></linearGradient></defs>
+            <g class="cm-loading-links"><path d="M200 62C200 86 90 80 90 112"/><path d="M200 62C200 86 310 80 310 112"/><path d="M200 62C200 105 200 110 200 153"/></g>
+            <g class="cm-loading-node cm-loading-root"><rect x="148" y="18" width="104" height="44" rx="8"/><path d="M173 35h54M181 46h38"/></g>
+            <g class="cm-loading-node" style="--node-delay:-1.2s"><rect x="48" y="112" width="84" height="42" rx="7"/><path d="M66 129h48M74 140h32"/></g>
+            <g class="cm-loading-node" style="--node-delay:-2.4s"><rect x="268" y="112" width="84" height="42" rx="7"/><path d="M286 129h48M294 140h32"/></g>
+            <g class="cm-loading-node" style="--node-delay:-3.6s"><rect x="158" y="153" width="84" height="36" rx="7"/><path d="M177 170h46"/></g>
+          </svg>
+        </div>
+        <h1 class="cm-generating-topic" id="cmGeneratingTopic">${_esc(prompt)}</h1>
         <p id="cmGenerationStatus" role="status">${isSummarize ? 'Organizando los conceptos de la lección…' : 'Generando tu mapa conceptual…'}</p>
-        <p class="cm-generating-sub">"${_esc(prompt)}"</p>
-      </div>`;
+        ${modelChoice?.model ? `<p class="cm-generating-model"><span aria-hidden="true"></span>${_esc(modelChoice.model)}</p>` : ''}
+      </section>`;
 
     try {
       const requestMap = async compact => {

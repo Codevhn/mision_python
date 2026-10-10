@@ -68,17 +68,41 @@
 .cm-hint a:hover { text-decoration: underline; }
 .cm-prompt-input { min-width: 0; }
 
-/* ---- Generating (AI loading) state ---- */
-.cm-generating { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 80px 32px; text-align: center; }
-.cm-generating p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
-.cm-generating-sub { color: var(--text-faint) !important; font-size: 0.8rem !important; font-style: italic; max-width: 480px; }
-.cm-spinner {
-  width: 26px;
-  height: 26px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+/* The generation stage is an indeterminate illustration, never fake progress. */
+.cm-generating {
+  position:relative; isolation:isolate; flex:1; min-height:420px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:48px 24px 72px; text-align:center; font-family:var(--font-ui);
+}
+.cm-generating:before {
+  content:''; position:absolute; z-index:-1; inset:10% 8%; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 65%);
+}
+.cm-generation-constellation { width:min(360px,100%); flex:none; color:var(--accent); margin-bottom:22px; filter:drop-shadow(0 0 18px color-mix(in srgb,var(--accent) 12%,transparent)); }
+.cm-generation-constellation svg { display:block; width:100%; height:auto; overflow:visible; }
+.cm-loading-links path { fill:none; stroke:currentColor; stroke-width:1.2; stroke-linecap:round; opacity:.6; stroke-dasharray:7 9; animation:cm-loading-connect 4s linear infinite; }
+.cm-loading-node { transform-box:fill-box; transform-origin:center; animation:cm-loading-float 6s ease-in-out infinite; animation-delay:var(--node-delay,0s); }
+.cm-loading-node rect { fill:url(#cmLoadingGlass); stroke:currentColor; stroke-opacity:.65; stroke-width:1; }
+.cm-loading-node path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; opacity:.65; }
+.cm-loading-root rect { stroke-opacity:1; stroke-width:1.4; }
+.cm-generating .cm-generating-topic {
+  max-width:720px; margin:0 0 16px; color:var(--text); font:650 clamp(1.8rem,3.2vw,2.8rem)/1.2 var(--font-ui);
+  letter-spacing:-.035em; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden;
+  text-shadow:0 2px 16px color-mix(in srgb,var(--accent) 12%,transparent);
+}
+.cm-generating #cmGenerationStatus { margin:0; max-width:590px; min-height:48px; color:var(--text-muted); font-size:.98rem; font-weight:450; line-height:1.7; text-wrap:balance; }
+.cm-generating .cm-generating-model { display:flex; align-items:center; justify-content:center; gap:8px; max-width:100%; margin:18px 0 0; color:var(--text-muted); font-size:.7rem; overflow-wrap:anywhere; }
+.cm-generating-model span { width:5px; height:5px; flex:none; background:var(--accent); border-radius:50%; box-shadow:0 0 8px color-mix(in srgb,var(--accent) 40%,transparent); animation:cm-loading-pulse 2.5s ease-in-out infinite; }
+@keyframes cm-loading-connect { to { stroke-dashoffset:-64; } }
+@keyframes cm-loading-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
+@keyframes cm-loading-pulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+@media(max-width:650px) {
+  .cm-generating { min-height:360px; padding:32px 20px 48px; }
+  .cm-generation-constellation { width:min(280px,100%); margin-bottom:20px; }
+  .cm-generating #cmGenerationStatus { font-size:.88rem; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .cm-loading-links path,.cm-loading-node,.cm-generating-model span { animation:none; }
 }
 
 /* ---- Existing-maps grid ---- */
