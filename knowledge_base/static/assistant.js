@@ -171,6 +171,14 @@
     content.className = 'assistant-message-content markdown-body';
     if (message.role === 'assistant' && message.html) content.innerHTML = message.html;
     else content.textContent = visibleMessageText(message);
+    if (message.pending) {
+      const thinking = document.createElement('div');
+      thinking.className = 'assistant-thinking';
+      thinking.setAttribute('role', 'status');
+      thinking.setAttribute('aria-live', 'polite');
+      thinking.innerHTML = '<span class="assistant-thinking-orbit" aria-hidden="true">✦</span><span>Pensando<span class="assistant-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>';
+      content.replaceChildren(thinking);
+    }
     if(message.role==='assistant' && message.roadmap_draft?.modules) formatRoadmap(content,message.roadmap_draft);
     content.querySelectorAll('table').forEach(table => {
       const scroll = document.createElement('div');
@@ -228,7 +236,7 @@
       quote.textContent = message.selection_context.text;
       detail.append(heading, quote); article.append(detail);
     }
-    if (message.role === 'assistant' && message.content !== 'Pensando…') {
+    if (message.role === 'assistant' && !message.pending) {
       const actions=document.createElement('div');actions.className='assistant-response-actions';
       const copy=actionButton('Copiar respuesta completa','copy',()=>copyText(message.content,copy));copy.classList.add('assistant-copy');actions.append(copy);
       const index=record?.messages.indexOf(message), question=index>0?record.messages[index-1]:null;
@@ -493,7 +501,7 @@
       forceNewConversation = false;
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction,revision_request:options.revision });
-      content = bubble({ role: 'assistant', content: 'Pensando…',provider:choice.provider,model:choice.model });
+      content = bubble({ role: 'assistant', content: 'Pensando…',pending:true,provider:choice.provider,model:choice.model });
       el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
         ...post({ prompt, retry:!!options.retry, revision:options.revision||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
