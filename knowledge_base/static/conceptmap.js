@@ -27,6 +27,7 @@
   let _view = { x: 0, y: 0, k: 1 };
   let _viewportEl = null, _svgEl = null;
   let _panAbort = null;
+  let _explorer = null, _editing = false;
 
   const RANK_COLORS = ['#bd603e', '#527b91', '#49867a', '#80709c', '#99804c', '#617887'];
   const NODE_W = 180, NODE_H = 112, ROOT_SCALE = 1.06;
@@ -117,6 +118,7 @@
 
   // ── List view (landing grid) ─────────────────────────────────────────────
   async function showList() {
+    _explorer?.destroy(); _explorer = null;
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
     if (window.showConceptMapArea) window.showConceptMapArea();
@@ -191,6 +193,7 @@
     // directly, skipping showList()'s model selector entirely.
     const modelChoice = _modelChoice || (window._getRawSavedModelChoice ? window._getRawSavedModelChoice('conceptmap') : null);
 
+    _explorer?.destroy(); _explorer = null;
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
     if (window.showConceptMapArea) window.showConceptMapArea();
@@ -219,6 +222,7 @@
 
   // ── Map view ─────────────────────────────────────────────────────────────
   async function showMap(id) {
+    _explorer?.destroy(); _explorer = null;
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
     if (window.showConceptMapArea) window.showConceptMapArea();
@@ -266,6 +270,7 @@
 
   function render() {
     if (!_currentMap) return;
+    _explorer?.destroy(); _explorer = null; _editing = false;
     if (_panAbort) _panAbort.abort();
     _panAbort = new AbortController();
     const { signal } = _panAbort;
@@ -310,6 +315,11 @@
     renderCanvas();
     initPanZoom(signal);
     fitToScreen();
+    _explorer = window.ConceptMapExplorer?.mount(document.getElementById('cmCanvasWrap'), () => _currentMap, {
+      overview: fitToScreen,
+      edit: value => { _editing = value; renderCanvas(); },
+      saveDescription: (id, description) => apiPatchNode(_currentMap.id, id, { description }),
+    });
   }
 
   function renderCanvas() {
@@ -383,15 +393,19 @@
     kicker.className = 'cm-node-kicker';
     kicker.textContent = isRoot ? 'Concepto base' : `Nivel ${r + 1}`;
     box.appendChild(kicker);
+    box.addEventListener('click', e => { if (!_editing && !e.target.closest('button,.cm-connector-handle')) _explorer?.enter(node.id); });
     box.addEventListener('mouseenter', () => highlightNode(node.id));
     box.addEventListener('mouseleave', () => highlightNode(null));
 
     const text = document.createElement('div');
     text.className = 'cm-node-text';
     text.textContent = node.text;
-    text.contentEditable = 'true';
+    text.contentEditable = String(_editing);
     text.spellcheck = false;
-    text.setAttribute('aria-label', 'Editar concepto');
+    text.addEventListener('keydown', e => { if (!_editing && ['Enter', ' '].includes(e.key)) { e.preventDefault(); _explorer?.enter(node.id); } });
+
+    text.setAttribute('aria-label', _editing ? 'Editar concepto' : 'Explorar ' + node.text);
+    if (!_editing) { text.setAttribute('role', 'button'); text.tabIndex = 0; }
     text.addEventListener('focus', () => highlightNode(node.id));
     text.addEventListener('mousedown', ev => ev.stopPropagation());
     text.addEventListener('blur', () => {
@@ -448,7 +462,7 @@
 
     const chip = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
     chip.className = 'cm-edge-label' + (edge.label ? '' : ' cm-edge-label--empty');
-    chip.contentEditable = 'true';
+    chip.contentEditable = String(_editing);
     chip.spellcheck = false;
     chip.textContent = edge.label || 'frase de enlace…';
     chip.addEventListener('mousedown', ev => ev.stopPropagation());
@@ -525,7 +539,7 @@
   // would tear down and rebuild every contentEditable box in the map on
   // every pixel of movement.
   function startNodeDrag(e, node, fo) {
-    if (e.button !== 0) return;
+    if (!_editing || e.button !== 0) return;
     const startClientX = e.clientX, startClientY = e.clientY;
     const origX = node.x, origY = node.y;
     let dragging = false;
@@ -582,6 +596,7 @@
   }
 
   function startConnect(e, fromNode) {
+    if (!_editing) return;
     e.preventDefault();
     e.stopPropagation();
     const tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');

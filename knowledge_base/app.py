@@ -6170,6 +6170,10 @@ def edit_concept_node(map_id, node_id):
         node["y"] = float(body["y"])
     if "color" in body:
         node["color"] = body["color"] or None
+    if "description" in body:
+        if not isinstance(body["description"], str):
+            return jsonify({"error": "La explicación debe ser texto."}), 400
+        node["description"] = body["description"].strip()[:12000]
     cmap["updated"] = datetime.utcnow().isoformat(timespec="seconds")
     save_concept_maps(data)
     return jsonify(cmap)
