@@ -174,7 +174,7 @@
         <div class="mm-prompt-row atlas-ai-composer">
           <input type="text" class="mm-prompt-input" id="mmPromptInput"
                  placeholder="Ej: Quiero saber cómo estudiar SQL desde cero…" autocomplete="off" />
-          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="mmModelCSelect"></div><button class="mm-prompt-btn" id="mmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#send"></use></svg></button></div>
+          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="mmModelCSelect"></div><button class="mm-prompt-btn" id="mmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-send-arrow" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 16V4m-5 5 5-5 5 5"/></svg></button></div>
         </div>
         <p class="mm-hint">La IA arma el árbol completo — ramas y subramas — al instante. ¿Prefieres armarlo tú? <a href="#" id="mmBlankLink">crea uno vacío</a>.</p>
 

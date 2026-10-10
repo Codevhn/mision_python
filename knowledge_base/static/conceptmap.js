@@ -140,7 +140,7 @@
         <div class="cm-prompt-row atlas-ai-composer">
           <input type="text" class="cm-prompt-input" id="cmPromptInput"
                  placeholder="Ej: Selectores en CSS, propiedades del contenedor padre…" autocomplete="off" />
-          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="cmModelCSelect"></div><button class="cm-prompt-btn" id="cmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#send"></use></svg></button></div>
+          <div class="atlas-ai-composer-tools"><div class="practice-cselect" id="cmModelCSelect"></div><button class="cm-prompt-btn" id="cmPromptBtn" title="Generar mapa" aria-label="Generar mapa"><svg class="atlas-send-arrow" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 16V4m-5 5 5-5 5 5"/></svg></button></div>
         </div>
         <p class="cm-hint">La IA arma la red de conceptos y sus relaciones al instante. ¿Prefieres armarlo tú? <a href="#" id="cmBlankLink">crea uno vacío</a>.</p>
 

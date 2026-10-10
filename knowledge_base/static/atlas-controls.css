@@ -32,3 +32,10 @@
 :is(#mindmapArea,#conceptMapArea) .atlas-ai-composer > input:focus { box-shadow:none !important; }
 :is(#mindmapArea,#conceptMapArea) .atlas-ai-composer:focus-within { box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent); }
 .msn-icon .atlas-system-icon { margin:0; }
+
+/* Generate controls share the assistant's simple, theme-colored send gesture. */
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > :is(.mm-prompt-btn,.cm-prompt-btn) {
+ width:38px; height:36px; border-radius:6px; color:var(--accent); cursor:pointer;
+}
+.atlas-send-arrow { width:20px; height:20px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+:is(#mindmapArea,#conceptMapArea) .atlas-ai-composer-tools > button:disabled { opacity:.5; cursor:wait; }
