@@ -505,7 +505,7 @@
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', _connectionPath(x1, y1, x2, y2));
     path.setAttribute('class', 'cm-edge-line');
-    path.setAttribute('marker-end', 'url(#cm-arrow)');
+    // Smooth linking curves; direction is expressed by each linking phrase.
     g.appendChild(path);
 
     const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
