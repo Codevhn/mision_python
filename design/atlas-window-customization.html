@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es" data-style="aero" data-variant="night" data-theme="dark" data-palette="electric" data-frame="titanium">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Atlas · Laboratorio de marcos Aero</title>
+  <link rel="stylesheet" href="../knowledge_base/static/themes.css">
+  <link rel="stylesheet" href="atlas-window-customization.css">
+  <script src="atlas-window-customization.js" defer></script>
+</head>
+<body>
+  <header class="lab-header">
+    <div class="lab-heading"><span class="lab-eyebrow">PROJECT ATLAS · PERSONALIZACIÓN</span><h1>Tu Aero. Una nueva armadura.</h1><p>Dos propuestas de marcos sobre el cristal y los colores de Atlas.</p></div>
+    <div class="lab-settings"><label for="palette">Paleta de Atlas</label><select id="palette"><option value="electric">Azul eléctrico</option><option value="amber">Ámbar</option><option value="ruby">Rubí</option><option value="emerald">Esmeralda</option><option value="light">Aero claro</option></select></div>
+  </header>
+  <nav class="lab-directions" aria-label="Propuestas de personalización">
+    <button type="button" data-frame-choice="classic" aria-pressed="false"><span class="frame-thumbnail classic-thumb" aria-hidden="true"></span><span><strong>Aero clásico</strong><small>Punto de referencia</small></span></button>
+    <button type="button" data-frame-choice="titanium" aria-pressed="true"><span class="frame-thumbnail titanium-thumb" aria-hidden="true"></span><span><strong>01 · Titanio</strong><small>Biseles, placas y cristal</small></span></button>
+    <button type="button" data-frame-choice="sentinel" aria-pressed="false"><span class="frame-thumbnail sentinel-thumb" aria-hidden="true"></span><span><strong>02 · Centinela</strong><small>Esquinas angulares y luz</small></span></button>
+  </nav>
+  <p class="lab-description" id="frame-description" role="status">Titanio · Un marco de doble bisel, pequeñas fijaciones y una cabecera ensamblada. El contenido conserva su Aero.</p>
+  <main class="atlas-preview" aria-label="Vista previa interactiva de Atlas">
+    <div class="preview-topbar"><span class="preview-brand"><b>PA</b> Project Atlas</span><span class="preview-topbar-note">Tu espacio para aprender y organizarte</span><span class="sample-badge">Datos de muestra</span></div>
+    <div class="preview-layout">
+      <aside class="preview-sidebar demo-frame" aria-label="Secciones de Atlas">
+        <div class="frame-rivets" aria-hidden="true"></div>
+        <div class="sidebar-label">MI ESPACIO</div>
+        <button type="button" class="sidebar-nav" data-section="learning"><svg aria-hidden="true"><use href="../knowledge_base/static/aero-icons.svg#home"></use></svg>Inicio</button>
+        <button type="button" class="sidebar-nav" data-section="learning"><svg aria-hidden="true"><use href="../knowledge_base/static/aero-icons.svg#knowledge"></use></svg>Conocimiento</button>
+        <button type="button" class="sidebar-nav" data-section="learning"><svg aria-hidden="true"><use href="../knowledge_base/static/aero-icons.svg#courses"></use></svg>Cursos</button>
+        <button type="button" class="sidebar-nav" data-section="learning"><svg aria-hidden="true"><use href="../knowledge_base/static/aero-icons.svg#conceptmaps"></use></svg>Mapas conceptuales</button>
+        <div class="sidebar-divider"></div>
+        <button type="button" class="sidebar-nav is-active" data-section="finance" aria-current="page"><svg aria-hidden="true"><use href="#wallet-icon"></use></svg>Finanzas</button>
+        <div class="sidebar-bottom"><span class="sidebar-orbit" aria-hidden="true">✦</span><strong>Todo en tu Atlas</strong><small>Aprendizaje y vida personal,<br>en el mismo espacio.</small></div>
+      </aside>
+      <div class="preview-workspace">
+        <section class="demo-frame main-window" id="main-window" aria-labelledby="window-title">
+          <div class="frame-rivets" aria-hidden="true"></div>
+          <div class="window-chrome"><span class="window-title"><svg aria-hidden="true"><use href="#wallet-icon" id="window-icon"></use></svg><strong id="window-title">Finanzas personales</strong></span><span class="chrome-engraving" aria-hidden="true">ATLAS</span><div class="window-controls"><button type="button" data-window-action="minimize" aria-label="Minimizar ventana de Finanzas">−</button><button type="button" data-window-action="maximize" aria-label="Ampliar ventana de Finanzas" aria-pressed="false">□</button></div></div>
+          <div class="window-content" id="main-window-content">
+            <div id="finance-view">
+              <div class="finance-heading"><div><p class="quiet-label">OCTUBRE 2026</p><h2>Más claridad. Más tranquilidad.</h2><p>Una mirada a tu dinero y a lo que quieres lograr.</p></div><button type="button" class="aero-btn primary-btn" id="add-transaction">＋ Registrar movimiento</button></div>
+              <nav class="finance-tabs" aria-label="Vistas de finanzas"><button type="button" data-finance-tab="overview" aria-pressed="true">Resumen</button><button type="button" data-finance-tab="transactions" aria-pressed="false">Movimientos</button><button type="button" data-finance-tab="budgets" aria-pressed="false">Presupuestos</button></nav>
+              <div id="finance-overview">
+                <div class="balance-hero"><div><span>Total en cuentas</span><strong id="balance-total">L 27,750.00</strong><small>Efectivo, banco y ahorro</small></div><div class="balance-side"><span>Deuda pendiente <b>L 4,500.00</b></span><span>Patrimonio neto <b id="net-worth">L 23,250.00</b></span></div><svg class="balance-emblem" viewBox="0 0 140 140" aria-hidden="true"><path d="M70 6 122 36v68L70 134 18 104V36Z"/><path d="M70 23 107 45v50L70 117 33 95V45Z"/><path d="M45 72h50M70 47v50"/><circle cx="70" cy="72" r="37"/></svg></div>
+                <div class="cashflow"><div><span>Ingresos del mes</span><strong id="income-total">L 18,000.00</strong></div><div><span>Gastos del mes</span><strong id="expense-total">L 8,250.00</strong></div><div><span>Balance del mes</span><strong id="month-total">+L 9,750.00</strong></div></div>
+                <div class="finance-panels"><section class="content-panel"><div class="panel-heading"><h3>Tus cuentas</h3><span>3 cuentas</span></div><div class="account-row"><span class="account-icon">▤</span><div><strong>Cuenta principal</strong><small>Banco · Uso diario</small></div><b id="bank-total">L 22,750.00</b></div><div class="account-row"><span class="account-icon">◇</span><div><strong>Ahorro</strong><small>Reservado para tus metas</small></div><b>L 4,000.00</b></div><div class="account-row"><span class="account-icon">▱</span><div><strong>Efectivo</strong><small>Tu cartera</small></div><b id="cash-total">L 1,000.00</b></div></section>
+                <section class="content-panel"><div class="panel-heading"><h3>En qué se va</h3><span>Este mes</span></div><div class="spending-layout"><div class="donut"><svg viewBox="0 0 120 120" role="img" aria-label="Distribución de gastos por categoría"><circle class="donut-track" cx="60" cy="60" r="45"></circle><g id="donut-segments" transform="rotate(-90 60 60)"></g></svg><span><small>Gastos</small><b id="donut-total">L 8,250</b></span></div><div class="spending-legend" id="spending-legend"></div></div></section></div>
+                <div class="panel-heading recent-heading"><h3>Últimos movimientos</h3><button type="button" class="text-btn" id="view-transactions">Ver todos →</button></div><div id="recent-transactions"></div>
+              </div>
+              <div id="finance-transactions" hidden><div class="panel-heading tab-heading"><h3>Movimientos de octubre</h3><span>Importes en lempiras · HNL</span></div><div id="all-transactions"></div></div>
+              <div id="finance-budgets" hidden><div class="panel-heading tab-heading"><h3>Presupuestos de octubre</h3><span>Límites de muestra</span></div><div id="budget-list"></div><p class="tab-note">Los gastos de la demostración actualizan estos presupuestos.</p></div>
+            </div>
+            <div id="learning-view" hidden><div class="finance-heading"><div><p class="quiet-label">TU BÚNKER DE APRENDIZAJE</p><h2>Sigue explorando.</h2><p>El mismo Aero, con un marco que tú eliges.</p></div></div><div class="learning-hero"><svg aria-hidden="true"><use href="../knowledge_base/static/aero-icons.svg#conceptmaps"></use></svg><h3>Modelo de cajas CSS</h3><p>Contenido, relleno, borde y margen.</p><div class="floating-concepts"><span>Contenido</span><i aria-hidden="true"></i><span>Padding</span><i aria-hidden="true"></i><span>Margin</span></div></div><p class="tab-note">Esta vista permite comparar los bordes fuera de Finanzas. La navegación y el contenido reales de Atlas siguen intactos.</p></div>
+          </div>
+          <div class="window-footer"><span><i class="status-dot" aria-hidden="true"></i> Vista previa · Sin conexión a cuentas reales</span><button type="button" class="text-btn" id="reset-demo">Restablecer muestra</button></div>
+        </section>
+        <aside class="companion-windows">
+          <section class="demo-frame goal-window" aria-labelledby="goal-title"><div class="frame-rivets" aria-hidden="true"></div><div class="window-chrome"><strong id="goal-title">◇ Mi próxima meta</strong><div class="window-controls"><button type="button" id="toggle-goal" aria-expanded="true" aria-controls="goal-body" aria-label="Contraer meta">−</button></div></div><div class="window-content" id="goal-body"><div class="goal-art" aria-hidden="true"><div class="goal-orbit"></div><svg viewBox="0 0 100 80"><path d="M22 17h56v38H22Z"/><path d="m15 63 7-8h56l7 8v4H15Z"/><path d="M29 25h42v22H29Z"/><path d="m45 30-7 6 7 6m10-12 7 6-7 6"/></svg></div><h3>Mi próximo equipo</h3><p>Un espacio para planear lo que viene.</p><div class="goal-amount"><strong>L 4,000</strong><span>de L 12,000</span></div><progress value="4000" max="12000" aria-label="Avance de la meta Mi próximo equipo"></progress><small>33% de tu meta · L 8,000 por reunir</small></div></section>
+          <section class="demo-frame customization-window" aria-labelledby="customization-title"><div class="frame-rivets" aria-hidden="true"></div><div class="window-chrome"><strong id="customization-title">✦ Tu personalización</strong></div><div class="window-content"><p class="quiet-label" id="selected-frame-label">TITANIO</p><h3>El carácter está en el marco.</h3><p>Cristal, reflejos, tipografía y colores siguen siendo los de Atlas.</p><div class="frame-detail" aria-hidden="true"><span></span><span></span><span></span></div><small>Cambia la paleta y compara las mismas ventanas.</small></div></section>
+        </aside>
+      </div>
+    </div>
+    <div class="preview-taskbar"><span class="start-orb" aria-hidden="true">✦</span><button type="button" class="taskbar-window" id="restore-main"><svg aria-hidden="true"><use href="#wallet-icon"></use></svg><span id="taskbar-title">Finanzas personales</span></button><span class="taskbar-caption">Prototipo interactivo · No modifica tu Atlas</span></div>
+  </main>
+  <footer class="lab-footer"><span>Prueba los marcos, las paletas, minimizar y ampliar. En Finanzas puedes registrar un movimiento de muestra.</span><span>La muestra se reinicia al recargar.</span></footer>
+  <dialog class="demo-frame transaction-dialog" id="transaction-dialog" aria-labelledby="transaction-title"><div class="frame-rivets" aria-hidden="true"></div><div class="window-chrome"><strong id="transaction-title">Registrar movimiento de muestra</strong><div class="window-controls"><button type="button" class="close-btn" id="close-transaction" aria-label="Cerrar registro">×</button></div></div><form id="transaction-form" class="window-content"><p class="dialog-note">Solo para probar la propuesta. No se guarda en Atlas.</p><div class="form-grid"><label>Tipo<select name="type"><option value="expense">Gasto</option><option value="income">Ingreso</option></select></label><label>Importe (HNL)<input name="amount" type="number" min="0.01" max="1000000" step="0.01" placeholder="250.00" required></label><label class="full-field">Descripción<input name="description" maxlength="60" placeholder="Ej.: Compra de la semana" required></label><label>Cuenta<select name="account"><option value="bank">Cuenta principal</option><option value="cash">Efectivo</option></select></label><label>Categoría<select name="category"><option value="Alimentación">Alimentación</option><option value="Transporte">Transporte</option><option value="Herramientas">Herramientas</option><option value="Vivienda">Vivienda</option><option value="Otros">Otros</option></select></label></div><p id="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="aero-btn" id="cancel-transaction">Cancelar</button><button type="submit" class="aero-btn primary-btn">Añadir a la muestra</button></div></form></dialog>
+  <div class="demo-toast" id="demo-toast" role="status" hidden></div>
+  <svg width="0" height="0" class="icon-definitions" aria-hidden="true"><defs><linearGradient id="wallet-glass" x2="0" y2="1"><stop stop-color="#d8f2ff"/><stop offset=".5" stop-color="#8ab6d0"/><stop offset="1" stop-color="#38607a"/></linearGradient></defs><symbol id="wallet-icon" viewBox="0 0 24 24"><path d="M3 5h16v15H3Z" fill="url(#wallet-glass)" stroke="#395c72"/><path d="m3 5 13-3v3" fill="#c6e0ec" stroke="#395c72"/><path d="M14 10h7v6h-7Z" fill="url(#wallet-glass)" stroke="#395c72"/><circle cx="17" cy="13" r="1" fill="#fff"/></symbol></svg>
+</body>
+</html>
