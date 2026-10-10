@@ -30,7 +30,6 @@
   let _explorer = null, _editing = false;
   let _generationSequence = 0;
 
-  const RANK_COLORS = ['#bd603e', '#527b91', '#49867a', '#80709c', '#99804c', '#617887'];
   const NODE_W = 180, NODE_H = 112, ROOT_SCALE = 1.06;
   const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
   const DRAG_THRESHOLD = 4;
@@ -334,8 +333,8 @@
     _area.innerHTML = `
       <div class="cm-map-header">
         <button class="cm-back-btn" id="cmBackBtn" title="Volver a Mapas">← Mapas</button>
-        <div class="cm-map-heading"><div class="cm-map-eyebrow">MAPA CONCEPTUAL</div><h1 class="cm-map-title" id="cmMapTitle" contenteditable="true" spellcheck="false">${_esc(_currentMap.title)}</h1><div class="cm-map-meta" id="cmMapMeta"></div></div>
-        <button class="cm-delete-btn" id="cmDeleteBtn" title="Eliminar mapa">Eliminar</button>
+        <div class="cm-map-heading"><h1 class="cm-map-title" id="cmMapTitle" spellcheck="false">${_esc(_currentMap.title)}</h1><div id="cmExplorerTrail"></div></div>
+        <div id="cmExplorerControls"></div>
       </div>
       <div class="cm-canvas-wrap" id="cmCanvasWrap">
         <svg id="cmSvg" class="cm-svg">
@@ -359,7 +358,6 @@
       </div>`;
 
     document.getElementById('cmBackBtn').addEventListener('click', showList, { signal });
-    document.getElementById('cmDeleteBtn').addEventListener('click', onDeleteMap, { signal });
     document.getElementById('cmAddNodeBtn').addEventListener('click', onAddNodeCenter, { signal });
 
     const titleEl = document.getElementById('cmMapTitle');
@@ -373,8 +371,29 @@
     fitToScreen();
     _explorer = window.ConceptMapExplorer?.mount(document.getElementById('cmCanvasWrap'), () => _currentMap, {
       overview: fitToScreen,
-      edit: value => { _editing = value; renderCanvas(); },
-      saveDescription: (id, description) => apiPatchNode(_currentMap.id, id, { description }),
+      edit: value => { _editing = value; titleEl.contentEditable = String(value); renderCanvas(); },
+      remove: onDeleteMap,
+      controls: document.getElementById('cmExplorerControls'),
+      trailHost: document.getElementById('cmExplorerTrail'),
+      modelChoice: () => _modelChoice || window._getRawSavedModelChoice?.('conceptmap') || _currentMap.model_choice,
+      setModelChoice: choice => { _modelChoice = choice; },
+      explain: async (id, choice) => {
+        const mapId = _currentMap.id;
+        const response = await fetch(`/api/concept-maps/${mapId}/nodes/${id}/explanation`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: choice?.provider, model: choice?.model }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'No se pudo obtener la explicación.');
+        if (!result.description?.trim()) throw new Error('El modelo devolvió una explicación vacía.');
+        return result;
+      },
+      saveDescription: async (id, description) => {
+        const mapId = _currentMap.id;
+        await apiPatchNode(mapId, id, { description });
+        const result = await apiGet(mapId);
+        return result.nodes.find(n => n.id === id);
+      },
     });
   }
 
@@ -419,7 +438,7 @@
   }
 
   function _nodeColor(node, r) {
-    return node.color || RANK_COLORS[Math.min(r, RANK_COLORS.length - 1)];
+    return node.color || `color-mix(in srgb, var(--accent) ${Math.max(38, 100 - r * 12)}%, var(--text-muted))`;
   }
 
   function _sizeNode(node, r) {
