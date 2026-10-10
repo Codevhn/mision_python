@@ -110,7 +110,7 @@
     $('#finance-view').hidden = !finance; $('#learning-view').hidden = finance;
     $('#window-title').textContent = finance ? 'Finanzas personales' : b.textContent.trim();
     $('#taskbar-title').textContent = $('#window-title').textContent;
-    $('#window-icon').setAttribute('href',finance ? '#wallet-icon' : '../knowledge_base/static/aero-icons.svg#knowledge');
+    $('#window-icon').setAttribute('href',finance ? '#wallet-icon' : '../aero-icons.svg#knowledge');
     document.querySelectorAll('[data-section]').forEach(nav => {
       nav.classList.toggle('is-active',nav === b); nav.removeAttribute('aria-current');
     });

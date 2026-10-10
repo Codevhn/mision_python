@@ -2,6 +2,8 @@
 
 [Abrir el prototipo](atlas-window-customization.html).
 
+En Atlas publicado: abre **Apariencia** con el botón de tema de la barra superior y pulsa **Probar nuevos marcos**. Se abre una pestaña independiente con las propuestas. También está disponible en `/static/previews/atlas-window-customization.html` del mismo dominio de Atlas. Los tres archivos del prototipo están en `knowledge_base/static/previews/`, por lo que el Dockerfile existente los incluye en el deploy.
+
 Dos propuestas interactivas para personalizar los marcos sin sustituir el estilo Aero de Atlas. El selector incluye un Aero clásico de referencia. El prototipo importa las variables del archivo real `knowledge_base/static/themes.css`; las paletas azul eléctrico, ámbar, rubí, esmeralda y Aero claro cambian cristal, bordes, controles y superficies.
 
 | Propuesta | Anatomía del marco |
@@ -9,7 +11,7 @@ Dos propuestas interactivas para personalizar los marcos sin sustituir el estilo
 | **Titanio** | Doble bisel metálico, fijaciones discretas, placa de título y borde inferior ensamblado. |
 | **Centinela** | Esquinas angulares, rieles segmentados, conductos de luz y controles encastrados. |
 
-Las reglas decorativas están delimitadas por `data-frame` y `.demo-frame` en [el CSS del prototipo](atlas-window-customization.css). Cambiar de propuesta mantiene el mismo contenido y los mismos colores. El CSS no se carga en la aplicación publicada. Integrarlo más adelante requerirá asociar esta anatomía a las ventanas y paneles reales, guardar la preferencia y verificar cada superficie; estas propuestas no representan una integración ya terminada.
+Las reglas decorativas están delimitadas por `data-frame` y `.demo-frame` en [el CSS del prototipo](../knowledge_base/static/previews/atlas-window-customization.css). Cambiar de propuesta mantiene el mismo contenido y los mismos colores. Ese CSS solo se carga en la pestaña de vista previa, no en el espacio de trabajo de Atlas. Integrarlo más adelante requerirá asociar esta anatomía a las ventanas y paneles reales, guardar la preferencia y verificar cada superficie; estas propuestas no representan una integración ya terminada.
 
 ## Probar en tu equipo
 
@@ -39,6 +41,8 @@ No hay persistencia, llamadas a API, acceso a bancos ni consultas a modelos. La 
 ## Comprobación
 
 Se verificaron en Chromium las propuestas y sus paletas, la navegación, los controles de ventana, los cálculos de movimientos en centavos, los límites de saldo, el texto introducido por el usuario, el reinicio y el cierre de diálogos con Escape. Se comprobaron anchos de 320, 390, 768, 1024 y 1440 px, así como la preferencia de movimiento reducido, sin desbordamiento horizontal ni llamadas a API.
+
+También se verificó el recorrido en el servidor real de Flask: inicio de sesión → Apariencia → Probar nuevos marcos → pestaña de vista previa. Cargaron el HTML, CSS, JavaScript, fuentes e iconos desde `/static/`, se comprobó que el tema guardado de Atlas no cambia al probar las propuestas y que **Volver a Atlas** recupera el tema original. El enlace y la vista previa se comprobaron en escritorio y teléfono.
 
 Capturas del mismo escenario y la misma paleta para comparar:
 

@@ -14,6 +14,15 @@
 .theme-swatch { width:46px; height:46px; flex-shrink:0; border:1px solid #8885; border-radius:10px; }
 .theme-swatch-aero { background:linear-gradient(145deg,#fff9 0%,#ffffff15 45%,#0878a455 46%),linear-gradient(135deg,#7ad7f7,#2a6baf); box-shadow:inset 0 1px 0 #fff; }
 .theme-picker button:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.theme-preview-link { display:flex; align-items:center; gap:13px; margin:16px 20px 0; padding:13px 15px; border:1px solid var(--aero-frame,var(--border)); border-radius:6px; background:var(--aero-glass,var(--bg-surface)); color:var(--text); text-decoration:none; box-shadow:inset 0 1px 0 var(--aero-inset,transparent); }
+.theme-preview-link:hover { border-color:var(--accent); background:var(--aero-selection,var(--bg-hover)); }
+.theme-preview-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.theme-preview-link strong,.theme-preview-link small { display:block; }
+.theme-preview-link strong { font-size:.85rem; font-weight:600; }
+.theme-preview-link small { margin-top:3px; color:var(--text-muted); font-size:.72rem; }
+.theme-preview-mark { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border:1px solid var(--aero-frame,var(--border)); border-radius:5px; background:var(--aero-button,var(--bg-surface)); color:var(--accent); font-size:1.25rem; }
+.theme-preview-arrow { margin-left:auto; color:var(--accent); }
+.theme-preview-link .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
 :root[data-style="aero"] {
  --font-ui:"Segoe UI","Inter",system-ui,sans-serif;
