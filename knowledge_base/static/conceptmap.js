@@ -28,6 +28,7 @@
   let _viewportEl = null, _svgEl = null;
   let _panAbort = null;
   let _explorer = null, _editing = false;
+  let _generationSequence = 0;
 
   const RANK_COLORS = ['#bd603e', '#527b91', '#49867a', '#80709c', '#99804c', '#617887'];
   const NODE_W = 180, NODE_H = 112, ROOT_SCALE = 1.06;
@@ -118,6 +119,7 @@
 
   // ── List view (landing grid) ─────────────────────────────────────────────
   async function showList() {
+    ++_generationSequence;
     _explorer?.destroy(); _explorer = null;
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
@@ -187,7 +189,8 @@
   async function generateFromPrompt(rawPrompt, opts) {
     const prompt = (rawPrompt || '').trim();
     if (!prompt) return;
-    opts = opts || {};
+    opts = { ...(opts || {}) };
+    const sequence = ++_generationSequence;
     const isSummarize = opts.mode === 'summarize' && opts.content;
     // Same fallback as mindmap.js: the lesson-shortcut path calls this
     // directly, skipping showList()'s model selector entirely.
@@ -197,6 +200,7 @@
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
     if (window.showConceptMapArea) window.showConceptMapArea();
+    _currentMap = null;
     _area.innerHTML = `
       <div class="cm-generating">
         <span class="cm-spinner"></span>
@@ -209,19 +213,71 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, content: opts.content || '', mode: opts.mode || 'explore', provider: modelChoice?.provider, model: modelChoice?.model }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al generar');
+      let data;
+      try { data = await res.json(); }
+      catch { const error = new Error(res.ok ? 'Respuesta con formato inesperado.' : `HTTP ${res.status}`); error.status = res.status; throw error; }
+      if (!res.ok) { const error = new Error(data.error || `HTTP ${res.status}`); error.status = res.status; throw error; }
+      if (!data?.id || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) throw new Error('Respuesta con formato inesperado.');
+      if (sequence !== _generationSequence) return;
       _currentMap = data;
       if (window._loadConceptMapSidebar) window._loadConceptMapSidebar();
       render();
     } catch (err) {
-      _area.innerHTML = `<div class="cm-loading">No se pudo generar el mapa: ${_esc(err.message)}</div>`;
-      window.showToast && showToast('Error al generar el mapa conceptual', 'error');
+      if (sequence !== _generationSequence) return;
+      showGenerationFailure(err, prompt, opts, modelChoice);
     }
+  }
+
+  function showGenerationFailure(error, prompt, opts, modelChoice) {
+    const message = String(error.message || 'Error desconocido');
+    let title = 'No pudimos generar tu mapa', reason = 'El proveedor no completó la solicitud. Puedes reintentar o elegir otro modelo.';
+    if (/timed?\s*out|timeout|tiempo.*(espera|agot)|HTTP (408|504)/i.test(message)) {
+      title = 'El modelo tardó demasiado';
+      reason = 'Se agotó el tiempo de espera antes de recibir el mapa. Puedes volver a intentarlo o probar con otro modelo.';
+    } else if (error.status === 429 || /rate.?limit|quota|cuota/i.test(message)) {
+      title = 'El proveedor alcanzó su límite';
+      reason = 'Espera un momento antes de reintentar o elige otro modelo disponible.';
+    } else if ([401, 403].includes(error.status)) {
+      title = 'No se pudo acceder al proveedor';
+      reason = 'Revisa la configuración y los permisos de su API, o elige otro proveedor disponible.';
+    } else if (/json|formato|truncad|incomplet/i.test(message)) {
+      reason = 'La respuesta no tenía el formato necesario para construir el mapa. Reintenta o prueba otro modelo.';
+    } else if (/fetch|network|red|connection/i.test(message)) {
+      reason = 'No se pudo completar la conexión. Comprueba tu conexión y vuelve a intentarlo.';
+    }
+    const make = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls || ''; if (text != null) el.textContent = text; return el; };
+    const panel = make('section', 'cm-generation-failure'); panel.setAttribute('aria-labelledby', 'cmFailureTitle');
+    const icon = make('div', 'cm-failure-icon', '✦'); icon.setAttribute('aria-hidden', 'true');
+    const heading = make('h2', '', title); heading.id = 'cmFailureTitle'; heading.tabIndex = -1;
+    const description = make('p', 'cm-failure-reason', reason); description.setAttribute('role', 'status');
+    const preserved = make('p', 'cm-failure-preserved', 'Tu solicitud se conserva abajo. Puedes ajustarla antes de reintentar.');
+    const label = make('label', 'cm-failure-label', 'Tema o solicitud'), input = make('textarea', 'cm-failure-input');
+    input.id = 'cmFailurePrompt'; input.value = prompt; input.rows = 3; label.htmlFor = input.id;
+    const modelLabel = make('div', 'cm-failure-label', 'Modelo para el próximo intento'), selector = make('div', 'practice-cselect'), warnings = make('div', 'cm-model-warnings');
+    const actions = make('div', 'cm-failure-actions'), retry = make('button', 'cm-failure-retry', 'Reintentar'), back = make('button', '', 'Volver a mis mapas'), blank = make('button', '', 'Crear mapa vacío');
+    [retry, back, blank].forEach(button => { button.type = 'button'; });
+    let nextChoice = modelChoice;
+    const update = () => { retry.disabled = blank.disabled = !input.value.trim(); }; input.addEventListener('input', update); update();
+    retry.addEventListener('click', () => { if (!input.value.trim()) return; _modelChoice = nextChoice; generateFromPrompt(input.value, opts); });
+    back.addEventListener('click', async () => { await showList(); const draft = document.getElementById('cmPromptInput'); if (draft) draft.value = input.value; });
+    const feedback = make('p', 'cm-failure-feedback'); feedback.setAttribute('role', 'status');
+    blank.addEventListener('click', async () => {
+      const title = input.value.trim(); if (!title || blank.disabled) return;
+      const sequence = _generationSequence; blank.disabled = retry.disabled = true;
+      try { const map = await apiCreate(title); if (sequence !== _generationSequence) return; if (window._loadConceptMapSidebar) window._loadConceptMapSidebar(); showMap(map.id); }
+      catch { if (sequence === _generationSequence) { feedback.textContent = 'No se pudo crear el mapa vacío. Tu solicitud sigue aquí; vuelve a intentarlo.'; update(); } }
+    });
+    const details = make('details', 'cm-failure-details'); details.append(make('summary', '', 'Detalles técnicos'), make('pre', '', message));
+    actions.append(retry, back, blank); panel.append(icon, heading, description, preserved, label, input, modelLabel, selector, warnings, actions, feedback, details);
+    _area.replaceChildren(panel);
+    if (window._mountModelSelector) window._mountModelSelector(selector, { context: 'conceptmap', value: modelChoice, warningContainer: warnings, onChange: choice => { nextChoice = choice; } });
+    else { modelLabel.textContent = 'Se reutilizará el modelo del intento anterior.'; }
+    heading.focus({ preventScroll: true });
   }
 
   // ── Map view ─────────────────────────────────────────────────────────────
   async function showMap(id) {
+    ++_generationSequence;
     _explorer?.destroy(); _explorer = null;
     _area = document.getElementById('conceptMapArea');
     if (!_area) return;
