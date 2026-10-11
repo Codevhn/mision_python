@@ -1,0 +1,90 @@
+/* Centinela is a frame preference, independent of the active colour palette.
+   All ornament stays INSIDE the window; no transform or overflow changes to
+   its host, so anchored menus, canvas coordinates and scrolling stay native. */
+.atlas-frame-relative { position:relative; }
+.atlas-frame-decoration { display:none; }
+:root[data-frame="sentinel"] .atlas-frame {
+  --af-metal:color-mix(in srgb,var(--text-muted) 34%,var(--layer-2,var(--bg-elevated)));
+  --af-highlight:color-mix(in srgb,var(--text) 48%,var(--layer-3,var(--bg-elevated)));
+  --af-low:color-mix(in srgb,var(--bg) 65%,var(--text-muted));
+  --af-inset:var(--aero-inset,var(--border-light));
+  --af-radius:18px 3px 18px 3px;
+  box-sizing:border-box; min-width:0;
+  border:1px solid color-mix(in srgb,var(--accent) 65%,var(--af-metal)) !important;
+  border-radius:var(--af-radius) !important;
+  box-shadow:0 10px 28px color-mix(in srgb,var(--bg) 35%,transparent),
+    inset 0 0 0 2px var(--af-low),inset 0 0 0 4px var(--af-metal),
+    inset 0 0 0 5px var(--af-inset),0 0 15px color-mix(in srgb,var(--accent) 9%,transparent) !important;
+}
+:root[data-frame="sentinel"] .atlas-frame-decoration {
+  display:block; position:absolute; inset:0; z-index:30; pointer-events:none;
+  border-radius:inherit;
+}
+.atlas-frame-decoration::before {
+  content:''; position:absolute; inset:0; padding:4px; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(135deg,var(--accent),var(--af-highlight) 20%,var(--af-low) 21%,var(--af-metal) 75%,var(--accent));
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); mask-composite:exclude;
+  clip-path:polygon(0 18px,18px 0,35% 0,calc(35% + 7px) 5px,calc(100% - 19px) 5px,calc(100% - 19px) 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,65% 100%,calc(65% - 7px) calc(100% - 5px),19px calc(100% - 5px),19px 100%,0 100%);
+}
+.atlas-frame-corners {
+  position:absolute; inset:5px; pointer-events:none;
+  background:linear-gradient(135deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) top left / 23px 23px no-repeat,
+    linear-gradient(135deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) bottom right / 23px 23px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) bottom left / 12px 2px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) top right / 12px 2px no-repeat;
+}
+.atlas-frame-corners::before {
+  content:''; position:absolute; left:19px; right:19px; top:0; height:2px;
+  background:linear-gradient(90deg,var(--accent) 0 22%,transparent 22% 25%,var(--accent) 25% 27%,transparent 27% 30%,var(--af-metal) 30% 78%,var(--accent) 78% 100%);
+  box-shadow:0 0 8px var(--accent-dim);
+}
+.atlas-frame-decoration::after {
+  content:''; position:absolute; inset:0; padding:3px; border-radius:inherit; pointer-events:none;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); mask-composite:exclude;
+  background:linear-gradient(115deg,transparent 38%,color-mix(in srgb,var(--accent) 30%,transparent) 45%,color-mix(in srgb,var(--text) 82%,transparent) 48%,color-mix(in srgb,var(--accent) 60%,transparent) 50%,transparent 57%) 150% 50% / 300% 100% no-repeat;
+  animation:sentinel-edge-sheen 14s ease-in-out infinite; animation-play-state:paused; opacity:0;
+}
+.atlas-frame-in-view > .atlas-frame-decoration::after { animation-play-state:running; }
+.atlas-frames-paused .atlas-frame-decoration::after { animation-play-state:paused; }
+.atlas-frames-paused :is(.ag-corners,.frame-rivets)::after { animation-play-state:paused; }
+:root[data-frame="sentinel"] .atlas-frame[data-atlas-frame-kind="panel"] {
+  --af-radius:12px 3px 12px 3px;
+  box-shadow:inset 0 0 0 1px var(--af-low),inset 0 0 0 3px var(--af-metal),inset 0 0 0 4px var(--af-inset),0 5px 15px color-mix(in srgb,var(--bg) 22%,transparent) !important;
+}
+[data-atlas-frame-kind="panel"] > .atlas-frame-decoration::before { padding:3px; }
+[data-atlas-frame-kind="panel"] > .atlas-frame-decoration::after { animation-delay:-4s; }
+:root[data-frame="sentinel"] .atlas-frame[data-atlas-frame-kind="bar"] {
+  --af-radius:0px; border-top:0 !important; border-inline:0 !important;
+  box-shadow:inset 0 -2px 0 var(--af-metal),inset 0 -3px 0 var(--af-inset) !important;
+}
+[data-atlas-frame-kind="bar"] > .atlas-frame-decoration::before,
+[data-atlas-frame-kind="bar"] .atlas-frame-corners { display:none; }
+[data-atlas-frame-kind="bar"] > .atlas-frame-decoration::after { mask:none; padding:0; height:2px; top:auto; animation-delay:-8s; }
+:root[data-frame="sentinel"] .modal.atlas-frame { padding:8px; }
+:root[data-frame="sentinel"] .atlas-frame > :is(.modal-header,.assistant-header,.ai-panel-header,.scratchpad-header,.practice-view-header,.reader-bar,.sidebar-space-header,.cm-map-header,.mm-map-header,.dg-header,.login-window-title) {
+  border-radius:12px 0 0 0;
+}
+:root[data-frame="sentinel"] :is(.assistant-header-actions button,.toc-panel-close,.ag-controls button) {
+  border-radius:2px 2px 8px 2px; border:1px solid var(--border);
+  background:var(--aero-button,var(--bg-elevated));
+  box-shadow:inset 0 1px 0 var(--af-inset,var(--border-light)),inset 0 -2px 0 color-mix(in srgb,var(--accent) 35%,transparent);
+}
+.atlas-frame-preferences { margin:16px 20px; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--aero-toolbar,var(--bg-elevated)); }
+.atlas-frame-preferences legend { padding:0 5px; font:600 .8rem var(--font-ui); color:var(--text); }
+.atlas-frame-choices { display:flex; gap:10px; }
+.atlas-frame-choices button { flex:1; min-width:0; display:flex; align-items:center; gap:10px; padding:12px; color:var(--text); background:var(--aero-button,var(--bg)); border:1px solid var(--border); border-radius:6px; cursor:pointer; font:.8rem var(--font-ui); text-align:left; }
+.atlas-frame-choices button[aria-pressed="true"] { border-color:var(--accent); background:var(--aero-selection,var(--bg-hover)); box-shadow:inset 0 0 0 1px var(--accent); }
+.atlas-frame-choices button:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.atlas-frame-sample { display:block; width:34px; height:26px; flex:none; border:1px solid var(--border); border-radius:5px; background:var(--aero-glass,var(--bg-elevated)); box-shadow:inset 0 0 0 2px var(--border-light); }
+[data-atlas-frame-choice="sentinel"] .atlas-frame-sample { border:2px solid var(--accent); border-radius:9px 1px 9px 1px; box-shadow:inset 0 0 0 2px var(--border-light),0 0 8px var(--accent-light); }
+:root[data-frame="classic"] .atlas-goal { border-radius:8px; box-shadow:var(--aero-shadow,0 8px 24px #0003); padding:6px; background:var(--aero-glass,var(--bg-elevated)); border-color:var(--border); }
+:root[data-frame="classic"] .atlas-goal::before,:root[data-frame="classic"] .atlas-goal::after,:root[data-frame="classic"] .ag-corners { display:none; }
+@media(max-width:480px) {
+  .atlas-frame-choices { flex-direction:column; }
+  .atlas-frame-preferences { margin-inline:12px; }
+}
+@media(prefers-reduced-motion:reduce) { .atlas-frame-decoration::after { animation:none; opacity:0; } }
+@media print {
+  .atlas-frame-decoration { display:none !important; }
+  :root[data-frame="sentinel"] .atlas-frame { border-color:transparent !important; box-shadow:none !important; }
+}

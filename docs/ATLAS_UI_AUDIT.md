@@ -19,3 +19,5 @@ Capturas de la implementación:
 
 - [Meta y selector de moneda, sin barras del marco](../design/atlas-finance-goal-polished.png)
 - [Calendario y estados vacíos de Finanzas](../design/atlas-finance-calendar-polished.png)
+
+La revisión posterior de [Centinela en todo Atlas](ATLAS_CENTINELA.md) amplía la integración a navegación, espacios, ventanas y diálogos. Se verificaron la persistencia independiente del marco, los colores, las pantallas estrechas, los selectores y la ausencia de barras añadidas por la decoración. No altera las correcciones de desplazamiento y menús documentadas arriba.

@@ -23,7 +23,9 @@ Los cristales, reflejos y bordes siguen los colores de Atlas. Un brillo recorre 
 
 Los datos se guardan bajo el `DATA_DIR` existente: `finance.db` para el módulo y `personal_goal.json` para la meta. Ambos se incluyen en Exportar todo y en los respaldos; SQLite se copia mediante una instantánea consistente. En Fly siguen usando el volumen de datos de Atlas. Las API requieren la sesión autenticada del sistema.
 
-La vista previa de **Apariencia → Probar nuevos marcos** sigue usando sus datos de muestra en memoria. No modifica tus finanzas ni tu meta reales.
+**Apariencia → Marco de las ventanas** aplica Centinela o Aero clásico a Atlas y Finanzas, conservando la paleta. Centinela es la opción inicial. [La integración compartida](ATLAS_CENTINELA.md) incluye los espacios de trabajo, ventanas y diálogos.
+
+El enlace **Explorar las propuestas de marcos** sigue abriendo una demostración con datos de muestra en memoria. No modifica tus finanzas ni tu meta reales.
 
 Los filtros y formularios usan selectores y calendarios con la paleta de Atlas. Mes y Fecha se muestran en español. Los marcos no generan barras de desplazamiento; en pantallas bajas solo se desplaza el cuerpo del formulario. Los detalles de la revisión están en [la auditoría visual](ATLAS_UI_AUDIT.md).
 

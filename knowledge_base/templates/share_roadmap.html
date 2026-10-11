@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script src="/static/atlas-frames.js?v={{ v }}"></script>
   <title>{{ title if found else 'Enlace no disponible' }} — Project Atlas</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231793d1'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='20' font-family='sans-serif' font-weight='700'>K</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/sentinel-sheen.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/atlas-frames.css?v={{ v }}" />
   <style>
     html, body { height: auto !important; overflow: auto !important; min-height: 100vh; background: var(--bg); }
     .sr-page { max-width: 800px; margin: 0 auto; padding: 48px 24px 80px; }
