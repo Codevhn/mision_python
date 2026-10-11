@@ -16,6 +16,7 @@
     <rect x="18" y="10" width="5" height="5" rx="1" fill="url(#paper)" stroke="#577a94"/>
     <rect x="8" y="18" width="8" height="5" rx="2" fill="url(#red)" stroke="#916431"/>
   </symbol>
+  <symbol id="finance" viewBox="0 0 24 24"><path d="M3 5h16v15H3Z" fill="url(#silver)" stroke="#395c72"/><path d="m3 5 13-3v3" fill="url(#paper)" stroke="#395c72"/><path d="M14 10h7v6h-7Z" fill="url(#blue)" stroke="#395c72"/><circle cx="17" cy="13" r="1" fill="#fff"/></symbol>
   <symbol id="home" viewBox="0 0 24 24">
     <path d="M5 10v11h14V10L12 4Z" fill="url(#paper)" stroke="#577a94"/>
     <path d="m2 11 10-9 10 9-2 2-8-7-8 7Z" fill="url(#gold)" stroke="#916431" stroke-linejoin="round"/>

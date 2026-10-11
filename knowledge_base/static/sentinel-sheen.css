@@ -1,0 +1,21 @@
+/* A moving reflection on a fixed Centinela frame. Shared by preview and Home. */
+:is(.ag-corners,[data-frame="sentinel"] .frame-rivets)::after {
+  content:''; position:absolute; inset:-8px; padding:3px; pointer-events:none;
+  border-radius:20px 4px 20px 4px;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); mask-composite:exclude;
+  clip-path:polygon(0 19px,19px 0,35% 0,calc(35% + 7px) 6px,calc(100% - 20px) 6px,calc(100% - 20px) 0,100% 0,100% calc(100% - 19px),calc(100% - 19px) 100%,65% 100%,calc(65% - 7px) calc(100% - 6px),20px calc(100% - 6px),20px 100%,0 100%);
+  background-image:linear-gradient(115deg,transparent 38%,color-mix(in srgb,var(--accent) 30%,transparent) 45%,color-mix(in srgb,var(--text) 82%,transparent) 48%,color-mix(in srgb,var(--accent) 60%,transparent) 50%,transparent 57%);
+  background-size:300% 100%; background-repeat:no-repeat;
+  animation:sentinel-edge-sheen 14s ease-in-out infinite;
+}
+.goal-window .frame-rivets::after { animation-delay:-3s; }
+.customization-window .frame-rivets::after { animation-delay:-6s; }
+@keyframes sentinel-edge-sheen {
+  0%,76% {background-position:150% 50%;opacity:0}
+  78% {opacity:.85}
+  94% {background-position:-50% 50%;opacity:.85}
+  96%,100% {background-position:-50% 50%;opacity:0}
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(.ag-corners,[data-frame="sentinel"] .frame-rivets)::after {animation:none;opacity:0}
+}

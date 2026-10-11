@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es" data-style="aero" data-variant="night" data-theme="dark" data-frame="sentinel" class="finance-live">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atlas · Finanzas personales</title>
+<link rel="stylesheet" href="../course-themes.css"><link rel="stylesheet" href="../themes.css"><link rel="stylesheet" href="../previews/atlas-window-customization.css"><link rel="stylesheet" href="../atlas-goal.css"><link rel="stylesheet" href="../sentinel-sheen.css"><link rel="stylesheet" href="finance.css">
+<script src="../atlas-goal.js" defer></script><script src="finance.js" defer></script></head>
+<body>
+<main class="preview-workspace finance-workspace">
+  <section class="demo-frame main-window"><div class="frame-rivets" aria-hidden="true"></div><header class="window-chrome"><span class="window-title"><svg aria-hidden="true"><use href="../aero-icons.svg#finance"></use></svg><strong>Finanzas personales</strong></span><span class="chrome-engraving" aria-hidden="true">ATLAS</span></header>
+  <div class="window-content"><div class="finance-heading"><div><h1>Tu dinero, con claridad.</h1><p>Cuentas, movimientos y metas en tu Atlas.</p></div><button type="button" class="aero-btn primary-btn" id="add-movement">＋ Registrar movimiento</button></div>
+    <div class="finance-filters"><label>Mes<input id="month" type="month"></label><label>Moneda<select id="currency"><option value="HNL">Lempiras · HNL</option><option value="USD">Dólares · USD</option><option value="EUR">Euros · EUR</option></select></label><label>Cuenta<select id="account-filter"><option value="">Todas las cuentas</option></select></label><button type="button" class="text-btn" id="clear-filters" hidden>Quitar selección</button></div>
+    <p id="finance-status" role="status" aria-live="polite"></p>
+    <div id="finance-error" hidden><p role="alert"></p><button type="button" class="aero-btn" id="retry-finances">Reintentar</button></div>
+    <div id="finance-content" hidden>
+      <div class="balance-hero"><div><span>Total en cuentas · Todos los movimientos</span><strong id="balance-total"></strong><small id="balance-currency"></small></div><div class="balance-side"><span>En cuentas de ahorro <b id="savings-total"></b></span><span>En cuentas de uso diario <b id="spending-total"></b></span></div></div>
+      <div class="cashflow"><div><span>Ingresos del mes</span><strong id="income-total"></strong></div><div><span>Gastos del mes</span><strong id="expense-total"></strong></div><div><span>Balance del mes</span><strong id="month-total"></strong></div></div>
+      <div class="finance-panels"><section class="content-panel"><div class="panel-heading"><h2>Tus cuentas</h2><button type="button" class="text-btn" id="add-account">＋ Cuenta</button></div><div id="accounts"></div></section><section class="content-panel"><div class="panel-heading"><h2>En qué se va</h2><span>Gastos del mes</span></div><div id="expense-chart" class="interactive-chart"></div></section></div>
+      <section class="content-panel flow-panel"><div class="panel-heading"><h2>Ingresos frente a gastos</h2><span>Selecciona un importe para ver sus movimientos</span></div><div id="flow-chart"></div></section>
+      <nav class="finance-tabs" aria-label="Detalle de finanzas"><button type="button" data-detail="movements" aria-pressed="true">Movimientos</button><button type="button" data-detail="budgets" aria-pressed="false">Presupuestos</button></nav>
+      <section id="movement-detail"><div class="panel-heading"><h2 id="movement-heading">Movimientos del mes</h2><span id="movement-count"></span></div><div id="movements"></div></section>
+      <section id="budget-detail" hidden><div class="panel-heading"><h2>Presupuestos del mes</h2><button type="button" class="text-btn" id="add-budget">＋ Presupuesto</button></div><div id="budgets"></div></section>
+    </div>
+  </div><footer class="window-footer"><span><i class="status-dot" aria-hidden="true"></i> Tus datos se guardan en Atlas</span><span>Sin conversiones entre monedas</span></footer></section>
+  <aside class="companion-windows"><div id="finance-goal"></div><section class="demo-frame"><div class="frame-rivets" aria-hidden="true"></div><header class="window-chrome"><strong>◇ Distribución del ahorro</strong></header><div class="window-content"><div id="savings-chart" class="interactive-chart"></div><small>Saldo de tus cuentas marcadas como ahorro. Selecciona una para consultar sus movimientos.</small></div></section></aside>
+</main>
+<dialog class="demo-frame transaction-dialog" id="finance-dialog" aria-labelledby="dialog-title"><div class="frame-rivets" aria-hidden="true"></div><header class="window-chrome"><strong id="dialog-title"></strong><div class="window-controls"><button type="button" class="close-btn" data-close aria-label="Cerrar formulario">×</button></div></header><form class="window-content" id="finance-form"><div id="form-fields" class="form-grid"></div><p id="form-status" role="status" aria-live="polite"></p><footer class="dialog-actions"><button type="button" class="aero-btn" data-close>Cancelar</button><button type="submit" class="aero-btn primary-btn" id="save-finance">Guardar</button></footer></form></dialog>
+</body></html>

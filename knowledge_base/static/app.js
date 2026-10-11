@@ -2116,12 +2116,14 @@ function renderHome() {
             <div class="home-stat" data-stat="starred"    data-space="knowledge"><span class="home-stat-icon">★</span><div class="home-stat-text"><span class="home-stat-num">${starredCount}</span><span class="home-stat-label">destacadas</span></div></div>
           </div>
 
+          <div id="homePersonalGoal"></div>
           <section class="home-section home-section--domain" id="homeDomainSection"></section>
         </aside>
       </div>
     </div>
   `;
 
+  window.AtlasGoal?.mount(welcome.querySelector('#homePersonalGoal'));
   welcome.querySelectorAll(".home-card").forEach(card => {
     card.addEventListener("click", () => loadEntry(card.dataset.id));
   });
@@ -2406,6 +2408,7 @@ async function loadEntry(id, opts = {}) {
   _setHomeAmbient(false);
   $("kanbanArea").classList.add("hidden");
   $("diagramArea")?.classList.add("hidden");
+  $("financeView")?.classList.add("hidden");
   $("entryView").classList.remove("hidden");
   if ($("ctxBar")) $("ctxBar").classList.remove("hidden");
 
@@ -6572,7 +6575,7 @@ function setSidebarVisible(visible) {
   // stay tucked away for them exactly like it does for home, or it ends up
   // empty and floating on top of that rail (same fixed position, higher
   // z-index), silently eating every click meant for the rail underneath it.
-  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library', 'diagrams'];
+  const NO_SIDEBAR_SPACES = ['home', 'practice', 'quiz', 'lab', 'library', 'diagrams', 'finance'];
 
   // Mobile drawer drill-down: swaps the full space list for a compact
   // "← [icon] [Espacio]" header, so the space's own tree gets the rest of
@@ -6662,6 +6665,7 @@ function setSidebarVisible(visible) {
     if (kanbanArea)     kanbanArea.classList.add('hidden');
     if (mindmapArea)    mindmapArea.classList.add('hidden');
     if (conceptMapArea) conceptMapArea.classList.add('hidden');
+    document.getElementById('financeView')?.classList.add('hidden');
     document.getElementById('diagramArea')?.classList.add('hidden');
     if (entryView)      entryView.classList.add('hidden');
     if (entryCover)     entryCover.classList.add('hidden');
@@ -6687,7 +6691,12 @@ function setSidebarVisible(visible) {
       return;
     }
 
-    if (space === 'graph') {
+    if (space === 'finance') {
+      document.getElementById('financeView')?.classList.remove('hidden');
+      const frame = document.getElementById('financeFrame');
+      if (frame && !frame.getAttribute('src')) frame.src = frame.dataset.src;
+      else frame?.contentWindow?.postMessage({type:'atlas-finance-refresh'},location.origin);
+    } else if (space === 'graph') {
       if (graphView) graphView.classList.remove('hidden');
       if (typeof renderGraph === 'function') renderGraph();
     } else if (space === 'radar') {

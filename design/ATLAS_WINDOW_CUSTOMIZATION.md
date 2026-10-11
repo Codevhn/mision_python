@@ -11,7 +11,9 @@ Dos propuestas interactivas para personalizar los marcos sin sustituir el estilo
 | **Titanio** | Doble bisel metálico, fijaciones discretas, placa de título y borde inferior ensamblado. |
 | **Centinela** | Esquinas angulares, rieles segmentados, conductos de luz y controles encastrados. |
 
-Las reglas decorativas están delimitadas por `data-frame` y `.demo-frame` en [el CSS del prototipo](../knowledge_base/static/previews/atlas-window-customization.css). Cambiar de propuesta mantiene el mismo contenido y los mismos colores. Ese CSS solo se carga en la pestaña de vista previa, no en el espacio de trabajo de Atlas. Integrarlo más adelante requerirá asociar esta anatomía a las ventanas y paneles reales, guardar la preferencia y verificar cada superficie; estas propuestas no representan una integración ya terminada.
+Las reglas decorativas están delimitadas por `data-frame` y `.demo-frame` en [el CSS del prototipo](../knowledge_base/static/previews/atlas-window-customization.css). Cambiar de propuesta mantiene el mismo contenido y los mismos colores. Centinela también está integrado en el módulo real **Finanzas** y en la ventana **Mi próxima meta** de Inicio. Finanzas carga su decoración en una vista aislada; la meta tiene estilos propios delimitados a su componente. Los otros espacios de Atlas conservan sus marcos actuales.
+
+El reflejo compartido de Centinela recorre únicamente el perímetro, con pausas largas entre pasadas. No mueve los marcos y se desactiva si el sistema solicita movimiento reducido.
 
 ## Probar en tu equipo
 
@@ -36,7 +38,7 @@ La pantalla utiliza datos ficticios en lempiras (HNL). Incluye cuentas, ingresos
 
 El saldo inicial es L 18,000.00: banco L 13,000.00, ahorro L 4,000.00 y efectivo L 1,000.00. Los movimientos del mes agregan L 18,000.00 de ingresos y L 8,250.00 de gastos. Así, el total en cuentas es L 27,750.00 y el patrimonio neto, descontando L 4,500.00 de deuda, es L 23,250.00. El balance del mes es L 9,750.00; no se confunde con el saldo total.
 
-No hay persistencia, llamadas a API, acceso a bancos ni consultas a modelos. La meta y la deuda son ejemplos fijos. Las entradas de aprendizaje son una vista representativa para comparar el marco. El módulo real de Finanzas queda para una etapa posterior a elegir la personalización.
+En esta pestaña de muestra no hay persistencia, llamadas a API, acceso a bancos ni consultas a modelos. La meta y la deuda son ejemplos fijos. Las entradas de aprendizaje son una vista representativa para comparar el marco. El módulo real se abre desde **Finanzas** en la navegación de Atlas: comienza vacío, guarda tus datos y ofrece gráficos interactivos. Su funcionamiento está documentado en [Finanzas personales](../docs/PERSONAL_FINANCE.md).
 
 ## Comprobación
 

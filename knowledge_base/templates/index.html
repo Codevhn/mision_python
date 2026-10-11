@@ -35,6 +35,8 @@
   <link rel="stylesheet" href="/static/reader.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/course-themes.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/atlas-controls.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/atlas-goal.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/sentinel-sheen.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/module-cover.css?v={{ v }}">
   <link rel="stylesheet" href="/static/modal-controls.css?v={{ v }}">
   <link rel="stylesheet" href="/static/library-polish.css?v={{ v }}" />
@@ -140,6 +142,7 @@
           <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span>
           <span class="ab-label">Biblioteca</span>
         </button>
+        <button class="ab-item" id="abFinance" data-space="finance" title="Finanzas personales"><span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="/static/aero-icons.svg#finance"></use></svg></span><span class="ab-label">Finanzas</span></button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
@@ -194,6 +197,7 @@
         <button class="msn-item" id="msnLab" data-space="lab"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></span><span class="msn-label">Práctica</span></button>
         <button class="msn-item" id="mobileThemeToggle" aria-label="Elegir apariencia"><span class="msn-icon">◐</span><span class="msn-label">Apariencia</span></button>
         <button class="msn-item" id="msnLibrary" data-space="library"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span><span class="msn-label">Biblioteca</span></button>
+        <button class="msn-item" data-space="finance"><span class="msn-icon"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#finance"></use></svg></span><span class="msn-label">Finanzas</span></button>
       </nav>
       <button class="msn-back-header hidden" id="msnBackHeader" title="Volver a espacios">
         <span class="msn-back-icon">←</span>
@@ -580,6 +584,7 @@
       <!-- MINDMAP VIEW -->
       <div class="mindmap-area hidden" id="mindmapArea"></div>
       <div class="concept-map-area hidden" id="conceptMapArea"></div>
+      <section id="financeView" class="hidden" style="height:100%;min-height:0"><iframe id="financeFrame" title="Finanzas personales de Atlas" style="display:block;width:100%;height:100%;border:0" data-src="/static/finance/index.html"></iframe></section>
       <div class="diagram-area hidden" id="diagramArea"></div>
 
 
@@ -1519,6 +1524,7 @@
   <script src="/static/system-icons.js?v={{ v }}"></script>
   <script src="/static/course-themes.js?v={{ v }}"></script>
   <script src="/static/theme-registry.js?v={{ v }}"></script>
+  <script src="/static/atlas-goal.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>

@@ -1,5 +1,7 @@
 import os
 import koboldcpp
+from personal_goal import create_goal_blueprint
+from finance import create_finance_blueprint, snapshot_finance_database
 import json
 import re
 import difflib
@@ -129,6 +131,8 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 INDEX_FILE = DATA_DIR / "index.json"  # legacy JSON store — kept only as the one-time migration source, see load_index()
 INDEX_DB_FILE = DATA_DIR / "index.db"
+app.register_blueprint(create_goal_blueprint(lambda: DATA_DIR))
+app.register_blueprint(create_finance_blueprint(lambda: DATA_DIR))
 
 # ---- BACKUPS ----
 # data/*.json (index, courses, kanban, mindmaps, relations) + every knowledge/
@@ -171,6 +175,9 @@ def _build_backup_zip_bytes():
         index_db_bytes = _snapshot_index_db_bytes()
         if index_db_bytes is not None:
             zf.writestr("data/index.db", index_db_bytes)
+        finance_bytes = snapshot_finance_database(DATA_DIR)
+        if finance_bytes is not None:
+            zf.writestr("data/finance.db", finance_bytes)
         for path in KNOWLEDGE_DIR.rglob("*.md"):
             zf.write(path, arcname=f"knowledge/{path.relative_to(KNOWLEDGE_DIR)}")
     buf.seek(0)
