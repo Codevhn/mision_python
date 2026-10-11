@@ -983,6 +983,7 @@ def _build_id():
         'blocknote/editor.bundle.js', 'pygments.css',
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
+        'navigation-hierarchy.css',
     ))
 
 @app.route("/sw.js")

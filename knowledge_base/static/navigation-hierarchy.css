@@ -54,6 +54,19 @@
 }
 :root #sidebar .course-inline-tree .tree-entry-icon { display:inline-flex; flex:none; width:16px; font-size:.85rem; }
 :root #sidebar .course-inline-tree .tree-entry-label { min-width:0; }
+/* Lessons get two readable lines, rather than losing most of their title to
+   nested indentation. Keep the guides and icons without widening the drawer. */
+:root #sidebar .course-inline-tree { margin-left:12px; margin-right:4px; padding-left:7px; }
+:root #sidebar .course-inline-tree .tree-entries { margin-left:10px; padding-left:7px; }
+:root #sidebar .course-inline-tree .tree-topic.open > .tree-entries { max-height:none; }
+:root #sidebar .course-inline-tree .tree-entry { padding:7px 5px !important; gap:5px; }
+:root #sidebar .course-inline-tree .tree-entry-label { flex:1; align-items:flex-start; gap:5px; }
+:root #sidebar .course-inline-tree .tree-entry-icon { margin-top:2px; }
+:root #sidebar .course-inline-tree .tree-entry-title {
+ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+ flex:1; white-space:normal; overflow:hidden; overflow-wrap:anywhere;
+ line-height:1.4; text-overflow:ellipsis;
+}
 :root #sidebar .course-inline-tree .tree-topic:first-child .tree-topic-header { margin-top:4px; border-top:1px solid var(--border); }
 :root #sidebar .tree-entry :is(.tree-page-menu-btn,.tree-entry-menu) { margin-left:auto; flex:none; }
 @media(prefers-reduced-motion:reduce) { :root #sidebar :is(.tree-topics,.tree-entries) { transition:none; } }

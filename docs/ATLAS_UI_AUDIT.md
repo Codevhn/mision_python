@@ -21,3 +21,8 @@ Capturas de la implementación:
 - [Calendario y estados vacíos de Finanzas](../design/atlas-finance-calendar-polished.png)
 
 La revisión posterior de [Centinela en todo Atlas](ATLAS_CENTINELA.md) amplía la integración a navegación, espacios, ventanas y diálogos. Se verificaron la persistencia independiente del marco, los colores, las pantallas estrechas, los selectores y la ausencia de barras añadidas por la decoración. No altera las correcciones de desplazamiento y menús documentadas arriba.
+# Títulos de lecciones en Cursos
+
+Los subtemas del árbol de Cursos admiten hasta dos líneas, con elipsis para los títulos más largos. Se compactaron las sangrías de curso y módulo sin ensanchar el panel ni reducir la tipografía. El atributo `title` conserva el nombre completo al pasar el cursor. Los módulos abiertos ya no tienen un límite de altura que oculte lecciones al aumentar el alto de las filas; el desplazamiento sigue perteneciendo al árbol del curso.
+
+Verificado en cinco temas, con 22 lecciones, apertura y cierre de módulos y viewport móvil sin desbordamiento horizontal. [Captura de la integración](../design/atlas-course-titles.png).
