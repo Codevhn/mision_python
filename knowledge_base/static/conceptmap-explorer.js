@@ -5,7 +5,7 @@
     const abort = new AbortController(), { signal } = abort;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     let route = [], scene = null, timers = [], sequence = 0, editing = false, readingOpen = false;
-    let connectorFrame = 0, connectorObserver = null;
+    let connectorFrame = 0, connectorObserver = null, readingFrame = 0;
     const requests = new Map();
     const node = id => (getMap()?.nodes || []).find(n => n.id === id);
     const links = id => (getMap()?.edges || []).filter(e => e.from === id && node(e.to));
@@ -41,7 +41,7 @@
     for (let i = 0; i < 100; i++) { seed = seed * 16807 % 2147483647; const x = seed / 2147483647; seed = seed * 16807 % 2147483647; const star = make('i', 'cm-space-star'); star.style.cssText = `left:${x * 100}%;top:${seed / 2147483647 * 100}%;opacity:${.25 + x * .55}`; stars.append(star); }
     const ambient = make('div', 'cm-space-ambient'); ambient.setAttribute('aria-hidden', 'true');
     world.append(stars, ambient, memory); root.append(world); host.append(root); host.classList.add('cm-space-enabled');
-    function cancel() { cancelAnimationFrame(connectorFrame); connectorObserver?.disconnect(); connectorObserver = null; sequence++; timers.forEach(clearTimeout); timers = []; }
+    function cancel() { cancelAnimationFrame(connectorFrame); cancelAnimationFrame(readingFrame); connectorObserver?.disconnect(); connectorObserver = null; sequence++; timers.forEach(clearTimeout); timers = []; }
     function later(fn, delay) { timers.push(setTimeout(fn, reduced.matches ? 0 : delay)); }
     function memoryUpdate() {
       memory.replaceChildren();
@@ -66,15 +66,51 @@
       return chunks;
     }
     function reader(n) {
-      const article = make('article', 'cm-space-reading'), body = make('div', 'cm-space-reading-body'), status = make('div', 'cm-space-status');
+      const article = make('article', 'cm-space-reading'), projection = make('div', 'cm-space-reading-projection'), body = make('div', 'cm-space-reading-body'), status = make('div', 'cm-space-status');
       status.setAttribute('role', 'status');
-      const chunks = chunksFor(n); chunks.forEach((c, i) => { c.inert = true; c.style.setProperty('--text-depth', `${Math.min(i, 3) * 3}px`); body.append(c); });
+      const chunks = chunksFor(n); chunks.forEach((c, i) => { c.inert = true; c.style.setProperty('--text-depth', `${18 + Math.min(i, 3) * 8}px`); body.append(c); });
       let finished = false;
       const revealInstant = c => { c.inert = false; c.classList.add('visible'); c.classList.remove('scanning'); };
       const finish = () => { finished = true; show.hidden = true; status.textContent = ''; };
       const show = button('Mostrar todo', () => { chunks.forEach(revealInstant); finish(); });
       show.className = 'cm-space-show-all'; show.hidden = !chunks.length;
-      article.append(show, body, status);
+      // The scroll viewport flattens 3D. Establish perspective INSIDE it so the
+      // selectable HTML blocks retain their depth, even with a single paragraph.
+      projection.append(body); article.append(show, projection, status);
+      const setStill = value => {
+        if (value && !article.classList.contains('cm-reading-still')) body.style.transform = getComputedStyle(body).transform;
+        if (!value) body.style.removeProperty('transform');
+        article.classList.toggle('cm-reading-still', value);
+        if (value) cancelAnimationFrame(readingFrame);
+      };
+      const resetTilt = () => {
+        cancelAnimationFrame(readingFrame);
+        if (article.classList.contains('cm-reading-still')) return;
+        body.style.removeProperty('--reading-x'); body.style.removeProperty('--reading-y');
+      };
+      article.addEventListener('pointermove', event => {
+        if (event.pointerType !== 'mouse' || reduced.matches || document.hidden || article.classList.contains('cm-reading-still') || host.classList.contains('cm-galaxy-off')) return;
+        cancelAnimationFrame(readingFrame);
+        readingFrame = requestAnimationFrame(() => {
+          if (scene?.reader !== article) return;
+          const rect = article.getBoundingClientRect();
+          const x = Math.max(-1, Math.min(1, (event.clientX - rect.left) / rect.width * 2 - 1));
+          const y = Math.max(-1, Math.min(1, (event.clientY - rect.top) / rect.height * 2 - 1));
+          body.style.setProperty('--reading-x', `${-y * 1.5}deg`);
+          body.style.setProperty('--reading-y', `${x * 2.5}deg`);
+        });
+      }, { signal });
+      article.addEventListener('pointerleave', resetTilt, { signal });
+      // Keep the text steady while selecting, following a link or editing.
+      article.addEventListener('pointerdown', () => setStill(true), { signal });
+      article.addEventListener('focusin', () => setStill(true), { signal });
+      article.addEventListener('focusout', () => article.selectionChanged(), { signal });
+      article.selectionChanged = () => {
+        const selection = getSelection();
+        const selecting = !selection.isCollapsed && (article.contains(selection.anchorNode) || article.contains(selection.focusNode));
+        setStill(selecting || article.contains(document.activeElement));
+      };
+      article.addEventListener('pointerup', article.selectionChanged, { signal });
       const form = make('form', 'cm-space-description-form'); form.hidden = true;
       const label = make('label', '', 'Editar texto'), input = make('textarea'); input.value = n.description || ''; input.maxLength = 12000; input.rows = 8; label.append(input);
       const result = make('p', 'cm-space-save-status'); result.setAttribute('role', 'status');
@@ -179,6 +215,7 @@
       later(() => { if (turn !== sequence) return; old?.remove(); next.reader?.start(); next.querySelector('h2').focus({ preventScroll: true }); }, instant ? 0 : 1700);
     }
     function enter(id) { if (editing || !node(id)) return; const index = route.indexOf(id); if (index >= 0) route = route.slice(0, index + 1); else route.push(id); display(); }
+    document.addEventListener('selectionchange', () => scene?.reader?.selectionChanged(), { signal });
     reduced.addEventListener('change', () => { if (reduced.matches) { cancel(); world.querySelectorAll('.cm-space-scene:not(.current)').forEach(el => el.remove()); scene?.classList.remove('arriving', 'returning'); scene?.reader?.finish(); scene?.reader?.start(); connectLayer(scene || {}); } else connectLayer(scene || {}); }, { signal });
     document.addEventListener('visibilitychange', () => { cancelAnimationFrame(connectorFrame); if (!document.hidden && scene) connectLayer(scene); }, { signal });
     const map = getMap(), incoming = new Set((map?.edges || []).map(edge => edge.to));

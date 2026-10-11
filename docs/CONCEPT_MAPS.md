@@ -4,6 +4,10 @@ La cabecera reúne el título y el recorrido. **Volver** regresa a las ramas o a
 
 Las tarjetas, conexiones, nebulosa y texto usan los colores del tema activo. Las transiciones y el relieve emplean perspectiva CSS; el texto sigue siendo seleccionable. La preferencia de movimiento reducido desactiva la animación. **Mostrar todo** solo aparece mientras se revela la explicación; no indica que su contenido haya sido verificado.
 
+La lectura conserva un fondo transparente. El título tiene relieve y cada bloque se proyecta a una profundidad distinta, incluido el primer párrafo. La perspectiva se establece dentro del área de scroll para evitar que el navegador aplane los bloques. En escritorio, el cursor inclina suavemente la lectura; al seleccionar texto o editar, se congela su posición. En móvil y con movimiento reducido se conserva un relieve estático. Son transformaciones CSS sobre texto HTML, no letras convertidas en geometría WebGL.
+
+En la vista general, las frases de enlace se distribuyen según las dimensiones reales de su tipografía y sus líneas. Se busca espacio sobre cada curva y, cuando está ocupado, en posiciones cercanas sin cubrir otros textos ni conceptos. Una guía discreta une las etiquetas desplazadas con su curva. Si no queda espacio cercano, se usa una columna exterior que también se incluye al ajustar el mapa a pantalla. Las curvas siempre se dibujan detrás de las etiquetas. La distribución se actualiza al cambiar la fuente, editar una frase o arrastrar conceptos, sin modificar las posiciones guardadas del mapa.
+
 ## Generación y mapas anteriores
 
 `POST /api/concept-maps/generate` pide una `description` para cada nodo y conserva esas definiciones. Si faltan, devuelve un error recuperable y no guarda un mapa parcial. El presupuesto de salida incluye los textos y rechaza respuestas truncadas.
@@ -21,5 +25,9 @@ El servidor vuelve a leer el mapa después de consultar la IA: conserva cambios 
 - Suite de Python: `.venv/bin/python -m pytest knowledge_base/tests -q`.
 - Navegador Chromium: explicación dentro del mapa, caché, fallo y reintento, selección del modelo, reintento compacto limitado, respuestas tardías, edición, movimiento reducido, móvil y cambio entre Aero Rubí, Ámbar, Claro y OpenCode.
 - El selector real de modelos se comprobó dentro del menú, incluyendo búsqueda, selección, Escape y limpieza al cambiar de mapa.
+- Profundidad de un único párrafo, paralaje, selección y copia nativas, lectura transparente, movimiento reducido y ausencia de desbordamiento horizontal en móvil.
+- Quince relaciones con ciclos y conexiones paralelas: ninguna etiqueta tapa otra etiqueta o nodo, incluso al cambiar tipografía y tema, editar una frase larga y mover conceptos. Una prueba de estrés con sesenta relaciones verifica también las posiciones exteriores. Comprobado además dentro de la interfaz real de Atlas con respuestas de prueba.
+
+[Lectura con profundidad integrada](../design/concept-map-depth-reading.png) y [conectores distribuidos](../design/concept-map-depth-connectors.png). Los cuatro archivos del mapa forman parte de la versión de recursos estáticos para que estos cambios invaliden la caché en un despliegue.
 
 [Captura de las ramas](../design/concept-map-integrated-space.png) y [captura de lectura](../design/concept-map-integrated-reading.png) muestran el código integrado con datos de prueba. Las consultas del proveedor se simularon; no se utilizaron servicios de pago ni se desplegó en Fly durante estas comprobaciones.

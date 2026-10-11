@@ -404,6 +404,15 @@
     renderCanvas();
     initPanZoom(signal);
     fitToScreen();
+    let labelFrame = 0;
+    const scheduleLabels = () => {
+      cancelAnimationFrame(labelFrame);
+      labelFrame = requestAnimationFrame(placeEdgeLabels);
+    };
+    const labelObserver = new MutationObserver(scheduleLabels);
+    document.fonts?.addEventListener('loadingdone', scheduleLabels, { signal });
+    for (const el of [document.documentElement, document.body]) labelObserver.observe(el, { attributes:true, attributeFilter:['class','style','data-theme','data-style','data-variant','data-palette'] });
+    signal.addEventListener('abort', () => { labelObserver.disconnect(); cancelAnimationFrame(labelFrame); }, { once:true });
     _explorer = window.ConceptMapExplorer?.mount(document.getElementById('cmCanvasWrap'), () => _currentMap, {
       overview: fitToScreen,
       edit: value => { _editing = value; titleEl.contentEditable = String(value); renderCanvas(); },
@@ -437,6 +446,8 @@
     const nodesG = document.getElementById('cmNodes');
     edgesG.innerHTML = '';
     nodesG.innerHTML = '';
+    const curves = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    curves.classList.add('cm-edge-curves'); edgesG.appendChild(curves);
     const nodes = _currentMap.nodes || [];
     const edges = _currentMap.edges || [];
     const rank = _computeRanks(nodes, edges);
@@ -450,26 +461,68 @@
     // first and the root's bigger bubble would clip against a stale/default
     // size on the very first paint.
     for (const n of nodes) _sizeNode(n, rank[n.id] || 0);
-    const labelSlots = [];
-    const measure = document.createElement('canvas').getContext('2d');
-    measure.font = '12px Arial';
-    for (const e of edges) {
-      const a = byId[e.from], b = byId[e.to];
-      if (!a || !b) continue;
-      const { x1, y1, x2, y2 } = _edgeEndpoints(a, b);
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      const width = Math.min(176, measure.measureText(e.label || 'frase de enlace…').width + 38);
-      e._labelDy = 0;
-      for (const offset of [0, -28, 28, -56, 56]) {
-        const slot = { x: mx, y: my + offset, w: width };
-        const overlapsLabel = labelSlots.some(other => Math.abs(slot.x - other.x) < (slot.w + other.w) / 2 + 6 && Math.abs(slot.y - other.y) < 28);
-        const overlapsNode = nodes.some(n => Math.abs(slot.x - n.x) < (slot.w + n._w) / 2 && Math.abs(slot.y - n.y) < n._h / 2 + 18);
-        if (!overlapsLabel && !overlapsNode) { e._labelDy = offset; break; }
-      }
-      labelSlots.push({ x: mx, y: my + e._labelDy, w: width });
-    }
     for (const e of edges) renderEdge(e, byId[e.from], byId[e.to], edgesG);
     for (const n of nodes) nodesG.appendChild(renderNode(n, rank[n.id] || 0));
+    placeEdgeLabels();
+    // Re-measure when the selected typeface finishes loading, using this map only.
+    document.fonts?.ready.then(() => {
+      if (edgesG.isConnected && document.getElementById('cmEdges') === edgesG) {
+        placeEdgeLabels();
+        if (!_editing) fitToScreen();
+      }
+    });
+  }
+
+  function placeEdgeLabels() {
+    const edgesG = document.getElementById('cmEdges');
+    if (!edgesG || !_currentMap || !edgesG.getClientRects().length) return;
+    const nodes = _currentMap.nodes || [];
+    const boxes = nodes.map(n => ({ x: n.x, y: n.y, w: n._w, h: n._h }));
+    const groups = new Map([...edgesG.children].map(g => [g.dataset.id, g]));
+    const items = (_currentMap.edges || []).map(edge => {
+      const g = groups.get(String(edge.id));
+      if (!g) return null;
+      const chip = g.querySelector('.cm-edge-label'), fo = g.querySelector('foreignObject');
+      // offset dimensions are in graph units, independent of the current zoom.
+      const w = chip.offsetWidth + (_editing ? 20 : 0) + 2, h = Math.max(24, chip.offsetHeight) + 2;
+      const path = g._lines.querySelector('.cm-edge-line'), length = path.getTotalLength();
+      const anchors = [.5, .38, .62, .26, .74].map(t => path.getPointAtLength(length * t));
+      return { edge, g, fo, w, h, anchors };
+    }).filter(Boolean);
+    const overlaps = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 10 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 + 9;
+    const placed = [];
+    const free = box => !boxes.some(other => overlaps(box, other)) && !placed.some(other => overlaps(box, other));
+    const right = Math.max(0, ...boxes.map(b => b.x + b.w / 2));
+    const top = Math.min(0, ...boxes.map(b => b.y - b.h / 2));
+    let laneY = top;
+    for (const item of items) {
+      let box, anchor;
+      // Prefer a point on its own curve. Expand into nearby lanes only if needed.
+      for (let radius = 0; radius <= 6 && !box; radius++) {
+        const offsets = radius ? [[0,-radius*36],[0,radius*36],[-radius*46,0],[radius*46,0],[-radius*46,-radius*36],[radius*46,radius*36],[-radius*46,radius*36],[radius*46,-radius*36]] : [[0,0]];
+        for (const point of item.anchors) {
+          for (const [dx, dy] of offsets) {
+            const candidate = { x: point.x + dx, y: point.y + dy, w: item.w, h: item.h };
+            if (free(candidate)) { box = candidate; anchor = point; break; }
+          }
+          if (box) break;
+        }
+      }
+      // A crowded/cyclic graph must never fall back to an occupied midpoint.
+      if (!box) {
+        box = { x: right + item.w / 2 + 32, y: laneY + item.h / 2, w: item.w, h: item.h };
+        while (!free(box)) box.y += item.h + 20;
+        laneY = box.y + item.h / 2 + 20;
+        anchor = item.anchors[0];
+      }
+      placed.push(box); item.edge._labelBox = box;
+      item.fo.setAttribute('x', box.x - box.w / 2); item.fo.setAttribute('y', box.y - box.h / 2);
+      item.fo.setAttribute('width', box.w); item.fo.setAttribute('height', box.h);
+      const leader = item.g._lines.querySelector('.cm-edge-leader');
+      const dx = anchor.x - box.x, dy = anchor.y - box.y;
+      const distance = Math.max(Math.abs(dx) / (box.w / 2), Math.abs(dy) / (box.h / 2));
+      leader.setAttribute('d', distance > 1 ? `M ${box.x + dx / distance} ${box.y + dy / distance} L ${anchor.x} ${anchor.y}` : '');
+    }
   }
 
   function _nodeColor(node, r) {
@@ -552,6 +605,10 @@
     if (!fromNode || !toNode) return;
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.dataset.id = edge.id;
+    // Paint every curve below every label, so other connections cannot cross
+    // over the text of a previously drawn phrase.
+    const lines = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g._lines = lines; edgesG.querySelector('.cm-edge-curves').appendChild(lines);
 
     const { x1, y1, x2, y2 } = _edgeEndpoints(fromNode, toNode);
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
@@ -560,12 +617,15 @@
     path.setAttribute('d', _connectionPath(x1, y1, x2, y2));
     path.setAttribute('class', 'cm-edge-line');
     // Smooth linking curves; direction is expressed by each linking phrase.
-    g.appendChild(path);
+    lines.appendChild(path);
+    const leader = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    leader.setAttribute('class', 'cm-edge-leader');
+    lines.appendChild(leader);
 
     const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     const LW = 176, LH = 44;
     fo.setAttribute('x', mx - LW / 2);
-    fo.setAttribute('y', my + (edge._labelDy || 0) - LH / 2);
+    fo.setAttribute('y', my - LH / 2);
     fo.setAttribute('width', LW);
     fo.setAttribute('height', LH);
     fo.setAttribute('style', 'overflow: visible;');
@@ -585,12 +645,15 @@
       edge.label = val;
       chip.textContent = val || 'frase de enlace…';
       chip.classList.toggle('cm-edge-label--empty', !val);
+      placeEdgeLabels();
       apiPatchEdge(_currentMap.id, edge.id, { label: val }).catch(() => {});
     });
     chip.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chip.blur(); } });
+    chip.addEventListener('input', placeEdgeLabels);
 
     const delBtn = document.createElement('button');
     delBtn.className = 'cm-edge-del';
+    delBtn.hidden = !_editing;
     delBtn.title = 'Eliminar conexión';
     delBtn.innerHTML = ICON_CLOSE;
     delBtn.addEventListener('mousedown', ev => ev.stopPropagation());
@@ -613,7 +676,7 @@
       const active = id && (edge.from === id || edge.to === id);
       if (active) { connected.add(edge.from); connected.add(edge.to); }
       const element = [...document.getElementById('cmEdges').children].find(item => item.dataset.id === edge.id);
-      if (element) { element.classList.toggle('cm-edge-active', !!active); element.classList.toggle('cm-muted', !!id && !active); }
+      if (element) for (const part of [element, element._lines]) { part.classList.toggle('cm-edge-active', !!active); part.classList.toggle('cm-muted', !!id && !active); }
     });
     [...document.getElementById('cmNodes').children].forEach(element => {
       element.classList.toggle('cm-muted', !!id && !connected.has(element.dataset.id));
@@ -664,15 +727,10 @@
         const a = byId[ed.from], b = byId[ed.to];
         if (!a || !b) continue;
         const { x1, y1, x2, y2 } = _edgeEndpoints(a, b);
-        const path = g.querySelector('.cm-edge-line');
+        const path = g._lines.querySelector('.cm-edge-line');
         if (path) path.setAttribute('d', _connectionPath(x1, y1, x2, y2));
-        const fo2 = g.querySelector('foreignObject');
-        if (fo2) {
-          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-          fo2.setAttribute('x', mx - 88);
-          fo2.setAttribute('y', my + (ed._labelDy || 0) - 22);
-        }
       }
+      placeEdgeLabels();
     }
 
     function onMove(ev) {
@@ -825,10 +883,13 @@
   function fitToScreen() {
     const nodes = (_currentMap && _currentMap.nodes) || [];
     if (!nodes.length || !_svgEl) return;
-    const minX = Math.min(...nodes.map(n => n.x - (n._w || NODE_W) / 2));
-    const maxX = Math.max(...nodes.map(n => n.x + (n._w || NODE_W) / 2));
-    const minY = Math.min(...nodes.map(n => n.y - (n._h || NODE_H) / 2));
-    const maxY = Math.max(...nodes.map(n => n.y + (n._h || NODE_H) / 2));
+    placeEdgeLabels();
+    const boxes = nodes.map(n => ({ x:n.x, y:n.y, w:n._w || NODE_W, h:n._h || NODE_H }));
+    boxes.push(...(_currentMap.edges || []).map(e => e._labelBox).filter(Boolean));
+    const minX = Math.min(...boxes.map(b => b.x - b.w / 2));
+    const maxX = Math.max(...boxes.map(b => b.x + b.w / 2));
+    const minY = Math.min(...boxes.map(b => b.y - b.h / 2));
+    const maxY = Math.max(...boxes.map(b => b.y + b.h / 2));
     const rect = _svgEl.getBoundingClientRect();
     const w = rect.width || 900, h = rect.height || 600;
     const contentW = Math.max(1, maxX - minX), contentH = Math.max(1, maxY - minY);
