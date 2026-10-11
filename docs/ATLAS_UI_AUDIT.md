@@ -26,3 +26,7 @@ La revisión posterior de [Centinela en todo Atlas](ATLAS_CENTINELA.md) amplía 
 Los subtemas del árbol de Cursos admiten hasta dos líneas, con elipsis para los títulos más largos. Se compactaron las sangrías de curso y módulo sin ensanchar el panel ni reducir la tipografía. El atributo `title` conserva el nombre completo al pasar el cursor. Los módulos abiertos ya no tienen un límite de altura que oculte lecciones al aumentar el alto de las filas; el desplazamiento sigue perteneciendo al árbol del curso.
 
 Verificado en cinco temas, con 22 lecciones, apertura y cierre de módulos y viewport móvil sin desbordamiento horizontal. [Captura de la integración](../design/atlas-course-titles.png).
+
+## Copiar una entrada completa
+
+Se añadió una acción discreta al final del documento para copiar el título y el contenido actual del editor en Markdown, incluidos los bloques de código y las ediciones pendientes de guardado. La acción queda fuera del editor y no copia botones, navegación ni relaciones. Muestra confirmación de copia o un mensaje si el navegador deniega el portapapeles. Verificado con el portapapeles real en navegador, cinco temas y pantalla móvil.

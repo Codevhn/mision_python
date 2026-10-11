@@ -77,6 +77,30 @@ document.addEventListener("DOMContentLoaded", () => {
     onPageCreate: true,  // enable page creation (handled via window._promptPageName)
   });
 
+  let entryCopyReset;
+  $("copyEntryBtn")?.addEventListener("click", async () => {
+    const button = $("copyEntryBtn");
+    const status = $("entryCopyStatus");
+    if (!currentEntryId || !_inlineEditor || button.disabled) return;
+    // Export the current editor, including unsaved edits, rather than UI text
+    // (code toolbar buttons, relations and navigation must not be copied).
+    const body = _inlineEditor.getMarkdown().trim();
+    const title = $("inlineTitle").textContent.trim();
+    const text = [title ? `# ${title}` : "", body].filter(Boolean).join("\n\n");
+    button.disabled = true;
+    clearTimeout(entryCopyReset);
+    status.textContent = "";
+    try {
+      await navigator.clipboard.writeText(text);
+      status.textContent = "Copiado";
+      entryCopyReset = setTimeout(() => { status.textContent = ""; }, 2500);
+    } catch {
+      status.textContent = "No se pudo copiar. Inténtalo de nuevo.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   // Inline title auto-save
   const inlineTitle = document.getElementById("inlineTitle");
   if (inlineTitle) {

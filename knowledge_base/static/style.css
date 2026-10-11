@@ -10539,3 +10539,14 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 .knowledge-selection-dialog label:has(input[role=combobox]) { position:relative; }
 .knowledge-selection-dialog label:has(input[role=combobox])::after { content:'▾'; position:absolute; right:12px; bottom:10px; color:var(--text-muted); pointer-events:none; }
 .knowledge-selection-dialog input[role=combobox] { padding-right:32px; }
+
+/* Entry-level copy action, outside the editable document. */
+.entry-content-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:0 40px 20px; }
+.entry-copy-btn { display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:7px 10px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text-muted); font:500 .8rem var(--font-ui); cursor:pointer; }
+.entry-copy-btn svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.7; }
+.entry-copy-btn:hover { color:var(--text); border-color:var(--border); background:var(--aero-button,var(--bg-hover)); }
+.entry-copy-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.entry-copy-btn:disabled { opacity:.6; cursor:wait; }
+.entry-copy-status { color:var(--text-muted); font:.78rem var(--font-ui); }
+@media(max-width:600px) { .entry-content-actions { margin-inline:16px; } }
+@media print { .entry-content-actions { display:none; } }
