@@ -40,16 +40,18 @@
 .atlas-goal progress::-webkit-progress-value { background:var(--accent); border-radius:3px; }
 .atlas-goal progress::-moz-progress-bar { background:var(--accent); border-radius:3px; }
 .ag-button { cursor:pointer; font:11px/1.5 var(--font-ui); min-height:36px; padding:8px 12px; background:var(--aero-button,var(--bg-elevated)); color:var(--text); border:1px solid var(--aero-frame,var(--border)); border-radius:4px; box-shadow:inset 0 1px 0 var(--ag-inset); }
-.ag-button:hover { border-color:var(--accent); }
+.ag-button:hover { border-color:var(--accent); background:var(--aero-nav-hover,var(--bg-hover)); box-shadow:inset 0 1px 0 var(--ag-inset),0 0 8px var(--accent-light); }
 .ag-empty-note { margin-top:14px; }
 .atlas-goal :is(button,input,select):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .atlas-goal button:disabled { opacity:.6; cursor:wait; }
-.ag-dialog { width:min(460px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; margin:auto; }
+.ag-dialog { position:fixed; inset:0; width:min(460px,calc(100vw - 32px)); height:fit-content; max-height:calc(100dvh - 32px); overflow:visible; margin:auto; }
+.ag-dialog[open] { display:flex; flex-direction:column; }
+.ag-dialog .ag-chrome { flex-shrink:0; }
 .ag-dialog::backdrop { background:#0007; backdrop-filter:blur(4px); }
-.ag-dialog .ag-body { padding:22px; }
+.ag-dialog .ag-body { padding:22px; min-height:0; overflow-x:hidden; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; overscroll-behavior:contain; }
 .ag-dialog label { display:grid; gap:6px; font-size:12px; margin-bottom:16px; }
 .ag-dialog :is(input,select) { width:100%; box-sizing:border-box; min-width:0; min-height:38px; padding:8px 10px; background:var(--aero-field,var(--bg)); color:var(--text); border:1px solid var(--border); border-radius:4px; font:12px var(--font-ui); }
-.ag-form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.ag-form-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
 .ag-form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
 .ag-dialog .ag-form-status { color:var(--text); margin:12px 0 0; min-height:18px; }
 @keyframes ag-float { 0%,100% {transform:translateY(0)} 50% {transform:translateY(-6px)} }

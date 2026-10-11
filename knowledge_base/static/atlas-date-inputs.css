@@ -1,0 +1,17 @@
+.atlas-date{display:block;min-width:0;width:100%;position:relative}
+input.atlas-date-native{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;opacity:0;padding:0!important;border:0!important;pointer-events:none;clip-path:inset(50%)}
+.atlas-date-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:36px;padding:7px 10px;font:11px/1.4 var(--font-ui);color:var(--text);text-align:left;background:var(--aero-button,var(--bg-elevated));border:1px solid var(--border);border-radius:4px;box-shadow:inset 0 1px 0 var(--aero-inset)}
+.atlas-date-trigger span{min-width:0;overflow-wrap:anywhere;text-transform:capitalize}
+.atlas-date-trigger svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3}
+.atlas-date-trigger:hover:not(:disabled){background:var(--aero-nav-hover,var(--bg-hover));border-color:var(--accent)}
+.atlas-date-trigger[aria-expanded=true]{border-color:var(--accent);outline:1px solid var(--accent);outline-offset:1px}
+.atlas-calendar{position:fixed;z-index:12000;margin:0;inset:auto;box-sizing:border-box;overflow:auto;padding:10px;color:var(--text);background:linear-gradient(135deg,#ffffff0d,transparent 48%),var(--bg-overlay,var(--layer-2));border:1px solid var(--aero-edge,var(--border));border-radius:7px;box-shadow:0 12px 32px #0005,inset 0 1px 0 var(--aero-inset);font:12px var(--font-ui);backdrop-filter:blur(18px);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.atlas-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.atlas-calendar-head strong{text-transform:capitalize;font-size:13px;font-weight:600}
+.atlas-calendar button{border:1px solid transparent;border-radius:4px;color:var(--text);background:transparent;min-height:36px;font:inherit;cursor:pointer}
+.atlas-calendar-head button{width:36px;background:var(--aero-button,var(--bg-elevated));border-color:var(--border);font-size:22px}
+.atlas-calendar-grid{display:grid;gap:3px}.calendar-months{grid-template-columns:repeat(3,minmax(0,1fr))}.calendar-days{grid-template-columns:repeat(7,minmax(0,1fr))}
+.atlas-calendar-grid button{text-transform:capitalize}.atlas-calendar button:hover:not(:disabled){background:var(--aero-nav-hover,var(--bg-hover));border-color:var(--accent)}
+.atlas-calendar-grid button[aria-pressed=true]{background:var(--aero-selection,var(--accent-light));border-color:var(--accent);font-weight:600;box-shadow:inset 0 1px 0 var(--aero-inset)}
+.calendar-weekday{padding:6px;text-align:center;color:var(--text-muted);font-size:10px}.atlas-calendar .calendar-today{margin-top:8px;width:100%;border-top-color:var(--border);color:var(--accent)}
+.atlas-calendar button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}.atlas-calendar button:disabled{opacity:.4;cursor:default}

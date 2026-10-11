@@ -25,6 +25,8 @@ Los datos se guardan bajo el `DATA_DIR` existente: `finance.db` para el módulo 
 
 La vista previa de **Apariencia → Probar nuevos marcos** sigue usando sus datos de muestra en memoria. No modifica tus finanzas ni tu meta reales.
 
+Los filtros y formularios usan selectores y calendarios con la paleta de Atlas. Mes y Fecha se muestran en español. Los marcos no generan barras de desplazamiento; en pantallas bajas solo se desplaza el cuerpo del formulario. Los detalles de la revisión están en [la auditoría visual](ATLAS_UI_AUDIT.md).
+
 ## Verificación
 
 Se verifican importes exactos, validación, transferencias, separación de monedas, eliminación con recálculo, persistencia de la meta y exportación de SQLite en las pruebas del servidor. La comprobación en Chromium cubre formularios, selección de porciones con ratón y teclado, presupuestos, errores con conservación del formulario, sincronización de temas, navegación, recarga y movimiento reducido.

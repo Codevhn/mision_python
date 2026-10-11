@@ -7,6 +7,7 @@ select.atlas-select-native {position:absolute !important;width:1px !important;he
 .atlas-select-trigger[aria-expanded=true] .atlas-select-arrow {transform:rotate(180deg)}
 .atlas-select-popup {position:fixed;z-index:12000;box-sizing:border-box;overflow:auto;padding:5px;border:1px solid var(--aero-edge,var(--border));border-radius:7px;background:var(--bg-overlay,var(--layer-2));color:var(--text);box-shadow:0 12px 32px #0005,inset 0 1px 0 #ffffff18;font:14px var(--font-ui,system-ui,sans-serif);scrollbar-width:thin;overscroll-behavior:contain}
 .atlas-select-popup:focus {outline:none}
+.atlas-select-popup[popover] {margin:0;inset:auto}
 [data-style=aero] .atlas-select-popup {background:linear-gradient(135deg,#ffffff0d,transparent 48%),var(--bg-overlay,var(--layer-2));backdrop-filter:blur(18px)}
 .atlas-select-option {display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:38px;box-sizing:border-box;border:1px solid transparent;border-radius:4px;cursor:pointer;line-height:1.35}
 .atlas-select-option+.atlas-select-option {margin-top:2px}

@@ -50,6 +50,7 @@
     dialog = document.createElement('dialog'); dialog.className = 'atlas-goal ag-dialog'; dialog.id = 'atlasGoalDialog'; dialog.setAttribute('aria-labelledby','atlasGoalEditorTitle');
     dialog.innerHTML = `<div class="ag-corners" aria-hidden="true"></div><header class="ag-chrome"><strong id="atlasGoalEditorTitle">Mi próxima meta</strong><div class="ag-controls"><button type="button" data-ag-close aria-label="Cerrar meta">×</button></div></header><form class="ag-body"><p>Define tu objetivo y actualiza el total que has reunido.</p><label>Nombre de la meta<input name="title" maxlength="100" required></label><div class="ag-form-row"><label>Moneda<select name="currency"><option value="HNL">Lempiras · HNL</option><option value="USD">Dólares · USD</option><option value="EUR">Euros · EUR</option></select></label><label>Importe objetivo<input name="target" type="number" inputmode="decimal" min="0.01" max="100000000" step="0.01" required></label></div><label>Total reunido<input name="saved" type="number" inputmode="decimal" min="0" max="100000000" step="0.01" required></label><small>No se realizan conversiones de moneda ni movimientos bancarios.</small><p class="ag-form-status" role="status" aria-live="polite"></p><footer class="ag-form-actions"><button type="button" class="ag-button" data-ag-close>Cancelar</button><button type="submit" class="ag-button" data-ag-save>Guardar meta</button></footer></form>`;
     document.body.append(dialog);
+    window.mountAtlasSelects?.(dialog);
     dialog.querySelectorAll('[data-ag-close]').forEach(b => b.addEventListener('click',() => {if(!saving) dialog.close();}));
     dialog.addEventListener('cancel',event => {if(saving) event.preventDefault();});
     const form = dialog.querySelector('form');
@@ -74,6 +75,7 @@
     const form = dialog.querySelector('form');
     form.elements.title.value = goal?.title || 'Mi próximo equipo';
     form.elements.currency.value = goal?.currency || 'HNL';
+    form.elements.currency._atlasSync?.();
     form.elements.target.value = goal ? inputMoney(goal.target_cents) : '';
     form.elements.saved.value = inputMoney(goal?.saved_cents || 0);
     form.querySelector('.ag-form-status').textContent='';dialog.showModal();form.elements.title.focus();

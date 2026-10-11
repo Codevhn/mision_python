@@ -97,7 +97,8 @@
     if(mode==='account'){$('#dialog-title').textContent='Añadir cuenta';$('#form-fields').innerHTML='<label class="full-field">Nombre<input name="name" maxlength="60" required placeholder="Ej.: Cuenta principal"></label><label>Tipo<select name="kind"><option value="spending">Uso diario</option><option value="savings">Ahorro</option></select></label><label>Moneda<select name="currency"><option value="HNL">HNL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>'+amountField('opening','Saldo inicial','0');form.elements.currency.value=$('#currency').value;form.elements.opening.value='0';}
     else if(mode==='budget'){$('#dialog-title').textContent='Definir presupuesto del mes';$('#form-fields').innerHTML=categoryField+amountField('limit','Límite · '+$('#currency').value);}
     else{$('#dialog-title').textContent='Registrar movimiento';$('#form-fields').innerHTML='<label>Tipo<select name="type"><option value="expense">Gasto</option><option value="income">Ingreso</option><option value="transfer">Transferencia</option></select></label>'+amountField('amount','Importe · '+$('#currency').value)+'<label class="full-field">Descripción<input name="description" maxlength="120" required></label><label>Cuenta<select name="account_id">'+accountOptions+'</select></label><label>Fecha<input type="date" name="date" required></label>'+categoryField+'<label class="full-field" id="destination-field" hidden>Cuenta de destino<select name="destination_id">'+accountOptions+'</select></label>';form.elements.date.value=isoToday();form.elements.category.value='Otros';if($('#account-filter').value)form.elements.account_id.value=$('#account-filter').value;form.elements.type.addEventListener('change',()=>{const transfer=form.elements.type.value==='transfer';$('#destination-field').hidden=!transfer;form.elements.category.disabled=transfer;});}
-    dialog.showModal();form.querySelector('input,select')?.focus();
+    window.mountAtlasSelects?.(form);window.mountAtlasDates?.(form);
+    dialog.showModal();form.querySelector('input:not(.atlas-select-native):not(.atlas-date-native),.atlas-select-trigger,.atlas-date-trigger')?.focus();
   }
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(busy)return;let endpoint,data;
@@ -118,6 +119,6 @@
   $('#currency').addEventListener('change',()=>{category='';type='';$('#account-filter').innerHTML='<option value="">Todas las cuentas</option>'+visibleAccounts().map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');render();});
   $('#clear-filters').addEventListener('click',()=>{category='';type='';$('#account-filter').value='';render();});
   document.querySelectorAll('[data-detail]').forEach(b=>b.addEventListener('click',()=>showDetail(b.dataset.detail)));
-  window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===window.parent&&event.data?.type==='atlas-finance-refresh'){load();window.AtlasGoal.mount($('#finance-goal'));}});
+  window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===window.parent&&event.data?.type==='atlas-finance-refresh'){window.closeAtlasSelectPopup?.();window.closeAtlasDatePopup?.();load();window.AtlasGoal.mount($('#finance-goal'));}});
   $('#add-movement').disabled=true;load();
 })();
