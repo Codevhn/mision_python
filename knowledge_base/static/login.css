@@ -52,3 +52,39 @@
   .login-form-area h2,.login-form-area > p { text-align:center; }
   .login-window-footer { flex-wrap:wrap; justify-content:center; text-align:center; }
 }
+
+/* A usable access screen first; welcome artwork adapts to available space. */
+.atlas-login { height:auto; overflow-y:auto; min-height:100dvh; }
+.login-topbar { position:relative; padding:18px max(20px,env(safe-area-inset-right)) 18px max(20px,env(safe-area-inset-left)); }
+.login-main { min-height:calc(100dvh - 130px); padding:28px 24px 36px; }
+.login-footer { padding:16px 24px max(16px,env(safe-area-inset-bottom)); }
+.login-password-row input { min-height:48px; }
+.login-password-row button { width:48px; min-height:48px; }
+.login-submit { min-height:48px; }
+.login-theme-button { min-height:44px; }
+.login-theme-picker { width:min(520px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); margin:auto; }
+@media(max-width:540px) {
+  .login-topbar { padding:10px 16px; gap:10px; }
+  .login-wordmark { font-size:14px; }
+  .login-theme-button { padding:8px 10px; font-size:13px; }
+  .login-main { min-height:0; padding:20px 16px 24px; }
+  .login-emblem { width:56px; height:56px; margin-bottom:16px; }
+  .login-emblem span { font-size:40px; }
+  .login-eyebrow { font-size:9px; letter-spacing:.16em; }
+  .login-main h1 { font-size:30px; }
+  .login-intro { margin:10px 0 20px; font-size:13px; }
+  .login-window-content { padding:20px 16px; gap:0; }
+  .login-avatar { display:none; }
+  .login-form-area h2 { font-size:17px; }
+  .login-form-area > p { margin-bottom:18px; }
+  .login-password-row input::placeholder { font-size:16px; }
+  .login-window-footer { padding-top:10px; }
+  .login-footer { justify-content:center; flex-wrap:wrap; text-align:center; padding-top:0; }
+}
+@media(max-height:600px) and (any-pointer:coarse) {
+  .login-emblem,.login-eyebrow,.login-intro { display:none; }
+  .login-main { min-height:0; padding-block:12px 20px; }
+  .login-main h1 { font-size:26px; margin-bottom:16px; }
+}
+.login-keyboard-open .login-main { min-height:0; padding-block:12px 20px; }
+.login-keyboard-open :is(.login-emblem,.login-eyebrow,.login-main h1,.login-intro,.login-footer) { display:none; }

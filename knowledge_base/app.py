@@ -984,6 +984,7 @@ def _build_id():
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
         'navigation-hierarchy.css',
+        'login.css', 'login.js',
     ))
 
 @app.route("/sw.js")
