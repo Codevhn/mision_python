@@ -30,3 +30,11 @@ Verificado en cinco temas, con 22 lecciones, apertura y cierre de módulos y vie
 ## Copiar una entrada completa
 
 Se añadió una acción discreta al final del documento para copiar el título y el contenido actual del editor en Markdown, incluidos los bloques de código y las ediciones pendientes de guardado. La acción queda fuera del editor y no copia botones, navegación ni relaciones. Muestra confirmación de copia o un mensaje si el navegador deniega el portapapeles. Verificado con el portapapeles real en navegador, cinco temas y pantalla móvil.
+
+## Lectura táctil y alineación en móvil
+
+Las tablas permiten desplazamiento vertical de la página y horizontal del contenedor con gestos iniciados sobre sus celdas. Se retiró la restricción `touch-action: pan-x` y el cambio móvil a `display: block`. En dispositivos táctiles se usa distribución automática de columnas, con texto largo limitado a 320 px por celda y saltos para cadenas largas; el contenedor conserva las columnas accesibles horizontalmente. Una tabla de prueba de cinco columnas pasó de filas de 270 px a 76 px sin ocultar texto.
+
+Los párrafos de las entradas se justifican en pantallas pequeñas y dispositivos con puntero táctil, incluida tablet en horizontal. Se conserva la alineación de títulos, código y tablas. En teléfonos, Inicio centra el saludo y el clima, da dos líneas al título del estudio y coloca la acción Continuar debajo. Las tarjetas secundarias usan dos columnas completas. El acceso centra la identidad y da al formulario todo el ancho de su ventana.
+
+Verificado con Chromium táctil emulado: gestos reales enviados al navegador en ambos ejes, acceso al final de la entrada, tamaños de 320, 412, 960 y 1480 px sin desbordamiento horizontal, centrado del acceso y botón de visibilidad de contraseña. El escritorio sin entrada táctil conserva la alineación anterior del texto. No se ha probado en hardware Samsung físico. Capturas de la integración: [tabla](../design/atlas-mobile-table.png), [Inicio](../design/atlas-mobile-home.png), [acceso](../design/atlas-mobile-login.png).

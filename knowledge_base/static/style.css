@@ -1937,16 +1937,9 @@ body.focus-mode .related-sidebar { display: none; }
   line-height: 1.6;
 }
 
-/* BlockNote's own table wrapper (overflow-x: auto lives in its bundle CSS)
-   sits inside contenteditable — with no explicit touch-action, a touch
-   browser has to guess whether a horizontal drag there means "scroll" or
-   "extend a text selection" (the content is editable and selectable), and
-   Android Chrome resolves that ambiguity in favor of selection on the
-   first swipe, only recognizing it as a scroll gesture on a second one.
-   pan-x tells it upfront to treat this element as horizontally pannable,
-   so the very first swipe scrolls — vertical swipes still pass through
-   to the page since only pan-x is claimed here. */
-.tableWrapper { touch-action: pan-x; }
+/* Both axes must be allowed: pan-x alone prevents a vertical page swipe
+   that starts over a table. The wrapper owns only horizontal overflow. */
+.tableWrapper { touch-action: pan-x pan-y pinch-zoom; }
 
 .entry-body table {
   width: 100%;
@@ -7675,12 +7668,12 @@ body.home-ambient .home-hero { overflow: visible; }
   /* Entry body: reduce line-height and font for denser reading on small screens */
   .entry-body { line-height: 1.65 !important; font-size: 0.93rem !important; }
 
-  /* Tables (markdown render): scrollable via display:block */
+  /* Preserve table layout; BlockNote's wrapper owns horizontal scrolling. */
   .entry-body table {
-    display: block !important;
-    overflow-x: auto !important;
-    width: fit-content !important;
-    max-width: 100% !important;
+    display: table !important;
+    width: auto !important;
+    max-width: none !important;
+    table-layout: auto;
   }
 }
 
@@ -10550,3 +10543,25 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 .entry-copy-status { color:var(--text-muted); font:.78rem var(--font-ui); }
 @media(max-width:600px) { .entry-content-actions { margin-inline:16px; } }
 @media print { .entry-content-actions { display:none; } }
+
+/* Touch reading: prose is justified; code, tables and titles keep their alignment. */
+@media (max-width:768px), (any-pointer:coarse) {
+  .entry-body [data-content-type="paragraph"] > .bn-inline-content {
+    text-align:justify; text-align-last:start; hyphens:auto; overflow-wrap:break-word;
+  }
+  .entry-body .tableWrapper { max-width:100%; min-width:0; overscroll-behavior-x:auto; }
+  #entryBody table { display:table !important; width:max-content !important; max-width:none !important; table-layout:auto !important; }
+  .entry-body :is(td,th) { max-width:320px; overflow-wrap:anywhere; text-align:start; }
+}
+@media(max-width:600px) {
+  .home-hero-content { text-align:center; }
+  .home-study-featured { display:grid; grid-template-columns:40px minmax(0,1fr); gap:12px; padding:16px; }
+  .hsf-icon { width:40px; height:40px; align-self:start; }
+  .hsf-header { flex-wrap:wrap; justify-content:flex-start; }
+  .hsf-course { overflow-wrap:anywhere; }
+  .hsf-title { white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .hsf-cta { grid-column:2; justify-self:end; }
+  .home-study-scroll { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:visible; }
+  .home-study-compact { min-width:0; padding:12px; overflow-wrap:anywhere; }
+  .hw-top,.hw-bottom { justify-content:center; }
+}

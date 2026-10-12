@@ -44,3 +44,11 @@
 @media(max-width:540px) { .login-topbar { padding:18px; }.login-main { padding:100px 18px 90px; }.login-window-content { padding:22px 18px; gap:14px; }.login-avatar { width:46px; height:46px; font-size:26px; }.login-intro { max-width:290px; font-size:14px; }.login-form-area h2 { font-size:16px; }.login-footer { padding:20px 18px; font-size:11px; }.login-emblem { width:90px; height:90px; }.login-emblem span { font-size:62px; } }
 @media(max-height:740px) { .login-main { justify-content:flex-start; }.login-emblem { margin-bottom:18px; } }
 @media(prefers-reduced-motion:reduce) { .atlas-login * { animation:none!important; transition:none!important; } }
+
+/* Phone login: center the identity, give the form the full window width. */
+@media(max-width:540px) {
+  .login-window-content { flex-direction:column; align-items:center; }
+  .login-form-area { width:100%; }
+  .login-form-area h2,.login-form-area > p { text-align:center; }
+  .login-window-footer { flex-wrap:wrap; justify-content:center; text-align:center; }
+}
