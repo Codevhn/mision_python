@@ -985,6 +985,7 @@ def _build_id():
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
         'navigation-hierarchy.css',
         'login.css', 'login.js',
+        'reader.css', 'library.js',
     ))
 
 @app.route("/sw.js")

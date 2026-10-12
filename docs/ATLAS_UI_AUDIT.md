@@ -54,3 +54,13 @@ En teléfonos el asistente usa un botón circular de cristal de 48 px, con etiqu
 El encabezado de Inicio en móvil tiene radios y ornamentos reflejados a izquierda y derecha; conserva la paleta y el cristal Centinela. El bloque del clima queda centrado. En PC con altura suficiente, la ventana del login ocupa el centro horizontal y vertical del área principal; la bienvenida se sitúa arriba con un emblema de 40 px y la cabecera se reduce a 57 px. En pantallas bajas se mantiene el flujo desplazable anterior.
 
 Validación: abrir, minimizar y restaurar el asistente móvil; menú, navegación a Cursos y retorno a espacios; botón Cerrar sesión visible incluso a 320×480 y comprobación de que termina la sesión real. Login medido a 1890×938 y 1366×768, y regresión del formulario en teléfono, tablet, horizontal, teclado simulado y contraseña válida/inválida. [Menú móvil](../design/atlas-mobile-session-menu.png), [encabezado y asistente](../design/atlas-mobile-header-orb.png), [login en PC](../design/atlas-login-desktop-centered.png).
+
+## Lectura cálida y rueda del ratón
+
+El lector añade apariencia Marfil con fondo hueso y tinta café; sus marcos y controles se adaptan a tonos arena sin modificar el tema global. Es el valor inicial para preferencias nuevas; las preferencias guardadas se respetan. Los ajustes se agrupan bajo Aa (Ajustes de lectura), manteniendo navegación, índice, marcador y modo sin distracciones en la barra.
+
+La rueda cambia páginas EPUB, incluyendo eventos dentro del iframe del libro. En PDF primero desplaza una página larga; sólo cambia de página al llegar al borde superior o inferior. Una acumulación mínima y una pausa de 650 ms evitan saltos por inercia. Se respetan selección de texto, controles de zoom con Ctrl y diálogos/asistente abierto. La función puede desactivarse y se guarda junto a las preferencias.
+
+Se añade familia de fuente serif o sans serif y alineación izquierda o justificada para EPUB. El tamaño e interlineado existentes siguen disponibles, al igual que una página o dos automáticas en pantallas amplias. Tres columnas no están implementadas: requieren otra estrategia de paginación. Los PDF mantienen la composición original; estos ajustes tipográficos se ofrecen sólo en EPUB.
+
+Verificado con archivos reales locales PDF/EPUB: rueda dentro del libro, freno de inercia, desactivación, fuente y alineación, colores del iframe, avance y retroceso PDF al borde, persistencia tras recarga y móvil sin desbordamiento. [Captura del lector](../design/atlas-reader-warm.png).

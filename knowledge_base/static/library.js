@@ -620,10 +620,13 @@
   }
 
   const PDF_ZOOM_MIN = 0.3, PDF_ZOOM_MAX = 3.0, PDF_ZOOM_STEP = 0.15;
-  let readerPrefs = {appearance:'auto',font:100,line:'1.85',spread:'none',dimPdf:false};
+  let readerPrefs = {appearance:'bone',font:100,line:'1.85',spread:'none',dimPdf:false,wheel:true,family:'book',alignment:'left'};
   try {
     const saved = JSON.parse(localStorage.getItem('atlas_reader_preferences') || '{}');
-    if (['auto','paper','sepia','night'].includes(saved.appearance)) readerPrefs.appearance=saved.appearance;
+    if (['bone','auto','paper','sepia','night'].includes(saved.appearance)) readerPrefs.appearance=saved.appearance;
+    readerPrefs.wheel=saved.wheel!==false;
+    if (['book','modern'].includes(saved.family)) readerPrefs.family=saved.family;
+    if (['left','justify'].includes(saved.alignment)) readerPrefs.alignment=saved.alignment;
     if (Number.isInteger(saved.font) && saved.font>=90 && saved.font<=160) readerPrefs.font=saved.font;
     if (['1.6','1.85','2.1'].includes(saved.line)) readerPrefs.line=saved.line;
     if (['none','auto'].includes(saved.spread)) readerPrefs.spread=saved.spread;
@@ -634,6 +637,32 @@
     $('libraryReaderView').dataset.dimPdf=String(readerPrefs.dimPdf);
     _reader.epubFontPct=readerPrefs.font;
     if (_reader.epubRendition) _applyEpubTheme(_reader.epubRendition);
+  }
+  let wheelAmount=0,wheelTime=0,wheelLock=0;
+  function _readerWheel(event) {
+    if (!readerPrefs.wheel || $('libraryReaderView').classList.contains('hidden') ||
+        event.ctrlKey || event.metaKey || event.altKey || Math.abs(event.deltaX)>Math.abs(event.deltaY) ||
+        !$('assistantArea').classList.contains('hidden') || document.querySelector('dialog[open]') ||
+        event.target.ownerDocument?.getSelection()?.isCollapsed===false) return;
+    const direction=Math.sign(event.deltaY);
+    if (!direction) return;
+    // A tall PDF scrolls normally. Only turn pages at its top/bottom edge.
+    const scroller=event.target.closest?.('.pdf-scroller');
+    if (_reader.format==='pdf' && scroller &&
+        (direction>0?scroller.scrollTop+scroller.clientHeight<scroller.scrollHeight-2:scroller.scrollTop>2)) {
+      wheelAmount=0; return;
+    }
+    const button=$(direction>0?'readerNextBtn':'readerPrevBtn');
+    if (!button || button.disabled) return;
+    event.preventDefault();
+    const now=Date.now();
+    if (now<wheelLock) return;
+    if (now-wheelTime>180 || Math.sign(wheelAmount)!==direction) wheelAmount=0;
+    wheelTime=now;
+    wheelAmount+=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?400:1);
+    if (Math.abs(wheelAmount)<70) return;
+    wheelAmount=0;wheelLock=now+650;
+    button.click();
   }
   function _readerKey(event) {
     if ($('libraryReaderView').classList.contains('hidden') || !document.getElementById('assistantArea').classList.contains('hidden')) return;
@@ -698,13 +727,15 @@
       $('readerSettingsClose').addEventListener('click',()=>_toggleReaderSettings(false));
       const update=()=>{
         readerPrefs={appearance:$('readerAppearance').value,font:Number($('readerFontSize').value),
-          line:$('readerLineHeight').value,spread:$('readerSpread').value,dimPdf:$('readerDimPdf').checked};
+          line:$('readerLineHeight').value,spread:$('readerSpread').value,dimPdf:$('readerDimPdf').checked,
+          wheel:$('readerWheel').checked,family:$('readerFontFamily').value,alignment:$('readerAlignment').value};
         $('readerFontValue').textContent=readerPrefs.font+'%';
         try{localStorage.setItem('atlas_reader_preferences',JSON.stringify(readerPrefs));}catch{}
         _applyReaderPreferences();
         _reader.epubRendition?.spread(readerPrefs.spread);
       };
-      ['readerAppearance','readerLineHeight','readerSpread','readerDimPdf'].forEach(id=>$(id).addEventListener('change',update));
+      ['readerAppearance','readerLineHeight','readerSpread','readerDimPdf','readerWheel','readerFontFamily','readerAlignment'].forEach(id=>$(id).addEventListener('change',update));
+      $('readerPage').addEventListener('wheel',_readerWheel,{passive:false});
       $('readerFontSize').addEventListener('input',update);
       $('readerAssistantBtn').addEventListener('click',()=>{_toggleReaderSettings(false);$('assistantLauncher').click();});
       $('readerFocusBtn').addEventListener('click',()=>{
@@ -722,6 +753,9 @@
       });
     }
     $('readerAppearance').value=readerPrefs.appearance;
+    $('readerWheel').checked=readerPrefs.wheel;
+    $('readerFontFamily').value=readerPrefs.family;
+    $('readerAlignment').value=readerPrefs.alignment;
     $('readerFontSize').value=readerPrefs.font;
     $('readerFontValue').textContent=readerPrefs.font+'%';
     $('readerLineHeight').value=readerPrefs.line;
@@ -1163,7 +1197,7 @@
     _reader.epubBook = epubBook;
     $('readerPage').innerHTML = '';
     const rendition = epubBook.renderTo('readerPage', { width: '100%', height: '100%', spread:readerPrefs.spread });
-    rendition.hooks.content.register(contents => { _syncEpubDocument(contents.document); contents.document.addEventListener('keydown',_readerKey); });
+    rendition.hooks.content.register(contents => { _syncEpubDocument(contents.document); contents.document.addEventListener('keydown',_readerKey); contents.document.addEventListener('wheel',_readerWheel,{passive:false}); });
     _reader.epubRendition = rendition;
     _applyEpubTheme(rendition);
 
@@ -1239,10 +1273,10 @@
     rendition.themes.default({
       html:{'background-color':paper+' !important',color:ink+' !important'},
       body:{color:ink+' !important','background-color':paper+' !important',
-        'font-family':"'Lora', Georgia, serif !important",'font-size':readerPrefs.font+'% !important',
+        'font-family':(readerPrefs.family==='modern'?"'Segoe UI', Arial, sans-serif":"'Lora', Georgia, serif")+' !important','font-size':readerPrefs.font+'% !important',
         'line-height':readerPrefs.line+' !important',padding:(window.innerWidth<700?'18px 20px':'28px 48px')+' !important'},
       'p, li, div, section, article, blockquote, h1, h2, h3, h4, h5, h6':{color:'inherit !important','background-color':'transparent !important'},
-      'p, li':{'font-size':'inherit !important','line-height':'inherit !important'},
+      'p, li':{'font-size':'inherit !important','line-height':'inherit !important','text-align':readerPrefs.alignment+' !important'},
       'p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol':{'max-width':(readerPrefs.spread==='none'?'720px':'none')+' !important','margin-left':'auto !important','margin-right':'auto !important'},
       'img, svg':{'max-width':'100% !important'},
       'a, a:link':{color:ink+' !important','text-decoration':'underline !important'}
