@@ -88,3 +88,18 @@
   .atlas-frame-decoration { display:none !important; }
   :root[data-frame="sentinel"] .atlas-frame { border-color:transparent !important; box-shadow:none !important; }
 }
+
+/* On phones the Home header has matching left/right corner geometry. */
+@media(max-width:768px) {
+  :root[data-frame="sentinel"] .welcome.atlas-frame { --af-radius:16px; }
+  :root[data-frame="sentinel"] .welcome.atlas-frame .home-hero { border-radius:14px 14px 0 0; overflow:hidden !important; }
+  :root[data-frame="sentinel"] .welcome.atlas-frame > .atlas-frame-decoration::before { clip-path:none; }
+  :root[data-frame="sentinel"] .welcome.atlas-frame > .atlas-frame-decoration .atlas-frame-corners {
+    background:linear-gradient(135deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) top left / 23px 23px no-repeat,
+      linear-gradient(225deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) top right / 23px 23px no-repeat,
+      linear-gradient(225deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) bottom left / 23px 23px no-repeat,
+      linear-gradient(135deg,transparent 11px,var(--accent) 11px 13px,transparent 13px) bottom right / 23px 23px no-repeat;
+  }
+  .home-weather-chip .hw-body { text-align:center; }
+  .home-weather-chip .hw-top,.home-weather-chip .hw-bottom { justify-content:center; }
+}

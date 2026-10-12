@@ -217,3 +217,10 @@
 @keyframes atlas-thinking-orbit { to { transform:rotate(360deg); } }
 @keyframes atlas-thinking-dot { 0%,70%,100% { opacity:.35; transform:translateY(0); } 35% { opacity:1; transform:translateY(-3px); } }
 @media(prefers-reduced-motion:reduce) { .assistant-thinking-orbit::before,.assistant-thinking-dots i { animation:none; } .assistant-thinking-dots i { opacity:.8; } }
+
+/* A compact glass orb on phones, with accessible open/restore labels. */
+@media(max-width:600px) {
+  #assistantLauncher { width:48px; height:48px; padding:0; border-radius:50%; justify-content:center; gap:0; right:max(12px,env(safe-area-inset-right)); bottom:calc(16px + env(safe-area-inset-bottom)); }
+  #assistantLauncher > span:last-child { display:none; }
+  #assistantLauncher > span:first-child { font-size:24px; line-height:1; }
+}

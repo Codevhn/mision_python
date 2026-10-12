@@ -88,3 +88,17 @@
 }
 .login-keyboard-open .login-main { min-height:0; padding-block:12px 20px; }
 .login-keyboard-open :is(.login-emblem,.login-eyebrow,.login-main h1,.login-intro,.login-footer) { display:none; }
+
+.login-welcome { display:flex; flex-direction:column; align-items:center; }
+@media(min-width:769px) and (min-height:740px) {
+  .atlas-login { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100dvh; min-height:0; }
+  .login-topbar { padding-block:6px; }
+  .login-main { min-height:0; padding:20px 24px; display:grid; grid-template-rows:minmax(0,1fr) auto minmax(0,1fr); justify-items:center; gap:20px; }
+  .login-main::after { content:''; }
+  .login-welcome { align-self:end; }
+  .login-emblem { width:40px; height:40px; margin-bottom:12px; }
+  .login-emblem span { font-size:28px; }
+  .login-eyebrow { display:none; }
+  .login-main h1 { font-size:32px; }
+  .login-intro { margin:10px 0 0; font-size:14px; }
+}

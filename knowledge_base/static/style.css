@@ -10565,3 +10565,21 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   .home-study-compact { min-width:0; padding:12px; overflow-wrap:anywhere; }
   .hw-top,.hw-bottom { justify-content:center; }
 }
+
+.mobile-session-actions { display:none; }
+@media(max-width:768px) {
+  #sidebar { display:flex; flex-direction:column; height:calc(100dvh - var(--topbar-h)); overflow:hidden; }
+  #sidebar .mobile-space-nav { position:static; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+  #sidebar .sidebar-space { height:auto; flex:1; min-height:0; overflow-y:auto; }
+  .mobile-session-actions { display:block; flex:none; order:100; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--aero-toolbar,var(--bg-sidebar)); }
+  .mobile-logout { display:flex; align-items:center; gap:10px; min-height:44px; padding:8px 10px; color:var(--text); text-decoration:none; font:500 .85rem var(--font-ui); border:1px solid transparent; border-radius:5px; }
+  .mobile-logout svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; }
+  .mobile-logout:is(:hover,:focus-visible) { background:var(--aero-selection,var(--bg-hover)); border-color:var(--accent); }
+  .mobile-logout:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  body:has(#sidebar.mobile-open) .assistant-launcher { display:none !important; }
+}
+@media(max-width:768px) {
+  #sidebar .sidebar-space { min-height:0 !important; overflow-y:auto !important; }
+  #sidebar #mobileSpaceNav:not(.hidden) ~ .sidebar-space { display:none !important; }
+  #sidebar .msn-back-header { flex:none; }
+}
