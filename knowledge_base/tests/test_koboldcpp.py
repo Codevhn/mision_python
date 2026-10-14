@@ -21,6 +21,27 @@ def configure(monkeypatch):
     monkeypatch.delenv('KOBOLDCPP_API_KEY', raising=False)
 
 
+@pytest.mark.parametrize('model_id,label', [
+    ('koboldcpp/Qwen3-VL-4B-Instruct-Q4_K_M', 'Qwen3 VL 4B Instruct'),
+    ('koboldcpp/GLM-4.7-Flash-Q4_K_M.gguf', 'GLM 4.7 Flash'),
+    ('koboldcpp/gemma-4b-IQ4_XS', 'gemma 4b'),
+    ('koboldcpp/Qwen3-1.7B-BF16', 'Qwen3 1.7B'),
+    ('gpt-oss-20b', 'gpt oss 20b'),
+])
+def test_readable_label_keeps_model_family_size_and_version(model_id, label):
+    assert koboldcpp.model_label(model_id) == label
+
+
+def test_discovery_preserves_original_id_with_clean_label(monkeypatch):
+    configure(monkeypatch)
+    model_id = 'koboldcpp/Qwen3-VL-4B-Instruct-Q4_K_M'
+    monkeypatch.setattr(koboldcpp.urllib.request, 'urlopen', lambda *a, **k: Response({'data': [{'id': model_id}]}))
+    models, error = koboldcpp.models()
+    assert error is None
+    assert models[0]['id'] == model_id
+    assert models[0]['label'] == 'Qwen3 VL 4B Instruct'
+
+
 @pytest.mark.parametrize('suffix', ['', '/v1', '/v1/chat/completions', '/v1/'])
 def test_address_normalization(monkeypatch, suffix):
     monkeypatch.setenv('KOBOLDCPP_BASE_URL', 'http://127.0.0.1:5001' + suffix)

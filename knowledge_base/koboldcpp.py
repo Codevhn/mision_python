@@ -1,6 +1,7 @@
 """KoboldCpp's OpenAI-compatible API; address is server configuration only."""
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,6 +49,15 @@ def output_limit(requested):
     return min(requested, max(128, min(limit, 8192)))
 
 
+def model_label(model_id):
+    """A readable label; the original model ID remains the API identifier."""
+    name = re.sub(r'^koboldcpp/', '', model_id, flags=re.IGNORECASE)
+    name = re.sub(r'\.gguf$', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'[-_\s]+(?:IQ\d+(?:_[A-Z0-9]+)*|Q\d+(?:_[A-Z0-9]+)*|BF16|F16|F32)$', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'[-_\s]+', ' ', name).strip()
+    return name or model_id
+
+
 def models():
     url = base_url()
     if not url:
@@ -66,7 +76,7 @@ def models():
             mid = item.get('id')
             if isinstance(mid, str) and mid.strip() and mid not in seen:
                 seen.add(mid)
-                found.append({'id': mid, 'label': mid, 'hint': 'Local · KoboldCpp · usa el modelo cargado en tu PC'})
+                found.append({'id': mid, 'label': model_label(mid), 'hint': 'Modelo cargado en tu PC'})
         if not found:
             return [], 'KoboldCpp no anunció ningún modelo. Carga un modelo y comprueba /v1/models.'
         return found, None

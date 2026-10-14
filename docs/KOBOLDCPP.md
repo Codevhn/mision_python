@@ -5,6 +5,11 @@ El modelo anunciado por el servidor aparece como **Local · KoboldCpp**. Cambiar
 modelo en Atlas no carga otro GGUF: hay que cambiarlo en KoboldCpp y comprobar
 la conexión de nuevo. No se necesitan servicios de pago para esta conexión.
 
+El selector muestra nombres legibles: por ejemplo,
+`koboldcpp/Qwen3-VL-4B-Instruct-Q4_K_M` aparece como **Qwen3 VL 4B Instruct**.
+Se ocultan el prefijo, la extensión GGUF y el sufijo de cuantización únicamente
+en la etiqueta; las consultas conservan el identificador completo del servidor.
+
 ## Primera prueba, ambos programas en tu PC
 
 1. Carga en KoboldCpp un solo modelo que ya funcione en su interfaz. Activa su
