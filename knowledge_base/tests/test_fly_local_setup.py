@@ -14,7 +14,7 @@ import sys
 assert sys.argv[1:]==['secrets','import','--stage','-a','mision-pythonhn']
 values=dict(line.rstrip().split('=',1) for line in sys.stdin)
 assert values['TAILSCALE_AUTHKEY']=='registration-test-key'
-assert values['KOBOLDCPP_BASE_URL']=='http://100.64.0.9:5001/v1'
+assert values['KOBOLDCPP_BASE_URL']=='http://100.64.0.9:5002/v1'
 assert values['ATLAS_TAILSCALE_ENABLED']=='1'
 print('staged')
 ''')

@@ -12,8 +12,8 @@ try:
 except (ValueError, AssertionError):
     sys.exit('Introduce la IP IPv4 privada que devuelve tailscale ip -4.')
 PY
-read -r -p 'Puerto de KoboldCpp [5001]: ' atlas_pc_port
-atlas_pc_port=${atlas_pc_port:-5001}
+read -r -p 'Puerto publicado por Tailscale Serve [5002] (KoboldCpp local sigue en 5001): ' atlas_pc_port
+atlas_pc_port=${atlas_pc_port:-5002}
 python3 - "$atlas_pc_port" <<'PY'
 import sys
 try:

@@ -21,11 +21,21 @@ KoboldCpp escuchando en localhost; no actives enlaces públicos ni abras puertos
 en el router. Tailscale Serve expone el puerto sólo dentro de tu red privada:
 
 ```bash
-sudo tailscale serve --bg --tcp=5001 tcp://127.0.0.1:5001
+sudo tailscale serve --bg --tcp=5002 tcp://127.0.0.1:5001
 tailscale serve status
 ```
 
-Este comando usa **Serve**, no **Funnel**. Cambia ambos puertos si necesitas otro.
+Este comando usa **Serve**, no **Funnel**. Son dos puertos distintos:
+KoboldCpp escucha localmente en 5001 y Tailscale lo publica en 5002. Usar 5001
+en ambos puede impedir que KoboldCpp arranque si escucha en todas las interfaces.
+Si habías configurado la versión anterior, retírala antes de habilitar 5002:
+
+```bash
+sudo tailscale serve --tcp=5001 off
+```
+
+Si KoboldCpp usa otro puerto, cambia sólo el destino `127.0.0.1:5001`, manteniendo
+distinto el puerto publicado por Serve.
 Si tu cliente es antiguo, actualízalo antes de usar estas opciones.
 
 ## 2. Restringir el acceso de Fly
@@ -40,7 +50,7 @@ puerto de KoboldCpp. Ejemplo para una cuenta nueva, sustituyendo la IP:
   "grants": [{
     "src": ["tag:atlas"],
     "dst": ["100.100.100.100"],
-    "ip": ["tcp:5001"]
+    "ip": ["tcp:5002"]
   }]
 }
 ```
@@ -66,7 +76,7 @@ bash tools/connect_kobold_fly.sh
 fly deploy -a mision-pythonhn
 ```
 
-El script pide la IP privada, el puerto y la clave (entrada oculta). Prepara los
+El script pide la IP privada, el puerto de Serve (5002) y la clave (entrada oculta). Prepara los
 secretos por stdin para el próximo despliegue de Fly, evitando introducir el valor de la clave en el historial
 de comandos. Si configuraste un bearer token en KoboldCpp, añade también
 `KOBOLDCPP_API_KEY` mediante la interfaz de secretos de Fly, sin compartirlo.
@@ -81,6 +91,10 @@ documentos extensos al modelo antes de comprobar el enlace. Cambiar un GGUF requ
 cambiarlo en KoboldCpp y volver a comprobar; Atlas no carga modelos en el PC.
 
 En la consola de Tailscale debe aparecer `atlas-fly-...` con la etiqueta adecuada.
+La URL usada desde Fly es `http://IP-PRIVADA:5002/v1`; la comprobación local en el
+PC sigue siendo `http://127.0.0.1:5001/v1/models`. Si ya habías configurado Fly con
+el puerto antiguo, actualiza `KOBOLDCPP_BASE_URL` a 5002 mediante los secretos de
+Fly o ejecuta de nuevo el asistente; cambia también la regla de acceso a tcp:5002.
 Si el registro falla, Atlas continúa sirviendo su web; el proveedor local queda
 inaccesible y el diagnóstico muestra el fallo. Revisa clave, etiqueta, aprobación,
 IP/puerto, Serve y política. La conexión completa requiere validación contra el
