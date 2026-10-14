@@ -36,6 +36,14 @@
       for (const entry of entries) entry.target.classList.toggle('atlas-frame-in-view', entry.isIntersecting);
     });
     const watched = new Set();
+    function anchorDecoration(element) {
+      const decoration=element.querySelector(':scope > .atlas-frame-decoration');
+      if (!decoration) return;
+      // Absolute chrome belongs to the viewport of a scrolling window, not
+      // to its content. Compensate only the decorative layer's scroll offset.
+      decoration.style.translate=element.scrollTop || element.scrollLeft
+        ? `${element.scrollLeft}px ${element.scrollTop}px` : '';
+    }
     function decorate(element) {
       if (!element.matches(selector)) return;
       element.classList.add('atlas-frame');
@@ -49,7 +57,11 @@
         const corners = document.createElement('span'); corners.className = 'atlas-frame-corners';
         decoration.append(corners); element.append(decoration);
       }
-      if (!watched.has(element)) { watched.add(element); intersection.observe(element); }
+      anchorDecoration(element);
+      if (!watched.has(element)) {
+        watched.add(element); intersection.observe(element);
+        element.addEventListener('scroll',()=>anchorDecoration(element),{passive:true});
+      }
     }
     function scan(element) {
       if (!(element instanceof Element) || element.closest('.atlas-frame-decoration')) return;

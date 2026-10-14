@@ -64,3 +64,11 @@ La rueda cambia páginas EPUB, incluyendo eventos dentro del iframe del libro. E
 Se añade familia de fuente serif o sans serif y alineación izquierda o justificada para EPUB. El tamaño e interlineado existentes siguen disponibles, al igual que una página o dos automáticas en pantallas amplias. Tres columnas no están implementadas: requieren otra estrategia de paginación. Los PDF mantienen la composición original; estos ajustes tipográficos se ofrecen sólo en EPUB.
 
 Verificado con archivos reales locales PDF/EPUB: rueda dentro del libro, freno de inercia, desactivación, fuente y alineación, colores del iframe, avance y retroceso PDF al borde, persistencia tras recarga y móvil sin desbordamiento. [Captura del lector](../design/atlas-reader-warm.png).
+
+## Marco durante el scroll y controles OpenCode
+
+La decoración Centinela de cada ventana compensa el desplazamiento de su propio contenedor, manteniendo sus bordes en el área visible. Antes la decoración absoluta de Inicio subía junto con el contenido y su borde inferior atravesaba las tarjetas. Se modifica únicamente la capa decorativa, con un listener pasivo; no se trasladan el contenido ni los controles.
+
+Los botones de la cabecera del asistente centran explícitamente sus SVG en todos los temas. OpenCode conserva controles sobrios con colores propios, separación uniforme e iconos de 14 px, sin aplicarles el acabado Aero.
+
+Validado en OpenCode oscuro, Gruvbox, Aero eléctrico y Aero claro: marco estable al inicio, mitad y final, altura de scroll sin cambios, centrado de los iconos y acciones de historial, ampliar/restaurar, minimizar y cerrar. Comprobación móvil sin desbordamiento. [Captura OpenCode](../design/atlas-opencode-frame-controls.png).

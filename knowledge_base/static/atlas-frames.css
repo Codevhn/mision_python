@@ -103,3 +103,9 @@
   .home-weather-chip .hw-body { text-align:center; }
   .home-weather-chip .hw-top,.home-weather-chip .hw-bottom { justify-content:center; }
 }
+
+/* OpenCode keeps its restrained controls; SVGs use the shared centred layout. */
+:root[data-style="opencode"] .assistant-header-actions { align-items:center; gap:4px; }
+:root[data-style="opencode"] .assistant-header-actions button { border-radius:4px; background:var(--layer-3,var(--bg-elevated)); color:var(--text); border:1px solid var(--border); box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 6%,transparent); }
+:root[data-style="opencode"] .assistant-header-actions button:is(:hover,:focus-visible) { border-color:var(--accent); background:var(--accent-light); }
+:root[data-style="opencode"] .assistant-header-actions svg { width:14px; height:14px; }
