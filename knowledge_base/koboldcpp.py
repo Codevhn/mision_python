@@ -6,6 +6,25 @@ import urllib.parse
 import urllib.request
 
 
+def open_request(request, timeout):
+    """Route only KoboldCpp through the optional loopback Tailscale proxy."""
+    proxy = os.environ.get('KOBOLDCPP_HTTP_PROXY', '').strip()
+    try:
+        configured = base_url() if os.environ.get('KOBOLDCPP_BASE_URL') else ''
+    except ValueError:
+        # Invalid local settings must not interrupt other providers.
+        return urllib.request.urlopen(request, timeout=timeout)
+    if not proxy or not configured or not request.full_url.startswith(configured + '/'):
+        return urllib.request.urlopen(request, timeout=timeout)
+    parsed = urllib.parse.urlsplit(proxy)
+    if (parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
+            or parsed.username or parsed.password or parsed.query or parsed.fragment
+            or parsed.path not in ('', '/')):
+        raise ValueError('KOBOLDCPP_HTTP_PROXY debe ser un proxy HTTP local sin credenciales.')
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({'http': proxy, 'https': proxy}))
+    return opener.open(request, timeout=timeout)
+
+
 def base_url():
     value = os.environ.get('KOBOLDCPP_BASE_URL', '').strip().rstrip('/')
     if not value:
@@ -39,7 +58,7 @@ def models():
         headers['Authorization'] = 'Bearer ' + key
     try:
         req = urllib.request.Request(url + '/models', headers=headers)
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with open_request(req, timeout=3) as response:
             data = json.loads(response.read(262144))
         found = []
         seen = set()

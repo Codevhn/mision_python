@@ -5254,7 +5254,7 @@ def _call_openai_compatible(base_url, api_key, model, system, user_msg, max_toke
             "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
         },
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with koboldcpp.open_request(req, timeout=60) as r:
         result = json.loads(r.read())
     choice = result["choices"][0]
     return choice["message"]["content"], choice.get("finish_reason") == "length", result.get("usage")
@@ -5307,7 +5307,7 @@ def _call_openai_compatible_stream(base_url, api_key, model, system, user_msg, m
             "HTTP-Referer": "https://mision-pythonhn.fly.dev", "X-Title": "Project Atlas",
         },
     )
-    with urllib.request.urlopen(req, timeout=180) as r:
+    with koboldcpp.open_request(req, timeout=180) as r:
         for raw in r:
             line = raw.decode("utf-8", errors="replace").strip()
             if not line.startswith("data:"):
@@ -5529,7 +5529,7 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
     )
     truncated = False
     usage = None
-    with urllib.request.urlopen(req, timeout=180) as r:
+    with koboldcpp.open_request(req, timeout=180) as r:
         for raw in r:
             line = raw.decode("utf-8", errors="replace").strip()
             if not line.startswith("data:"):

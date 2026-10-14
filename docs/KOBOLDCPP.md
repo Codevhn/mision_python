@@ -49,6 +49,11 @@ usa el modelo local como respaldo de otros proveedores sin seleccionarlo.
 
 ## Atlas en Fly y KoboldCpp en tu PC
 
+El despliegue incluye ahora un cliente Tailscale opcional en la misma máquina
+de Fly. No está activo por defecto. Sigue [la guía del enlace privado](KOBOLDCPP_TAILSCALE.md)
+para instalar el cliente en tu PC, restringir el acceso a KoboldCpp y activar
+el cliente de Fly. No hace falta otra aplicación Fly para el puente.
+
 `127.0.0.1` en Fly es la máquina de Fly, no tu PC. Configurar una dirección de
 Tailscale en Atlas tampoco conecta por sí sola la máquina de Fly a Tailscale.
 Antes de configurar el proveedor, ambos extremos necesitan un enlace privado
