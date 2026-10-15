@@ -1578,7 +1578,7 @@ function _weatherCondition(code, isDay) {
   if (code === 1 || code === 2)           return `partly-cloudy-${d}`;
   if (code === 3)                         return `overcast-${d}`;
   if (code >= 45 && code <= 48)           return `foggy-${d}`;
-  if (code >= 71 && code <= 77)           return `snow-${d}`;
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return `snow-${d}`;
   if (code >= 51 && code <= 82)           return `rain-${d}`;
   if (code >= 95 && code <= 99)           return `thunderstorm-${d}`;
   return `overcast-${d}`;
@@ -1599,346 +1599,29 @@ function _weatherInfo(code, isDay) {
   return map[base] || { icon: '🌡️', label: '' };
 }
 
-// ── Animated weather canvas overlay ──────────────────────────────────────────
-// No background image asset — the hero/ambient canvas draws particles directly
-// over the theme's own CSS gradient (see .home-hero / [data-theme="light"] .home-hero).
-// Conditions that need no animation skip requestAnimationFrame entirely.
+// ── Header-only weather scene ──────────────────────────────────────────────
 let _heroCanvasStop = null;
-
-const _WEATHER_OVERLAY_CONDS = new Set([
-  'clear-night', 'partly-cloudy-night',
-  'rain-day', 'rain-night',
-  'snow-day', 'snow-night',
-  'thunderstorm-day', 'thunderstorm-night',
-  'foggy-day', 'foggy-night',
-]);
-
-function _defaultCondition() {
-  const h = new Date().getHours();
-  return (h >= 21 || h < 6) ? 'clear-night' : 'clear-day';
+function _startWeatherOverlay(condition) {
+  if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop=null; }
+  const hero=document.getElementById('homeHero'),canvas=document.getElementById('homeHeroCanvas');
+  if (hero && canvas && condition) _heroCanvasStop=window.AtlasWeatherHero?.mount(hero,canvas,condition) || null;
 }
 
-function _startWeatherOverlay(cond) {
-  if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop = null; }
-  const canvas = document.getElementById('homeHeroCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  // No animation needed — clear canvas and exit
-  if (!_WEATHER_OVERLAY_CONDS.has(cond)) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    return;
-  }
-
-  function resize() {
-    canvas.width  = canvas.offsetWidth  || canvas.parentElement.offsetWidth;
-    canvas.height = canvas.offsetHeight || canvas.parentElement.offsetHeight;
-    initParticles();
-  }
-
-  let particles = [], t = 0, ltTimer = 0, ltAlpha = 0, ltX = 0;
-
-  function initParticles() {
-    particles = [];
-    const W = canvas.width, H = canvas.height;
-    if (cond === 'clear-night' || cond === 'partly-cloudy-night') {
-      const count = cond === 'clear-night' ? 130 : 65;
-      for (let i = 0; i < count; i++)
-        particles.push({ x: Math.random()*W, y: Math.random()*H*0.85,
-          r: Math.random()*1.4+0.3, ph: Math.random()*Math.PI*2, sp: Math.random()*0.018+0.004 });
-    } else if (cond === 'rain-day' || cond === 'rain-night' ||
-               cond === 'thunderstorm-day' || cond === 'thunderstorm-night') {
-      for (let i = 0; i < 180; i++)
-        particles.push({ x: Math.random()*W, y: Math.random()*H,
-          len: Math.random()*12+7, sp: Math.random()*1.2+1.0, a: Math.random()*0.30+0.12 });
-    } else if (cond === 'snow-day' || cond === 'snow-night') {
-      for (let i = 0; i < 90; i++)
-        particles.push({ x: Math.random()*W, y: Math.random()*H,
-          r: Math.random()*3+0.8, sp: Math.random()*0.9+0.3,
-          dr: (Math.random()-0.5)*0.4, a: Math.random()*0.6+0.3 });
-    } else if (cond === 'foggy-day' || cond === 'foggy-night') {
-      for (let i = 0; i < 6; i++)
-        particles.push({ x: Math.random()*W*1.6-W*0.3, y: H*0.25+(i/6)*H*0.5,
-          w: Math.random()*W*0.6+W*0.3, sp: (Math.random()*0.08+0.02)*(i%2?1:-1),
-          a: Math.random()*0.08+0.03 });
-    }
-  }
-
-  function frame() {
-    raf = requestAnimationFrame(frame);
-    const W = canvas.width, H = canvas.height;
-    t++;
-    ctx.clearRect(0, 0, W, H);
-
-    if (cond === 'clear-night' || cond === 'partly-cloudy-night') {
-      particles.forEach(p => {
-        p.ph += p.sp;
-        const a = Math.max(0, 0.35 + Math.sin(p.ph)*0.55);
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fill();
-      });
-
-    } else if (cond === 'rain-day' || cond === 'rain-night') {
-      particles.forEach(p => {
-        p.y += p.sp; if (p.y > H+10) { p.y=-10; p.x=Math.random()*W; }
-        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.2,p.y+p.len);
-        ctx.strokeStyle=`rgba(160,205,245,${p.a})`; ctx.lineWidth=0.8; ctx.stroke();
-      });
-
-    } else if (cond === 'snow-day' || cond === 'snow-night') {
-      particles.forEach(p => {
-        p.y+=p.sp; p.x+=p.dr+Math.sin(t*0.015+p.r)*0.3;
-        if(p.y>H+6){p.y=-6;p.x=Math.random()*W;}
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(220,235,255,${p.a})`; ctx.fill();
-      });
-
-    } else if (cond === 'thunderstorm-day' || cond === 'thunderstorm-night') {
-      particles.forEach(p => {
-        p.y+=p.sp*1.8; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
-        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.8,p.y+p.len*1.3);
-        ctx.strokeStyle=`rgba(140,185,225,${p.a*0.85})`; ctx.lineWidth=0.85; ctx.stroke();
-      });
-      ltTimer--;
-      if (ltTimer <= 0) { ltTimer=Math.floor(Math.random()*220)+80; ltAlpha=0.75; ltX=W*0.25+Math.random()*W*0.5; }
-      if (ltAlpha > 0) {
-        ctx.fillStyle=`rgba(210,225,255,${ltAlpha*0.18})`; ctx.fillRect(0,0,W,H);
-        ctx.beginPath();
-        ctx.moveTo(ltX,0); ctx.lineTo(ltX-18,H*0.32); ctx.lineTo(ltX+12,H*0.46); ctx.lineTo(ltX-22,H*0.78);
-        ctx.strokeStyle=`rgba(255,255,210,${ltAlpha})`; ctx.lineWidth=2.5; ctx.stroke();
-        ctx.strokeStyle=`rgba(200,220,255,${ltAlpha*0.35})`; ctx.lineWidth=8; ctx.stroke();
-        ltAlpha -= 0.045;
-      }
-
-    } else if (cond === 'foggy-day' || cond === 'foggy-night') {
-      particles.forEach(p => {
-        p.x += p.sp;
-        if (p.x > W+p.w/2) p.x = -p.w/2;
-        if (p.x < -p.w/2)  p.x =  W+p.w/2;
-        const fg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.w*0.5);
-        fg.addColorStop(0, `rgba(190,205,215,${p.a})`);
-        fg.addColorStop(1, `rgba(190,205,215,0)`);
-        ctx.fillStyle = fg;
-        ctx.fillRect(p.x-p.w*0.5, p.y-p.w*0.25, p.w, p.w*0.5);
-      });
-    }
-  }
-
-  let raf;
-  resize();
-  const ro = new ResizeObserver(resize);
-  ro.observe(canvas.parentElement);
-  frame();
-
-  _heroCanvasStop = () => { cancelAnimationFrame(raf); ro.disconnect(); };
-}
-
-// ── Ambient full-viewport weather canvas (Home only) ─────────────────────────
-let _ambientCanvasStop  = null;
-let _ambientShootingTimer = null;
-
-// Conditions that animate on the ambient canvas
-const _AMBIENT_ANIM_CONDS = new Set([
-  'clear-night', 'partly-cloudy-night',
-  'rain-day', 'rain-night',
-  'snow-day', 'snow-night',
-  'thunderstorm-day', 'thunderstorm-night',
-  'foggy-day', 'foggy-night',
-]);
-
-function _setHomeAmbient(active) {
-  if (active) {
-    document.body.classList.add('home-ambient');
-    // Stop hero overlay and clear canvas pixels
-    if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop = null; }
-    const hc = document.getElementById('homeHeroCanvas');
-    if (hc) { try { hc.getContext('2d').clearRect(0,0,hc.width,hc.height); } catch {} }
-  } else {
-    document.body.classList.remove('home-ambient');
-    if (_ambientCanvasStop)  { _ambientCanvasStop(); _ambientCanvasStop = null; }
-    if (_ambientShootingTimer) { clearTimeout(_ambientShootingTimer); _ambientShootingTimer = null; }
-    const ac = document.getElementById('homeAmbientCanvas');
-    if (ac) ac.getContext('2d').clearRect(0,0,ac.width,ac.height);
-  }
-}
-
-function _startAmbientCanvas(cond) {
-  if (_ambientCanvasStop)   { _ambientCanvasStop();  _ambientCanvasStop  = null; }
-  if (_ambientShootingTimer){ clearTimeout(_ambientShootingTimer); _ambientShootingTimer = null; }
-
-  const canvas = document.getElementById('homeAmbientCanvas');
-  if (!canvas) return;
-
-  // Static conditions get no particle overlay — just the theme's CSS gradient
-  if (!_AMBIENT_ANIM_CONDS.has(cond) ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  const ctx = canvas.getContext('2d');
-  const mobile = window.innerWidth < 768;
-  const density = mobile ? 0.4 : 1.0;
-
-  let particles = [], t = 0, ltTimer = 0, ltAlpha = 0, ltX = 0;
-
-  function initParticles() {
-    particles = [];
-    const W = canvas.width, H = canvas.height;
-
-    if (cond === 'clear-night') {
-      const n = Math.floor(200 * density);
-      for (let i = 0; i < n; i++)
-        particles.push({ k:'star', x:Math.random()*W, y:Math.random()*H*0.82,
-          r:Math.random()*1.5+0.3, ph:Math.random()*Math.PI*2, sp:Math.random()*0.014+0.003 });
-    } else if (cond === 'partly-cloudy-night') {
-      const n = Math.floor(100 * density);
-      for (let i = 0; i < n; i++)
-        particles.push({ k:'star', x:Math.random()*W, y:Math.random()*H*0.62,
-          r:Math.random()*1.1+0.25, ph:Math.random()*Math.PI*2, sp:Math.random()*0.011+0.003 });
-    } else if (cond==='rain-day'||cond==='rain-night'||cond==='thunderstorm-day'||cond==='thunderstorm-night') {
-      const n = Math.floor(280 * density);
-      for (let i = 0; i < n; i++)
-        particles.push({ k:'rain', x:Math.random()*W, y:Math.random()*H,
-          len:Math.random()*16+8, sp:Math.random()*1.6+1.2, a:Math.random()*0.38+0.22 });
-    } else if (cond==='snow-day'||cond==='snow-night') {
-      const n = Math.floor(160 * density);
-      for (let i = 0; i < n; i++)
-        particles.push({ k:'snow', x:Math.random()*W, y:Math.random()*H,
-          r:Math.random()*3.5+0.9, sp:Math.random()*0.9+0.3,
-          dr:(Math.random()-0.5)*0.4, a:Math.random()*0.55+0.35 });
-    } else if (cond==='foggy-day'||cond==='foggy-night') {
-      const n = Math.floor(10 * density);
-      for (let i = 0; i < n; i++)
-        particles.push({ k:'fog', x:Math.random()*W*1.6-W*0.3, y:H*0.12+(i/n)*H*0.72,
-          w:Math.random()*W*0.5+W*0.25, sp:(Math.random()*0.06+0.02)*(i%2?1:-1),
-          a:Math.random()*0.07+0.025 });
-    }
-  }
-
-  function scheduleShooting() {
-    const delay = 9000 + Math.random() * 18000;
-    _ambientShootingTimer = setTimeout(() => {
-      if (!document.body.classList.contains('home-ambient')) return;
-      const W = canvas.width, H = canvas.height;
-      const angle = -(0.28 + Math.random() * 0.32);
-      particles.push({ k:'shooting',
-        x: Math.random()*W*0.65, y: Math.random()*H*0.45,
-        angle, speed: 14 + Math.random()*10,
-        length: 90 + Math.random()*110, life: 1.0 });
-      scheduleShooting();
-    }, delay);
-  }
-
-  function drawMoon(W, H) {
-    const mx = W*0.82, my = H*0.13;
-    const halo = ctx.createRadialGradient(mx,my,0,mx,my,95);
-    halo.addColorStop(0,'rgba(210,220,255,0.13)');
-    halo.addColorStop(0.4,'rgba(210,220,255,0.05)');
-    halo.addColorStop(1,'rgba(210,220,255,0)');
-    ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(mx,my,95,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(mx,my,22,0,Math.PI*2);
-    ctx.fillStyle='rgba(230,235,255,0.93)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(mx+7,my-2,19,0,Math.PI*2);
-    ctx.fillStyle='rgba(8,12,38,0.52)'; ctx.fill();
-  }
-
-  function frame() {
-    raf = requestAnimationFrame(frame);
-    const W = canvas.width, H = canvas.height;
-    t++;
-    ctx.clearRect(0,0,W,H);
-
-    if (cond==='clear-night'||cond==='partly-cloudy-night') drawMoon(W,H);
-
-    const alive = [];
-    for (const p of particles) {
-      if (p.k==='star') {
-        p.ph+=p.sp;
-        const a = Math.max(0, 0.28+Math.sin(p.ph)*0.58);
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fill();
-        alive.push(p);
-
-      } else if (p.k==='rain') {
-        p.y+=p.sp; if(p.y>H+10){p.y=-10;p.x=Math.random()*W;}
-        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-1.6,p.y+p.len);
-        ctx.strokeStyle=`rgba(180,218,255,${p.a})`; ctx.lineWidth=1.0; ctx.stroke();
-        alive.push(p);
-
-      } else if (p.k==='snow') {
-        p.y+=p.sp; p.x+=p.dr+Math.sin(t*0.015+p.r)*0.3;
-        if(p.y>H+6){p.y=-6;p.x=Math.random()*W;}
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(220,235,255,${p.a})`; ctx.fill();
-        alive.push(p);
-
-      } else if (p.k==='fog') {
-        p.x+=p.sp;
-        if(p.x>W+p.w*0.5)p.x=-p.w*0.5; if(p.x<-p.w*0.5)p.x=W+p.w*0.5;
-        const fg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.w*0.5);
-        fg.addColorStop(0,`rgba(190,205,215,${p.a})`);
-        fg.addColorStop(1,'rgba(190,205,215,0)');
-        ctx.fillStyle=fg; ctx.fillRect(p.x-p.w*0.5,p.y-p.w*0.25,p.w,p.w*0.5);
-        alive.push(p);
-
-      } else if (p.k==='shooting') {
-        p.life-=0.055; if(p.life<=0) continue;
-        p.x+=Math.cos(p.angle)*p.speed; p.y+=Math.sin(p.angle)*p.speed;
-        ctx.save(); ctx.globalAlpha=p.life*0.88;
-        const tail=ctx.createLinearGradient(
-          p.x,p.y, p.x-Math.cos(p.angle)*p.length, p.y-Math.sin(p.angle)*p.length);
-        tail.addColorStop(0,'rgba(255,255,255,0.9)');
-        tail.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.strokeStyle=tail; ctx.lineWidth=1.8;
-        ctx.beginPath(); ctx.moveTo(p.x,p.y);
-        ctx.lineTo(p.x-Math.cos(p.angle)*p.length, p.y-Math.sin(p.angle)*p.length);
-        ctx.stroke(); ctx.restore();
-        alive.push(p);
-      }
-    }
-    particles = alive;
-
-    if (cond==='thunderstorm-day'||cond==='thunderstorm-night') {
-      ltTimer--;
-      if(ltTimer<=0){ltTimer=Math.floor(Math.random()*200)+80;ltAlpha=0.70;ltX=W*0.2+Math.random()*W*0.6;}
-      if(ltAlpha>0){
-        ctx.fillStyle=`rgba(210,225,255,${ltAlpha*0.14})`; ctx.fillRect(0,0,W,H);
-        ctx.beginPath();
-        ctx.moveTo(ltX,0); ctx.lineTo(ltX-22,H*0.28); ctx.lineTo(ltX+14,H*0.44); ctx.lineTo(ltX-26,H*0.82);
-        ctx.strokeStyle=`rgba(255,255,210,${ltAlpha})`; ctx.lineWidth=2.5; ctx.stroke();
-        ctx.strokeStyle=`rgba(200,220,255,${ltAlpha*0.28})`; ctx.lineWidth=9; ctx.stroke();
-        ltAlpha-=0.04;
-      }
-    }
-  }
-
-  function onResize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    initParticles();
-  }
-
-  let raf;
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  initParticles();
-
-  if (cond==='clear-night'||cond==='partly-cloudy-night') scheduleShooting();
-
-  window.addEventListener('resize', onResize);
-  frame();
-
-  _ambientCanvasStop = () => {
-    cancelAnimationFrame(raf);
-    window.removeEventListener('resize', onResize);
-    if (_ambientShootingTimer){ clearTimeout(_ambientShootingTimer); _ambientShootingTimer=null; }
-  };
+// Route cleanup: stop only the header animation and its weather refresh.
+function _setHomeAmbient() {
+  document.body.classList.remove('home-ambient');
+  if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop=null; }
+  clearInterval(_weatherRefreshTimer);_weatherRefreshTimer=null;
 }
 
 let _weatherData = null;
 let _weatherFetched = false;
+let _weatherRefreshTimer = null;
 
 function _fetchWeather() {
   if (_weatherFetched) return;
   if (!navigator.geolocation) return;
+  _weatherFetched=true; // avoid concurrent location requests while Home renders
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     fetch(`/api/weather?lat=${lat}&lon=${lon}`)
@@ -1949,11 +1632,7 @@ function _fetchWeather() {
         _weatherData = data;
         _weatherFetched = true;
         const cond = _weatherCondition(data.weather_code, data.is_day);
-        if (document.body.classList.contains('home-ambient')) {
-          _startAmbientCanvas(cond);
-        } else {
-          _startWeatherOverlay(cond);
-        }
+        if (document.getElementById('welcome')?.style.display !== 'none') _startWeatherOverlay(cond);
         // Update chip
         const chip = document.getElementById('homeWeatherChip');
         if (chip) {
@@ -1968,7 +1647,7 @@ function _fetchWeather() {
         }
       })
       .catch(() => {});
-  }, () => { _weatherFetched = true; });
+  }, () => { _weatherFetched = true; }, {maximumAge:600000,timeout:10000});
 }
 
 // ── Home helpers ─────────────────────────────────────────────────────────
@@ -2180,18 +1859,15 @@ function renderHome() {
   const coursesLink = $("homeCoursesLink");
   if (coursesLink) coursesLink.addEventListener("click", () => window.switchSpace?.('courses'));
 
-  // Activate ambient mode — full-viewport background replaces hero-only canvas.
-  // Only do this when Home is actually the active space — renderHome() is also
-  // called as a side-effect of unrelated actions (icon change, cover save) while
-  // viewing another space, and must not re-enable the ambient background then.
+  // Keep the atmosphere inside the greeting; the rest of Atlas keeps its theme.
   const _activeSpaceNow = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
   if (!_activeSpaceNow || _activeSpaceNow === 'home') {
-    const initCond = _weatherData
-      ? _weatherCondition(_weatherData.weather_code, _weatherData.is_day)
-      : _defaultCondition();
-    _setHomeAmbient(true);             // class + stop hero canvas
-    _startAmbientCanvas(initCond);     // full-viewport canvas
+    _setHomeAmbient(false);
+    if (_weatherData) _startWeatherOverlay(_weatherCondition(_weatherData.weather_code,_weatherData.is_day));
     _fetchWeather();
+    _weatherRefreshTimer=setInterval(()=>{
+      if (!document.hidden) { _weatherFetched=false; _fetchWeather(); }
+    },600000);
   }
 
   _renderHomeDomain();
@@ -6705,13 +6381,13 @@ function setSidebarVisible(visible) {
     if (space === 'home') {
       // Hide sidebar completely — only the activity rail stays visible
       setSidebarVisible(false);
+      try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}
       if (welcome) {
         welcome.classList.remove('hidden'); // clear hidden class set by loadEntry/showKanbanArea
         welcome.style.display = '';
         if (typeof renderHome === 'function') renderHome();
       }
       document.querySelectorAll('.ab-item[data-space]').forEach(btn => btn.classList.remove('ab-item--active'));
-      try { sessionStorage.setItem('activeSpace', 'home'); } catch(e) {}
       return;
     }
 

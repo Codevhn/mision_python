@@ -48,13 +48,9 @@
   <link rel="stylesheet" href="/static/codemirror/theme/material-darker.css" />
   <link rel="stylesheet" href="/static/conceptmap-explorer.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/atlas-frames.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/weather-hero.css?v={{ v }}" />
 </head>
 <body>
-
-  <!-- AMBIENT WEATHER LAYERS (home only, activated by body.home-ambient)     -->
-  <!-- Must be first children of body so DOM order puts content above canvas   -->
-  <canvas id="homeAmbientCanvas"></canvas>
-  <div id="homeAmbientScrim"></div>
 
   <!-- TOP BAR -->
   <header class="topbar" id="topbar">
@@ -1540,6 +1536,7 @@
   <script src="/static/course-themes.js?v={{ v }}"></script>
   <script src="/static/theme-registry.js?v={{ v }}"></script>
   <script src="/static/atlas-goal.js?v={{ v }}"></script>
+  <script src="/static/weather-hero.js?v={{ v }}"></script>
   <script src="/static/app.js?v={{ v }}"></script>
   <script src="/static/kanban.js?v={{ v }}"></script>
   <script src="/static/mindmap.js?v={{ v }}"></script>
