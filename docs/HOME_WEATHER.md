@@ -10,6 +10,13 @@ usa un resplandor lento y tenue, sin relámpagos ni flashes de pantalla. El ciel
 cambia de color gradualmente y el texto mantiene contraste claro sobre una
 capa oscura. Sin datos meteorológicos queda el fondo normal del tema.
 
+El cielo usa un degradado vertical y bancos de nubes con silueta, iluminación,
+sombras inferiores y textura de vapor. Las capas tienen distintos tamaños,
+opacidades y velocidades para dar profundidad. Las nubes se pintan una sola
+vez en superficies auxiliares y se reutilizan durante la animación; no se
+genera textura por fotograma. El sombreado del saludo se concentra a la
+izquierda para conservar los detalles del cielo.
+
 El botón circular de viento en la esquina del encabezado permite pausar o
 activar el movimiento. La preferencia se guarda localmente. Se respeta el
 movimiento reducido del sistema, mostrando una escena estática y explicándolo

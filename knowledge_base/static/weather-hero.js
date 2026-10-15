@@ -26,7 +26,60 @@
     }
     let width=1,height=1,dpr=1,raf=0,last=0,time=0,visible=false,disposed=false;
     const small=()=>innerWidth<768;
-    const clouds=Array.from({length:kind==='clear'?2:7},(_,i)=>({x:kind==='clear'?(i+.8)/3:i/7,y:.12+(i%3)*.13,size:.14+(i%4)*.035}));
+    // Paint shaded cloud silhouettes once, then move the cached layers.
+    // Their scalloped tops and flat, dark bases distinguish clouds from fog.
+    function cloudSprite(index){
+      const sprite=document.createElement('canvas');sprite.width=640;sprite.height=240;
+      const c=sprite.getContext('2d'), storm=['rain','thunderstorm','overcast','snow'].includes(kind);
+      const shape=new Path2D();
+      shape.moveTo(35,175);
+      shape.bezierCurveTo(3,150,30,116,74,123);
+      shape.bezierCurveTo(53,77,106,49,155,76);
+      shape.bezierCurveTo(170,15,245,7,282,56);
+      shape.bezierCurveTo(312,24,372,43,381,83);
+      shape.bezierCurveTo(419,51,479,72,484,114);
+      shape.bezierCurveTo(547,87,588,119,572,147);
+      shape.bezierCurveTo(628,138,646,180,601,191);
+      shape.bezierCurveTo(492,218,147,218,35,175);shape.closePath();
+      c.save();c.filter=`blur(${index%2?4:2}px)`;
+      const base=c.createLinearGradient(0,20,0,225);
+      const colors=night?['#8c9aaf','#4a5c77','#26384f']:storm?['#e2e8ea','#a2b2bd','#556f83']:['#fffdf5','#e7f0f5','#a8c3d7'];
+      colors.forEach((color,i)=>base.addColorStop(i/2,color));
+      c.fillStyle=base;c.fill(shape);c.restore();
+      c.save();c.clip(shape);
+      // Unequal light pockets give the shared silhouette an illuminated crown.
+      for(let j=0;j<6;j++){
+        const x=90+j*85,y=75+Math.sin(j*2+index)*24;
+        const light=c.createRadialGradient(x,y,2,x,y,87);
+        light.addColorStop(0,`rgba(255,251,237,${night?.08:storm?.18:.35})`);
+        light.addColorStop(1,'rgba(255,251,237,0)');c.fillStyle=light;c.fillRect(0,0,640,240);
+      }
+      // Low-frequency vapour texture breaks up the otherwise polished surface.
+      const texture=document.createElement('canvas');texture.width=160;texture.height=60;
+      const t=texture.getContext('2d'), pixels=t.createImageData(160,60);
+      const noise=(x,y)=>{
+        const n=Math.sin(x*127.1+y*311.7+index*73.9)*43758.5453;
+        return n-Math.floor(n);
+      };
+      const smooth=(x,y,step)=>{
+        const gx=Math.floor(x/step),gy=Math.floor(y/step);
+        let u=x/step-gx,v=y/step-gy;u=u*u*(3-2*u);v=v*v*(3-2*v);
+        return (noise(gx,gy)*(1-u)+noise(gx+1,gy)*u)*(1-v)
+          +(noise(gx,gy+1)*(1-u)+noise(gx+1,gy+1)*u)*v;
+      };
+      for(let y=0;y<60;y++)for(let x=0;x<160;x++){
+        const n=smooth(x,y,16)*.55+smooth(x,y,7)*.3+smooth(x,y,3)*.15;
+        const offset=(y*160+x)*4,shade=n>.5?255:25;
+        pixels.data[offset]=shade;pixels.data[offset+1]=shade;pixels.data[offset+2]=shade;
+        pixels.data[offset+3]=Math.abs(n-.5)*130;
+      }
+      t.putImageData(pixels,0,0);c.drawImage(texture,0,0,640,240);
+      c.restore();return sprite;
+    }
+    const clouds=Array.from({length:kind==='clear'?2:9},(_,i)=>({
+      x:(i*.37)%1.5-.25,y:[-.28,.04,.38][i%3],
+      scale:kind==='clear'?.35:[.68,1,.48][i%3],opacity:kind==='clear'?.42:[.65,.94,.44][i%3],sprite:cloudSprite(i)
+    }));
     const stars=Array.from({length:60},()=>({x:Math.random(),y:Math.random()*.75,r:.4+Math.random(),phase:Math.random()*6}));
     const drops=Array.from({length:100},()=>({x:Math.random(),y:Math.random(),speed:.5+Math.random()*.6,len:7+Math.random()*12}));
     function draw(){
@@ -38,16 +91,17 @@
         });
       }
       if(kind!=='clear' || !night){
-        clouds.slice(0,small()?4:7).forEach((p,i)=>{
-          const x=((p.x+time*(.003+i*.00025))%1.5-.25)*width, y=p.y*height;
-          const size=Math.max(65,p.size*width);
-          const fog=kind==='foggy';
-          ctx.save();ctx.translate(x,y);ctx.scale(1,fog?.3:.42);
-          const g=ctx.createRadialGradient(0,0,0,0,0,size);
-          const alpha=night?.18:kind==='clear'?.3:.55;
-          g.addColorStop(0,`rgba(${night?'143,164,193':'244,247,247'},${alpha})`);
-          g.addColorStop(1,'rgba(220,232,240,0)');ctx.fillStyle=g;
-          ctx.beginPath();ctx.ellipse(0,0,size,size,0,0,Math.PI*2);ctx.fill();ctx.restore();
+        clouds.forEach((p,i)=>{
+          const span=Math.max(small()?310:470,width*.48)*p.scale;
+          const travel=width+span*2;
+          const x=((p.x*width+span+time*(3+i*.35))%travel+travel)%travel-span;
+          const y=p.y*height;
+          ctx.save();ctx.globalAlpha=p.opacity;
+          if(kind==='foggy'){
+            ctx.globalAlpha=.22;ctx.filter='blur(16px)';
+            ctx.drawImage(p.sprite,x,y,span*1.7,span*.24);
+          }else ctx.drawImage(p.sprite,x,y,span,span*.375);
+          ctx.restore();
         });
       }
       if(['rain','thunderstorm','snow'].includes(kind)){
