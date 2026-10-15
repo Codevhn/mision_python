@@ -10,7 +10,7 @@
   $('#month').value=isoToday().slice(0,7);
   function copyTheme(){
     if(window.parent===window)return;
-    try {for(const key of ['style','variant','theme','palette','intensity','languageTheme','frame'])document.documentElement.dataset[key]=window.parent.document.documentElement.dataset[key]||'';}catch{}
+    try {for(const key of ['style','variant','theme','palette','intensity','languageTheme','frame','themeId'])document.documentElement.dataset[key]=window.parent.document.documentElement.dataset[key]||'';}catch{}
   }
   copyTheme();
   if(window.parent!==window){try{new MutationObserver(copyTheme).observe(window.parent.document.documentElement,{attributes:true});}catch{}}

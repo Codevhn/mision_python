@@ -51,3 +51,7 @@ for(const [id,label,description,group,scheme,style,palette] of [
   THEME_CATALOG.push([id,label,description,group,palette]);
 }
 registerAtlasLanguageThemes(ATLAS_THEMES,THEME_CATALOG,THEME_GROUPS);
+
+ATLAS_THEMES.horizon={scheme:'dark',style:'aero',variant:'night',preview:'linear-gradient(165deg,#3888b7 0%,#bad4db 48%,#709aa5 49%,#254f53 72%,#102e37 100%)'};
+THEME_GROUPS.landscape='Paisajes vivos';
+THEME_CATALOG.push(['horizon','Horizonte','Cristal translúcido · Paisaje vivo según el clima','landscape','horizon']);

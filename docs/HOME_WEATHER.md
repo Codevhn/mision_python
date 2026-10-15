@@ -1,5 +1,8 @@
 # Cielo animado en Inicio
 
+El tema opcional [Horizonte](HORIZON_THEME.md) reutiliza este renderer para un
+paisaje de toda la aplicación; los demás temas conservan el cielo del encabezado.
+
 La escena ocupa sólo el encabezado del saludo. Conserva el marco Centinela y la
 paleta del resto de Atlas; no hay vídeos, imágenes externas ni librerías nuevas.
 Usa los datos del endpoint meteorológico existente y su indicador de día/noche.

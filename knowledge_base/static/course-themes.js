@@ -51,7 +51,7 @@ function _enterCourseTheme(slug,label) {
   const preference=_readCourseTheme(slug),general=_generalAtlasTheme();
   const language=_languageForCourse(slug,label);
   const scheme=ATLAS_THEMES[general]?.scheme||'dark';
-  const theme=preference.mode==='custom'?preference.theme:preference.mode==='auto'&&language?`language-${language}-${scheme}`:general;
+  const theme=preference.mode==='custom'?preference.theme:preference.mode==='auto'&&general!=='horizon'&&language?`language-${language}-${scheme}`:general;
   setAtlasTheme(theme);
 }
 function _leaveCourseTheme() {

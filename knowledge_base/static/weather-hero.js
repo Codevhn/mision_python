@@ -1,12 +1,13 @@
-/* Weather stays inside Home's header. No remote images, video or dependencies. */
+/* Shared weather renderer: Home's sky or Horizonte's full-viewport landscape. */
 (() => {
   'use strict';
   const preferenceKey='atlas_weather_animation';
-  window.AtlasWeatherHero={mount(hero,canvas,condition){
+  window.AtlasWeatherHero={mount(hero,canvas,condition,options={}){
     if (!hero || !canvas || !condition) return ()=>{};
     const ctx=canvas.getContext('2d');
     if (!ctx) return ()=>{};
     const kind=condition.replace(/-(day|night)$/,''), night=condition.endsWith('-night');
+    const landscape=Boolean(options.landscape);
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
     let enabled=true;
     try { enabled=localStorage.getItem(preferenceKey)!=='off'; } catch {}
@@ -82,6 +83,50 @@
     }));
     const stars=Array.from({length:60},()=>({x:Math.random(),y:Math.random()*.75,r:.4+Math.random(),phase:Math.random()*6}));
     const drops=Array.from({length:100},()=>({x:Math.random(),y:Math.random(),speed:.5+Math.random()*.6,len:7+Math.random()*12}));
+    let terrain=null;
+    function buildTerrain(){
+      terrain=document.createElement('canvas');terrain.width=canvas.width;terrain.height=canvas.height;
+      const t=terrain.getContext('2d');t.scale(dpr,dpr);
+      const wet=['rain','thunderstorm','foggy','overcast'].includes(kind), snow=kind==='snow';
+      const palette=night?['#465975','#2c425d','#192f45','#0d2432']:wet?['#839aa6','#607f8c','#355d65','#163e46']:['#9dbbbd','#698e88','#43775f','#204e3e'];
+      const ridges=[
+        [[0,.56],[.08,.48],[.16,.52],[.27,.36],[.35,.47],[.43,.42],[.55,.58],[.65,.5],[.74,.39],[.82,.47],[.9,.38],[1,.53]],
+        [[0,.68],[.13,.52],[.2,.6],[.33,.48],[.4,.57],[.52,.68],[.65,.55],[.76,.61],[.87,.48],[1,.64]],
+        [[0,.78],[.14,.69],[.29,.73],[.43,.82],[.6,.78],[.79,.66],[1,.73]]
+      ];
+      ridges.forEach((ridge,i)=>{
+        t.beginPath();t.moveTo(0,height);
+        ridge.forEach(([x,y])=>t.lineTo(x*width,y*height));t.lineTo(width,height);t.closePath();
+        const fill=t.createLinearGradient(0,height*.4,0,height);
+        fill.addColorStop(0,palette[i]);fill.addColorStop(1,palette[Math.min(i+1,3)]);
+        t.fillStyle=fill;t.fill();
+        if(i<2)ridge.slice(1,-1).forEach(([x,y],j)=>{
+          if(y>=ridge[j][1]||y>=ridge[j+2][1])return;
+          t.beginPath();t.moveTo(x*width,y*height);t.lineTo((x+.035)*width,(y+.12)*height);
+          t.lineTo((x-.025)*width,(y+.075)*height);t.closePath();
+          t.fillStyle=snow?(night?'#b0c3d4':'#e5edf0'):(night?'#8297af22':'#d8e3dc35');t.fill();
+        });
+      });
+      if(wet){
+        const mist=t.createLinearGradient(0,height*.46,0,height*.83);
+        mist.addColorStop(0,'rgba(185,207,214,0)');mist.addColorStop(.55,`rgba(185,207,214,${kind==='foggy'?.4:.14})`);mist.addColorStop(1,'rgba(185,207,214,0)');
+        t.fillStyle=mist;t.fillRect(0,height*.46,width,height*.37);
+      }
+      // A quiet river opens the valley; nearer wooded slopes frame it.
+      t.beginPath();t.moveTo(width*.53,height*.79);t.bezierCurveTo(width*.46,height*.86,width*.7,height*.89,width*.55,height);
+      t.lineTo(width*.79,height);t.bezierCurveTo(width*.79,height*.9,width*.51,height*.85,width*.55,height*.79);t.closePath();
+      const water=t.createLinearGradient(0,height*.78,0,height);water.addColorStop(0,night?'#839bb4':'#c6dce0');water.addColorStop(1,night?'#2a4a64':'#5d9ca6');t.fillStyle=water;t.fill();
+      for(const side of [0,1]){
+        t.beginPath();t.moveTo(side?width:0,height*.83);
+        t.bezierCurveTo(width*(side?.85:.13),height*.8,width*(side?.8:.28),height*.94,width*(side?.76:.41),height);
+        t.lineTo(side?width:0,height);t.closePath();t.fillStyle=snow?(night?'#657e8c':'#c9d8d9'):palette[3];t.fill();
+        for(let i=0;i<45;i++){
+          const x=width*(side? .82+i/250:.18-i/250), y=height*(.85+Math.sin(i*1.7)*.018+i*.002),size=height*(.018+(i%5)*.003);
+          t.fillStyle=night?'#091e2a':wet?'#163b3f':'#1b4944';
+          t.fillRect(x-1,y,2,size);t.beginPath();t.moveTo(x,y-size);t.lineTo(x-size*.4,y+size*.3);t.lineTo(x+size*.4,y+size*.3);t.closePath();t.fill();
+        }
+      }
+    }
     function draw(){
       ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);
       if(night && ['clear','partly-cloudy'].includes(kind)){
@@ -104,6 +149,7 @@
           ctx.restore();
         });
       }
+      if(landscape && terrain)ctx.drawImage(terrain,0,0,width,height);
       if(['rain','thunderstorm','snow'].includes(kind)){
         drops.slice(0,small()?35:kind==='snow'?55:100).forEach(p=>{
           const x=(p.x*width-time*(kind==='snow'?8:28)*p.speed)%(width+24);
@@ -144,7 +190,7 @@
     function resize(){
       width=Math.max(1,hero.clientWidth);height=Math.max(1,hero.clientHeight);
       dpr=Math.min(devicePixelRatio||1,small()?1:1.5);
-      canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);draw();
+      canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);if(landscape)buildTerrain();draw();
     }
     function toggle(){enabled=!enabled;try{localStorage.setItem(preferenceKey,enabled?'on':'off');}catch{}sync();}
     const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync();});observer.observe(hero);

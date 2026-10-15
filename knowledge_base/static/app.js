@@ -677,6 +677,14 @@ function setAtlasTheme(id, persist = false) {
   document.documentElement.dataset.languageTheme = theme.language || '';
   document.documentElement.dataset.themeId = id;
   if (persist) _persistAtlasThemeChoice(id);
+  window.AtlasHorizon?.setEnabled(id==='horizon');
+  queueMicrotask(()=>{
+    if(document.documentElement.dataset.themeId!==id)return;
+    if(_weatherData && (id==='horizon' || document.getElementById('welcome')?.style.display!=='none'))
+      _startWeatherOverlay(_weatherCondition(_weatherData.weather_code,_weatherData.is_day));
+    if(id==='horizon'){clearInterval(_weatherRefreshTimer);_weatherRefreshTimer=null;_fetchWeather();}
+    else if(document.getElementById('welcome')?.style.display!=='none')_startHomeWeatherRefresh();
+  });
   document.querySelectorAll('[data-theme-choice]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === id));
   });
@@ -1603,6 +1611,7 @@ function _weatherInfo(code, isDay) {
 let _heroCanvasStop = null;
 function _startWeatherOverlay(condition) {
   if (_heroCanvasStop) { _heroCanvasStop(); _heroCanvasStop=null; }
+  if(document.documentElement.dataset.themeId==='horizon'){window.AtlasHorizon?.update(condition);return;}
   const hero=document.getElementById('homeHero'),canvas=document.getElementById('homeHeroCanvas');
   if (hero && canvas && condition) _heroCanvasStop=window.AtlasWeatherHero?.mount(hero,canvas,condition) || null;
 }
@@ -1617,6 +1626,13 @@ function _setHomeAmbient() {
 let _weatherData = null;
 let _weatherFetched = false;
 let _weatherRefreshTimer = null;
+document.addEventListener('atlas:weather-refresh',()=>{_weatherFetched=false;_fetchWeather();});
+function _startHomeWeatherRefresh(){
+  clearInterval(_weatherRefreshTimer);_weatherRefreshTimer=null;
+  if(document.documentElement.dataset.themeId!=='horizon')_weatherRefreshTimer=setInterval(()=>{
+    if(!document.hidden){_weatherFetched=false;_fetchWeather();}
+  },600000);
+}
 
 function _fetchWeather() {
   if (_weatherFetched) return;
@@ -1632,6 +1648,7 @@ function _fetchWeather() {
         _weatherData = data;
         _weatherFetched = true;
         const cond = _weatherCondition(data.weather_code, data.is_day);
+        window.AtlasHorizon?.update(cond);
         if (document.getElementById('welcome')?.style.display !== 'none') _startWeatherOverlay(cond);
         // Update chip
         const chip = document.getElementById('homeWeatherChip');
@@ -1859,15 +1876,13 @@ function renderHome() {
   const coursesLink = $("homeCoursesLink");
   if (coursesLink) coursesLink.addEventListener("click", () => window.switchSpace?.('courses'));
 
-  // Keep the atmosphere inside the greeting; the rest of Atlas keeps its theme.
+  // Home uses its header sky unless Horizonte already owns the global landscape.
   const _activeSpaceNow = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
   if (!_activeSpaceNow || _activeSpaceNow === 'home') {
     _setHomeAmbient(false);
     if (_weatherData) _startWeatherOverlay(_weatherCondition(_weatherData.weather_code,_weatherData.is_day));
     _fetchWeather();
-    _weatherRefreshTimer=setInterval(()=>{
-      if (!document.hidden) { _weatherFetched=false; _fetchWeather(); }
-    },600000);
+    _startHomeWeatherRefresh();
   }
 
   _renderHomeDomain();

@@ -986,7 +986,7 @@ def _build_id():
         'navigation-hierarchy.css',
         'login.css', 'login.js',
         'reader.css', 'library.js',
-        'weather-hero.css', 'weather-hero.js',
+        'weather-hero.css', 'weather-hero.js', 'horizon.css', 'horizon.js', 'theme-registry.js',
     ))
 
 @app.route("/sw.js")

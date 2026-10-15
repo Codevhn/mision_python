@@ -13,6 +13,7 @@
       if (!ATLAS_THEMES[id]) id = 'aero-night';
       const t = ATLAS_THEMES[id], d = document.documentElement.dataset;
       Object.assign(d, {theme:t.scheme, style:t.style, variant:t.variant, palette:t.palette || '', intensity:t.intensity || 'normal', languageTheme:t.language || '', themeId:id});
+      window.AtlasHorizon?.setEnabled(id==='horizon');
       return id;
     }
     try { applyLoginTheme(localStorage.getItem('kb_theme') || 'aero-night'); }
@@ -24,6 +25,8 @@
   <link rel="stylesheet" href="/static/login.css?v={{ v }}">
   <link rel="stylesheet" href="/static/sentinel-sheen.css?v={{ v }}">
   <link rel="stylesheet" href="/static/atlas-frames.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/weather-hero.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/horizon.css?v={{ v }}">
 </head>
 <body class="atlas-login">
   <div class="login-wallpaper" aria-hidden="true">
@@ -67,6 +70,9 @@
     <div class="theme-picker-heading"><h2 id="themesTitle">Apariencia de Atlas</h2><button type="button" id="closeThemes" aria-label="Cerrar">×</button></div>
     <p>El mismo tema en el acceso y en tu espacio.</p><div id="loginThemeOptions" class="theme-options"></div>
   </dialog>
+  <script src="/static/weather-hero.js?v={{ v }}"></script>
+  <script src="/static/horizon.js?v={{ v }}"></script>
+  <script>window.AtlasHorizon.setEnabled(document.documentElement.dataset.themeId==='horizon');</script>
   <script src="/static/login.js?v={{ v }}"></script>
 </body>
 </html>
