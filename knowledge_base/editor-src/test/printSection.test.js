@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { printableSection } from '../src/printSection.js';
+const text=text=>[{type:'text',text,styles:{}}];
+const heading=(id,title,level,children=[],toggle=false)=>({id,type:'heading',props:{level,isToggleable:toggle},content:text(title),children});
+const paragraph=(id,value)=>({id,type:'paragraph',props:{},content:text(value),children:[]});
+const blocks=[heading('a','Otro ritual',3),paragraph('b','NO incluir'),heading('c','Ritual asertivo',3,[paragraph('d','Contenido colapsado')],true),heading('e','Siguiente ritual',3)];
+const selected=printableSection(blocks,'c');assert.equal(selected.title,'Ritual asertivo');assert(selected.markdown.includes('Contenido colapsado'));assert(!selected.markdown.includes('Otro ritual'));assert(!selected.markdown.includes('Siguiente ritual'));
+const ordinary=[heading('a','Tema',2),paragraph('b','Texto'),heading('c','Subtema',3),paragraph('d','Detalle'),heading('e','Siguiente',2)];
+assert(printableSection(ordinary,'a').markdown.includes('Detalle'));assert(!printableSection(ordinary,'a').markdown.includes('Siguiente'));
+assert.equal(printableSection([heading('outer','Exterior',1,blocks,true)],'c').title,'Ritual asertivo');assert.equal(printableSection(blocks,'missing'),null);
+console.log('PASS print section selection: folded/nested content, heading boundaries, exclusions');

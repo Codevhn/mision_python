@@ -1178,3 +1178,8 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
   padding: 2px 6px;
 }
 
+
+/* Floating editor menus live outside decorative/blurred frame stacking contexts. */
+.atlas-editor-menu-layer { display:contents; }
+.atlas-editor-menu-layer .bn-drag-handle-menu { z-index:3000 !important; background:var(--bg-overlay) !important; color:var(--text); overscroll-behavior:contain; min-width:230px; }
+.atlas-editor-menu-layer .bn-menu-item { min-height:32px; }

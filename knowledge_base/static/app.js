@@ -13250,3 +13250,30 @@ window._insertAssistantExplanation = async (markdown, selection) => {
   document.getElementById('entryBody')?.querySelector(`[data-id="${CSS.escape(target.block_id)}"]`)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'center'});
   return true;
 };
+
+// Print the current editor snapshot, including children hidden by a toggle.
+document.addEventListener('atlas:print-section',async event=>{
+  const section=event.detail,preview=window.open('','_blank');
+  if(!preview){alert('Permite abrir una pestaña para ver la impresión del tema.');return;}
+  preview.opener=null;preview.document.title='Preparando impresión';
+  preview.document.body.textContent='Preparando el tema para imprimir…';
+  try{
+    const response=await fetch('/api/export/section',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(section)});
+    if(!response.ok)throw new Error('No se pudo preparar la impresión.');
+    const html=await response.text();if(preview.closed)return;
+    preview.document.open();preview.document.write(html);preview.document.close();
+    const toolbar=preview.document.createElement('nav');toolbar.className='print-actions';toolbar.setAttribute('aria-label','Opciones de impresión');
+    const print=preview.document.createElement('button');print.textContent='Imprimir / Guardar como PDF';
+    print.onclick=async()=>{await preview.document.fonts.ready;preview.print();};
+    const download=preview.document.createElement('button');download.textContent='Descargar PDF';
+    download.onclick=async()=>{
+      download.disabled=true;download.textContent='Generando PDF…';
+      try{
+        const result=await fetch('/api/export/section',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...section,format:'pdf'})});
+        if(!result.ok)throw new Error('No se pudo generar el PDF.');
+        const url=URL.createObjectURL(await result.blob()),link=preview.document.createElement('a');link.href=url;link.download='tema.pdf';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+      }catch(error){preview.alert(error.message);}finally{download.disabled=false;download.textContent='Descargar PDF';}
+    };
+    toolbar.append(print,download);preview.document.body.prepend(toolbar);
+  }catch(error){if(!preview.closed)preview.document.body.textContent=error.message;}
+});

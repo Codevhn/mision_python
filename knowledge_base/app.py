@@ -688,6 +688,35 @@ def render_markdown(md_text):
     return sanitize_html(html)
 
 
+def _print_markdown(md):
+    """Expand the editor's toggle dialect for paper, without touching code."""
+    lines, toggles, fence = [], [], None
+    for line in md.splitlines():
+        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if marker:
+            run = marker.group(1)
+            if fence is None:
+                fence = run
+            elif run[0] == fence[0] and len(run) >= len(fence) and not line.strip()[len(run):].strip():
+                fence = None
+            lines.append(line)
+            continue
+        if fence:
+            lines.append(line)
+            continue
+        opening = re.match(r"^\s*:::toggle(?:-h([1-6]))?(?:\s+(.*))?$", line)
+        if opening:
+            toggles.append(True)
+            title = opening.group(2) or ""
+            lines.extend(["", ("#" * int(opening.group(1)) + " " + title) if opening.group(1) else "**" + title + "**", ""])
+        elif line.strip() == ":::" and toggles:
+            toggles.pop()
+            lines.append("")
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def _strip_duplicate_heading_md(md, title):
     """Remove leading H1/H2/H3 from markdown if it matches the entry title."""
     import unicodedata
@@ -773,15 +802,41 @@ def _pdf_font_face(family, filename, weight=400, style="normal"):
   }}"""
 
 
-def _build_pdf_html(title, date, body_html, meta=None):
+def _pdf_emoji_html(source):
+    from html.parser import HTMLParser
+    emoji = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\u2300-\u23FF\u2B00-\u2BFF](?:[\ufe0e\ufe0f\u200d\U0001F000-\U0001FAFF\u2600-\u27BF])*" )
+    class FontMarkup(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.parts = []
+        def handle_starttag(self, tag, attrs): self.parts.append(self.get_starttag_text())
+        def handle_startendtag(self, tag, attrs): self.parts.append(self.get_starttag_text())
+        def handle_endtag(self, tag): self.parts.append(f"</{tag}>")
+        def handle_entityref(self, name): self.parts.append(f"&{name};")
+        def handle_charref(self, name): self.parts.append(f"&#{name};")
+        def handle_data(self, data):
+            self.parts.append(emoji.sub(lambda match: '<span class="pdf-emoji">' + match.group() + '</span>', data))
+    parser = FontMarkup()
+    parser.feed(source)
+    return ''.join(parser.parts)
+
+
+def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
+    from html import escape
+    footer_title = json.dumps(title, ensure_ascii=False).replace("<", "\\3c ").replace(">", "\\3e ")
+    title = escape(title)
     category  = (meta or {}).get("category_label") or (meta or {}).get("category", "")
     topic     = (meta or {}).get("topic_label")     or (meta or {}).get("topic", "")
     meta_parts = [p for p in [category, topic] if p]
     meta_line  = " · ".join(meta_parts)
 
-    toc_html, body_html = _inject_toc(body_html)
+    meta_line = escape(meta_line)
+    toc_html, body_html = _inject_toc(body_html) if include_toc else ("", body_html)
 
+    body_html = _pdf_emoji_html(body_html)
+    toc_html = _pdf_emoji_html(toc_html)
     font_faces = "\n  ".join([
+        _pdf_font_face("Noto Emoji", "NotoEmoji-Regular.ttf", 400),
         _pdf_font_face("Inter", "Inter-Regular.ttf", 400),
         _pdf_font_face("Inter", "Inter-Medium.ttf", 500),
         _pdf_font_face("Inter", "Inter-SemiBold.ttf", 600),
@@ -794,10 +849,12 @@ def _build_pdf_html(title, date, body_html, meta=None):
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<title>{title}</title>
 <style>
   {font_faces}
   @page {{
-    margin: 2.4cm 2.1cm 2.6cm;
+    size: A4;
+    margin: 1.8cm 1.9cm 2cm;
     @bottom-right {{
       content: counter(page) " / " counter(pages);
       font-family: "Inter", sans-serif;
@@ -805,7 +862,7 @@ def _build_pdf_html(title, date, body_html, meta=None):
       color: #a9afb8;
     }}
     @bottom-left {{
-      content: "{title}";
+      content: {footer_title};
       font-family: "Inter", sans-serif;
       font-size: 7.5pt;
       color: #a9afb8;
@@ -829,6 +886,8 @@ def _build_pdf_html(title, date, body_html, meta=None):
      defaults to "screen" media, where the page would otherwise render
      edge-to-edge full width with no page-like boundary. Give it one. */
   @media screen {{
+    .print-actions {{ display:flex; gap:12px; position:sticky; top:0; padding:12px; margin-bottom:24px; background:#f2f5f7; border:1px solid #d8dfe5; font:14px sans-serif; }}
+    .print-actions button {{ padding:10px 16px; cursor:pointer; }}
     body {{
       max-width: 780px;
       margin: 0 auto;
@@ -836,6 +895,7 @@ def _build_pdf_html(title, date, body_html, meta=None):
       background: #fff;
     }}
   }}
+  .pdf-emoji {{ font-family:"Noto Emoji"; font-weight:400; font-style:normal; }}
   /* ── Cover ── */
   .pdf-cover {{
     border-bottom: 1.5px solid #e2e6ec;
@@ -865,7 +925,7 @@ def _build_pdf_html(title, date, body_html, meta=None):
     border-radius: 6px;
     padding: 16px 20px 14px;
     margin-bottom: 34px;
-    page-break-inside: avoid;
+    page-break-inside: auto;
   }}
   .pdf-toc-label {{
     font-size: 8pt;
@@ -881,12 +941,16 @@ def _build_pdf_html(title, date, body_html, meta=None):
   .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.8pt; color: #565c66; font-weight: 400; }}
   .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8.3pt; color: #838993; font-weight: 400; }}
   /* ── Headings ── */
+  h1 {{ font-size:19pt; line-height:1.3; margin:1.2em 0 .6em; page-break-after:avoid; }}
   h2 {{ font-size: 14.5pt; font-weight: 700; color: #16181c; border-bottom: 1px solid #e2e6ec; padding-bottom: 6px; margin: 1.8em 0 0.6em; page-break-after: avoid; letter-spacing: -0.01em; }}
   h3 {{ font-size: 12pt; font-weight: 600; color: #16181c; margin: 1.5em 0 0.5em; page-break-after: avoid; }}
   h4 {{ font-size: 10.8pt; color: #2b2f36; font-weight: 600; margin: 1.2em 0 0.4em; page-break-after: avoid; }}
   h5 {{ font-size: 9.5pt;  color: #565c66; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 1em 0 0.3em; }}
   /* ── Body ── */
-  p  {{ margin: 0 0 0.85em; }}
+  p  {{ margin: 0 0 0.85em; orphans:3; widows:3; }}
+  img {{ max-width:100%; height:auto; }}
+  .toc-row {{ break-inside:avoid; }}
+  @media print {{ .print-actions {{ display:none !important; }} }}
   strong {{ color: #16181c; font-weight: 600; }}
   em     {{ color: #2b2f36; }}
   a {{ color: #1793d1; text-decoration: none; }}
@@ -932,9 +996,11 @@ def _build_pdf_html(title, date, body_html, meta=None):
     font-style: italic;
   }}
   /* ── Tables ── */
-  table {{ border-collapse: collapse; width: 100%; margin: 1.1em 0; font-size: 9.2pt; page-break-inside: avoid; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1.1em 0; font-size: 9.2pt; table-layout:fixed; page-break-inside:auto; }}
   th {{ background: #1793d1; color: #fff; padding: 7px 11px; text-align: left; font-size: 9pt; font-weight: 600; }}
   td {{ padding: 6px 11px; border: 1px solid #e2e6ec; vertical-align: top; word-break: break-word; }}
+  tr {{ break-inside:avoid; }}
+  thead {{ display:table-header-group; }}
   tr:nth-child(even) td {{ background: #f8fafb; }}
   /* ── Callout / alert boxes ── */
   .alert, .note {{
@@ -1981,6 +2047,25 @@ def preview():
     return jsonify({"markdown": md, "html": html})
 
 
+@app.route("/api/export/section", methods=["POST"])
+def export_section():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Solicitud inválida"}), 400
+    title, markdown = data.get("title"), data.get("markdown")
+    fmt = data.get("format", "html")
+    if not isinstance(title, str) or not isinstance(markdown, str) or not markdown.strip() or not title.strip() or len(title) > 1000 or len(markdown) > 300000 or fmt not in ("html", "pdf"):
+        return jsonify({"error": "Tema vacío, demasiado grande o formato inválido"}), 400
+    markdown = _strip_duplicate_heading_md(_print_markdown(markdown), title)
+    document = _build_pdf_html(title, "", render_markdown(markdown), include_toc=False)
+    if fmt == "html":
+        return app.response_class(document, mimetype="text/html")
+    from io import BytesIO
+    from weasyprint import HTML
+    pdf = BytesIO(HTML(string=document).write_pdf())
+    return send_file(pdf, mimetype="application/pdf", as_attachment=True, download_name="tema.pdf")
+
+
 @app.route("/api/export/<entry_id>/md")
 def export_md(entry_id):
     index = load_index()
@@ -2003,7 +2088,7 @@ def export_pdf(entry_id):
         return jsonify({"error": "weasyprint no instalado en el servidor"}), 503
     from io import BytesIO
     md_content = _entry_path(entry_id, meta).read_text()
-    md_content = _strip_duplicate_heading_md(md_content, meta.get("title", ""))
+    md_content = _strip_duplicate_heading_md(_print_markdown(md_content), meta.get("title", ""))
     body_html  = render_markdown(md_content)
     date       = meta.get("created_at", "")[:10]
     full_html  = _build_pdf_html(meta["title"], date, body_html, meta=meta)
@@ -2023,7 +2108,7 @@ def export_html(entry_id):
     meta = index[entry_id]
     md_content = _entry_path(entry_id, meta).read_text()
     date = meta.get("created_at", "")[:10]
-    full_html = _build_pdf_html(meta["title"], date, render_markdown(md_content))
+    full_html = _build_pdf_html(meta["title"], date, render_markdown(_print_markdown(md_content)))
     from flask import Response
     return Response(full_html, mimetype="text/html",
                     headers={"Content-Disposition": f'attachment; filename="{entry_id}.html"'})
@@ -2449,7 +2534,7 @@ def export_category_pdf(category):
         if meta["category"] == category:
             path = _entry_path(entry_id, meta)
             if path.exists():
-                combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(path.read_text()) + "<hr style='page-break-after:always'>"
+                combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(_print_markdown(path.read_text())) + "<hr style='page-break-after:always'>"
     if not combined_html:
         return jsonify({"error": "No entries found"}), 404
 

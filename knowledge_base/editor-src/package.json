@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/copySpelling.mjs && vite build",
-    "test": "vite-node test/markdown.test.js && vite-node test/pasteCode.test.js && vite-node test/textEdits.test.js && vite-node test/spellingWords.test.js"
+    "test": "vite-node test/markdown.test.js && vite-node test/pasteCode.test.js && vite-node test/textEdits.test.js && vite-node test/spellingWords.test.js && vite-node test/printSection.test.js"
   },
   "dependencies": {
     "@blocknote/core": "0.51.4",

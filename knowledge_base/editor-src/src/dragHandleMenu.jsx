@@ -1,4 +1,6 @@
 import React, { useCallback } from "react";
+import { createPortal } from "react-dom";
+import { printableSection } from "./printSection.js";
 import {
   useComponentsContext,
   useBlockNoteEditor,
@@ -102,27 +104,31 @@ export function DragHandleMenu() {
 
   const items = buildBlockTypeItems(editor);
 
-  // Floating-ui positions this dropdown against the raw viewport, with no
-  // notion that the sticky #ctxBar (breadcrumb/toolbar) visually occludes its
-  // top ~82px. On a block near the top of the page it can flip the dropdown
-  // mostly/fully above the handle, landing its first items behind #ctxBar.
-  // Nudge it down by exactly the overlap, once, right after it mounts —
-  // a transform doesn't fight floating-ui's own top/left positioning.
+  // Portal the menu past the frame's blur/isolation and anchor in viewport
+  // coordinates, so collapsed content cannot clip or cover the dropdown.
   const dropdownRef = useCallback((node) => {
     if (!node) return;
-    requestAnimationFrame(() => {
-      const ctxBar = document.getElementById("ctxBar");
-      if (!ctxBar) return;
-      const barBottom = ctxBar.getBoundingClientRect().bottom;
-      const menuTop = node.getBoundingClientRect().top;
-      if (menuTop < barBottom) {
-        node.style.transform = `translateY(${barBottom - menuTop + 8}px)`;
-      }
-    });
+    const position=()=>{
+      const anchor=document.querySelector('.bn-side-menu [aria-haspopup="menu"]');
+      if(!anchor)return;
+      const rect=anchor.getBoundingClientRect();
+      const barBottom=document.getElementById('ctxBar')?.getBoundingClientRect().bottom||0;
+      node.style.maxHeight=`${Math.max(120,innerHeight-barBottom-24)}px`;
+      node.style.overflowY='auto';
+      const bounds=node.getBoundingClientRect();
+      node.style.setProperty('position','fixed','important');
+      node.style.setProperty('left',`${Math.max(8,Math.min(rect.right+6,innerWidth-bounds.width-8))}px`,'important');
+      node.style.setProperty('top',`${Math.max(barBottom+8,Math.min(rect.top,innerHeight-bounds.height-12))}px`,'important');
+      node.style.setProperty('transform','none','important');
+    };
+    const frame=requestAnimationFrame(position);
+    window.addEventListener('resize',position);
+    window.addEventListener('scroll',position,true);
+    return ()=>{cancelAnimationFrame(frame);window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);};
   }, []);
 
-  return (
-    <Components.Generic.Menu.Dropdown
+  return createPortal(
+    <div className="bn-container bn-mantine atlas-editor-menu-layer"><Components.Generic.Menu.Dropdown
       ref={dropdownRef}
       className={"bn-menu-dropdown bn-drag-handle-menu"}
     >
@@ -149,9 +155,14 @@ export function DragHandleMenu() {
         );
       })}
 
+      {block.type==='heading' && <Components.Generic.Menu.Item onClick={()=>{
+        const section=printableSection(editor.document,block.id);
+        if(section)document.dispatchEvent(new CustomEvent('atlas:print-section',{detail:section}));
+      }}>Imprimir este tema…</Components.Generic.Menu.Item>}
       <RemoveBlockItem>Eliminar</RemoveBlockItem>
       <BlockColorsItem>Color</BlockColorsItem>
-    </Components.Generic.Menu.Dropdown>
+    </Components.Generic.Menu.Dropdown></div>,
+    editor.domElement?.closest("dialog[open]") || document.body
   );
 }
 
