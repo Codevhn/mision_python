@@ -476,7 +476,7 @@ def smart_parse(raw_text):
     return "\n".join(result)
 
 
-def process_chat_blocks(raw_text):
+def process_chat_blocks(raw_text, print_mode=False):
     """
     Detect chat-style notes and convert to HTML chat bubbles.
     Triggered when text contains 'MI RESPUESTA:' or '> yo:' patterns.
@@ -510,7 +510,8 @@ def process_chat_blocks(raw_text):
             role = "ai"
         # Render the block content as markdown
         rendered = mistune.create_markdown(
-            plugins=["strikethrough", "table", "task_lists"]
+            hard_wrap=print_mode,
+            plugins=["strikethrough", "table", "task_lists"] + ([_print_emphasis_plugin] if print_mode else [])
         )(content)
         bubbles.append((role, rendered))
 
@@ -674,14 +675,49 @@ def sanitize_html(html):
     return _bleach_cleaner.clean(html)
 
 
-def render_markdown(md_text):
-    chat_html, is_chat = process_chat_blocks(md_text)
+def _print_emphasis_plugin(markdown):
+    # The editor's older serializer wrapped each text run, including its edge
+    # spaces. Accept that dialect without deleting literal stars or code.
+    def parse(inline, match, state):
+        marker = match.group(0)
+        size = len(marker)
+        if (size == 1 and state.in_emphasis) or (size > 1 and state.in_strong):
+            state.append_token({"type": "text", "raw": marker})
+            return match.end()
+        closing = re.search(r"(?<!\\)" + re.escape(marker), state.src[match.end():])
+        if not closing:
+            state.append_token({"type": "text", "raw": marker})
+            return match.end()
+        end = match.end() + closing.end()
+        precedence = inline.precedence_scan(match, state, end)
+        if precedence:
+            return precedence
+        text = state.src[match.end():end-size]
+        if not text.strip():
+            state.append_token({"type": "text", "raw": text})
+            return end
+        nested = state.copy()
+        nested.src = text
+        nested.in_strong = state.in_strong or size > 1
+        nested.in_emphasis = state.in_emphasis or size in (1, 3)
+        children = inline.render(nested)
+        token = {"type": "strong" if size > 1 else "emphasis", "children": children}
+        if size == 3:
+            token = {"type": "emphasis", "children": [token]}
+        state.append_token(token)
+        return end
+    markdown.inline.register('atlas_print_emphasis', r"\*{2,3}(?!\*)|(?<![\w\\])\*(?=\S)|(?<![\w\\])_{1,3}(?=\S)", parse, before='emphasis')
+
+
+def render_markdown(md_text, print_mode=False):
+    chat_html, is_chat = process_chat_blocks(md_text, print_mode=print_mode)
     if is_chat:
         return sanitize_html(chat_html)
     processed = process_alert_blocks(md_text)
     renderer = mistune.create_markdown(
         renderer=CodeBlockRenderer(escape=False),
-        plugins=["strikethrough", "table", "url"],
+        hard_wrap=print_mode,
+        plugins=["strikethrough", "table", "url"] + ([_print_emphasis_plugin] if print_mode else []),
     )
     html = renderer(processed)
     html = post_process_wikilinks(html)
@@ -831,7 +867,8 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     meta_line  = " · ".join(meta_parts)
 
     meta_line = escape(meta_line)
-    toc_html, body_html = _inject_toc(body_html) if include_toc else ("", body_html)
+    show_toc = include_toc and len(re.findall(r"<h[234](?:\s|>)", body_html)) >= 6
+    toc_html, body_html = _inject_toc(body_html) if show_toc else ("", body_html)
 
     body_html = _pdf_emoji_html(body_html)
     toc_html = _pdf_emoji_html(toc_html)
@@ -875,9 +912,9 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   body {{
     font-family: "Inter", sans-serif;
     font-weight: 400;
-    font-size: 10.8pt;
-    color: #23262b;
-    line-height: 1.7;
+    font-size: 10.5pt;
+    color: #26323b;
+    line-height: 1.62;
     margin: 0;
   }}
   /* This file is also served standalone (the "export to HTML" download) and
@@ -898,20 +935,20 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   .pdf-emoji {{ font-family:"Noto Emoji"; font-weight:400; font-style:normal; }}
   /* ── Cover ── */
   .pdf-cover {{
-    border-bottom: 1.5px solid #e2e6ec;
-    padding-bottom: 22px;
-    margin-bottom: 30px;
+    border-bottom: 2px solid #246473;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
   }}
   .pdf-cover-meta {{
     font-size: 8.5pt;
     font-weight: 600;
-    color: #1793d1;
+    color: #246473;
     text-transform: uppercase;
     letter-spacing: 0.09em;
     margin-bottom: 10px;
   }}
   .pdf-cover-title {{
-    font-size: 23pt;
+    font-size: 24pt;
     font-weight: 700;
     color: #16181c;
     line-height: 1.25;
@@ -932,7 +969,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #1793d1;
+    color: #246473;
     margin-bottom: 11px;
   }}
   .toc-row {{ margin: 3px 0; font-size: 9.3pt; }}
@@ -941,19 +978,19 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.8pt; color: #565c66; font-weight: 400; }}
   .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8.3pt; color: #838993; font-weight: 400; }}
   /* ── Headings ── */
-  h1 {{ font-size:19pt; line-height:1.3; margin:1.2em 0 .6em; page-break-after:avoid; }}
-  h2 {{ font-size: 14.5pt; font-weight: 700; color: #16181c; border-bottom: 1px solid #e2e6ec; padding-bottom: 6px; margin: 1.8em 0 0.6em; page-break-after: avoid; letter-spacing: -0.01em; }}
-  h3 {{ font-size: 12pt; font-weight: 600; color: #16181c; margin: 1.5em 0 0.5em; page-break-after: avoid; }}
+  h1 {{ font-size:18pt; color:#173f4a; line-height:1.3; margin:1.05em 0 .55em; page-break-after:avoid; }}
+  h2 {{ font-size: 13pt; font-weight: 700; color: #173f4a; border-bottom: 1px solid #e2e6ec; padding-bottom: 6px; margin: 1.4em 0 0.55em; page-break-after: avoid; letter-spacing: -0.01em; }}
+  h3 {{ font-size: 11.4pt; font-weight: 600; color: #173f4a; margin: 1.3em 0 0.45em; page-break-after: avoid; }}
   h4 {{ font-size: 10.8pt; color: #2b2f36; font-weight: 600; margin: 1.2em 0 0.4em; page-break-after: avoid; }}
   h5 {{ font-size: 9.5pt;  color: #565c66; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 1em 0 0.3em; }}
   /* ── Body ── */
-  p  {{ margin: 0 0 0.85em; orphans:3; widows:3; }}
+  p  {{ margin: 0 0 0.75em; orphans:3; widows:3; }}
   img {{ max-width:100%; height:auto; }}
   .toc-row {{ break-inside:avoid; }}
   @media print {{ .print-actions {{ display:none !important; }} }}
   strong {{ color: #16181c; font-weight: 600; }}
   em     {{ color: #2b2f36; }}
-  a {{ color: #1793d1; text-decoration: none; }}
+  a {{ color: #246473; text-decoration: none; }}
   hr {{ border: none; border-top: 1px solid #e2e6ec; margin: 1.8em 0; }}
   /* ── Lists ── */
   ul, ol {{ margin: 0.35em 0 1em 1.5em; padding: 0; }}
@@ -980,7 +1017,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     white-space: pre-wrap;
     word-break: break-all;
     overflow-wrap: break-word;
-    page-break-inside: avoid;
+    page-break-inside: auto;
     line-height: 1.55;
     border-radius: 0 5px 5px 0;
   }}
@@ -1014,6 +1051,8 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   .alert-warn        {{ background: #fdf6e3; border-left: 3px solid #e6a817; }}
   .alert-danger      {{ background: #fdf0f0; border-left: 3px solid #e05252; }}
   .alert-success     {{ background: #eefaf2; border-left: 3px solid #27ae60; }}
+  .chat-bubble {{ border-left:2px solid #c9d7df; padding:8px 14px; margin-bottom:14px; }}
+  .chat-bubble--user {{ border-left-color:#246473; background:#f4f8f9; }}
   /* ── Task lists ── */
   input[type="checkbox"] {{ margin-right: 6px; }}
 </style>
@@ -2057,7 +2096,7 @@ def export_section():
     if not isinstance(title, str) or not isinstance(markdown, str) or not markdown.strip() or not title.strip() or len(title) > 1000 or len(markdown) > 300000 or fmt not in ("html", "pdf"):
         return jsonify({"error": "Tema vacío, demasiado grande o formato inválido"}), 400
     markdown = _strip_duplicate_heading_md(_print_markdown(markdown), title)
-    document = _build_pdf_html(title, "", render_markdown(markdown), include_toc=False)
+    document = _build_pdf_html(title, "", render_markdown(markdown, print_mode=True), include_toc=False)
     if fmt == "html":
         return app.response_class(document, mimetype="text/html")
     from io import BytesIO
@@ -2089,7 +2128,7 @@ def export_pdf(entry_id):
     from io import BytesIO
     md_content = _entry_path(entry_id, meta).read_text()
     md_content = _strip_duplicate_heading_md(_print_markdown(md_content), meta.get("title", ""))
-    body_html  = render_markdown(md_content)
+    body_html  = render_markdown(md_content, print_mode=True)
     date       = meta.get("created_at", "")[:10]
     full_html  = _build_pdf_html(meta["title"], date, body_html, meta=meta)
     buf = BytesIO()
@@ -2108,7 +2147,7 @@ def export_html(entry_id):
     meta = index[entry_id]
     md_content = _entry_path(entry_id, meta).read_text()
     date = meta.get("created_at", "")[:10]
-    full_html = _build_pdf_html(meta["title"], date, render_markdown(_print_markdown(md_content)))
+    full_html = _build_pdf_html(meta["title"], date, render_markdown(_print_markdown(md_content), print_mode=True))
     from flask import Response
     return Response(full_html, mimetype="text/html",
                     headers={"Content-Disposition": f'attachment; filename="{entry_id}.html"'})
@@ -2534,7 +2573,7 @@ def export_category_pdf(category):
         if meta["category"] == category:
             path = _entry_path(entry_id, meta)
             if path.exists():
-                combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(_print_markdown(path.read_text())) + "<hr style='page-break-after:always'>"
+                combined_html += f"<h1>{meta['title']}</h1>" + render_markdown(_print_markdown(path.read_text()), print_mode=True) + "<hr style='page-break-after:always'>"
     if not combined_html:
         return jsonify({"error": "No entries found"}), 404
 

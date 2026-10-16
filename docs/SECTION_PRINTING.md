@@ -11,11 +11,18 @@ y **Descargar PDF** (generación del servidor).
 - Los demás temas de la entrada quedan fuera. La impresión completa sigue
   disponible mediante la exportación existente.
 
-La salida usa papel A4, fondo blanco, fuente Inter de 10.8 pt, márgenes y títulos
+La salida usa papel A4, fondo blanco, fuente Inter de 10.5 pt, márgenes y títulos
 con jerarquía, listas y tablas. Los encabezados plegables se expanden para papel;
 las marcas internas `:::toggle` desaparecen. Las marcas escritas dentro de un
 bloque de código se conservan como código. El PDF completo y el HTML exportado
-usan la misma conversión. La impresión individual omite el índice general.
+usan la misma conversión. La impresión individual omite el índice general. El PDF completo sólo añade
+índice a partir de seis títulos, para no recargar los documentos cortos.
+
+El exportador reconoce los delimitadores antiguos de negrita y cursiva con
+espacios internos. El editor une fragmentos adyacentes con el mismo estilo y
+deja los espacios fuera de los delimitadores al guardar. No se eliminan
+asteriscos de código ni de operaciones matemáticas. Los saltos de línea del
+editor se conservan en papel, también en notas de conversación.
 La fuente Noto Emoji se incluye con licencia OFL y la imagen de despliegue añade
 Noto Color Emoji para evitar símbolos ausentes en el servidor. Los símbolos se
 separan tipográficamente de los números y del texto normal.
@@ -27,7 +34,7 @@ Los marcos y el colapso del editor ya no lo atraviesan ni lo recortan.
 La capa conserva los botones con relieve, los reflejos Aero, el indicador del
 tipo activo y el foco de teclado; todos siguen la paleta seleccionada.
 
-Validación local: 307 pruebas del servidor, pruebas del editor (incluida selección
+Validación local: 311 pruebas del servidor, pruebas del editor (incluida selección
 de temas anidados y límites de encabezados) y build de producción. Chromium
 verifica el menú real con todos los encabezados plegados, su posición por encima
 del marco, la vista previa, la exclusión de otros temas, ambas descargas PDF y

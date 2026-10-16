@@ -62,11 +62,11 @@ check("legacy blank table hack", "|---|", "");
 console.log("\nBase markdown round-trip tests passed.");
 
 // Code marks exclude other marks; preserve emphasis around literal code.
-check('italic surrounding inline code', '*Clave `id_cliente` compartida*', '_Clave _`id_cliente`_ compartida_');
-check('bold surrounding inline code', '**Tabla `clientes` relacionada**', '**Tabla **`clientes`** relacionada**');
-check('strike surrounding inline code', '~~Usar `viejo_id` aquí~~', '~~Usar ~~`viejo_id`~~ aquí~~');
+check('italic surrounding inline code', '*Clave `id_cliente` compartida*', '_Clave_ `id_cliente` _compartida_');
+check('bold surrounding inline code', '**Tabla `clientes` relacionada**', '**Tabla** `clientes` **relacionada**');
+check('strike surrounding inline code', '~~Usar `viejo_id` aquí~~', '~~Usar~~ `viejo_id` ~~aquí~~');
 check('inline code preserves markdown-looking literals', '`**literal** _variable_ [x](url)`');
-check('mixed marks in table cell', '| Valor |\n| --- |\n| *Clave `id_cliente`* |', '| Valor |\n| --- |\n| _Clave _`id_cliente` |');
+check('mixed marks in table cell', '| Valor |\n| --- |\n| *Clave `id_cliente`* |', '| Valor |\n| --- |\n| _Clave_ `id_cliente` |');
 
 check('simple inline LaTeX becomes Unicode', 'Una relación \\(R\\) con \\(A_1, A_2, \\dots, A_n\\).', 'Una relación R con A₁, A₂, …, Aₙ.');
 check('display LaTeX becomes a readable formula', '\\[\nR \\subseteq D_1 \\times D_2 \\times \\dots \\times D_n\n\\]', 'R ⊆ D₁ × D₂ × … × Dₙ');
@@ -123,3 +123,13 @@ check('tilde fence inside list', '1. Run\n   ~~~bash\n   echo hello\n   ~~~', '1
 check('long fence preserves embedded fence', '````text\n```\nliteral\n```\n````');
 const longCode = '```text\n' + Array.from({length: 510}, (_, i) => `line ${i}`).join('\n') + '\n```';
 check('long code is not truncated or leaked into paragraphs', longCode);
+
+const adjacentBold={type:'paragraph',props:{},content:[
+  {type:'text',text:'DI EN VOZ ALTA: ',styles:{bold:true}},
+  {type:'text',text:'"Una frase completa." ',styles:{bold:true}},
+  {type:'text',text:'Texto normal.',styles:{}},
+],children:[]};
+assert.strictEqual(blocksToMd([adjacentBold]),'**DI EN VOZ ALTA: "Una frase completa."** Texto normal.');
+const italicEdges={type:'paragraph',props:{},content:[{type:'text',text:'  Una observación. ',styles:{italic:true}}],children:[]};
+assert.strictEqual(blocksToMd([italicEdges]).trim(),'_Una observación._');
+console.log('ok - adjacent styled runs merge and whitespace stays outside formatting delimiters');

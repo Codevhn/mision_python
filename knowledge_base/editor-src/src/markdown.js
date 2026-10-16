@@ -89,19 +89,27 @@ function parseInline(text, baseStyles = {}) {
 function styleWrap(text, styles) {
   if (!text) return text;
   if (styles.code) return "`" + text + "`";
-  let out = text;
+  const leading=text.match(/^\s*/)[0], trailing=text.match(/\s*$/)[0];
+  let out = text.trim();
+  if(!out)return text;
   if (styles.bold && styles.italic) out = "***" + out + "***";
   else if (styles.bold) out = "**" + out + "**";
   else if (styles.italic) out = "_" + out + "_";
   if (styles.strike) out = "~~" + out + "~~";
-  return out;
+  return leading + out + trailing;
 }
 
 function inlineToMd(content) {
   if (!content) return "";
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
-  return content.map((c) => {
+  const merged=[];
+  for(const run of content){
+    const last=merged[merged.length-1];
+    if(run.type==='text' && last?.type==='text' && ['bold','italic','strike','code'].every(key=>Boolean(run.styles?.[key])===Boolean(last.styles?.[key])))last.text+=run.text;
+    else merged.push({...run});
+  }
+  return merged.map((c) => {
     if (c.type === "link") {
       const inner = inlineToMd(c.content);
       const bareHref = c.href.replace(/^https?:\/\//, "");
