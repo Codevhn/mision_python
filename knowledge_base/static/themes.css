@@ -1102,3 +1102,21 @@
 [data-style="aero"] #sidebar .course-list-item:focus-visible > .course-list-row { outline:2px solid var(--accent); outline-offset:2px; }
 [data-style="aero"] #sidebar :is(.tree-category-header,.tree-topic-header) .arrow { display:inline-flex !important; }
 [data-style="aero"] #sidebar :is(.tree-category-header,.tree-topic-header) > span:not(.arrow) { min-width:0; overflow-wrap:anywhere; line-height:1.35; }
+
+/* Portaled block menus retain the same Aero controls as the editor side menu. */
+[data-style="aero"] .atlas-editor-menu-layer .bn-drag-handle-menu {
+ background:var(--aero-glass),var(--bg-overlay) !important;
+ border:1px solid var(--aero-frame); border-radius:7px; padding:4px;
+ box-shadow:0 10px 28px #0005,inset 0 1px 0 var(--aero-inset);
+}
+[data-style="aero"] .atlas-editor-menu-layer .bn-drag-handle-menu :is(.bn-menu-item,.mantine-Menu-item) {
+ min-height:32px; margin:2px 0; padding:6px 9px;
+ color:var(--text) !important; background:var(--aero-button);
+ border:1px solid var(--aero-edge); border-radius:4px;
+ box-shadow:inset 0 1px 0 var(--aero-inset); font-size:.8rem;
+}
+[data-style="aero"] .atlas-editor-menu-layer .bn-drag-handle-menu :is(.bn-menu-item,.mantine-Menu-item):is(:hover,:focus-visible,[data-hovered],.bn-drag-handle-type-active) {
+ background:var(--aero-selection); border-color:var(--accent);
+ box-shadow:inset 0 1px 0 var(--aero-inset),0 0 6px var(--accent-dim);
+}
+[data-style="aero"] .atlas-editor-menu-layer :is(.bn-menu-item,.mantine-Menu-item):focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}

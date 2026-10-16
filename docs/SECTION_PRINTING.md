@@ -24,6 +24,8 @@ El menú de bloques se monta en una capa fuera del marco decorativo, conservando
 el contexto React del editor. Su posición sigue el botón y se limita al área
 visible debajo de la barra de navegación; se puede desplazar cuando falta altura.
 Los marcos y el colapso del editor ya no lo atraviesan ni lo recortan.
+La capa conserva los botones con relieve, los reflejos Aero, el indicador del
+tipo activo y el foco de teclado; todos siguen la paleta seleccionada.
 
 Validación local: 307 pruebas del servidor, pruebas del editor (incluida selección
 de temas anidados y límites de encabezados) y build de producción. Chromium

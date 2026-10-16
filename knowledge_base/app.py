@@ -1045,7 +1045,7 @@ _STATIC_DIR = _os.path.join(_os.path.dirname(__file__), 'static')
 def _build_id():
     h = lambda f: _file_hash(_os.path.join(_STATIC_DIR, f))
     return "-".join(h(f) for f in (
-        'style.css', 'app.js', 'kanban.css', 'kanban.js',
+        'style.css', 'themes.css', 'app.js', 'kanban.css', 'kanban.js',
         'blocknote/editor.bundle.js', 'pygments.css',
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
