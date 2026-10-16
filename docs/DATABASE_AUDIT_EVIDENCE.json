@@ -1,0 +1,176 @@
+{
+  "base_commit": "6e84f20503e379552fdc3a3d0a3a325ad96838c5",
+  "date": "2026-10-16",
+  "environment": "Chromium local, datos temporales, implementación sin cambios",
+  "isolation": {
+    "database_A": [
+      "Alfa",
+      "Beta",
+      "Gamma"
+    ],
+    "database_B": [
+      "Alfa",
+      "Beta",
+      "Gamma"
+    ],
+    "row_ids": [
+      "alfa-1",
+      "beta-1",
+      "gamma-1"
+    ]
+  },
+  "filter": {
+    "first": {
+      "colId": "col_status",
+      "value": "Terminado"
+    },
+    "first_rows": [
+      "Gamma"
+    ],
+    "second": {
+      "colId": "col_city",
+      "value": "Danlí"
+    },
+    "second_rows": [
+      "Beta"
+    ]
+  },
+  "sort": {
+    "first": {
+      "colId": "col_priority",
+      "dir": "asc"
+    },
+    "first_rows": [
+      "Beta",
+      "Gamma",
+      "Alfa"
+    ],
+    "second": {
+      "colId": "__title",
+      "dir": "asc"
+    },
+    "second_rows": [
+      "Alfa",
+      "Beta",
+      "Gamma"
+    ]
+  },
+  "rename": {
+    "schema_name": "Progreso",
+    "patch_count": 3,
+    "responses": [
+      {
+        "row_id": "beta-1",
+        "status": 500
+      },
+      {
+        "row_id": "alfa-1",
+        "status": 200
+      },
+      {
+        "row_id": "gamma-1",
+        "status": 200
+      }
+    ],
+    "row_names": [
+      "Progreso",
+      "Estado",
+      "Progreso"
+    ],
+    "failed_row": "beta-1"
+  },
+  "type_change": {
+    "schema_type": "checkbox",
+    "patches_after_change": 0,
+    "stored": [
+      {
+        "id": "col_status",
+        "name": "Progreso",
+        "type": "status",
+        "value": "No iniciado"
+      },
+      {
+        "id": "col_status",
+        "name": "Estado",
+        "type": "status",
+        "value": "No iniciado"
+      },
+      {
+        "id": "col_status",
+        "name": "Progreso",
+        "type": "status",
+        "value": "Terminado"
+      }
+    ],
+    "checkboxes": [
+      true,
+      true,
+      true
+    ]
+  },
+  "other_database_schema": {
+    "columns": [
+      {
+        "id": "col_status",
+        "name": "Estado",
+        "type": "status"
+      },
+      {
+        "id": "col_city",
+        "name": "Ciudad",
+        "type": "text"
+      },
+      {
+        "id": "col_priority",
+        "name": "Prioridad",
+        "type": "number"
+      }
+    ],
+    "views": [
+      {
+        "id": "v_b",
+        "name": "Base B",
+        "type": "table",
+        "filter": null,
+        "sort": null,
+        "groupBy": null,
+        "calc": {},
+        "rowHeight": "small",
+        "titleWidth": 220
+      }
+    ],
+    "activeView": "v_b"
+  },
+  "page_errors": [],
+  "block_identity": {
+    "first_import_id": "bmvbe2bfl0",
+    "second_import_id": "bmvbe2bfl1",
+    "same_markdown_different_ids": true,
+    "serialized": ":::database\n{}\n:::"
+  },
+  "measurement_sources": {
+    "schemas_and_views": "current editor Markdown snapshot",
+    "stored_properties": "GET /api/entry/<row_id> meta.properties",
+    "rename_failure": "HTTP 500 injected by Playwright only for Beta",
+    "production_access": false
+  },
+  "rea": {
+    "available_in_exposed_tools": false,
+    "matched_tools": [],
+    "tool_search_available": false,
+    "inspected_tool_count": 18,
+    "matched_resource_servers": [],
+    "resource_template_count": 0,
+    "rea_command_on_path": false,
+    "notion_target": null,
+    "notion_analysis_performed": false
+  },
+  "verification": {
+    "python": "3.11.16",
+    "node": "24.19.0",
+    "backend_characterization_tests_passed": 7,
+    "backend_total_tests_passed": 318,
+    "editor_tests": "passed",
+    "production_implementation_changed": false
+  }
+}
