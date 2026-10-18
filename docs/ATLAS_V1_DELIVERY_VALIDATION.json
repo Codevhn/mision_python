@@ -1,0 +1,89 @@
+{
+  "artifacts": [
+    {
+      "path": "/tmp/atlas-v1-artifacts/documento-qa-descarga-v1.md",
+      "bytes": 319,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/documento-qa-descarga-v1.html",
+      "bytes": 3226230,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/documento-qa-descarga-v1.pdf",
+      "bytes": 16644,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/documento-qa-descarga-v1.json",
+      "bytes": 964,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/record-89f1b9df287d4766.md",
+      "bytes": 35,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/record-89f1b9df287d4766.html",
+      "bytes": 3225599,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/record-89f1b9df287d4766.pdf",
+      "bytes": 6757,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/record-89f1b9df287d4766.json",
+      "bytes": 1704,
+      "marker": true
+    },
+    {
+      "path": "/tmp/atlas-v1-artifacts/registro-propiedades.zip",
+      "members": [
+        "Registro-V1-A-revisado-eca1fd8eb0998dfd.md",
+        "manifest.json"
+      ],
+      "only_open_record": true
+    }
+  ],
+  "exports_leave_originals_unchanged": true,
+  "original_entries_preserved": 30,
+  "current_entries": 35,
+  "old_markdown_history_preserved": true,
+  "date": "2026-10-17",
+  "browser": "CUA Brave, demo aislado",
+  "browser_download": "verified manually by user: PDF of Documento QA descarga V1 from Cursos; other formats not manually verified",
+  "new_unit_tests": "8 Python document exports plus JS page export queue/error/retry contracts",
+  "ui_block_order": [
+    "Bloque A",
+    "Bloque C",
+    "Encabezado V1"
+  ],
+  "h1_control_alignment_error_px": 0.40625,
+  "unchanged_plan_ids_and_statuses": 110,
+  "manual_pdf_confirmation": {
+    "date": "2026-10-17",
+    "source": "user confirmation in conversation",
+    "document": "Documento QA descarga V1",
+    "access_flow": "Cursos",
+    "format": "pdf",
+    "downloaded_and_opened": true,
+    "confirmed_content": [
+      "ATLAS-CURSO-V1-7319",
+      "code",
+      "table",
+      "lists"
+    ],
+    "scope_limit": "Only this PDF; no manual validation inferred for other formats or download flows"
+  },
+  "delivery_status": "concluded: first delivery of Table, Peek and document export; future improvements remain open",
+  "closure_plan_change": {
+    "id": "DB-CHECK-02",
+    "from": "implementado sin verificar",
+    "to": "verificado",
+    "scope": "PDF of Documento QA descarga V1 from Cursos only"
+  }
+}

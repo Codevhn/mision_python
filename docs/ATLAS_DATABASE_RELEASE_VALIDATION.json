@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-18",
+  "scope": "preparation only; no production migration, activation, commit, merge or push",
+  "preparation_blockers_resolved": true,
+  "final_image_manifest_digest": "sha256:2facd34be5202eb39f21d3906788b06e3d1f89308a98a068136e3a3491053d82",
+  "final_image_config_digest": "sha256:a8451635988dc83eaf386f7ab2511937205e37fada61e1a46fe94882c6dd714e",
+  "previous_image_digest": "registry.fly.io/mision-pythonhn@sha256:6bd9eeb4ba12f98548c3d744dc399c4a310f78cee770eae571302fa9f94073c2",
+  "source_manifest_sha256": "bd43c5096ece622be79432dc5ccfa238599973df687fa5303cb626cf6ae70a8e",
+  "source_files": 129,
+  "git_head": "1e18bcde9fe91ca6f5f0c8126ec61e7d25670403",
+  "branch": "feat/database-identity-stage1",
+  "includes_uncommitted_local_code": true,
+  "clean_context": {
+    "files": 129,
+    "no_runtime_data_or_demo": true,
+    "no_captured_secret_values": true
+  },
+  "artifact_validation": {
+    "runtime_files_verified": 127,
+    "image_has_no_runtime_data": true,
+    "python": "3.11.17 (main, Oct  6 2026, 02:02:21) [GCC 14.2.0]",
+    "record_pdf_contains_new_persistent_cover": true,
+    "ui_saved_body_visible_in_export": true,
+    "ui_table_peek_fullpage_reload_verified": true,
+    "workspace_runtime_still_matches_manifest": true
+  },
+  "cover_storage": "DATA_ROOT/data/covers; same /static/covers/<filename> URLs",
+  "historical_cover_classification": {
+    "missing": 0,
+    "changed": 0,
+    "new": 1,
+    "historical_invalid_unchanged": 36,
+    "new_or_changed_invalid": 0
+  },
+  "cover_bytes_survive_container_replacement": true,
+  "legacy_target_conflicts_refused": true,
+  "migration": {
+    "original_entries": 1150,
+    "blocks": 3,
+    "memberships": 6,
+    "unresolved_untouched": 6,
+    "repeat_validated": true
+  },
+  "data_validation": {
+    "original_entries_verified": 1150,
+    "original_files_checked_except_sqlite": 6661,
+    "missing_original_files": 0,
+    "only_planned_schema_and_qa_activity_changes": true,
+    "finance_assistant_logical_contents_same": true,
+    "data_history_library_and_attachments_preserved": true
+  },
+  "rollback": {
+    "previous_image_digest": "registry.fly.io/mision-pythonhn@sha256:6bd9eeb4ba12f98548c3d744dc399c4a310f78cee770eae571302fa9f94073c2",
+    "restored_all_original_files_before_boot": true,
+    "restored_original_entries": 1150,
+    "entry_metadata_exact_after_old_boot": true,
+    "restored_code_container_image": "sha256:6bd9eeb4ba12f98548c3d744dc399c4a310f78cee770eae571302fa9f94073c2",
+    "all_historical_cover_urls_verified": 36,
+    "all_knowledge_history_bytes_preserved": true,
+    "sqlite_integrity": [
+      "index.db",
+      "finance.db",
+      "assistant.db"
+    ],
+    "old_export_json_matches_body": true,
+    "candidate_edits_retained_separately": true,
+    "tailscale_state_bytes_unchanged": true,
+    "no_real_secrets_used_in_containers": true
+  },
+  "timings_seconds": {
+    "build_outside_maintenance": 220.81733166099912,
+    "extract_and_copy_snapshot": 4.338829881999118,
+    "cover_transfer": 0.6295936570004415,
+    "cover_repeat": 0.4200471350013686,
+    "identity_migration_with_backup": 3.4836319480000384,
+    "identity_repeat": 1.7323973500006105,
+    "container_create": 0.5422556869998516,
+    "final_start_until_ready": 1.3738696000000346,
+    "remove_first_container": 0.5128236970012949,
+    "replacement_create": 0.3141923069997574,
+    "replacement_until_ready": 1.0445457629994053,
+    "stop_candidate": 1.7063726310007041,
+    "restore_all_original_data": 0.520811472000787,
+    "restore_old_code_container": 0.21021731399923738,
+    "restore_legacy_cover_paths": 0.06931841799996619,
+    "start_old_image": 0.2027589520002948,
+    "old_image_until_ready": 0.8695162830008485,
+    "rollback_total_with_validation": 6.512462454998968,
+    "resume_candidate_for_review": 0.19838393999998516,
+    "inspect_old_image": 0.03120981599931838
+  },
+  "unit_tests": {
+    "passed": 45,
+    "seconds": 7.2,
+    "warnings": 36,
+    "scope": "covers, preservation, record export and page/course document export"
+  },
+  "browser_validation": "CUA Chrome: table cell edit, Peek BlockNote, full page, reload/reopen; saved text included in actual PDF",
+  "production_tailscale_configuration": "entrypoint bytes identical to published old image; volume state bytes unchanged; no secret set/unset; real network not joined from QA",
+  "local_runtime": {
+    "candidate": "http://127.0.0.1:5081/?open=qa-imagen-final-atlas",
+    "rollback": "http://127.0.0.1:5082/",
+    "password": "atlas-image-test"
+  },
+  "durable_artifacts": "/home/frandArch/Documents/Atlas-backups/atlas-final-release-20261018",
+  "production_changes_executed": false,
+  "remaining_authorization": "publish the already tested image without rebuilding, then final offline backup/migration/activation maintenance window with rollback if acceptance fails",
+  "limitations": [
+    "Snapshot used is the verified 17 October capture, not a new capture at future cutover",
+    "The additional read-only SSH capture was unavailable because that request reported machine not started; agent did not start or modify it",
+    "Local timings use tmpfs and exclude Fly draining, WAN transfer and control-plane image switching",
+    "The two preparation blockers are closed; final preflight can still stop integration on unexpected data/cover/configuration changes",
+    "Original 36 invalid images preserved, not repaired; external asset references are not a complete remote-media backup",
+    "No live Tailscale reconnection or deployment to Fly performed"
+  ],
+  "artifact_archive_sha256": {
+    "atlas-final.oci.tar": "38bb0c994c0095b7ea34f0079edcdaeeb385db98fb3f121aa0d70bf72511bd78",
+    "original-image.docker.tar": "f040aa0eec85f5768c448e40fcae6fc980b2dc046807ccaad217bc0aece54477",
+    "context.tar.gz": "c0f510b2c821226cf4e8b37a259d60e60113524e0bdaa467d97a6f1f69686439",
+    "production-before-rehearsal.tar.gz": "79f0056e33254d13e1ac67ff7f92392e84b8bfb97fddfdb6459f2fca4cfe2766"
+  },
+  "maintenance_mode_validation": {
+    "sleep_override_available": true,
+    "no_app_or_tailscale_started": true,
+    "original_tailscale_entrypoint_unchanged": true,
+    "fly_control_plane_not_modified": true
+  }
+}
