@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {boardGroups,boardInitialValues,moveBoardRow} from '../src/boardModel.js';
+const col={id:'tags',name:'Etiquetas',type:'multi_select',options:[{id:'a',label:'A'},{id:'b',label:'B'},{id:'c',label:'C'}]};
+const rows=[{id:'one',properties:[{id:'tags',value:['A','B','A']}]},{id:'two',properties:[{id:'tags',value:['A']}]},{id:'blank',properties:[{id:'tags',value:[]}]}];
+let groups=boardGroups(rows,col,{});assert.deepEqual(groups.find(g=>g.value==='A').items.map(r=>r.id),['one','two']);
+const a=groups.find(g=>g.value==='A'),order=moveBoardRow({},a,'two','one');
+assert.deepEqual(boardGroups(rows,col,{groupRowOrder:order}).find(g=>g.value==='A').items.map(r=>r.id),['two','one']);
+assert.deepEqual(boardGroups(rows,col,{}).find(g=>g.value==='A').items.map(r=>r.id),['one','two']);
+assert.deepEqual(boardGroups(rows,col,{groupRowOrder:order,sorts:[{colId:'title'}]}).find(g=>g.value==='A').items.map(r=>r.id),['one','two']);
+assert.deepEqual(boardInitialValues(col,'A'),{tags:['A']});
+assert.deepEqual(boardInitialValues({id:'check',type:'checkbox'},false),{check:false});
+assert.deepEqual(boardInitialValues({id:'n',type:'number'},0),{n:0});
+const renamed={...col,options:col.options.map(o=>o.id==='a'?{...o,label:'Renamed'}:o)};
+assert.equal(boardGroups([],renamed,{}).find(g=>g.value==='Renamed').key,a.key);
+assert.deepEqual(JSON.parse(JSON.stringify({groupRowOrder:order,collapsedGroups:[a.key]})),{groupRowOrder:order,collapsedGroups:[a.key]});
+console.log('board: exact multi-membership, typed creation, stable option identity, view-local order, sort precedence and collapse serialization passed');

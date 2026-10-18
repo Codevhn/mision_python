@@ -1,4 +1,8 @@
+> Continuación del rediseño aprobado: [estado actual, pruebas y adaptaciones](DATABASE_WORKSPACE_STAGE2B.md). Este diagnóstico histórico no se repite ni se presenta como descripción del código nuevo.
+
 # Diagnóstico de las bases de datos de Atlas
+
+> Informe histórico del código indicado abajo. La implementación posterior de identidad, sus pruebas y límites están en [DATABASE_IDENTITY_STAGE1.md](DATABASE_IDENTITY_STAGE1.md). Los defectos descritos aquí no deben interpretarse como una nueva ejecución sobre la rama actual.
 
 Fecha: 16 de octubre de 2026. Alcance: bloques de base de datos del editor,
 propiedades de sus páginas-fila y API de persistencia. No incluye Finanzas,

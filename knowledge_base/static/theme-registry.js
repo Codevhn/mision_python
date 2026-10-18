@@ -55,3 +55,13 @@ registerAtlasLanguageThemes(ATLAS_THEMES,THEME_CATALOG,THEME_GROUPS);
 ATLAS_THEMES.horizon={scheme:'dark',style:'aero',variant:'night',preview:'linear-gradient(165deg,#3888b7 0%,#bad4db 48%,#709aa5 49%,#254f53 72%,#102e37 100%)'};
 THEME_GROUPS.landscape='Paisajes vivos';
 THEME_CATALOG.push(['horizon','Horizonte','Cristal translúcido · Paisaje vivo según el clima','landscape','horizon']);
+
+// A separate family, rather than replacing the existing Aero/editor themes.
+// Styling depends on the same root attributes used by every persisted theme.
+THEME_GROUPS.notion='Notion Native';
+ATLAS_THEMES['notion-native']={scheme:'dark',style:'notion',variant:'night'};
+ATLAS_THEMES['notion-native-light']={scheme:'light',style:'notion',variant:'light'};
+THEME_CATALOG.push(
+  ['notion-native','Notion Native','Oscuro · Superficies neutras y controles discretos','notion','notion-native'],
+  ['notion-native-light','Notion Native Claro','Claro · Papel, separadores suaves y tinta neutra','notion','notion-native-light']
+);

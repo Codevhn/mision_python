@@ -51,7 +51,10 @@ function _enterCourseTheme(slug,label) {
   const preference=_readCourseTheme(slug),general=_generalAtlasTheme();
   const language=_languageForCourse(slug,label);
   const scheme=ATLAS_THEMES[general]?.scheme||'dark';
-  const theme=preference.mode==='custom'?preference.theme:preference.mode==='auto'&&language?`language-${language}-${scheme}`:general;
+  // Native is an app-wide visual choice: automatic language themes must not
+  // replace it on navigation. An explicitly assigned course theme still wins.
+  const automaticLanguage=preference.mode==='auto'&&language&&ATLAS_THEMES[general]?.style!=='notion';
+  const theme=preference.mode==='custom'?preference.theme:automaticLanguage?`language-${language}-${scheme}`:general;
   setAtlasTheme(theme);
 }
 function _leaveCourseTheme() {

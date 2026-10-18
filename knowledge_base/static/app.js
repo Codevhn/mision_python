@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   _inlineEditor = BlockEditor.create({
     container:    document.getElementById("entryBody"),
     onChange:     _scheduleAutoSave,
+    flush:        _flushInlineDatabase,
     onPageCreate: true,  // enable page creation (handled via window._promptPageName)
   });
 
@@ -707,7 +708,11 @@ function applyTheme() {
 }
 function toggleTheme() {
   const picker = $('themePicker');
-  if (picker && !picker.open) { _renderCourseThemeControls(); picker.showModal(); }
+  if (picker && !picker.open) {
+    if (_peekEntryId) picker.dataset.peekOwner = _peekEntryId;
+    else delete picker.dataset.peekOwner;
+    _renderCourseThemeControls(); picker.showModal();
+  }
 }
 
 // ---- SIDEBAR ----
@@ -2089,6 +2094,15 @@ function _sanitizeMarkdownForEditor(md) {
 
 // ---- ENTRY VIEW ----
 async function loadEntry(id, opts = {}) {
+  if (_peekEntryId && !(await _closePagePeek())) return;
+  if (currentEntryId && currentEntryId!==id) {
+    try {
+      await AtlasDatabase.flush();
+      await Properties.flush();
+      const queue=_pageSaveQueues.get(currentEntryId);
+      if (queue) await queue.flush();
+    } catch(error) { _setAutosaveStatus('error'); showToast(error.message,'error'); return; }
+  }
   // Fetch FIRST — a broken/stale link (e.g. a page-link block whose target
   // was deleted or renamed) must not touch any state for the page that's
   // still actually on screen. This used to cancel the current page's
@@ -2136,6 +2150,8 @@ async function loadEntry(id, opts = {}) {
 
   const m = data.meta;
   currentEntryMeta = m;
+  _inlineEditor?.setEditable(!m.database_locked);
+  $('inlineTitle')?.setAttribute('contenteditable',m.database_locked?'false':'true');
   document.getElementById('knowledgeOriginLink')?.remove();
   if (data.knowledge_origin) {
     const link = document.createElement('button');
@@ -2228,13 +2244,13 @@ async function loadEntry(id, opts = {}) {
   _restoreInProgress = true;
   const _sanitizedMd = _sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown, m.title));
   try {
-    _inlineEditor.load(_sanitizedMd);
+    _inlineEditor.load(_sanitizedMd, id);
   } catch (err) {
     console.warn("Sanitized markdown still caused render error:", err.message);
     // Fallback: strip ALL inline code backticks so any remaining italic+code
     // overlaps can't crash the editor. Heading/list structure is preserved.
     try {
-      _inlineEditor.load(_sanitizedMd.replace(/`([^`\n]*)`/g, '$1'));
+      _inlineEditor.load(_sanitizedMd.replace(/`([^`\n]*)`/g, '$1'), id);
       showToast("Formato de código ajustado por compatibilidad", "warning");
     } catch (err2) {
       console.error("Error al renderizar el contenido de la entrada:", err2);
@@ -2306,7 +2322,7 @@ async function loadEntry(id, opts = {}) {
 
   // Properties panel
   if (window.Properties && $("propContainer")) {
-    Properties.render(id, m.properties || [], $("propContainer"), false);
+    Properties.render(id, m.properties || [], $("propContainer"), false, m);
   }
   loadEntryChildren(id);
 
@@ -2342,62 +2358,11 @@ async function loadEntry(id, opts = {}) {
   // Relations panel
   loadRelations(m.uid || id);
 
-  // Related pages right-hand nav sidebar (only for Pages)
-  loadRelatedSidebar(id, m);
-
   // Prev/next navigation for course lessons
   _updateCourseNav(id, m);
 
   // Post-process entry: code execution buttons, Mermaid, KaTeX
   setTimeout(postProcessEntry, 250);
-}
-
-// ── Related pages right-hand nav sidebar (Pages only) ──────────────────────
-async function loadRelatedSidebar(id, meta) {
-  const view = $("entryView");
-  const sb = $("relatedSidebar");
-  const isPage = meta?.type === "page";
-  if (view) view.classList.toggle("has-related-sidebar", isPage);
-  if (!sb) return;
-  const countEl = $("relatedSidebarCount");
-  const bodyEl = $("relatedSidebarBody");
-  if (!isPage) {
-    sb.classList.add("hidden");
-    if (bodyEl) bodyEl.innerHTML = "";
-    return;
-  }
-  sb.classList.remove("hidden");
-  if (!bodyEl) return;
-  bodyEl.innerHTML = '<div class="related-empty">Cargando…</div>';
-  if (countEl) countEl.textContent = "";
-  try {
-    const res = await fetch(`/api/pages/related/${id}?_=${Date.now()}`);
-    const items = await res.json();
-    if (!Array.isArray(items) || !items.length) {
-      bodyEl.innerHTML = '<div class="related-empty">Sin entradas relacionadas aún.</div>';
-      return;
-    }
-    if (countEl) countEl.textContent = `(${items.length})`;
-    bodyEl.innerHTML = items.map(it => {
-      const active = String(it.id) === String(id) ? " active" : "";
-      const icon = renderIconMarkup(it.icon, "related-item-icon", ENTRY_ICON_DEFAULTS.page);
-      const tags = (it.shared_tags && it.shared_tags.length)
-        ? `<span class="related-item-tags">#${escapeHtml(it.shared_tags.slice(0, 2).join(" #"))}</span>`
-        : "";
-      return `<button type="button" class="related-item${active}" data-id="${escapeHtml(it.id)}">
-        ${icon}<span class="related-item-title">${escapeHtml(it.title)}</span>${tags}
-      </button>`;
-    }).join("");
-    bodyEl.querySelectorAll(".related-item").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const rid = btn.dataset.id;
-        if (!rid || rid === String(id)) return;
-        loadEntry(rid);
-      });
-    });
-  } catch (e) {
-    bodyEl.innerHTML = '<div class="related-empty">Error al cargar relacionadas.</div>';
-  }
 }
 
 // ── Course lesson prev/next navigation ───────────────────────────────────
@@ -2786,34 +2751,34 @@ function _updateRecentCover(id, cover) {
 })();
 
 // ---- INLINE AUTO-SAVE ----
-function _scheduleAutoSave(md) {
-  if (_restoreInProgress) return;
-  clearTimeout(_autoSaveTimer);
-  _setAutosaveStatus("saving");
-  const savedId = currentEntryId; // capture at schedule time
-  _autoSaveTimer = setTimeout(() => {
-    // Guard: only save if we're still on the same entry
-    if (!currentEntryId || currentEntryId !== savedId) return;
-    _patchContent({ raw_text: md, already_markdown: true });
-  }, 1200);
+const _pageSaveQueues = new Map();
+function _pageQueue(id) {
+  if (!_pageSaveQueues.has(id)) _pageSaveQueues.set(id, new AtlasDatabase.SaveQueue(async payload => {
+    const response = await fetch(`/api/entry/${id}/content`, {method:'PATCH', headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if (!response.ok) throw new Error('No se pudo guardar la página');
+  }));
+  return _pageSaveQueues.get(id);
 }
-
+function _scheduleAutoSave(md) {
+  if (_restoreInProgress || !currentEntryId) return;
+  clearTimeout(_autoSaveTimer);
+  _setAutosaveStatus('saving');
+  const id=currentEntryId;
+  _pageQueue(id).set({raw_text:md,already_markdown:true});
+  _autoSaveTimer=setTimeout(()=>_pageQueue(id).flush().then(()=>_setAutosaveStatus('saved')).catch(()=>_setAutosaveStatus('error')),1200);
+}
+async function _flushInlineDatabase() {
+  if (!currentEntryId) throw new Error('Guarda primero la página');
+  clearTimeout(_autoSaveTimer);
+  _pageQueue(currentEntryId).set({raw_text:_inlineEditor.getMarkdown(),already_markdown:true});
+  await _pageQueue(currentEntryId).flush();
+  _setAutosaveStatus('saved');
+}
 async function _patchContent(payload) {
   if (!currentEntryId) return;
-  try {
-    const res = await fetch(`/api/entry/${currentEntryId}/content`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      _setAutosaveStatus("saved");
-    } else {
-      _setAutosaveStatus("error");
-    }
-  } catch {
-    _setAutosaveStatus("error");
-  }
+  _pageQueue(currentEntryId).set(payload);
+  try { await _pageQueue(currentEntryId).flush(); _setAutosaveStatus('saved'); }
+  catch { _setAutosaveStatus('error'); }
 }
 
 function _setAutosaveStatus(state) {
@@ -3196,9 +3161,38 @@ function showPrompt(title, placeholder, defaultValue) {
 }
 
 // ---- EXPORT ----
-function exportEntry(format) {
-  if (!currentEntryId) return;
-  window.open(`/api/export/${currentEntryId}/${format}`, "_blank");
+async function exportEntry(format) {
+  const id = currentEntryId;
+  if (!id) return false;
+  const timer = _autoSaveTimer;
+  let saving = true;
+  try {
+    await AtlasDatabase.flush();
+    await Properties.flush();
+    const queue = _pageSaveQueues.get(id);
+    if (queue) await queue.flush();
+    clearTimeout(timer);
+    if (currentEntryId === id) _setAutosaveStatus('saved');
+    saving = false;
+    const response = await fetch(`/api/export/${encodeURIComponent(id)}/${format}`);
+    if (!response.ok || (response.redirected && /\/login(?:[?/#]|$)/.test(response.url))) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `No se pudo exportar (${response.status})`);
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = response.headers.get('Content-Disposition')?.match(/filename="?([^";]+)/)?.[1] || `${id}.${format}`;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return true;
+  } catch (error) {
+    if (saving && currentEntryId === id) _setAutosaveStatus('error');
+    const message = $('exportModalError');
+    if (message) { message.textContent = error.message;message.classList.remove('hidden'); }
+    showToast(error.message, 'error');
+    return false;
+  }
 }
 
 function closeExportModal() {
@@ -3210,8 +3204,9 @@ function openExportModal() {
   const overlay = $('exportModalOverlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
+  $('exportModalError')?.classList.add('hidden');
 
-  const close = () => overlay.classList.add('hidden');
+  const close = () => { if (!$('exportModalConfirm').disabled) overlay.classList.add('hidden'); };
 
   $('exportModalClose').onclick   = close;
   $('exportModalCancel').onclick  = close;
@@ -3229,10 +3224,15 @@ function openExportModal() {
     });
   }
 
-  $('exportModalConfirm').onclick = () => {
+  $('exportModalConfirm').onclick = async () => {
+    const button = $('exportModalConfirm');
+    if (button.disabled) return;
     const fmt = group?.dataset.selected || 'md';
-    exportEntry(fmt);
-    close();
+    button.disabled = true;button.textContent = 'Preparando…';
+    $('exportModalError')?.classList.add('hidden');
+    const prepared = await exportEntry(fmt);
+    button.disabled = false;button.textContent = '↓ Exportar';
+    if (prepared) close();
   };
 }
 
@@ -3920,6 +3920,8 @@ function openIconPicker(anchor, initialIcon, onPick) {
   document.querySelectorAll(".icon-picker-popover").forEach(el => el.remove());
   const pop = document.createElement("div");
   pop.className = "icon-picker-popover";
+  const owner=anchor.closest('[data-peek-owner]')?.dataset.peekOwner;
+  if(owner)pop.dataset.peekOwner=owner;
   pop.innerHTML = `
     <div class="icon-picker-head">
       <div class="icon-picker-title">Seleccionar icono</div>
@@ -4940,6 +4942,7 @@ function initTemplates() {
 // SUB-PAGES
 // ============================================================
 let _pendingPageBlockId = null;
+let _pendingPageContext = null;
 
 function initPageNameModal() {
   $("pageNameClose").addEventListener("click", cancelPageNameModal);
@@ -4950,8 +4953,10 @@ function initPageNameModal() {
     if (e.key === "Escape") cancelPageNameModal();
   });
 
-  window._promptPageName = (blockId) => {
+  window._promptPageName = (blockId, context) => {
     _pendingPageBlockId = blockId;
+    _pendingPageContext = context || null;
+    if (context?.pageId && context.pageId===_peekEntryId) $('pageNameOverlay').dataset.peekOwner=_peekEntryId;
     $("pageNameInput").value = "";
     setIconButtonValue($("pageNameIconBtn"), ENTRY_ICON_DEFAULTS.page, ENTRY_ICON_DEFAULTS.page);
     $("pageNameOverlay").classList.remove("hidden");
@@ -4962,6 +4967,8 @@ function initPageNameModal() {
 function closePageNameModal() {
   $("pageNameOverlay").classList.add("hidden");
   _pendingPageBlockId = null;
+  _pendingPageContext = null;
+  delete $('pageNameOverlay').dataset.peekOwner;
 }
 
 function cancelPageNameModal() {
@@ -4971,9 +4978,10 @@ function cancelPageNameModal() {
   // inline page editor or the modal new-entry editor), so we target the API
   // wrapper(s) that actually expose removeBlock.
   const pendingId = _pendingPageBlockId;
+  const pendingEditor = _pendingPageContext?.api;
   closePageNameModal();
   if (pendingId) {
-    const editors = [window._modalBlockEditor, _inlineEditor].filter((e) => e && typeof e.removeBlock === "function");
+    const editors = (pendingEditor ? [pendingEditor] : [window._modalBlockEditor, _inlineEditor]).filter((e) => e && typeof e.removeBlock === "function");
     for (const ed of editors) ed.removeBlock(pendingId);
   }
 }
@@ -4984,10 +4992,11 @@ async function confirmPageCreate() {
   const icon = getIconButtonValue("pageNameIconBtn");
   // Save blockId before closeModal clears it
   const savedBlockId = _pendingPageBlockId;
+  const savedContext = _pendingPageContext;
   closePageNameModal();
 
   // Create a new entry as sub-page of current
-  const parentId = currentEntryId;
+  const parentId = savedContext?.pageId || currentEntryId;
   const res = await fetch("/api/entry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -5006,7 +5015,7 @@ async function confirmPageCreate() {
     // open (inline page editor or modal new-entry editor). Update the block
     // in place on the API wrapper that actually holds it (updatePageBlock
     // is a no-op on the one that doesn't); fall back to appending.
-    const editors = [window._modalBlockEditor, _inlineEditor].filter((e) => e && typeof e.updatePageBlock === "function");
+    const editors = (savedContext?.api ? [savedContext.api] : [window._modalBlockEditor, _inlineEditor]).filter((e) => e && typeof e.updatePageBlock === "function");
     if (savedBlockId) {
       for (const ed of editors) ed.updatePageBlock(savedBlockId, name, d.id);
     } else if (_inlineEditor && _inlineEditor.addPageBlock) {
@@ -5991,6 +6000,8 @@ function _wireCtxBtn(ctxId, sourceId) {
 
     _modal = document.createElement('div');
     _modal.className = 'cmd-modal';
+    _modal.setAttribute('role','dialog');
+    _modal.setAttribute('aria-label','Paleta de comandos');
     _modal.addEventListener('click', e => e.stopPropagation());
 
     // Header
@@ -6031,6 +6042,10 @@ function _wireCtxBtn(ctxId, sourceId) {
   // ── Open / Close ──────────────────────────────────────────
   function open() {
     _build();
+    // Keyboard commands and their theme dialog belong to the active Peek.
+    // Changing appearance must not be mistaken for an exterior table click.
+    if (_peekEntryId) _modal.dataset.peekOwner = _peekEntryId;
+    else delete _modal.dataset.peekOwner;
     _open = true;
     _overlay.classList.add('cmd-overlay--open');
     _input.value = '';
@@ -12822,150 +12837,154 @@ async function _resumePracticeFromHistory(challengeId) {
 // "new entry" editor + the main inline editor coexisting), so the page's
 // properties AND body content are genuinely editable without leaving the
 // table, not just a read-only preview.
-let _peekEntryId = null;
-let _peekEditor = null;
-let _peekOnClose = null;
-let _peekAutoSaveTimer = null;
-let _peekPendingMd = null;
-
-window._openPagePeek = async function (id, opts) {
-  const overlay = $('pagePeekOverlay');
-  if (!overlay || !id) return;
-
-  // Reopening while already open (e.g. clicking a different row) — flush
-  // any pending debounced saves for the row being left, THEN tear down,
-  // same discipline as _closePagePeek (see the comment there for why).
-  if (_peekEntryId) {
-    await _flushPeekPendingSaves();
-    _teardownPeekEditor();
-  }
-
-  _peekEntryId = id;
-  _peekOnClose = (opts && opts.onClose) || null;
-
-  overlay.classList.remove('hidden');
-  $('pagePeekTitle').value = '';
-  $('pagePeekIcon').textContent = '📄';
-  $('pagePeekProps').innerHTML = '';
-
-  const res = await fetch(`/api/entry/${id}`);
-  if (!res.ok || _peekEntryId !== id) return; // closed, swapped, or the id doesn't resolve — don't touch anything else
-  // Only now that the fetch actually succeeded: a database block *inside*
-  // this peeked page needs to resolve against it (was set unconditionally
-  // before, so a 404'ing row/link used to leave the OUTER page's own
-  // database block silently pointed at a nonexistent id too).
-  window._currentEntryId = id;
-  const data = await res.json();
-  const meta = data.meta || {};
-
-  $('pagePeekTitle').value = meta.title || '';
-  $('pagePeekIcon').textContent = meta.icon || '📄';
-
-  if (window.Properties) {
-    Properties.render(id, meta.properties || [], $('pagePeekProps'), false);
-  }
-
-  _peekEditor = BlockEditor.create({
-    container: $('pagePeekEditor'),
-    onChange: (md) => _peekScheduleAutoSave(md),
-  });
-  _peekEditor.load(_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown || '', meta.title || '')));
+let _peekEntryId=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
+let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0;
+let _peekMode='side';
+function _resizePeekTitle() {
+  const title=$('pagePeekTitle');if(!title)return;
+  title.style.height='auto';title.style.height=title.scrollHeight+'px';
+}
+window._flushDatabaseSource=async parent=>{
+  if(currentEntryId===parent)await _flushInlineDatabase();
+  else if(_peekEntryId===parent)await _flushPeekPendingSaves();
 };
-
-function _closePagePeek() {
-  if (!_peekEntryId) return;
-  const onClose = _peekOnClose;
-  // Flush BEFORE tearing down (both flush fns need _peekEntryId / the
-  // captured markdown, which teardown nulls out) — but hide the overlay
-  // and reset state right away regardless, so closing still feels instant;
-  // only onClose() (the database table's reload(), typically) waits for
-  // the flush to actually land, so it doesn't race the debounce and
-  // re-render the row with stale data (see _flushPeekPendingSaves).
-  const flushed = _flushPeekPendingSaves();
-  _teardownPeekEditor();
-  $('pagePeekOverlay')?.classList.add('hidden');
-  window._currentEntryId = currentEntryId; // restore the outer page's context
-  flushed.finally(() => { if (onClose) onClose(); });
+function _setPeekMode(mode) {
+  _peekMode=mode==='center'?'center':'side';
+  $('pagePeekOverlay').dataset.peekMode=_peekMode;
+  requestAnimationFrame(_resizePeekTitle);
 }
-
-function _teardownPeekEditor() {
+function _peekDraft(payload) {
+  if (!_peekQueue || !_peekEntryId) return;
+  _peekQueue.set(payload);
+  try { sessionStorage.setItem('atlas-peek-draft:'+_peekEntryId,JSON.stringify(_peekQueue.pending)); } catch {}
   clearTimeout(_peekAutoSaveTimer);
-  _peekAutoSaveTimer = null;
-  _peekPendingMd = null;
-  if (_peekEditor && _peekEditor.destroy) _peekEditor.destroy();
-  _peekEditor = null;
-  _peekEntryId = null;
-  _peekOnClose = null;
+  _peekAutoSaveTimer=setTimeout(()=>_flushPeekPendingSaves().catch(_peekSaveError),800);
 }
-
-function _peekScheduleAutoSave(md) {
+function _peekSaveError(error) {
+  let status=$('pagePeekSaveError');
+  if (!status) {
+    status=document.createElement('div');status.id='pagePeekSaveError';status.className='adb-peek-save-error';status.setAttribute('role','alert');
+    $('pagePeekProps').before(status);
+  }
+  status.replaceChildren();
+  const message=document.createElement('span');message.textContent=(error?.message||'No se pudo guardar')+'. El contenido sigue abierto y conserva una copia en esta sesión.';status.append(message);
+  const retry=document.createElement('button');retry.textContent='Reintentar';retry.onclick=()=>_flushPeekPendingSaves().catch(_peekSaveError);status.append(retry);
+  const recover=document.createElement('button');recover.textContent='Descargar copia';recover.onclick=()=>{
+    const content=JSON.stringify({entry_id:_peekEntryId,pending:_peekQueue?.pending,markdown:_peekEditor?.getMarkdown(),title:$('pagePeekTitle').value,cells:AtlasDatabase.drafts()},null,2);
+    const url=URL.createObjectURL(new Blob([content],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='atlas-registro-recuperado.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };status.append(recover);
+}
+window._openPagePeek=async function(id,opts={}) {
+  if(!id||!$('pagePeekOverlay'))return;
+  if(_peekEntryId===id){if(opts.mode)_setPeekMode(opts.mode);return true;}
+  if(_peekEntryId && !(await _closePagePeek()))return false;
+  const token=++_peekRequest;
+  try {
+    const response=await fetch(`/api/entry/${id}`);
+    if(!response.ok)throw new Error('No se pudo abrir el registro');
+    const data=await response.json();if(token!==_peekRequest)return;
+    _peekEntryId=id;_peekOnClose=opts.onClose||null;
+    const overlay=$('pagePeekOverlay');overlay.dataset.peekOwner=id;
+    overlay.classList.toggle('db-preview-peek',!!opts.databasePreview||!!data.meta?.database_id);overlay.classList.remove('hidden');
+    $('pagePeekSaveError')?.remove();
+    const meta=data.meta||{};let draft=null;
+    try {draft=JSON.parse(sessionStorage.getItem('atlas-peek-draft:'+id)||'null');}catch{}
+    $('pagePeekTitle').value=draft?.title??meta.title??'';$('pagePeekIcon').textContent=meta.icon||'';
+    const controls=$('pagePeekToolbar');const isDatabase=overlay.classList.contains('db-preview-peek');
+    controls.classList.toggle('hidden',!isDatabase);
+    overlay.querySelector('.page-peek-actions').classList.toggle('hidden',isDatabase);
+    _setPeekMode(opts.mode);
+    if(isDatabase){
+      const mountControls=()=>AtlasDatabase.mountPeekToolbar(controls,{entryId:id,meta,mode:_peekMode,recordIds:opts.recordIds||[],actions:{
+        close:_closePagePeek,
+        flush:_flushPeekPendingSaves,
+        refresh:async()=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de actualizar');await window._openPagePeek(id,{...opts,mode:_peekMode});},
+        openRecord:async(next,records)=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de abrir otro registro');await window._openPagePeek(next,{...opts,recordIds:records||[next],mode:_peekMode});},
+        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;},
+        appendMarkdown:async text=>{await _flushPeekPendingSaves();await _peekEditor.appendMarkdown(text);await _flushPeekPendingSaves();},
+        fullPage:async()=>{if(await _closePagePeek())await window._loadEntryById?.(id);},
+        mode:async mode=>{await _flushPeekPendingSaves();_setPeekMode(mode);mountControls();},
+        navigate:async next=>{if((opts.recordIds||[]).includes(next))await window._openPagePeek(next,{...opts,mode:_peekMode});},
+        link:()=>location.origin+location.pathname+'?open='+encodeURIComponent(id),
+        markdown:()=>['# '+($('pagePeekTitle').value.trim()||'Sin título'),_peekEditor?.getMarkdown()||''].join('\n\n')
+      }});
+      mountControls();
+    }
+    _peekQueue=new AtlasDatabase.SaveQueue(async payload=>{
+      const res=await fetch(`/api/entry/${id}/content`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!res.ok)throw new Error('Error al guardar el registro ('+res.status+')');
+    });
+    Properties.render(id,meta.properties||[],$('pagePeekProps'),false,meta);
+    $('pagePeekTitle').readOnly=!!meta.database_locked;
+    _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
+    _peekEditor.load(draft?.raw_text??_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown||'',meta.title||'')));
+    if(draft){_peekQueue.set(draft);_peekSaveError(new Error('Se recuperó un borrador que no se había guardado'));}
+    requestAnimationFrame(_resizePeekTitle);
+    return true;
+  }catch(error){showToast(error.message,'error');}
+};
+async function _flushPeekPendingSaves(options) {
   clearTimeout(_peekAutoSaveTimer);
-  _peekPendingMd = md;
-  const savedId = _peekEntryId;
-  _peekAutoSaveTimer = setTimeout(() => {
-    _peekAutoSaveTimer = null;
-    _peekPendingMd = null;
-    if (!_peekEntryId || _peekEntryId !== savedId) return;
-    fetch(`/api/entry/${savedId}/content`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw_text: md, already_markdown: true }),
-    }).catch(() => {});
-  }, 1200);
+  await AtlasDatabase.flush(options);
+  await Properties.flush();
+  if(_peekQueue)await _peekQueue.flush();
+  if(_peekEntryId)try{sessionStorage.removeItem('atlas-peek-draft:'+_peekEntryId);}catch{}
+  $('pagePeekSaveError')?.remove();
 }
-
-// Runs the peek's own pending body-content autosave (if any) and
-// properties.js's pending property save (if any) immediately instead of
-// waiting out their debounce windows. Called whenever the peek is about to
-// close or swap to a different row — without this, a quick
-// edit-then-close could either lose the edit (content autosave) or leave
-// the reopening table showing stale data for a beat (properties save
-// racing the table's reload()). No-op (resolves immediately) when nothing
-// is actually pending.
-function _flushPeekAutoSave() {
-  if (!_peekAutoSaveTimer || !_peekEntryId) return Promise.resolve();
-  clearTimeout(_peekAutoSaveTimer);
-  _peekAutoSaveTimer = null;
-  const savedId = _peekEntryId;
-  const md = _peekPendingMd;
-  _peekPendingMd = null;
-  if (md == null) return Promise.resolve();
-  return fetch(`/api/entry/${savedId}/content`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ raw_text: md, already_markdown: true }),
-  }).catch(() => {});
+async function _closePagePeek() {
+  if(_peekClosing)return _peekClosing;
+  if(!_peekEntryId)return true;
+  _peekClosing=(async()=>{
+    try {
+      await _flushPeekPendingSaves();const onClose=_peekOnClose;
+      AtlasDatabase.unmountProperties($('pagePeekProps'));
+      AtlasDatabase.unmountPeekToolbar($('pagePeekToolbar'));
+      AtlasDatabase.clearRecordPresentation($('pagePeekOverlay'));
+      document.querySelectorAll('[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)delete node.dataset.peekOwner;});
+      _peekEditor?.destroy();_peekEditor=null;_peekEntryId=null;_peekQueue=null;_peekOnClose=null;
+      $('pagePeekOverlay').classList.add('hidden');delete $('pagePeekOverlay').dataset.peekOwner;
+      if(onClose)await onClose();
+      return true;
+    }catch(error){_peekSaveError(error);return false;}
+  })().finally(()=>{_peekClosing=null;});
+  return _peekClosing;
 }
-
-function _flushPeekPendingSaves() {
-  const flushes = [_flushPeekAutoSave()];
-  if (window.Properties && typeof window.Properties.flush === 'function') flushes.push(window.Properties.flush());
-  return Promise.all(flushes);
-}
-
 function initPagePeek() {
-  const overlay = $('pagePeekOverlay');
-  if (!overlay) return;
-  $('pagePeekClose')?.addEventListener('click', _closePagePeek);
-  overlay.addEventListener('click', e => { if (e.target === overlay) _closePagePeek(); });
-
-  const titleInput = $('pagePeekTitle');
-  titleInput?.addEventListener('blur', () => {
-    const newTitle = titleInput.value.trim();
-    if (!_peekEntryId || !newTitle) return;
-    fetch(`/api/entry/${_peekEntryId}/content`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: newTitle }),
-    }).catch(() => {});
-  });
-  titleInput?.addEventListener('keydown', e => { if (e.key === 'Enter') titleInput.blur(); });
-
-  $('pagePeekOpenFull')?.addEventListener('click', () => {
-    const id = _peekEntryId;
+  const overlay=$('pagePeekOverlay');if(!overlay)return;
+  overlay.querySelector('.page-peek-modal')?.setAttribute('role','dialog');
+  overlay.querySelector('.page-peek-modal')?.setAttribute('aria-label','Registro en Peek');
+  overlay.querySelector('.page-peek-modal')?.setAttribute('aria-modal','false');
+  $('pagePeekClose')?.setAttribute('aria-label','Cerrar Peek');
+  $('pagePeekTitle')?.setAttribute('aria-label','Título del registro');
+  $('pagePeekClose')?.addEventListener('click',()=>_closePagePeek());
+  const inside=target=>!!(target.closest?.('.page-peek-modal')||(_peekEntryId&&target.closest?.('[data-peek-owner="'+_peekEntryId+'"]')));
+  document.addEventListener('pointerdown',event=>{
+    if(!_peekEntryId)return;
+    _peekLastFocus=inside(event.target);
+    if(!_peekLastFocus)_closePagePeek();
+  },true);
+  document.addEventListener('focusin',event=>{_peekLastFocus=inside(event.target);});
+  // BlockNote/Mantine render slash menus, toolbars and dialogs in portals.
+  // Own only portals opened by the current Peek; unrelated page menus remain outside.
+  const ownPortals=()=>{
+    if(!_peekEntryId||!_peekLastFocus)return;
+    document.querySelectorAll('[data-mantine-portal],[data-floating-ui-portal],.mantine-Portal,[role="dialog"],[role="listbox"],[role="menu"]').forEach(node=>{
+      if(!node.closest('#pagePeekOverlay')&&!node.classList.contains('hidden')&&!node.dataset.peekOwner&&node.getClientRects().length)node.dataset.peekOwner=_peekEntryId;
+    });
+  };
+  new MutationObserver(ownPortals).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape'||event.defaultPrevented||!_peekEntryId)return;
+    if(event.target.closest?.('[data-peek-owner]')&&!overlay.contains(event.target))return;
     _closePagePeek();
-    if (id && window._loadEntryById) window._loadEntryById(id);
   });
+  $('pagePeekTitle')?.addEventListener('input',()=>_peekDraft({title:$('pagePeekTitle').value}));
+  $('pagePeekTitle')?.addEventListener('input',_resizePeekTitle);
+  overlay.addEventListener('atlas:record-presentation',()=>requestAnimationFrame(_resizePeekTitle));
+  $('pagePeekTitle')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();event.target.blur();}});
+  window.addEventListener('resize',_resizePeekTitle);
+  $('pagePeekOpenFull')?.addEventListener('click',async()=>{const id=_peekEntryId;if(await _closePagePeek())window._loadEntryById?.(id);});
+  window.addEventListener('beforeunload',event=>{if(_peekQueue?.pending){event.preventDefault();event.returnValue='';}});
 }
 
 // ── Post-process entry: code execution, Mermaid, KaTeX ───────────────────────

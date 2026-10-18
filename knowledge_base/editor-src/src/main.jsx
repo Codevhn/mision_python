@@ -1,8 +1,20 @@
 import React from "react";
+import {SideMenuExtension} from '@blocknote/core/extensions';
+import {installForegroundEditorHitTesting} from './editorHitTesting.js';
+import {SaveQueue} from "./databaseModel.js";
+import {flushDatabaseEditors,mountRecordProperties,unmountRecordProperties,databaseDrafts} from "./databaseUI.jsx";
+import {mountPeekToolbar,unmountPeekToolbar} from './databasePeek.jsx';
+import {clearRecordPresentation} from './databasePeekModel.js';
+import "./database-workspace.css";
+import './database-peek.css';
+window.AtlasDatabase = {SaveQueue, drafts:databaseDrafts, flush:flushDatabaseEditors, mountProperties:mountRecordProperties, unmountProperties:unmountRecordProperties, mountPeekToolbar,unmountPeekToolbar,clearRecordPresentation};
+import { editorDatabaseContext, duplicateIdentityRepairs } from "./databaseIdentity.js";
 import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote, SuggestionMenuController, SideMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
-import { filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from "@blocknote/core";
+import { useCreateBlockNote, SuggestionMenuController } from "@blocknote/react";
+import { AlignedSideMenuController } from "./AlignedSideMenuController.jsx";
+import { buildInsertBlockItems } from "./blockCatalog.jsx";
+import { filterSuggestionItems } from "@blocknote/core";
 import { es } from "@blocknote/core/locales";
 import "@blocknote/mantine/style.css";
 import "./custom-blocks.css";
@@ -12,44 +24,6 @@ import { detectPastedCode } from "./pasteCode.js";
 import { CustomSideMenu } from "./dragHandleMenu.jsx";
 import { textEdits } from "./textEdits.js";
 import { installInlineSpelling } from "./inlineSpelling.js";
-
-// The "database" block type is registered in schema.js (so old content still
-// renders), but BlockNote's built-in slash menu only auto-lists its own
-// default block types — a custom block needs an explicit entry to ever be
-// insertable from the UI. Without this, there was no way to create a new
-// database block at all (confirmed empirically: typing "/" only showed
-// Heading/Quote/Table/etc., never "Base de datos").
-function getCustomSlashMenuItems(editor) {
-  return [
-    {
-      title: "Página",
-      subtext: "Nueva sub-página enlazada",
-      aliases: ["page", "pagina", "subpagina", "sub-página"],
-      group: "Básico",
-      icon: <span style={{ fontSize: "18px" }}>📄</span>,
-      onItemClick: () => {
-        // Insert a placeholder pageLink at the cursor, then open the page-name
-        // modal. On confirm, confirmPageCreate (app.js) calls updatePageBlock
-        // on every known editor API wrapper (inline + modal) to fill this
-        // placeholder with the real title/id in place — updatePageBlock is a
-        // no-op on the wrapper that doesn't hold the block.
-        const block = insertOrUpdateBlockForSlashMenu(editor, { type: "pageLink", props: { title: "Nueva página", pageId: "" } });
-        const id = block && block.id;
-        if (id && window._promptPageName) window._promptPageName(id);
-      },
-    },
-    {
-      title: "Base de datos",
-      subtext: "Tabla en vivo de sub-páginas, con propiedades por fila",
-      aliases: ["database", "db", "tabla", "base de datos"],
-      group: "Avanzado",
-      icon: <span style={{ fontSize: "18px" }}>🗃️</span>,
-      onItemClick: () => {
-        insertOrUpdateBlockForSlashMenu(editor, { type: "database", props: { data: "{}" } });
-      },
-    },
-  ];
-}
 
 function currentAppTheme() {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
@@ -77,6 +51,9 @@ async function uploadFile(file) {
 
 function EditorView({ instanceRef, onChange, onReady }) {
   const editor = useCreateBlockNote({ schema, uploadFile, dictionary: es, domAttributes: {editor: {spellcheck:"false", lang:"es"}} });
+  installForegroundEditorHitTesting(editor.getExtension(SideMenuExtension));
+  React.useEffect(()=>{editor.isEditable=instanceRef.editable!==false;},[editor]);
+  editorDatabaseContext.set(editor, instanceRef.context);
   const [theme, setTheme] = React.useState(currentAppTheme());
 
   React.useEffect(() => {
@@ -105,15 +82,20 @@ function EditorView({ instanceRef, onChange, onReady }) {
       sideMenu={false}
       onChange={() => {
         if (instanceRef.suppressChange) return;
+        const checked = duplicateIdentityRepairs(editor.document, instanceRef.identities);
+        instanceRef.identities = checked.identities;
+        instanceRef.suppressChange = true;
+        try { for (const repair of checked.repairs) editor.updateBlock(repair.id, { props: { data: repair.data } }); }
+        finally { instanceRef.suppressChange = false; }
         if (onChange) onChange(blocksToMd(editor.document));
       }}
     >
-      <SideMenuController sideMenu={CustomSideMenu} />
+      <AlignedSideMenuController sideMenu={CustomSideMenu} />
       <SuggestionMenuController
         triggerCharacter="/"
         getItems={async (query) =>
           filterSuggestionItems(
-            [...getDefaultReactSlashMenuItems(editor), ...getCustomSlashMenuItems(editor)],
+            buildInsertBlockItems(editor),
             query,
           )
         }
@@ -124,7 +106,7 @@ function EditorView({ instanceRef, onChange, onReady }) {
 
 function createInstance(opts) {
   const { container, onChange } = opts || {};
-  const instanceRef = { editor: null, suppressChange: false };
+  const instanceRef = { editor: null, editable:opts?.editable!==false, suppressChange: false, context: { pageId: opts?.pageId || null, flush: opts?.flush }, identities: new Map() };
   const root = createRoot(container);
   let pendingMarkdown = null;
   let ready = false;
@@ -202,6 +184,12 @@ function createInstance(opts) {
     const editor = instanceRef.editor;
     const blocks = mdToBlocks(markdown || "");
     instanceRef.suppressChange = true;
+    const checked = duplicateIdentityRepairs(blocks);
+    for (const repair of checked.repairs) {
+      const patch = (items) => items.forEach(b => { if (b.id === repair.id) b.props.data = repair.data; if (b.children) patch(b.children); });
+      patch(blocks);
+    }
+    instanceRef.identities = checked.identities;
     editor.replaceBlocks(editor.document, blocks);
     instanceRef.suppressChange = false;
     // replaceBlocks() leaves ProseMirror's selection wherever the old
@@ -239,7 +227,8 @@ function createInstance(opts) {
         tip.view.dispatch(tr); return true;
       } : null};
     },
-    load(markdown) {
+    load(markdown, pageId) {
+      if (pageId !== undefined) instanceRef.context.pageId = pageId;
       if (ready) applyMarkdown(markdown);
       else pendingMarkdown = markdown;
     },
@@ -247,6 +236,28 @@ function createInstance(opts) {
     loadMarkdown(markdown) { api.load(markdown); },
     getMarkdown() {
       return instanceRef.editor ? blocksToMd(instanceRef.editor.document) : "";
+    },
+    setEditable(value) {
+      instanceRef.editable=!!value;
+      if(instanceRef.editor)instanceRef.editor.isEditable=!!value;
+    },
+    appendMarkdown(markdown) {
+      return whenReady().then(async()=>{
+        const editor=instanceRef.editor;
+        if(!editor?.isEditable)throw new Error('Desbloquea la página para importar contenido');
+        const blocks=mdToBlocks(markdown);
+        const rekey=items=>items.forEach(block=>{
+          if(block.type==='database'){
+            const value=JSON.parse(block.props.data||'{}');value.database_id=JSON.parse(newDatabaseData()).database_id;
+            block.props.data=JSON.stringify(value);
+          }
+          if(block.children)rekey(block.children);
+        });rekey(blocks);
+        if(!blocks.length)return;
+        const last=editor.document[editor.document.length-1];
+        if(last)await editor.insertBlocks(blocks,last,'after');
+        else await editor.replaceBlocks(editor.document,blocks);
+      });
     },
     setPersistenceKey() {
       // Legacy localStorage-draft-recovery key; BlockNote's own document
@@ -346,6 +357,7 @@ updatePageBlock(blockId, title, pageId) {
     },
   };
 
+  instanceRef.context.api = api;
   container._captureSpellingSelection = () => api.captureSpellingSelection();
   return api;
 }

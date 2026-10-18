@@ -1,0 +1,2492 @@
+{
+  "date": "2026-10-17",
+  "method": "CUA read-only DOM measurements and explicit UI actions on isolated Atlas demo; no new REA call",
+  "metrics": [
+    {
+      "label": "native-light-peek-actions",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "rgb(231, 138, 132)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(255, 255, 255)",
+        "clientHeight": 620,
+        "color": "rgb(55, 53, 47)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "notion-native-light",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "before-danger-contrast-fix"
+    },
+    {
+      "label": "native-dark-header",
+      "active": {
+        "label": "Cambiar nombre de propiedad",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Editar propiedad"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Cambiar tipo"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Filtrar"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Orden ascendente"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Orden descendente"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Agrupar por esta propiedad"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Calcular"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Congelar"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ocultar en esta vista"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ajustar el contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Insertar propiedad a la izquierda"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Insertar propiedad a la derecha"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar propiedad"
+        },
+        {
+          "color": "rgb(237, 149, 137)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Eliminar propiedad (recuperable)"
+        }
+      ],
+      "menu": {
+        "background": "rgb(37, 37, 37)",
+        "color": "rgb(227, 227, 224)",
+        "height": 589,
+        "width": 290,
+        "x": 544,
+        "y": 280
+      },
+      "theme": "notion-native",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "during-round"
+    },
+    {
+      "label": "native-dark-peek-actions",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "rgb(237, 149, 137)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(37, 37, 37)",
+        "clientHeight": 620,
+        "color": "rgb(227, 227, 224)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "notion-native",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "during-round"
+    },
+    {
+      "label": "desktop-short-window-scroll",
+      "active": {
+        "label": "Default",
+        "tag": "BUTTON",
+        "text": "AgDefault"
+      },
+      "items": [
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "rgb(237, 149, 137)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(37, 37, 37)",
+        "clientHeight": 522,
+        "color": "rgb(227, 227, 224)",
+        "height": 580,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 10
+      },
+      "theme": "notion-native",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 600,
+        "width": 1888
+      },
+      "phase": "during-round"
+    },
+    {
+      "label": "desktop-scroll-confirmed",
+      "footerBottom": 579.5,
+      "menuBottom": 590,
+      "scrollTop": 98,
+      "searchTop": 16,
+      "viewport": {
+        "height": 600,
+        "width": 1888
+      },
+      "phase": "during-round"
+    },
+    {
+      "label": "native-light-peek-final",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "color(srgb 0.527059 0.147451 0.112941)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(255, 255, 255)",
+        "clientHeight": 620,
+        "color": "rgb(55, 53, 47)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "notion-native-light",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "final-bundle"
+    },
+    {
+      "label": "draft-preserved-after-theme",
+      "draft": "Registro QA principal · tema reversible",
+      "selectedView": "Tabla QA",
+      "tableTitle": "Registro QA principal",
+      "theme": "notion-native-light",
+      "phase": "during-round"
+    },
+    {
+      "label": "amber-peek-actions",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "rgb(255, 107, 107)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(88, 44, 19)",
+        "clientHeight": 620,
+        "color": "rgb(244, 245, 252)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "aero-amber",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "before-danger-contrast-fix"
+    },
+    {
+      "label": "porcelain-peek-actions",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "color(srgb 0.690196 0.213333 0.213333)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(255, 255, 255)",
+        "clientHeight": 620,
+        "color": "rgb(55, 53, 47)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "soft-porcelain",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "during-round"
+    },
+    {
+      "label": "native-light-header-final",
+      "active": {
+        "label": "Cambiar nombre de propiedad",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Editar propiedad"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Cambiar tipo"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Filtrar"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Orden ascendente"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Orden descendente"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Agrupar por esta propiedad"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Calcular"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Congelar"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ocultar en esta vista"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ajustar el contenido"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Insertar propiedad a la izquierda"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Insertar propiedad a la derecha"
+        },
+        {
+          "color": "rgb(55, 53, 47)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar propiedad"
+        },
+        {
+          "color": "color(srgb 0.527059 0.147451 0.112941)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Eliminar propiedad (recuperable)"
+        }
+      ],
+      "menu": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(55, 53, 47)",
+        "height": 589,
+        "width": 290,
+        "x": 544,
+        "y": 280
+      },
+      "theme": "notion-native-light",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "final-bundle"
+    },
+    {
+      "label": "native-light-config-fields",
+      "active": "Volver",
+      "fields": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(55, 53, 47)",
+          "label": "Nombre",
+          "scheme": "light"
+        },
+        {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(55, 53, 47)",
+          "label": "Formato",
+          "scheme": "light"
+        }
+      ],
+      "theme": "notion-native-light",
+      "phase": "during-round"
+    },
+    {
+      "label": "final-focus-three-immediate-cycles",
+      "runs": [
+        {
+          "focus": "Editar propiedad",
+          "label": "Menú de Número"
+        },
+        {
+          "focus": "Editar propiedad",
+          "label": "Menú de Número"
+        },
+        {
+          "focus": "Editar propiedad",
+          "label": "Menú de Número"
+        }
+      ],
+      "phase": "final-bundle"
+    },
+    {
+      "label": "amber-peek-final",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "color(srgb 1 0.477647 0.477647)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(88, 44, 19)",
+        "clientHeight": 620,
+        "color": "rgb(244, 245, 252)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 60.015625
+      },
+      "theme": "aero-amber",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.360107421875,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.3599853515625,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.3599853515625,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.3599853515625,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 15.3599853515625,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.3599853515625,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.360107421875,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 15.360107421875,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "opening-transition",
+      "note": "Measured during existing Peek opening animation. Use amber-peek-final-stable for final geometry."
+    },
+    {
+      "label": "amber-peek-final-stable",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "color(srgb 1 0.477647 0.477647)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(244, 245, 252)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(88, 44, 19)",
+        "clientHeight": 620,
+        "color": "rgb(244, 245, 252)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "aero-amber",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "final-bundle"
+    },
+    {
+      "label": "native-dark-peek-final",
+      "active": {
+        "label": "Buscar acciones del registro",
+        "tag": "INPUT",
+        "text": ""
+      },
+      "items": [
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar enlace"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Copiar contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Duplicar"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a…"
+        },
+        {
+          "color": "color(srgb 0.936471 0.625882 0.583529)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Mover a la papelera"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Texto pequeño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Ancho completo"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Tabla de contenido"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Iconos de propiedades"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Personalizar diseño"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Bloquear página"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Importar Markdown"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Exportar…"
+        },
+        {
+          "color": "rgb(227, 227, 224)",
+          "height": 30,
+          "iconWidth": 16,
+          "text": "Historial de versiones"
+        }
+      ],
+      "menu": {
+        "background": "rgb(37, 37, 37)",
+        "clientHeight": 620,
+        "color": "rgb(227, 227, 224)",
+        "height": 678,
+        "scrollHeight": 620,
+        "width": 290,
+        "x": 1588,
+        "y": 38
+      },
+      "theme": "notion-native",
+      "toolbar": [
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Filtrar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Ordenar",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Buscar en esta vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Configuración de vista",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 30,
+          "icon": 16,
+          "label": "Más opciones de la base de datos",
+          "width": 30
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cerrar Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Abrir como página completa",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Cambiar modo Peek",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro anterior",
+          "width": 28
+        },
+        {
+          "disabled": true,
+          "height": 28,
+          "icon": 16,
+          "label": "Registro siguiente",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Copiar enlace al registro",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Añadir a favoritos",
+          "width": 28
+        },
+        {
+          "disabled": false,
+          "height": 28,
+          "icon": 16,
+          "label": "Acciones del registro",
+          "width": 28
+        }
+      ],
+      "viewport": {
+        "height": 879,
+        "width": 1888
+      },
+      "phase": "final-bundle"
+    }
+  ],
+  "headerInventories": [
+    {
+      "name": "Nombre",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nCalcular\nDescongelar\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha"
+    },
+    {
+      "name": "Apuntes QA",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "name": "Número",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "name": "Estado",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native",
+      "name": "Nombre",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nCalcular\nDescongelar\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha"
+    },
+    {
+      "theme": "notion-native",
+      "name": "Apuntes QA",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native",
+      "name": "Número",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native",
+      "name": "Estado",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native-light",
+      "name": "Nombre",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nCalcular\nDescongelar\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha"
+    },
+    {
+      "theme": "notion-native-light",
+      "name": "Apuntes QA",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native-light",
+      "name": "Número",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    },
+    {
+      "theme": "notion-native-light",
+      "name": "Estado",
+      "inventory": "Propiedad compartida\nEnter para guardar el nombre\nEditar propiedad\nCambiar tipo\nSólo esta vista\nFiltrar\nOrden ascendente\nOrden descendente\nAgrupar por esta propiedad\nCalcular\nCongelar\nOcultar en esta vista\nAjustar el contenido\nPropiedad compartida\nInsertar propiedad a la izquierda\nInsertar propiedad a la derecha\nDuplicar propiedad\nEliminar propiedad (recuperable)"
+    }
+  ],
+  "checks": {
+    "focusImmediateCycles": [
+      {
+        "focus": "Editar propiedad",
+        "label": "Menú de Número"
+      },
+      {
+        "focus": "Editar propiedad",
+        "label": "Menú de Número"
+      },
+      {
+        "focus": "Editar propiedad",
+        "label": "Menú de Número"
+      }
+    ],
+    "originalBlockCatalogEdited": false,
+    "newReaCalls": 0,
+    "mobileOrTouchWork": false,
+    "viewportRestored": true
+  },
+  "screenshots": [
+    "atlas-menu-native-dark.png",
+    "atlas-menu-native-light.png",
+    "atlas-menu-header-dark.png",
+    "atlas-menu-header-light.png",
+    "atlas-menu-view-config.png",
+    "atlas-menu-scroll-desktop.png",
+    "atlas-menu-amber.png",
+    "atlas-menu-porcelain.png"
+  ],
+  "qaFinalState": {
+    "database_id": "db_27bf3d10f7ed453a82b6e13339fd70ed",
+    "views": [
+      {
+        "id": "qa_table",
+        "name": "Tabla QA",
+        "type": "table",
+        "rowHeight": "medium",
+        "filters": [],
+        "filter": null,
+        "filterMode": "and",
+        "freezeTitle": true,
+        "wrapped": [],
+        "groupBy": "",
+        "sorts": [
+          {
+            "colId": "number",
+            "dir": "desc"
+          }
+        ]
+      },
+      {
+        "id": "qa_second",
+        "name": "Otra tabla",
+        "type": "table",
+        "calculations": {
+          "number": "sum"
+        },
+        "hidden": [
+          "note"
+        ]
+      }
+    ],
+    "columns": [
+      {
+        "id": "number",
+        "name": "Número",
+        "type": "number",
+        "groups": [
+          {
+            "id": "0",
+            "name": "Pendiente"
+          },
+          {
+            "id": "1",
+            "name": "En progreso"
+          },
+          {
+            "id": "2",
+            "name": "Completado"
+          }
+        ],
+        "number_format": "number"
+      },
+      {
+        "id": "state",
+        "name": "Estado",
+        "type": "status",
+        "groups": [
+          {
+            "id": "p",
+            "name": "Pendiente"
+          },
+          {
+            "id": "i",
+            "name": "En progreso"
+          },
+          {
+            "id": "d",
+            "name": "Completado"
+          }
+        ],
+        "options": [
+          {
+            "id": "s1",
+            "label": "Pendiente",
+            "color": "#9b9b9b",
+            "group": "Pendiente"
+          },
+          {
+            "id": "s2",
+            "label": "En curso",
+            "color": "#529cca",
+            "group": "En progreso"
+          },
+          {
+            "id": "s3",
+            "label": "Hecho",
+            "color": "#4b9877",
+            "group": "Completado"
+          },
+          {
+            "id": "774ebecd02f2",
+            "label": "Revisión QA",
+            "color": "#888888",
+            "group": "Pendiente"
+          }
+        ]
+      },
+      {
+        "type": "url",
+        "name": "URL QA",
+        "id": "col_25f62b480799"
+      },
+      {
+        "type": "checkbox",
+        "name": "Casilla QA",
+        "id": "col_49e6fef66043"
+      },
+      {
+        "id": "note",
+        "name": "Apuntes QA",
+        "type": "text"
+      },
+      {
+        "id": "col_1b171cda7549",
+        "name": "Apuntes QA (copia)",
+        "type": "text"
+      }
+    ],
+    "record_ids": [
+      "record-9af4d0e0ea034dd2",
+      "record-ba35619d135c4bdc"
+    ],
+    "property_values_preserved": true,
+    "incompatible_conversion_cancelled": true
+  },
+  "preservation": {
+    "original_metadata": [
+      {
+        "id": "demo-atlas-bases-independientes",
+        "changed_fields": []
+      },
+      {
+        "id": "alfa-sólo-a",
+        "changed_fields": []
+      },
+      {
+        "id": "beta-sólo-b",
+        "changed_fields": []
+      },
+      {
+        "id": "mi-tracker-de-entretenimiento",
+        "changed_fields": []
+      },
+      {
+        "id": "el-mapa-de-las-mareas",
+        "changed_fields": []
+      },
+      {
+        "id": "órbita-de-medianoche",
+        "changed_fields": []
+      },
+      {
+        "id": "la-última-estación",
+        "changed_fields": []
+      },
+      {
+        "id": "ciudad-de-papel",
+        "changed_fields": []
+      },
+      {
+        "id": "demo-recuperación-antigua",
+        "changed_fields": []
+      },
+      {
+        "id": "registro-ambiguo-conservado",
+        "changed_fields": []
+      }
+    ],
+    "entries_before": 10,
+    "entries_after": 13,
+    "protected_sources": {
+      "knowledge_base/editor-src/src/blockAlignment.js": true,
+      "knowledge_base/static/theme-registry.js": true,
+      "knowledge_base/editor-src/src/main.jsx": true,
+      "knowledge_base/editor-src/src/blockCatalog.jsx": true,
+      "knowledge_base/editor-src/src/blockCatalog.css": true,
+      "knowledge_base/editor-src/src/dragHandleMenu.jsx": true,
+      "knowledge_base/static/notion-native.css": true
+    },
+    "original_markdown_and_history_byte_identical": true,
+    "original_local_files_present": 149
+  },
+  "contrast": [
+    {
+      "sample": "native-dark-peek-final",
+      "text": 11.92,
+      "danger": 7.37
+    },
+    {
+      "sample": "native-light-peek-final",
+      "text": 12.26,
+      "danger": 9.09
+    },
+    {
+      "sample": "amber-peek-final-stable",
+      "text": 10.82,
+      "danger": 4.65
+    },
+    {
+      "sample": "porcelain-peek-actions",
+      "text": 12.26,
+      "danger": 6.11
+    }
+  ],
+  "validation": {
+    "python": {
+      "passed": 371,
+      "warnings": 41,
+      "seconds": 8.91
+    },
+    "frontend": "npm --prefix knowledge_base/editor-src test passed after final code changes",
+    "build": {
+      "result": "passed",
+      "modules": 1129
+    },
+    "source_whitespace": "13 sources/documents checked without diagnostics",
+    "original_ids_preserved_in_plan": 94,
+    "total_plan_ids": 110
+  },
+  "bundle_sha256": "064bcd482c0d4604c7730dd7ca37c983482b55272b450ccf1e50a172fe01b582"
+}

@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-17",
+  "source": "CUA on isolated Atlas demo, not Notion measurements",
+  "responsive": [
+    {
+      "document": 1200,
+      "grid": 910,
+      "viewport": 1200,
+      "widgets": [
+        {
+          "width": 421.984375,
+          "clientHeight": 487
+        },
+        {
+          "width": 447,
+          "clientHeight": 317
+        }
+      ]
+    },
+    {
+      "document": 900,
+      "grid": 610,
+      "viewport": 900,
+      "widgets": [
+        {
+          "width": 610,
+          "clientHeight": 487
+        },
+        {
+          "width": 610,
+          "clientHeight": 317
+        }
+      ]
+    },
+    {
+      "document": 640,
+      "grid": 566,
+      "viewport": 640,
+      "widgets": [
+        {
+          "width": 566,
+          "clientHeight": 487
+        },
+        {
+          "width": 566,
+          "clientHeight": 317
+        }
+      ]
+    },
+    {
+      "document": 390,
+      "grid": 316,
+      "viewport": 390,
+      "widgets": [
+        {
+          "width": 316,
+          "clientHeight": 477
+        },
+        {
+          "width": 316,
+          "clientHeight": 317
+        }
+      ]
+    }
+  ],
+  "pointer": {
+    "before": {
+      "width": 791,
+      "height": 400
+    },
+    "after": {
+      "width": 654,
+      "height": 313
+    },
+    "keyboard": {
+      "width": 664,
+      "height": 363
+    }
+  },
+  "cssZoom": {
+    "scale": 1.25,
+    "storedHeight": 507,
+    "renderedHeight": 633.75
+  },
+  "final": {
+    "widthPercentA": 47.3,
+    "heightA": 487,
+    "widthPercentB": 50,
+    "heightB": 317
+  },
+  "nativeBrowserZoom": "not established; ctrl+equal left innerWidth=1888,DPR=1 unchanged",
+  "heightNote": "Responsive entries report clientHeight. At390px table body CSS/rendered height487px, clientHeight477px excludes10px horizontal scrollbar.",
+  "verticalResizeRegression": {
+    "storedWidthPercent": 47.3,
+    "measuredWidthPercent": 47.2984,
+    "heightBefore": 487,
+    "heightDuring": 497,
+    "heightAfter": 487,
+    "storedWidthAfter": 47.3
+  }
+}

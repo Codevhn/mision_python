@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {cardCover,listRowHeight} from '../src/databaseCardModel.js';
+const row={id:'same',title:'Registro',cover:'/static/covers/page.png',properties:[{id:'first',type:'files',value:[{id:'a'.repeat(32),name:'Primera.png',url:'/ignored'}]},{id:'second',type:'files',value:[{id:'b'.repeat(32),name:'Elegida.png'}]}]};
+assert.equal(cardCover(row,{}).url,row.cover);
+assert.equal(cardCover(row,{cardPreviewProperty:'second'}).url,'/api/databases/files/'+'b'.repeat(32),'A chosen property overrides the page cover and earlier properties, including metadata without a URL');
+assert.equal(cardCover(row,{cardPreviewProperty:'missing'}),null,'Missing/archived selections must not silently preview a different property');
+assert.equal(cardCover({...row,cover:null},{cardPreviewProperty:'__page_cover'}),null);
+assert.equal(cardCover({...row,cover:null},{}).alt,'Primera.png');
+assert.equal(listRowHeight({}),38);assert.equal(listRowHeight({listDensity:'compact'}),30);assert.equal(listRowHeight({listDensity:'comfortable'}),48);
+console.log('card/list: explicit file property, canonical asset identity, no silent fallback, legacy defaults and density passed');

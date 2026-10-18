@@ -1,3 +1,4 @@
+{% from "_navigation_icon.html" import atlas_nav_icon %}
 <!DOCTYPE html>
 <html lang="es" data-theme="dark" data-style="aero" data-variant="night">
 <head>
@@ -50,6 +51,8 @@
   <link rel="stylesheet" href="/static/atlas-frames.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/weather-hero.css?v={{ v }}" />
   <link rel="stylesheet" href="/static/horizon.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/editing-surface.css?v={{ v }}" />
+  <link rel="stylesheet" href="/static/notion-native.css?v={{ v }}" />
 </head>
 <body>
 
@@ -89,63 +92,63 @@
     <nav class="activity-bar" id="activityBar">
       <div class="activity-bar-top">
         <button class="ab-item ab-item--brand" id="abBrand" title="Inicio">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#home"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("home") }}</span>
           <span class="ab-label">Inicio</span>
         </button>
         <button class="ab-item" id="abKnowledge" data-space="knowledge" title="Conocimiento">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#knowledge"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("knowledge") }}</span>
           <span class="ab-label">Conocimiento</span>
         </button>
         <button class="ab-item" id="abCourses" data-space="courses" title="Cursos">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#courses"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("courses") }}</span>
           <span class="ab-label">Cursos</span>
           <span class="ab-badge-dot hidden" id="abCoursesBadge"></span>
         </button>
         <button class="ab-item" id="abBoards" data-space="boards" title="Tableros">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#boards"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("boards") }}</span>
           <span class="ab-label">Tableros</span>
         </button>
         <button class="ab-item" id="abTeamspace" data-space="teamspace" title="Teamspace">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#team"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("team") }}</span>
           <span class="ab-label">Team</span>
         </button>
         <button class="ab-item" id="abPages" data-space="pages" title="Páginas">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#pages"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("pages") }}</span>
           <span class="ab-label">Páginas</span>
         </button>
         <button class="ab-item" id="abMindmaps" data-space="mindmaps" title="Mapas Mentales">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#mindmaps"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("mindmaps") }}</span>
           <span class="ab-label">Mapas Mentales</span>
         </button>
         <button class="ab-item" id="abConceptmaps" data-space="conceptmaps" title="Mapas Conceptuales">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#conceptmaps"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("conceptmaps") }}</span>
           <span class="ab-label">Mapas Conceptuales</span>
         </button>
         <button class="ab-item" id="abDiagrams" data-space="diagrams" title="Diagramas">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="/static/aero-icons.svg#diagrams"></use></svg></span><span class="ab-label">Diagramas</span>
+          <span class="ab-icon">{{ atlas_nav_icon("diagrams") }}</span><span class="ab-label">Diagramas</span>
         </button>
         <button class="ab-item" id="abGraph" data-space="graph" title="Grafo">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#graph"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("graph") }}</span>
           <span class="ab-label">Grafo</span>
         </button>
         <button class="ab-item" id="abRadar" data-space="radar" title="Radar Tech">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#radar"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("radar") }}</span>
           <span class="ab-label">Radar</span>
         </button>
         <button class="ab-item" id="abLab" data-space="lab" title="Centro de Práctica">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("practice") }}</span>
           <span class="ab-label">Práctica</span>
           <span class="ab-badge-dot hidden" id="abPracticeBadge"></span>
         </button>
         <button class="ab-item" id="abLibrary" data-space="library" title="Biblioteca">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#library"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("library") }}</span>
           <span class="ab-label">Biblioteca</span>
         </button>
-        <button class="ab-item" id="abFinance" data-space="finance" title="Finanzas personales"><span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><use href="/static/aero-icons.svg#finance"></use></svg></span><span class="ab-label">Finanzas</span></button>
+        <button class="ab-item" id="abFinance" data-space="finance" title="Finanzas personales"><span class="ab-icon">{{ atlas_nav_icon("finance") }}</span><span class="ab-label">Finanzas</span></button>
       </div>
       <div class="activity-bar-bottom">
         <button class="ab-item" id="abSearch" title="Buscar (Ctrl+K)">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#search"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("search") }}</span>
           <span class="ab-label">Buscar</span>
         </button>
         <button class="ab-item" id="themeToggleSidebar" title="Cambiar tema">
@@ -153,11 +156,11 @@
           <span class="ab-label">Tema</span>
         </button>
         <a class="ab-item" href="/api/export-all" title="Exportar backup completo (.zip)" style="text-decoration:none">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#export"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("export") }}</span>
           <span class="ab-label">Exportar</span>
         </a>
         <a class="ab-item" href="/logout" title="Salir" style="text-decoration:none">
-          <span class="ab-icon"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#power"></use></svg></span>
+          <span class="ab-icon">{{ atlas_nav_icon("power") }}</span>
           <span class="ab-label">Salir</span>
         </a>
       </div>
@@ -740,14 +743,6 @@
         </div>
         </div><!-- /.entry-main -->
 
-        <!-- RELATED PAGES NAV SIDEBAR (right side) — shown for Pages -->
-        <aside class="related-sidebar hidden" id="relatedSidebar">
-          <div class="related-sidebar-header">
-            <span class="related-sidebar-title">Relacionadas</span>
-            <span class="related-sidebar-count" id="relatedSidebarCount"></span>
-          </div>
-          <div class="related-sidebar-body" id="relatedSidebarBody"></div>
-        </aside>
       </article>
     </main>
   </div>
@@ -1619,6 +1614,7 @@
           </div>
         </div>
       </div>
+      <p id="exportModalError" role="alert" class="hidden" style="color:var(--danger,#e06c75);padding:0 20px"></p>
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;padding:16px 20px">
         <button class="btn-ghost" id="exportModalCancel">Cancelar</button>
         <button class="btn-primary" id="exportModalConfirm">↓ Exportar</button>
@@ -1841,16 +1837,17 @@
   <div class="modal-overlay hidden" id="pagePeekOverlay">
     <div class="modal page-peek-modal">
       <div class="page-peek-header">
-        <div class="page-peek-titlewrap">
-          <span class="page-peek-icon" id="pagePeekIcon">📄</span>
-          <input type="text" class="page-peek-title" id="pagePeekTitle" placeholder="Sin título">
-        </div>
+        <div id="pagePeekToolbar" class="hidden"></div>
         <div class="page-peek-actions">
           <button class="btn-ghost" id="pagePeekOpenFull">Abrir página completa →</button>
           <button class="modal-close" id="pagePeekClose">×</button>
         </div>
       </div>
       <div class="page-peek-body">
+        <div class="page-peek-titlewrap">
+          <span class="page-peek-icon" id="pagePeekIcon">📄</span>
+          <textarea rows="1" class="page-peek-title" id="pagePeekTitle" placeholder="Sin título" aria-label="Título del registro"></textarea>
+        </div>
         <div class="page-peek-props" id="pagePeekProps"></div>
         <div class="page-peek-editor" id="pagePeekEditor"></div>
       </div>

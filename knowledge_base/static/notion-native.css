@@ -1,0 +1,259 @@
+/* Notion Native. One token palette and component bridge for the entire app,
+   including body portals and the finance iframe. Reference: REA screenshot
+   notion-native-rea-reference.png; measurements are visual estimates, not
+   extracted Notion CSS. Light and modules absent from that capture are Atlas
+   adaptations. Nothing here changes records, editor instances or preferences. */
+:root[data-style="notion"] {
+  --native-canvas:#191919;
+  --native-sidebar:#202020;
+  --native-panel:#202020;
+  --native-menu:#252525;
+  --native-field:#ffffff06;
+  --native-hover:#ffffff0e;
+  --native-selected:#2383e229;
+  --native-ink:#e3e3e0;
+  --native-muted:#a09f9b;
+  --native-faint:#969590;
+  --native-line:#ffffff17;
+  --native-line-soft:#ffffff0b;
+  --native-link:#75b7ec;
+  --native-primary:#2275bd;
+  --native-primary-hover:#1c68aa;
+  --native-danger:#ed9589;
+  --native-menu-shadow:0 8px 24px #0005,0 0 0 1px #0003;
+  --native-dialog-shadow:0 16px 64px #0006;
+  --native-control-radius:4px;
+  --native-menu-radius:8px;
+  --native-control-height:28px;
+  --native-menu-row:32px;
+  --native-ui-size:14px;
+  --native-page-size:16px;
+  --native-page-title:40px;
+  --native-heading-1:1.875em;
+  --native-heading-2:1.5em;
+  --native-heading-3:1.25em;
+  --native-heading-4:1.125em;
+  --native-heading-5:1em;
+  --native-heading-6:1em;
+  --native-font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --font-ui:var(--native-font);
+  --font-body:var(--native-font);
+  --font-display:var(--native-font);
+  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --font-serif:Georgia,"Times New Roman",serif;
+  --layer-0:var(--native-canvas);
+  --layer-1:var(--native-sidebar);
+  --layer-2:var(--native-panel);
+  --layer-3:var(--native-menu);
+  --layer-4:color-mix(in srgb,var(--native-ink) 10%,var(--native-menu));
+  --bg:var(--native-canvas);
+  --bg-sidebar:var(--native-sidebar);
+  --bg-surface:var(--native-panel);
+  --bg-elevated:var(--native-panel);
+  --bg-overlay:var(--native-menu);
+  --bg-hover:var(--native-hover);
+  --bg-code:var(--native-panel);
+  --panel-bg:var(--native-panel);
+  --panel-bg-2:var(--native-menu);
+  --text:var(--native-ink);
+  --text-muted:var(--native-muted);
+  --text-faint:var(--native-faint);
+  --fg:var(--text);
+  --fg-muted:var(--text-muted);
+  --border:var(--native-line);
+  --border-light:var(--native-line-soft);
+  --accent:var(--native-link);
+  --accent-hover:var(--native-link);
+  --accent-light:var(--native-selected);
+  --accent-dim:var(--native-selected);
+  --danger:var(--native-danger);
+  --h1-color:var(--text);
+  --h2-color:var(--text);
+  --h3-color:var(--text);
+  --grad-primary:none;
+  --grad-accent:none;
+  --grad-surface:none;
+  --grad-glow-top:none;
+  --grad-sidebar:none;
+  --glass-blur:none;
+  --glass-border:var(--border);
+  --glass-shadow:var(--native-menu-shadow);
+  --shadow:0 1px 2px #0002;
+  --shadow-sm:0 1px 2px #0002;
+  --shadow-md:var(--native-menu-shadow);
+  --shadow-lg:var(--native-menu-shadow);
+  --shadow-xl:var(--native-dialog-shadow);
+  --shadow-glow:none;
+  --shadow-purple:none;
+  --radius-xs:3px;
+  --radius-sm:var(--native-control-radius);
+  --radius:6px;
+  --radius-md:6px;
+  --radius-lg:var(--native-menu-radius);
+  --radius-xl:10px;
+  --radius-2xl:12px;
+  --topbar-h:45px;
+  --sidebar-w:270px;
+  --ab-gap:0px;
+  /* Legacy modules consume Aero tokens too; a flat bridge avoids a second
+     palette or a glass fallback inside finance, courses and tool windows. */
+  --aero-glass:var(--bg-surface);
+  --aero-content:var(--bg);
+  --aero-card:var(--bg-surface);
+  --aero-toolbar:var(--bg-surface);
+  --aero-button:var(--bg-surface);
+  --aero-field:var(--native-field);
+  --aero-edge:var(--border);
+  --aero-frame:var(--border);
+  --aero-inset:transparent;
+  --aero-shadow:none;
+  --aero-selection:var(--native-selected);
+  --aero-select-border:var(--accent);
+  --aero-chrome-text:var(--text);
+  --aero-nav-ink:var(--text);
+  --aero-nav-hover:var(--bg-hover);
+  --aero-nav-pressed:var(--native-selected);
+  --aero-nav-highlight:transparent;
+  --aero-nav-shadow:none;
+  color-scheme:dark;
+}
+:root[data-style="notion"][data-theme="light"] {
+  --native-canvas:#ffffff;
+  --native-sidebar:#f7f7f5;
+  --native-panel:#ffffff;
+  --native-menu:#ffffff;
+  --native-field:#37352f04;
+  --native-hover:#37352f0b;
+  --native-selected:#2383e21c;
+  --native-ink:#37352f;
+  --native-muted:#73726e;
+  --native-faint:#787774;
+  --native-line:#37352f20;
+  --native-line-soft:#37352f0e;
+  --native-link:#206dac;
+  --native-primary:#2275bd;
+  --native-primary-hover:#1c68aa;
+  --native-danger:#a82f24;
+  --native-menu-shadow:0 4px 16px #00000014,0 0 0 1px #0000000a;
+  --native-dialog-shadow:0 16px 48px #0002;
+  color-scheme:light;
+}
+.theme-swatch-notion-native {background:linear-gradient(90deg,#202020 32%,#191919 32%);border-color:#ffffff2b}
+.theme-swatch-notion-native-light {background:linear-gradient(90deg,#f7f7f5 32%,#fff 32%);border-color:#37352f33}
+.atlas-navigation-icon {display:inline-flex;align-items:center;justify-content:center;width:var(--atlas-nav-icon-size,24px);height:var(--atlas-nav-icon-size,24px);flex-shrink:0;vertical-align:middle;line-height:1}
+.atlas-native-nav-icon {display:none}
+
+@media screen {
+  /* Shell and own modules use the same restrained surface system. The
+     activity rail is an Atlas adaptation, retaining its navigation model. */
+  :root[data-style="notion"] body,
+  :root[data-style="notion"] body.home-ambient {background:var(--bg)!important;color:var(--text);font-family:var(--font-ui);font-size:var(--native-ui-size)}
+  :root[data-style="notion"] :is(.content-area,.layout,#entryView,.entry-main,.entry-body) {background:var(--bg)!important}
+  :root[data-style="notion"] :is(.topbar,.sidebar,.activity-bar) {background:var(--bg-sidebar)!important;border-color:var(--border)!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;outline:0}
+  :root[data-style="notion"] .topbar {background:var(--bg)!important;padding-inline:14px;border-width:0 0 1px!important}
+  :root[data-style="notion"] .activity-bar {border-width:0 1px 0 0!important}
+  :root[data-style="notion"] .sidebar {border-width:0 1px 0 0!important}
+  :root[data-style="notion"] :is(.topbar-brand-name,.topbar-brand-badge,.workspace-name) {font-family:var(--font-ui)!important;font-size:14px;color:var(--text)!important;text-shadow:none;background:none;box-shadow:none;letter-spacing:normal}
+  :root[data-style="notion"] :is(.ab-item,.sidebar button,.tree-entry,.tree-topic-header,.tree-category-header) {border-radius:var(--native-control-radius);box-shadow:none!important;text-shadow:none;letter-spacing:normal}
+  :root[data-style="notion"] .ab-item {min-height:34px;font-size:14px;color:var(--text-muted)}
+  :root[data-style="notion"] .ab-item:is(:hover,.active) {background:var(--bg-hover)!important;color:var(--text)!important;border-color:transparent}
+  :root[data-style="notion"] .atlas-navigation-icon > .aero-nav-icon {display:none}
+  :root[data-style="notion"] .atlas-navigation-icon > .atlas-native-nav-icon {display:block;width:20px;height:20px;color:inherit}
+  :root[data-style="notion"] #sidebar :is(.tree-entry,.tree-topic-header) {font-size:14px;font-weight:400}
+  :root[data-style="notion"] #sidebar :is(.tree-entry,.tree-topic-header):is(:hover,.active,:focus-within) {background:var(--bg-hover)!important;border-color:transparent!important;box-shadow:none!important}
+  :root[data-style="notion"] :is(.cmd-trigger,.topbar-icon-btn,.btn-ghost,.atlas-select-trigger,.ai-model-trigger) {background:transparent;box-shadow:none!important;border-radius:var(--native-control-radius);color:var(--text-muted);text-shadow:none}
+  :root[data-style="notion"] :is(.topbar-icon-btn,.btn-ghost,.atlas-select-trigger,.ai-model-trigger):hover {background:var(--bg-hover)!important;color:var(--text)}
+  :root[data-style="notion"] :is(.btn-primary,.primary-btn,.login-submit,.adb-primary):not(.danger) {background:var(--native-primary)!important;color:#fff!important;border:1px solid transparent!important;border-radius:var(--native-control-radius)!important;box-shadow:none!important;text-shadow:none!important;font-family:var(--font-ui);font-weight:500}
+  :root[data-style="notion"] :is(.btn-primary,.primary-btn,.login-submit,.adb-primary):hover:not(:disabled):not(.danger) {background:var(--native-primary-hover)!important}
+  :root[data-style="notion"] :is(.home-card,.home-stat,.home-study-card,.home-study-featured,.home-study-compact,.home-resume-banner,.assistant-area,.ai-panel,.scratchpad,.content-panel,.lib-modal,.book-card,.radar-tile,.radar-wide,.radar-featured,.practice-view,.cv-action-card,.balance-hero,.cashflow>div) {background:var(--bg-surface)!important;color:var(--text);border:1px solid var(--border)!important;border-radius:6px!important;box-shadow:none!important;backdrop-filter:none!important;text-shadow:none}
+  :root[data-style="notion"] :is(.home-card,.home-study-featured,.home-study-compact,.cv-action-card):hover {transform:none!important;background:var(--bg-hover)!important}
+  :root[data-style="notion"] :is(.assistant-header,.assistant-composer-footer,.assistant-input-box,.assistant-transcript,.home-card-body,.ai-panel-header,.window-chrome,.window-content,.window-footer,.ag-body,.login-window-title,.login-window-content,.login-window-footer) {background:var(--bg-surface)!important;color:var(--text);border-color:var(--border)!important;box-shadow:none!important;text-shadow:none!important;backdrop-filter:none!important}
+  :root[data-style="notion"] :is(.home-hero,.home-greeting,.login-main h1) {background:transparent!important;color:var(--text)!important;font-family:var(--font-ui)!important;text-shadow:none!important}
+  :root[data-style="notion"] :is(#homeAmbientCanvas,#homeAmbientScrim,.home-hero-canvas,.login-wallpaper,.emblem-orbit,.ag-orbit) {display:none!important}
+  :root[data-style="notion"] :is(.home-hero,.home-card,.home-study-featured,.home-study-compact,.login-emblem)::before,
+  :root[data-style="notion"] :is(.home-hero,.home-card,.home-study-featured,.home-study-compact,.login-emblem)::after {display:none!important}
+
+  /* Never overwrite the saved frame preference. Leaving Native immediately
+     restores the prior frame on tool windows; editing stays frame-free. */
+  :root[data-style="notion"] .atlas-frame[data-atlas-frame-kind],
+  :root[data-style="notion"] :is(.atlas-goal,.demo-frame,.login-window) {border:1px solid var(--border)!important;border-radius:6px!important;background:var(--bg-surface)!important;box-shadow:none!important;outline:0!important;backdrop-filter:none!important}
+  :root[data-style="notion"] :is(.atlas-frame-decoration,.frame-rivets,.ag-corners,.chrome-engraving) {display:none!important}
+  :root[data-style="notion"] :is(.atlas-goal,.demo-frame,.login-window)::before,
+  :root[data-style="notion"] :is(.atlas-goal,.demo-frame,.login-window)::after {display:none!important}
+  :root[data-style="notion"] :is(.ag-controls button,.window-controls button,.assistant-header-actions button,.toc-panel-close) {border-radius:var(--native-control-radius)!important;background:transparent!important;color:var(--text-muted)!important;box-shadow:none!important;border-color:transparent!important}
+  :root[data-style="notion"] :is(.ag-controls button,.window-controls button,.assistant-header-actions button):hover {background:var(--bg-hover)!important;color:var(--text)!important}
+  :root[data-style="notion"] :is(.topbar,.sidebar,.activity-bar).atlas-frame {border-radius:0!important;border-width:0 1px 0 0!important;box-shadow:none!important}
+  :root[data-style="notion"] .topbar.atlas-frame {background:var(--bg)!important;border-width:0 0 1px!important}
+  :root[data-style="notion"] .modal.atlas-frame {padding:0!important}
+  :root[data-style="notion"] :is(.atlas-goal,.demo-frame) {padding:0!important}
+  :root[data-style="notion"] :is(.ag-chrome,.window-chrome) {padding:10px 12px!important;border-bottom:1px solid var(--border);border-radius:6px 6px 0 0!important}
+  :root[data-style="notion"] .ag-art svg {filter:none;animation:none}
+  :root[data-style="notion"] .login-emblem {background:var(--bg-hover);border-color:var(--border);border-radius:12px;box-shadow:none;animation:none}
+  :root[data-style="notion"] .login-emblem span {color:var(--text);text-shadow:none}
+  :root[data-style="notion"] .login-wordmark {text-shadow:none}
+  :root[data-style="notion"] .login-avatar {background:var(--bg-hover);box-shadow:none;color:var(--text);border-color:var(--border)}
+
+  /* Shared controls, irrespective of whether their parent is a portal. */
+  :root[data-style="notion"] :is(button,input,textarea,select) {font-family:var(--font-ui)}
+  :root[data-style="notion"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),textarea,select) {color:var(--text);background-color:var(--native-field);border-color:var(--border);border-radius:var(--native-control-radius);box-shadow:none;color-scheme:inherit}
+  :root[data-style="notion"] select option {background:var(--bg-overlay);color:var(--text)}
+  :root[data-style="notion"] :is(input,textarea)::placeholder {color:var(--text-faint);opacity:1}
+  :root[data-style="notion"] :is(input[type="checkbox"],input[type="radio"]) {accent-color:var(--native-primary);color-scheme:inherit}
+  :root[data-style="notion"] :is(button,a,input,textarea,select,[role="button"],[role="menuitem"],[role="option"]):focus-visible {outline:2px solid var(--accent)!important;outline-offset:2px}
+  :root[data-style="notion"] :is(.modal,.lib-modal,.theme-picker,.cmd-modal,.atlas-spelling-review,.assistant-confirm-dialog,.adb-dialog) {background:var(--bg-overlay)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:var(--native-menu-radius)!important;box-shadow:var(--native-dialog-shadow)!important;backdrop-filter:none!important}
+  :root[data-style="notion"] :is(.modal-header,.modal-footer,.theme-picker-heading,.theme-category-filters,.assistant-confirm-header) {background:var(--bg-overlay);color:var(--text);border-color:var(--border);box-shadow:none}
+  :root[data-style="notion"] :is(.atlas-select-popup,.ai-model-panel,.search-results,.context-menu,.cv-lesson-dropdown,.assistant-context-popover,.bn-menu-dropdown,.bn-suggestion-menu,.bn-toolbar,.bn-tooltip,[role="tooltip"]) {background:var(--bg-overlay)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:var(--native-menu-radius)!important;box-shadow:var(--native-menu-shadow)!important;text-shadow:none!important;backdrop-filter:none!important;font-family:var(--font-ui)!important;font-size:var(--native-ui-size)}
+  :root[data-style="notion"] :is(.atlas-select-option,.cv-lesson-dropdown button,.ai-model-option) {min-height:var(--native-menu-row);padding:6px 9px;border-radius:var(--native-control-radius);font-family:var(--font-ui);font-size:var(--native-ui-size);box-shadow:none}
+  :root[data-style="notion"] :is(.atlas-select-option,.cv-lesson-dropdown button,.ai-model-option):is(:hover,[aria-selected="true"],.atlas-option-active) {background:var(--bg-hover)!important;color:var(--text);box-shadow:none}
+
+  /* Record/page preferences are the innermost source of typography. Theme
+     changes never replace --adb-record-font/size or the full-width class. */
+  :root[data-style="notion"] #inlineTitle {font-family:var(--adb-record-font,var(--font-body))!important;font-size:clamp(28px,3vw,var(--native-page-title))!important;font-weight:700!important;line-height:1.2;letter-spacing:-.025em;color:var(--text)!important;text-shadow:none;border:0!important;background:transparent!important}
+  :root[data-style="notion"] :is(#pagePeekTitle,.page-peek-title) {background:transparent!important;color:var(--text)!important;box-shadow:none!important}
+  :root[data-style="notion"] .entry-header {border-color:var(--border);background:transparent!important}
+  :root[data-style="notion"] .meta-seg {background:transparent!important;color:var(--text-muted)!important;clip-path:none;padding-inline:6px;font-size:11px;font-weight:400;letter-spacing:normal;text-transform:none}
+  :root[data-style="notion"] .meta-seg::after {display:none}
+  :root[data-style="notion"] .bn-container {--bn-font-family:var(--adb-record-font,var(--font-body));--bn-colors-editor-background:var(--bg)!important;--bn-colors-menu-background:var(--bg-overlay)!important;--bn-colors-tooltip-background:var(--bg-overlay)!important;--bn-colors-selected-background:var(--native-selected)!important;--bn-colors-border:var(--border)!important;--bn-border-radius:var(--native-control-radius)}
+  :root[data-style="notion"] :is(.bn-mantine,.atlas-editor-menu-layer) {--mantine-font-family:var(--font-ui);--mantine-color-body:var(--bg-overlay);--mantine-color-text:var(--text);--mantine-color-dimmed:var(--text-muted);--mantine-color-default:var(--bg-overlay);--mantine-color-default-hover:var(--bg-hover);--mantine-color-default-border:var(--border)}
+  :root[data-style="notion"] .bn-editor {background:transparent!important;color:var(--text);font:var(--adb-record-size,var(--native-page-size))/1.5 var(--adb-record-font,var(--font-body))!important}
+  :root[data-style="notion"] .bn-editor :is(p,h1,h2,h3,h4,h5,h6) {font-family:var(--adb-record-font,var(--font-body))!important;color:inherit;letter-spacing:normal}
+  :root[data-style="notion"] .bn-editor :is(h1,h2,h3,h4,h5,h6) {border:0!important;margin:0!important;padding:0!important;font-weight:600;line-height:1.3}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"] {font-size:var(--native-heading-1)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) {color:var(--text)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"][data-level="2"] {font-size:var(--native-heading-2)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"][data-level="3"] {font-size:var(--native-heading-3)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"][data-level="4"] {font-size:var(--native-heading-4)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"][data-level="5"] {font-size:var(--native-heading-5)!important}
+  :root[data-style="notion"] .bn-editor [data-content-type="heading"][data-level="6"] {font-size:var(--native-heading-6)!important}
+  :root[data-style="notion"] .bn-editor :is(h1,h2,h3,h4,h5,h6) {font-size:1em!important}
+  :root[data-style="notion"] .bn-editor p {font-size:1em}
+  :root[data-style="notion"] .bn-editor [data-content-type="codeBlock"] {color:#e1e4e8;--font-body:var(--font-mono)}
+  :root[data-style="notion"] :is(.bn-menu-dropdown,.bn-suggestion-menu,.bn-tooltip) {--bn-font-family:var(--font-ui)}
+
+  /* ADB roots sometimes establish their own palette, including portals.
+     Map them back to the family instead of freezing another dark palette. */
+  :root[data-style="notion"] :is(.adb-workspace,.adb-popover,.adb-view-config,.adb-record-properties,.adb-dialog) {--adb-bg:var(--bg);--adb-text:var(--text);--adb-muted:var(--text-muted);--adb-border:var(--border);--adb-hover:var(--bg-hover);--adb-selected:var(--native-selected);--adb-accent:var(--accent);color-scheme:inherit;font-family:var(--font-ui)}
+  :root[data-style="notion"] :is(.adb-popover,.adb-dialog) {--adb-bg:var(--bg-overlay);background:var(--bg-overlay);border-color:var(--border);border-radius:var(--native-menu-radius);box-shadow:var(--native-menu-shadow)}
+  :root[data-style="notion"] .adb-view-config {--adb-bg:var(--bg-surface)}
+  :root[data-style="notion"] .adb-record-properties {--adb-bg:transparent;background:transparent}
+  :root[data-style="notion"] #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal {background:var(--native-panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+  /* The earlier opt-in preview established local font/palette tokens on the
+     overlay instead of inheriting them. Bridge at those same boundaries so
+     Native remains complete, including its light variant and editor menus. */
+  :root[data-style="notion"] :is(.bn-db-notion-preview,.db-preview-popover,#pagePeekOverlay.db-preview-peek) {--font-ui:var(--native-font);--font-body:var(--native-font);--font-display:var(--native-font);--bg:var(--native-canvas);--bg-surface:var(--native-panel);--bg-elevated:var(--native-panel);--bg-overlay:var(--native-menu);--bg-hover:var(--native-hover);--layer-1:var(--native-sidebar);--text:var(--native-ink);--fg:var(--native-ink);--text-muted:var(--native-muted);--text-faint:var(--native-faint);--border:var(--native-line);--accent:var(--native-link);--accent-light:var(--native-selected);color-scheme:inherit}
+  /* Preview CSS also used an ID-scoped !important font shorthand on h1/h2.
+     Keep heading size relative to its measured content wrapper and preserve
+     the record's Serif/Mono variable instead of forcing the theme family. */
+  :root[data-style="notion"] #pagePeekOverlay.db-preview-peek .bn-editor :is(h1,h2,h3,h4,h5,h6) {font-family:var(--adb-record-font,var(--font-body))!important;font-weight:600!important;font-size:1em!important;line-height:1.3!important;letter-spacing:normal}
+  :root[data-style="notion"] #pagePeekOverlay .page-peek-body {background:var(--native-panel)!important}
+  :root[data-style="notion"] .adb-peek-toolbar {color:var(--text-muted)}
+  :root[data-style="notion"] .adb-peek-toolbar .adb-icon-button:is(:hover,.active) {background:var(--bg-hover);color:var(--text)}
+  :root[data-style="notion"] :is(.adb-peek-nav-divider,.adb-record-divider) {border-color:var(--border);background:var(--border)!important}
+  :root[data-style="notion"] #pagePeekOverlay .bn-container {--bn-colors-editor-background:var(--native-panel)!important}
+  :root[data-style="notion"] .adb-record-card {background:var(--bg-surface);border-color:var(--border);border-radius:6px;box-shadow:0 1px 2px #0001}
+  :root[data-style="notion"] .adb-new-button {background:var(--native-primary)!important;color:#fff!important}
+  :root[data-style="notion"] .theme-picker {max-height:calc(100dvh - 32px);overflow:auto}
+  :root[data-style="notion"] .theme-preview-link {background:var(--bg-surface);box-shadow:none;border-color:var(--border)}
+  :root[data-style="notion"] .theme-options button {border-radius:6px;background:var(--bg-surface);box-shadow:none}
+  :root[data-style="notion"] .theme-options button[aria-pressed="true"] {background:var(--native-selected);border-color:var(--accent)}
+}

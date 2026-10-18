@@ -1,4 +1,6 @@
 import os
+from cover_storage import cover_root, cover_path
+from database_identity import valid_id as valid_database_id, fresh_copy as copy_database_sources
 import koboldcpp
 from personal_goal import create_goal_blueprint
 from finance import create_finance_blueprint, snapshot_finance_database
@@ -1327,6 +1329,9 @@ def set_entry_parent(entry_id):
             seen.add(cursor)
             cursor = index.get(cursor, {}).get("parent_id")
 
+    if index[entry_id].get("parent_id") != new_parent_id:
+        index[entry_id].pop("database_id", None)
+        index[entry_id]["db_row"] = False
     index[entry_id]["parent_id"] = new_parent_id
     save_index(index)
     return jsonify({"message": "Updated"})
@@ -1353,6 +1358,7 @@ def move_entry_to(entry_id):
     dest = data.get("dest")
     old_path = _entry_path(entry_id, meta)
     meta["db_row"] = False  # leaving whatever database it was a row of, if any
+    meta.pop("database_id", None)
 
     if dest == "pages_root":
         meta["type"] = "page"
@@ -1460,8 +1466,18 @@ def get_entry(entry_id):
         return jsonify({"error": "File not found"}), 404
     raw = path.read_text()
     html = render_markdown(raw)
-    meta["last_viewed_at"] = datetime.now().isoformat(timespec="seconds")
-    save_index(index)
+    # Reading a page must not rewrite the index snapshot: database cells or
+    # newly created rows may have changed while its Markdown was rendering.
+    from contextlib import closing
+    with closing(_index_db_connect()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        current = conn.execute("SELECT meta FROM entries WHERE entry_id=?", (entry_id,)).fetchone()
+        if not current:
+            return jsonify(error="Not found"), 404
+        meta = json.loads(current[0])
+        meta["last_viewed_at"] = datetime.now().isoformat(timespec="seconds")
+        conn.execute("UPDATE entries SET meta=? WHERE entry_id=?", (json.dumps(meta, ensure_ascii=False), entry_id))
+        conn.commit()
     source_id = next((key for key, item in index.items() if meta.get("source_entry_uid") and
                       item.get("uid") == meta["source_entry_uid"]), meta.get("source_entry_id"))
     origin = {"id": source_id, "title": index[source_id].get("title", source_id)} if source_id in index else None
@@ -1751,6 +1767,13 @@ def create_entry():
         save_index(index)
         return jsonify({"id": entry_id, "message": "Saved"})
 
+    database_id = data.get("database_id")
+    if database_id is not None:
+        if entry_type != "page" or not data.get("db_row") or not valid_database_id(database_id) or parent_id not in index:
+            return jsonify(error="Identidad o página de base de datos no válida"), 400
+        if any(m.get("database_id") == database_id and m.get("parent_id") != parent_id for m in index.values()):
+            return jsonify(error="La identidad pertenece a otra página"), 409
+
     if entry_type == "page":
         folder = KNOWLEDGE_DIR / "pages"
         folder.mkdir(parents=True, exist_ok=True)
@@ -1783,6 +1806,8 @@ def create_entry():
             # the generic "Sub-páginas" list (see get_children below).
             "db_row": bool(data.get("db_row")),
         }
+        if database_id is not None:
+            index[entry_id]["database_id"] = database_id
         save_index(index)
         return jsonify({"id": entry_id, "message": "Saved"})
 
@@ -1841,6 +1866,8 @@ def update_entry(entry_id):
     index = load_index()
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
+    if index[entry_id].get("database_locked"):
+        return jsonify(error="Desbloquea la página para editarla"), 423
     data = request.json
     raw_text = data.get("raw_text", "")
     already_markdown = bool(data.get("already_markdown"))
@@ -1921,6 +1948,9 @@ def update_entry(entry_id):
         if icon is not None:
             index[entry_id]["icon"] = icon.strip()
         if "parent_id" in data:
+            if index[entry_id].get("parent_id") != (data.get("parent_id") or None):
+                index[entry_id].pop("database_id", None)
+                index[entry_id]["db_row"] = False
             index[entry_id]["parent_id"] = data.get("parent_id") or None
         if "order" in data:
             index[entry_id]["order"] = int(data["order"])
@@ -2723,9 +2753,9 @@ _COVER_MAGIC_BYTES = {
 
 @app.route("/api/upload/cover", methods=["POST"])
 def upload_cover_image():
-    """Receive a base64-encoded image, save to static/covers/, return URL."""
-    covers_dir = Path(app.root_path) / "static" / "covers"
-    covers_dir.mkdir(exist_ok=True)
+    """Keep the public URL while storing new bytes on the persistent data volume."""
+    covers_dir = cover_root(DATA_DIR)
+    covers_dir.mkdir(parents=True, exist_ok=True)
     body = request.json or {}
     data_url = body.get("dataUrl", "")
     if not data_url.startswith("data:image/"):
@@ -2757,6 +2787,15 @@ def upload_cover_image():
     return jsonify({"ok": True, "url": f"/static/covers/{filename}"})
 
 
+@app.route("/static/covers/<path:filename>")
+def serve_persistent_cover(filename):
+    try:
+        path = cover_path(DATA_DIR, Path(app.root_path) / 'static/covers', filename)
+    except ValueError:
+        return '', 404
+    return send_from_directory(path.parent, path.name)
+
+
 @app.route("/api/entry/<entry_id>/icon", methods=["PATCH"])
 def update_icon(entry_id):
     index = load_index()
@@ -2775,6 +2814,8 @@ def update_properties(entry_id):
     index = load_index()
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
+    if index[entry_id].get("database_locked"):
+        return jsonify(error="Desbloquea la página para editarla"), 423
     props = request.json.get("properties", [])
     index[entry_id]["properties"] = props
     save_index(index)
@@ -2783,26 +2824,46 @@ def update_properties(entry_id):
 
 @app.route("/api/entry/<entry_id>/content", methods=["PATCH"])
 def patch_content(entry_id):
-    """Inline auto-save: update file content and optionally title."""
-    index = load_index()
-    if entry_id not in index:
-        return jsonify({"error": "Not found"}), 404
-    data = request.json
-    meta = index[entry_id]
-    raw_text = data.get("raw_text")
-    restore = data.get("restore", False)  # if True, write markdown verbatim (no smart_parse)
-    already_markdown = bool(data.get("already_markdown"))
-    if raw_text is not None:
-        path = _entry_path(entry_id, meta)
-        _save_history_snapshot(entry_id, meta, path)
-        # Restore: write markdown as-is; normal save: smart_parse
-        path.write_text(raw_text if restore or already_markdown else smart_parse(raw_text))
-    title = data.get("title", "").strip()
-    if title:
-        index[entry_id]["title"] = title
-    if raw_text is not None or title:
-        save_index(index)
-    return jsonify({"ok": True})
+    """Save body/title without overwriting concurrent database cell edits."""
+    from contextlib import closing
+    from database_api import LOCK
+    from database_identity import database_blocks
+    data = request.get_json() or {}
+    with LOCK, closing(_index_db_connect()) as conn:
+        _migrate_index_json_to_sqlite_if_needed(conn)
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT meta FROM entries WHERE entry_id=?", (entry_id,)).fetchone()
+        if not row:
+            return jsonify(error="Not found"), 404
+        meta = json.loads(row[0])
+        raw_text = data.get("raw_text")
+        title = str(data.get("title", "")).strip()
+        if meta.get('database_deleted'):
+            return jsonify(error='El registro está en la papelera; restáuralo antes de editar'),410
+        if meta.get('database_locked'):
+            current_path=_entry_path(entry_id,meta)
+            if (raw_text is not None and raw_text!=(current_path.read_text() if current_path.exists() else '')) or (title and title!=meta.get('title')):
+                return jsonify(error='Desbloquea la página para editarla'),423
+        if raw_text is not None:
+            if not isinstance(raw_text, str): return jsonify(error="Contenido no válido"), 400
+            path = _entry_path(entry_id, meta)
+            if path.exists() and not data.get("restore"):
+                current_sources={b[2].get("database_id"):b[2] for b in database_blocks(path.read_text()) if b[2].get("database_id")}
+                for _,_,incoming in database_blocks(raw_text):
+                    current=current_sources.get(incoming.get("database_id"),{})
+                    if current.get("_schema_version",0)>incoming.get("_schema_version",0):
+                        return jsonify(error="El esquema de una base cambió en otra sesión. Conserva el borrador y recarga la página antes de guardar."),409
+            _save_history_snapshot(entry_id, meta, path)
+            content = raw_text if data.get("restore") or data.get("already_markdown") else smart_parse(raw_text)
+            temporary = path.with_suffix(".content.tmp")
+            temporary.write_text(content)
+            temporary.replace(path)
+        if title: meta["title"] = title
+        if raw_text is not None or title:
+            meta.update(updated_at=datetime.now().isoformat(timespec="microseconds"), edited_by="owner")
+            conn.execute("UPDATE entries SET meta=? WHERE entry_id=?", (json.dumps(meta, ensure_ascii=False), entry_id))
+        conn.commit()
+    return jsonify(ok=True)
 
 
 # ── FEATURE: Version History ────────────────────────────────────────────────
@@ -2851,6 +2912,8 @@ def restore_entry_history_snapshot(entry_id, timestamp):
     if entry_id not in index:
         return jsonify({"error": "Not found"}), 404
     meta = index[entry_id]
+    if meta.get("database_locked"):
+        return jsonify(error="Desbloquea la página antes de restaurar"), 423
     path = _entry_path(entry_id, meta)
     hist_dir = path.parent / ".history"
     snapshot_path = hist_dir / f"{entry_id}_{timestamp}.md"
@@ -2964,6 +3027,9 @@ def get_review_due():
 @app.route("/api/entry/<entry_id>/children")
 def get_children(entry_id):
     index = load_index()
+    database_id = request.args.get("database_id")
+    if database_id is not None and database_id != "__legacy__" and not valid_database_id(database_id):
+        return jsonify(error="Identidad de base de datos no válida"), 400
     children = [
         {
             "id": eid,
@@ -2981,9 +3047,13 @@ def get_children(entry_id):
             # duplicates just because this shipped. Only entries created
             # from here on carry an explicit True/False.
             "db_row": m.get("db_row", m.get("type") == "page"),
+            "database_id": m.get("database_id"),
         }
         for eid, m in index.items()
         if m.get("parent_id") == entry_id
+        and (database_id is None
+             or (database_id == "__legacy__" and not m.get("database_id"))
+             or m.get("database_id") == database_id)
     ]
     # Same (order, created_at) convention used for every other sibling list in
     # the app (teamspaces/categories/topics) — manually reordered rows (via
@@ -3103,9 +3173,14 @@ def duplicate_entry(entry_id):
 
     new_path = _entry_path(new_id, meta)
     new_path.parent.mkdir(parents=True, exist_ok=True)
-    new_path.write_text(path.read_text())
+    try:
+        copied_content = copy_database_sources(path.read_text())
+    except (ValueError, TypeError):
+        return jsonify(error="Esquema de base no válido; revisar antes de duplicar"), 409
+    new_path.write_text(copied_content)
 
     new_meta = dict(meta)
+    new_meta["uid"] = uuid.uuid4().hex[:8]
     new_meta["title"] = meta["title"] if meta["title"].startswith("[copy]") else "[copy] " + meta["title"]
     new_meta["created_at"] = datetime.now().isoformat(timespec="seconds")
     index[new_id] = new_meta
@@ -8984,6 +9059,9 @@ def start_library_ocr(book_id):
 def library_ocr_status(book_id):
     return jsonify(_OCR_JOBS.get(book_id, {"status": "idle", "progress": 0, "error": None}))
 
+
+from database_api import register_database_api
+register_database_api(app, globals())
 
 from diagrams import register_diagrams
 register_diagrams(app, globals())

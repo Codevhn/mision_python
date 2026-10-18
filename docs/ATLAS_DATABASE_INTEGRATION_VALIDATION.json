@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-17",
+  "scope": "integration preparation only; no real migration, commit, merge, push or deployment",
+  "source_app": "mision-pythonhn",
+  "source_machine": "85e740a47d0298",
+  "effective_DATA_ROOT": "/data",
+  "source_confirmed_running": true,
+  "initial_stopped_observation_superseded": true,
+  "production_python": "3.11.17",
+  "rehearsal_python": "3.11.16",
+  "gunicorn_workers": 2,
+  "threads_per_worker": 4,
+  "backup_preparation_root": "/tmp/atlas-integration-prep-20261017-231716",
+  "production_archive_bytes": 237086403,
+  "production_archive_sha256": "79f0056e33254d13e1ac67ff7f92392e84b8bfb97fddfdb6459f2fca4cfe2766",
+  "capture_files_or_links": 6852,
+  "capture_unchanged_before_after": true,
+  "archive_hash_mismatches": 0,
+  "capture_atomic": false,
+  "original_entries": 1150,
+  "database_blocks_migrated_in_copy": 3,
+  "row_memberships_added_in_copy": 6,
+  "unresolved_preserved": 6,
+  "unresolved_reasons": {
+    "unconfirmed_legacy_row": 6
+  },
+  "repeat_migration_no_changes": true,
+  "rollback_restore_exact": true,
+  "existing_source_row_counts": [
+    1,
+    0,
+    5
+  ],
+  "existing_course_artifacts_verified": [
+    "json",
+    "md",
+    "pdf"
+  ],
+  "existing_data_preserved": true,
+  "other_sqlite_logical_data_preserved": true,
+  "preexisting_invalid_covers": 36,
+  "manual_download_scope": "Prior user confirmation only for V1 PDF; no new formats or documents claimed manually verified",
+  "qa_table_peek_page_reload": "verified with CUA on the isolated copy",
+  "limitations": [
+    "Online capture is stable in the observed interval, not an atomic filesystem snapshot; refresh under maintenance before integration",
+    "TAILSCALE_AUTHKEY value absent from runtime environment; retain Fly secret or reissue if reconstructing independently",
+    "36 preexisting invalid cover images preserved as original bytes",
+    "Multiworker smoke is not exhaustive concurrent schema testing",
+    "Cover files reside outside persistent volume; preserve and restore them explicitly at deployment"
+  ],
+  "rehearsal_url": "http://127.0.0.1:5071/?open=qa-ensayo-integración-atlas",
+  "durable_backup": "/home/frandArch/Documents/Atlas-backups/atlas-integration-prep-20261017-231716",
+  "durable_backup_sha256_manifest": "SHA256SUMS.json",
+  "durable_backup_files_verified": 30
+}

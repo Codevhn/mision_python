@@ -5,83 +5,23 @@ import {
   useComponentsContext,
   useBlockNoteEditor,
   useExtensionState,
-  blockTypeSelectItems,
   SideMenu,
   RemoveBlockItem,
   BlockColorsItem,
 } from "@blocknote/react";
 import { SideMenuExtension } from "@blocknote/core/extensions";
-import { RiCodeBlock } from "react-icons/ri";
+import { RiFileCopyLine } from "react-icons/ri";
+import { BlockCatalogIcon, buildConversionBlockItems, convertCatalogBlock, duplicateCatalogBlock } from "./blockCatalog.jsx";
 
-// Verbatim the default props BlockNote sets for a fresh codeBlock (the custom
-// spec lives in codeBlock.jsx; its only prop is `language` with default "text").
-function codeBlockPropsFor(block) {
-  return {
-    language: String(
-      (block && block.props && block.props.language) || "text",
-    ),
-  };
-}
-
-// Current-type / current-props matcher, mirrors the native BlockTypeSelect so a
-// check appears on exactly the type the hovered block already is.
 function isMatchingItem(block, item) {
-  if (!block) return false;
-  if (block.type !== item.type) return false;
-  return Object.entries(item.props || {}).every(
-    ([propName, propValue]) => block.props[propName] === propValue,
-  );
+  return block?.type === item.type && Object.entries(item.props || {})
+    .every(([name, value]) => block.props[name] === value);
 }
 
-// A code block's raw text, e.g. pasted/written markdown source sitting
-// inside it (`## Título`, `**negrita**`, numbered steps...) rather than real
-// code.
-function inlineText(block) {
-  return (block.content || [])
-    .map((item) => (item && item.type === "text" ? item.text : ""))
-    .join("");
-}
-
-// Converting a codeBlock into some other type used to just relabel it,
-// leaving markdown syntax sitting there as literal text (a "## Título" stays
-// exactly that instead of becoming a real heading). Turning code *into* a
-// code block already runs text through the editor's own markdown engine
-// (pasteCode.js); this is the reverse direction, reusing that same engine
-// (tryParseMarkdownToBlocks) so undoing an accidental/no-longer-wanted code
-// block gets back real headings/bold/lists instead of a wall of raw syntax.
-// Only kicks in when the parse actually finds structure (>1 resulting
-// block) — plain text with no markdown just falls through to the normal
-// single-type conversion below, respecting whatever type was clicked.
-function convertBlock(editor, block, item) {
-  if (block.type === "codeBlock" && item.type !== "codeBlock") {
-    const text = inlineText(block);
-    const parsed = text ? editor.tryParseMarkdownToBlocks(text) : null;
-    if (parsed && parsed.length > 1) {
-      editor.replaceBlocks([block.id], parsed);
-      return;
-    }
-  }
-  const props = item.type === "codeBlock" ? codeBlockPropsFor(block) : item.props;
-  editor.updateBlock(block, { type: item.type, props });
-}
-
-// The list of block types offered by the drag handle: the canonical text
-// blocks (same set and labels as the native "Turn into" selector) plus the
-// app's custom codeBlock.
-export function buildBlockTypeItems(editor) {
-  const items = [
-    ...blockTypeSelectItems(editor.dictionary),
-    {
-      name: "Code Block",
-      type: "codeBlock",
-      props: { language: "text" },
-      icon: RiCodeBlock,
-    },
-  ];
-
-  const supportedTypes = editor.schema.blockSpecs;
-
-  return items.filter((item) => supportedTypes[item.type]);
+// Kept as a named public helper for existing integrations. Every projection
+// now consumes the same ordered catalogue as insert (+) and slash.
+export function buildBlockTypeItems(editor, block) {
+  return buildConversionBlockItems(editor, block);
 }
 
 // The menu that opens from the ⋮⋮ drag handle. Besides the native Delete and
@@ -98,23 +38,24 @@ export function DragHandleMenu() {
     selector: (state) => state?.block,
   });
 
-  if (block === undefined) {
-    return null;
-  }
-
-  const items = buildBlockTypeItems(editor);
-
   // Portal the menu past the frame's blur/isolation and anchor in viewport
   // coordinates, so collapsed content cannot clip or cover the dropdown.
   const dropdownRef = useCallback((node) => {
     if (!node) return;
     const position=()=>{
-      const anchor=document.querySelector('.bn-side-menu [aria-haspopup="menu"]');
+      const anchor=editor.portalElement?.querySelector('.bn-side-menu [aria-haspopup="menu"]')||editor.domElement?.closest('.bn-container')?.querySelector('.bn-side-menu [aria-haspopup="menu"]');
       if(!anchor)return;
       const rect=anchor.getBoundingClientRect();
       const barBottom=document.getElementById('ctxBar')?.getBoundingClientRect().bottom||0;
-      node.style.maxHeight=`${Math.max(120,innerHeight-barBottom-24)}px`;
-      node.style.overflowY='auto';
+      node.style.maxHeight='none';
+      // Native color submenus render beside this dropdown, without a portal.
+      // Only scroll the conversion list so the submenu is never clipped.
+      node.style.overflow='visible';
+      const types=node.querySelector('.atlas-block-type-list');
+      if(types){
+        const footerHeight=node.getBoundingClientRect().height-types.getBoundingClientRect().height;
+        types.style.maxHeight=`${Math.max(80,innerHeight-barBottom-24-footerHeight)}px`;
+      }
       const bounds=node.getBoundingClientRect();
       node.style.setProperty('position','fixed','important');
       node.style.setProperty('left',`${Math.max(8,Math.min(rect.right+6,innerWidth-bounds.width-8))}px`,'important');
@@ -125,40 +66,49 @@ export function DragHandleMenu() {
     window.addEventListener('resize',position);
     window.addEventListener('scroll',position,true);
     return ()=>{cancelAnimationFrame(frame);window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);};
-  }, []);
+  }, [editor]);
+
+  if (block === undefined) return null;
+  const items = buildBlockTypeItems(editor, block);
 
   return createPortal(
-    <div className="bn-container bn-mantine atlas-editor-menu-layer"><Components.Generic.Menu.Dropdown
+    <div className="bn-container bn-mantine atlas-editor-menu-layer" data-peek-owner={editor.domElement?.closest('#pagePeekOverlay')?.dataset.peekOwner}><Components.Generic.Menu.Dropdown
       ref={dropdownRef}
       className={"bn-menu-dropdown bn-drag-handle-menu"}
     >
-      {items.map((item) => {
-        const Icon = item.icon;
+      <div className="atlas-block-type-list" style={{overflowY:'auto'}}>{items.map((item, index) => {
         const isCurrent = isMatchingItem(block, item);
-
+        const previous = items[index - 1];
         return (
+          <React.Fragment key={item.key}>
+          {previous?.group !== item.group && <Components.Generic.Menu.Label className="atlas-block-category">{item.group}</Components.Generic.Menu.Label>}
           <Components.Generic.Menu.Item
-            key={item.type + JSON.stringify(item.props || {})}
             className={
               "bn-menu-item bn-drag-handle-type" +
               (isCurrent ? " bn-drag-handle-type-active" : "")
             }
-            icon={<Icon size={16} />}
+            icon={<BlockCatalogIcon item={item} />}
             checked={isCurrent}
             onClick={() => {
               editor.focus();
-              editor.transact(() => convertBlock(editor, block, item));
+              editor.transact(() => convertCatalogBlock(editor, block, item));
             }}
           >
             {item.name}
           </Components.Generic.Menu.Item>
+          </React.Fragment>
         );
       })}
 
       {block.type==='heading' && <Components.Generic.Menu.Item onClick={()=>{
         const section=printableSection(editor.document,block.id);
         if(section)document.dispatchEvent(new CustomEvent('atlas:print-section',{detail:section}));
-      }}>Imprimir este tema…</Components.Generic.Menu.Item>}
+      }}>Imprimir este tema…</Components.Generic.Menu.Item>}</div>
+      <Components.Generic.Menu.Divider />
+      <Components.Generic.Menu.Item className="bn-menu-item" icon={<RiFileCopyLine size={16}/>} onClick={() => {
+        editor.focus();
+        editor.transact(() => duplicateCatalogBlock(editor, block));
+      }}>Duplicar</Components.Generic.Menu.Item>
       <RemoveBlockItem>Eliminar</RemoveBlockItem>
       <BlockColorsItem>Color</BlockColorsItem>
     </Components.Generic.Menu.Dropdown></div>,

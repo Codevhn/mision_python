@@ -1,3 +1,9 @@
+import { DatabaseBoundary } from "./DatabaseWorkspace.jsx";
+import { DatabasePropertyMenu } from "./databasePropertyMenu.jsx";
+import { DatabaseIcon } from "./databaseIcons.jsx";
+import { isTablePreview, previewNumberValue } from "./databasePresentation.js";
+import "./database-preview.css";
+import { editorDatabaseContext } from "./databaseIdentity.js";
 import { createReactBlockSpec } from "@blocknote/react";
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 
@@ -33,15 +39,10 @@ export const pageLink = createReactBlockSpec(
 );
 
 // ── Database block ────────────────────────────────────────────────
-// A live table of the CURRENT page's child pages — real KB entries, not
-// values trapped inside the block. Columns are a schema (name/type) stored
-// on the block itself; cell values live on each row-page's own
-// `.properties` (the existing per-page custom-properties system in
-// properties.js), matched by property name. Clicking a row title opens
-// it in the floating page peek (window._openPagePeek) so you can view/edit
-// the full page — properties AND body — without leaving the table, exactly
-// like a Notion database. window._currentEntryId (kept in sync by app.js /
-// the peek panel) tells this block which page's children to list.
+// Each serialized block owns a persistent database_id. Row pages retain their
+// own properties and body; membership lives in entry metadata. Editor-specific
+// page context remains stable while another editor (peek) is open. Unassigned
+// legacy rows are explicitly visible for recovery, never merged into new bases.
 // ── Múltiples vistas (audit item #10) ───────────────────────────────────
 // `columns` (the property definitions themselves — name/type/options/width)
 // stay GLOBAL to the database, exactly like Notion: every view shows the
@@ -99,7 +100,7 @@ function parseSchema(raw) {
         titleWidth: d.titleWidth ?? 220,
       }, "view_default")];
   const activeView = views.some((v) => v.id === d.activeView) ? d.activeView : views[0].id;
-  return { columns, views, activeView };
+  return { ...d, columns, views, activeView };
 }
 
 const PROP_TYPES = [
@@ -423,19 +424,11 @@ function PropCell({ prop, onChange }) {
   return <div className="bn-db-cell bn-db-cell-tag" ref={ref} />;
 }
 
-export const database = createReactBlockSpec(
-  {
-    type: "database",
-    propSchema: {
-      data: { default: "{}" },
-    },
-    content: "none",
-  },
-  {
-    render: (props) => {
+function LegacyDatabase(props) {
       const { block, editor } = props;
       const schema = parseSchema(block.props.data);
       const activeView = schema.views.find((v) => v.id === schema.activeView) || schema.views[0];
+      const tablePreview = isTablePreview(schema, activeView);
       const [viewMenuOpen, setViewMenuOpen] = useState(null);
       const [viewMenuView, setViewMenuView] = useState("main");
       const [viewRenameDraft, setViewRenameDraft] = useState("");
@@ -449,7 +442,9 @@ export const database = createReactBlockSpec(
       const [renameDraft, setRenameDraft] = useState("");
       const colMenuRef = useRef(null);
       const dragRowIdRef = useRef(null);
-      const pageId = window._currentEntryId;
+      const pageId = editorDatabaseContext.get(editor)?.pageId;
+      const databaseId = schema.database_id;
+      const [legacyRows, setLegacyRows] = useState([]);
 
       // Row "⋮⋮" menu (Abrir/Duplicar/Copiar enlace/Eliminar) and bulk
       // selection checkboxes — the same handle serves both drag-to-reorder
@@ -592,10 +587,10 @@ export const database = createReactBlockSpec(
 
       useEffect(() => {
         if (!colMenuOpen) return;
-        const h = (e) => { if (colMenuRef.current && !colMenuRef.current.contains(e.target)) setColMenuOpen(null); };
+        const h = (e) => { if (colMenuRef.current && !colMenuRef.current.contains(e.target) && e.target.closest?.("[data-db-menu-owner]")?.dataset.dbMenuOwner !== block.id) setColMenuOpen(null); };
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
-      }, [colMenuOpen]);
+      }, [colMenuOpen, block.id]);
 
       useEffect(() => {
         if (!viewMenuOpen) return;
@@ -614,16 +609,25 @@ export const database = createReactBlockSpec(
       const reload = useCallback(() => {
         if (!pageId) { setLoading(false); return; }
         setLoading(true);
-        fetch(`/api/entry/${pageId}/children`)
-          .then((r) => r.json())
-          .then((data) => {
-            setRows(Array.isArray(data) ? data.filter((c) => c.db_row) : []);
-            setLoading(false);
+        setRows([]);
+        setLegacyRows([]);
+        let cancelled = false;
+        const query = databaseId || "__legacy__";
+        const read = async (id) => {
+          const response = await fetch(`/api/entry/${pageId}/children?database_id=${encodeURIComponent(id)}`);
+          if (!response.ok) throw new Error("No se pudieron cargar los registros");
+          return response.json();
+        };
+        Promise.all([read(query), databaseId ? read("__legacy__") : Promise.resolve([])])
+          .then(([data, legacy]) => {
+            if (!cancelled) { setRows(data.filter(c => c.db_row)); setLegacyRows(legacy.filter(c => c.db_row)); }
           })
-          .catch(() => setLoading(false));
-      }, [pageId]);
+          .catch((error) => { if (!cancelled && window.showToast) window.showToast(error.message, "error"); })
+          .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+      }, [pageId, databaseId]);
 
-      useEffect(() => { reload(); }, [reload]);
+      useEffect(() => reload(), [reload]);
 
       const saveSchema = (next) => {
         editor.updateBlock(block, { props: { data: JSON.stringify(next) } });
@@ -807,13 +811,14 @@ export const database = createReactBlockSpec(
       // board lane's own "+ Nueva página" (a card should land in THAT lane
       // already, not in whatever the groupBy column's bare default is).
       const addRow = async (insertAfterId, presetGroupCol, presetGroupValue) => {
-        if (!pageId) return;
+        if (!pageId || !databaseId) { window.showToast?.("Guarda la página y migra la base antigua antes de añadir registros", "warning"); return; }
         const res = await fetch("/api/entry", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Sin título", entry_type: "page", parent_id: pageId, db_row: true }),
+          body: JSON.stringify({ title: "Sin título", entry_type: "page", parent_id: pageId, db_row: true, database_id: databaseId }),
         });
         const data = await res.json();
+        if (!res.ok) { window.showToast?.(data.error || "No se pudo crear el registro", "error"); return; }
         if (!data.id) return;
         const seeded = schema.columns.map((c) => ({
           id: c.id, name: c.name, type: c.type,
@@ -835,7 +840,7 @@ export const database = createReactBlockSpec(
           });
         }
         reload();
-        if (window._openPagePeek) window._openPagePeek(data.id, { onClose: reload });
+        if (window._openPagePeek) window._openPagePeek(data.id, { onClose: reload, databasePreview: tablePreview });
       };
 
       const deleteRow = async (rowId) => {
@@ -859,7 +864,19 @@ export const database = createReactBlockSpec(
       };
 
       const openRow = (rowId) => {
-        if (window._openPagePeek) window._openPagePeek(rowId, { onClose: reload });
+        if (window._openPagePeek) window._openPagePeek(rowId, { onClose: reload, databasePreview: tablePreview });
+      };
+
+      const renameRow = async (row, title) => {
+        if (title === row.title) return;
+        try {
+          const response = await fetch(`/api/entry/${row.id}/content`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: title.trim() || "Sin título" }),
+          });
+          if (!response.ok) throw new Error("No se pudo guardar el título");
+        } catch (error) { window.showToast?.(error.message, "error"); }
+        reload();
       };
 
       // Row drag-to-reorder, via the "⋮⋮" handle. Reuses the app's existing
@@ -1015,7 +1032,7 @@ export const database = createReactBlockSpec(
       }
 
       const renderRow = (row) => (
-        <div className="bn-db-grid-row" key={row.id}>
+        <div className={"bn-db-grid-row" + (selectedIds.has(row.id) ? " bn-db-row-selected" : "")} key={row.id}>
           {/* Outside-the-table gutter (audit follow-up): drag handle "⠿"
               and a per-row "+" (insert a page right after this one), both
               hover-revealed — matches Notion's own row controls living in
@@ -1056,6 +1073,7 @@ export const database = createReactBlockSpec(
           <div className="bn-db-cell bn-db-checkbox-cell">
             <input
               type="checkbox"
+              aria-label={`Seleccionar ${row.title || "Sin título"}`}
               checked={selectedIds.has(row.id)}
               onChange={() => toggleRowSelected(row.id)}
             />
@@ -1066,10 +1084,16 @@ export const database = createReactBlockSpec(
             onDragLeave={() => setDragOverRowId((prev) => (prev === row.id ? null : prev))}
             onDrop={(e) => { e.preventDefault(); handleRowDrop(row.id); }}
           >
-            <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
+            {tablePreview ? <>
+              <span className="bn-db-preview-page-icon"><DatabaseIcon type="page" /></span>
+              <input key={row.title} className="bn-db-title-input" aria-label={`Título de ${row.title || "Sin título"}`}
+                defaultValue={row.title || "Sin título"} onBlur={e => renameRow(row, e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.currentTarget.value = row.title || "Sin título"; e.currentTarget.blur(); } }} />
+              <button className="bn-db-open-peek" aria-label={`Abrir ${row.title || "Sin título"}`} onClick={() => openRow(row.id)}><DatabaseIcon type="open" /> OPEN</button>
+            </> : <button className="bn-db-open-row" onClick={() => openRow(row.id)}>
               <span className="bn-db-row-icon">{row.icon || "📄"}</span>
               <span className="bn-db-row-title">{row.title || "Sin título"}</span>
-            </button>
+            </button>}
           </div>
           {schema.columns.map((c) => {
             const prop = (row.properties || []).find((p) => p.id === c.id);
@@ -1123,8 +1147,9 @@ export const database = createReactBlockSpec(
                 {editable ? (
                   <input
                     className="bn-db-cell-input"
+                    aria-label={`${c.name}: ${row.title || "Sin título"}`}
                     value={propValueDisplay(prop)}
-                    onChange={(e) => setCellValue(row.id, c, c.type === "number" ? (parseFloat(e.target.value) || "") : e.target.value)}
+                    onChange={(e) => setCellValue(row.id, c, c.type === "number" ? (tablePreview ? previewNumberValue(e.target.value) : (parseFloat(e.target.value) || "")) : e.target.value)}
                   />
                 ) : (
                   <span className="bn-db-cell-val">{propValueDisplay(prop) || "—"}</span>
@@ -1182,12 +1207,19 @@ export const database = createReactBlockSpec(
         : null;
 
       return (
-        <div className="bn-database" contentEditable={false}>
+        <div className={"bn-database" + (tablePreview ? " bn-db-notion-preview" : "")} contentEditable={false} data-database-id={databaseId || "legacy"}>
+          {!databaseId && <p role="status">Base antigua sin identidad. Filas pendientes de migración; no se asignarán automáticamente si su pertenencia es ambigua.</p>}
+          {legacyRows.length > 0 && <details className="bn-db-recovery">
+            <summary>Registros antiguos sin asignar ({legacyRows.length})</summary>
+            <p>Conjunto de recuperación de esta página; estos registros aún no pertenecen a esta base. Asignación mediante la migración revisada.</p>
+            {legacyRows.map(row => <button key={row.id} onClick={() => window._openPagePeek?.(row.id, { onClose: reload })}>{row.title || "Sin título"}</button>)}
+          </details>}
           {/* Vistas (audit item #10): tabs over the SAME rows/columns, each
               with its own filter/sort/groupBy/calc/rowHeight/titleWidth.
               Single-tab databases (the common case, and every database
               migrated from the old flat format) render one plain "Tabla"
               tab — no visual clutter until a second view actually exists. */}
+          <div className="bn-db-topbar">
           <div className="bn-db-view-tabs">
             {schema.views.map((v) => (
               <div
@@ -1196,7 +1228,7 @@ export const database = createReactBlockSpec(
                 ref={viewMenuOpen === v.id ? viewMenuRef : null}
               >
                 <button className="bn-db-view-tab-btn" onClick={() => switchView(v.id)}>
-                  <span className="bn-db-view-tab-icon">{viewTypeIcon(v.type)}</span>
+                  <span className="bn-db-view-tab-icon">{tablePreview ? <DatabaseIcon type={v.type || "table"} /> : viewTypeIcon(v.type)}</span>
                   <span className="bn-db-view-tab-name">{v.name}</span>
                 </button>
                 {v.id === activeView.id && (
@@ -1262,7 +1294,7 @@ export const database = createReactBlockSpec(
             <div className="bn-db-toolbar-left">
               <div className="bn-db-filter-wrap" ref={filterRef}>
                 <button className={"bn-db-toolbar-btn" + (activeView.filter ? " active" : "")} onClick={() => setFilterOpen((v) => !v)}>
-                  Filtro{activeView.filter && filterColResolved ? `: ${filterColResolved.name}` : ""}
+                  {tablePreview && <DatabaseIcon type="filter" />} Filtro{activeView.filter && filterColResolved ? `: ${filterColResolved.name}` : ""}
                 </button>
                 {filterOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
@@ -1316,7 +1348,7 @@ export const database = createReactBlockSpec(
               </div>
               <div className="bn-db-sort-wrap" ref={sortRef}>
                 <button className={"bn-db-toolbar-btn" + (activeView.sort ? " active" : "")} onClick={() => setSortOpen((v) => !v)}>
-                  Orden{activeView.sort && sortColResolved ? `: ${sortColResolved.name}` : ""}
+                  {tablePreview && <DatabaseIcon type="sort" />} Orden{activeView.sort && sortColResolved ? `: ${sortColResolved.name}` : ""}
                 </button>
                 {sortOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
@@ -1352,7 +1384,7 @@ export const database = createReactBlockSpec(
               </div>
               <div className="bn-db-group-wrap" ref={groupRef}>
                 <button className={"bn-db-toolbar-btn" + (activeView.groupBy ? " active" : "")} onClick={() => setGroupOpen((v) => !v)}>
-                  Agrupar{groupColResolved ? `: ${groupColResolved.name}` : ""}
+                  {tablePreview && <DatabaseIcon type="group" />} Agrupar{groupColResolved ? `: ${groupColResolved.name}` : ""}
                 </button>
                 {groupOpen && (
                   <div className="bn-db-colmenu-pop bn-db-filter-pop" contentEditable={false}>
@@ -1408,6 +1440,8 @@ export const database = createReactBlockSpec(
                 )}
               </div>
             )}
+            {tablePreview && <button className="bn-db-preview-new" onClick={() => addRow()}>Nuevo <span aria-hidden="true">+</span></button>}
+          </div>
           </div>
           {activeView.type === "board" ? (
             <div className="bn-db-board">
@@ -1527,7 +1561,7 @@ export const database = createReactBlockSpec(
                 />
               </div>
               <div className="bn-db-title-col bn-db-cell">
-                Nombre
+                {tablePreview && <DatabaseIcon type="title" />} {tablePreview ? "Título" : "Nombre"}
                 <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, "__title")} />
               </div>
               {schema.columns.map((c) => (
@@ -1537,11 +1571,12 @@ export const database = createReactBlockSpec(
                   ref={colMenuOpen === c.id ? colMenuRef : null}
                 >
                   <button className="bn-db-col-name-btn" onClick={() => openColMenu(c)}>
+                    {tablePreview && <DatabaseIcon type={c.type} />}
                     <span className="bn-db-col-name">{c.name || "Propiedad"}</span>
                   </button>
                   <div className="bn-db-resize-handle" onMouseDown={(e) => startResize(e, c.id)} />
                   {colMenuOpen === c.id && (
-                    <div className="bn-db-colmenu-pop" contentEditable={false}>
+                    <DatabasePropertyMenu preview={tablePreview} anchor={colMenuRef} owner={block.id} mode={colMenuView} onClose={() => setColMenuOpen(null)}>
                       <input
                         className="bn-db-colmenu-rename"
                         value={renameDraft}
@@ -1574,12 +1609,12 @@ export const database = createReactBlockSpec(
                               className={"bn-db-colmenu-item" + (c.type === t.id ? " active" : "")}
                               onClick={() => changeColumnType(c, t.id)}
                             >
-                              {t.label}
+                              {tablePreview && <DatabaseIcon type={t.id} />} <span>{t.label}</span>
                             </button>
                           ))}
                         </>
                       )}
-                    </div>
+                    </DatabasePropertyMenu>
                   )}
                 </div>
               ))}
@@ -1703,6 +1738,13 @@ export const database = createReactBlockSpec(
           ) : null}
         </div>
       );
-    },
-  },
+
+}
+export const database = createReactBlockSpec(
+  { type: "database", propSchema: { data: { default: "{}" } }, content: "none" },
+  { render: (props) => {
+      let identified=false;
+      try { identified=!!JSON.parse(props.block.props.data).database_id; } catch {}
+      return identified ? <DatabaseBoundary key={JSON.parse(props.block.props.data).database_id} {...props}/> : <LegacyDatabase {...props}/>;
+  } },
 );

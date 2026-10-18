@@ -48,3 +48,13 @@ knowledge_base/tests/
 *.log
 .env
 fly.toml
+
+# Runtime data and private uploads must never enter any image/build context.
+knowledge_base/data/
+knowledge_base/knowledge/
+knowledge_base/static/covers/
+local-demo/
+docs/
+tools/run_database_identity_demo.py
+tools/run_atlas_local.py
+tools/database_responsive_demo.html

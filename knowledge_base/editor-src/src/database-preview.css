@@ -1,0 +1,101 @@
+/* Stage 2A: opt-in table only. No theme changes to the rest of Atlas. */
+.bn-db-topbar { display: contents; }
+.bn-db-notion-preview, .db-preview-popover, #pagePeekOverlay.db-preview-peek {
+  --bg: #191919; --bg-surface: #202020; --bg-elevated: #252525; --bg-overlay: #252525;
+  --bg-hover: #ffffff0d; --layer-1: #191919; --text: #e5e5e3; --fg: #e5e5e3;
+  --text-muted: #adada9; --text-faint: #989894; --border: #ffffff16;
+  --accent: #529cca; --accent-light: #529cca21;
+  --font-ui: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.5; color: var(--text); color-scheme: dark;
+}
+.bn-db-notion-preview { background: var(--bg); padding: 18px 20px 14px; border-radius: 6px; box-sizing: border-box; isolation: isolate; }
+.bn-db-notion-preview .bn-db-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; margin-left: 60px; margin-bottom: 4px; }
+.bn-db-notion-preview .bn-db-view-tabs { border: 0; margin: 0; gap: 4px; flex-wrap: wrap; }
+.bn-db-notion-preview .bn-db-view-tab-btn { font: 500 14px var(--font-ui); padding: 5px 9px; gap: 7px; border: 0; border-radius: 5px; color: var(--text-muted); min-height: 30px; }
+.bn-db-notion-preview .bn-db-view-tab.active .bn-db-view-tab-btn { background: #ffffff0c; color: var(--text); }
+.bn-db-notion-preview .bn-db-view-tab-btn:hover { background: var(--bg-hover); }
+.bn-db-notion-preview .bn-db-view-tab-icon { display: flex; opacity: 1; }
+.bn-db-notion-preview .bn-db-view-tab-menu-btn { font-size: 15px; padding: 2px; }
+.bn-db-notion-preview .bn-db-toolbar { margin: 0; gap: 6px; flex: 0 0 auto; }
+.bn-db-notion-preview .bn-db-toolbar-left { gap: 2px; }
+.bn-db-notion-preview .bn-db-toolbar-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; min-height: 30px; font: 400 12px var(--font-ui); white-space: nowrap; }
+.bn-db-notion-preview .bn-db-preview-new { display: inline-flex; align-items: center; gap: 12px; border: 1px solid #529cca; border-radius: 5px; background: #2383bc; color: white; padding: 5px 10px; font: 500 13px var(--font-ui); min-height: 30px; cursor: pointer; }
+.bn-db-notion-preview .bn-db-preview-new:hover { background: #2e92ca; }
+.bn-db-notion-preview .bn-database-grid { font-size: 14px; }
+.bn-db-notion-preview .bn-db-cell { background: transparent; border-top: 1px solid var(--border); border-left: 1px solid var(--border); min-height: 36px; box-sizing: border-box; }
+.bn-db-notion-preview .bn-db-cell.bn-db-gutter-cell, .bn-db-notion-preview .bn-db-cell.bn-db-checkbox-cell { border: 0; background: var(--bg); }
+.bn-db-notion-preview .bn-db-cell.bn-db-title-col { border-left: 0; box-shadow: none; background: var(--bg); }
+.bn-db-notion-preview .bn-db-grid-header .bn-db-cell { background: var(--bg); border-top: 0; border-left: 0; color: var(--text-muted); font-weight: 400; padding: 5px 9px; min-height: 34px; gap: 7px; }
+.bn-db-notion-preview .bn-db-col-name-btn { display: flex; align-items: center; gap: 7px; font: inherit; color: inherit; padding: 0; }
+.bn-db-notion-preview .bn-db-col-name-btn:hover { background: transparent; color: var(--text); }
+.bn-db-property-icon { display: inline-block; flex-shrink: 0; color: var(--text-faint); vertical-align: middle; }
+.bn-db-icon-title { font-size: 14px; letter-spacing: -.7px; font-weight: 600; }
+.bn-db-notion-preview .bn-db-grid-row:not(.bn-db-grid-header):not(.bn-db-grid-footer):hover > .bn-db-cell { background: #222222; }
+.bn-db-notion-preview .bn-db-grid-row.bn-db-row-selected > .bn-db-cell { background: #203344; }
+.bn-db-notion-preview .bn-db-grid-row:focus-within > .bn-db-gutter-cell input, .bn-db-notion-preview .bn-db-grid-row:focus-within > .bn-db-checkbox-cell input { opacity: 1; }
+.bn-db-notion-preview .bn-db-checkbox-cell input { accent-color: #2383bc; width: 14px; height: 14px; }
+.bn-db-notion-preview .bn-db-preview-page-icon { display: flex; margin-left: 9px; opacity: .85; }
+.bn-db-notion-preview .bn-db-title-input { flex: 1; min-width: 0; width: 0; height: 34px; padding: 5px 7px; border: 0; border-radius: 0; background: transparent; color: var(--text); font: 400 14px var(--font-ui); text-overflow: ellipsis; }
+.bn-db-notion-preview .bn-db-open-peek { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; opacity: 0; margin-right: 5px; padding: 2px 4px; border: 1px solid #ffffff24; border-radius: 4px; background: #252525; color: var(--text-muted); font: 500 10px var(--font-ui); cursor: pointer; }
+.bn-db-notion-preview .bn-db-grid-row:hover .bn-db-open-peek, .bn-db-notion-preview .bn-db-grid-row:focus-within .bn-db-open-peek { opacity: 1; }
+.bn-db-notion-preview .bn-db-open-peek svg { width: 13px; height: 13px; }
+.bn-db-notion-preview .bn-db-cell-input { color: var(--text); font: 400 14px/1.5 var(--font-ui); padding: 7px 9px; min-height: 34px; background: transparent; border: 0; border-radius: 0; }
+.bn-db-notion-preview .bn-db-cell-tag { padding: 5px 9px; gap: 4px; }
+.bn-db-notion-preview .bn-db-cell:focus-within { box-shadow: inset 0 0 0 1.5px #529cca; z-index: 3; }
+.bn-db-notion-preview :is(input, [contenteditable=true]):focus { outline: none; }
+.bn-db-notion-preview button:focus-visible { outline: 2px solid #529cca; outline-offset: 2px; }
+.bn-db-notion-preview .bn-db-grid-footer .bn-db-cell { background: var(--bg); min-height: 28px; }
+.bn-db-notion-preview .bn-db-calc-btn { font-size: 11px; opacity: 0; padding: 4px 9px; }
+.bn-db-notion-preview .bn-db-grid-footer:hover .bn-db-calc-btn, .bn-db-notion-preview .bn-db-calc-btn:focus-visible, .bn-db-notion-preview .bn-db-calc-btn.active { opacity: 1; }
+.bn-db-notion-preview .bn-database-addrow { margin-left: 60px; padding: 5px 9px; font: 400 14px var(--font-ui); color: var(--text-faint); }
+.bn-db-notion-preview .bn-db-empty { font-size: 13px; font-style: normal; }
+.bn-db-notion-preview .bn-db-selection-bar { font: 400 13px var(--font-ui); background: #203344; border-radius: 4px; box-shadow: none; }
+.bn-db-notion-preview .bn-db-scroll { scrollbar-width: thin; scrollbar-color: #484848 transparent; }
+.bn-db-notion-preview .bn-db-colmenu-pop, .db-preview-popover { background: #252525; border: 1px solid #ffffff14; border-radius: 7px; box-shadow: 0 6px 24px #0007, 0 1px 4px #0005; padding: 5px; font: 400 13px/1.5 var(--font-ui); }
+.bn-db-notion-preview .bn-db-colmenu-pop { min-width: 210px; }
+.bn-db-notion-preview .bn-db-colmenu-item { font: inherit; border-radius: 4px; padding: 6px 8px; min-height: 30px; }
+.bn-db-notion-preview :is(.bn-db-pop-select,.bn-db-pop-input,.bn-db-colmenu-rename) { font: inherit; border-color: #ffffff24; background: #202020; border-radius: 4px; }
+.bn-db-notion-preview .bn-db-cell-tag .prop-status-chip, #pagePeekOverlay.db-preview-peek .prop-status-chip, .db-preview-popover .prop-status-chip { border: 0; border-radius: 10px; padding: 1px 7px; font: 400 12px/18px var(--font-ui); letter-spacing: 0; color: #e5e5e3; background: color-mix(in srgb, var(--sc) 20%, #252525); }
+.bn-db-notion-preview .prop-status-chip::before, #pagePeekOverlay.db-preview-peek .prop-status-chip::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--sc); vertical-align: 1px; }
+.bn-db-notion-preview .prop-chip, #pagePeekOverlay.db-preview-peek .prop-chip, .db-preview-popover .prop-chip { border: 0; border-radius: 3px; padding: 0 6px; color: #f0ebf0; background: color-mix(in srgb, var(--cc, #888) 38%, #252525); font: 400 12px/20px var(--font-ui); }
+.db-preview-popover .prop-pop-item { color: var(--text); font: inherit; border-radius: 4px; }
+.db-preview-popover .prop-pop-search { color: var(--text); background: #202020; border-color: #ffffff24; font: inherit; }
+#pagePeekOverlay.db-preview-peek { padding: 0; background: transparent; justify-content: flex-end; align-items: stretch; pointer-events: none; }
+#pagePeekOverlay.db-preview-peek .page-peek-modal { pointer-events: auto; width: min(760px, 52vw); height: 100vh; max-height: 100vh; max-width: none; border: 0; border-left: 1px solid #ffffff20; border-radius: 0; background: #202020; box-shadow: -12px 0 36px #0005; }
+#pagePeekOverlay.db-preview-peek .page-peek-header { padding: 24px 28px 12px; border: 0; align-items: flex-start; flex-wrap: wrap; background: transparent; box-shadow: none; }
+#pagePeekOverlay.db-preview-peek .page-peek-title { font: 650 25px/1.3 var(--font-ui); background: transparent; color: var(--text); }
+#pagePeekOverlay.db-preview-peek .page-peek-body { padding: 8px 32px 48px; }
+#pagePeekOverlay.db-preview-peek .page-peek-props { margin-bottom: 24px; padding-bottom: 22px; border-color: var(--border); }
+#pagePeekOverlay.db-preview-peek .prop-row { font: 400 13px/1.5 var(--font-ui); min-height: 36px; }
+#pagePeekOverlay.db-preview-peek .bn-editor { font: 400 15px/1.6 var(--font-ui); color: var(--text); background: transparent; padding: 0; }
+#pagePeekOverlay.db-preview-peek .bn-container { --bn-colors-editor-background: #202020 !important; }
+@media (max-width: 1100px) {
+  .bn-db-notion-preview .bn-db-topbar { flex-wrap: wrap; gap: 5px; margin-left: 0; }
+  .bn-db-notion-preview { padding: 12px 8px; }
+  #pagePeekOverlay.db-preview-peek .page-peek-modal { width: min(760px, 85vw); }
+}
+@media (prefers-reduced-motion: reduce) { .bn-db-notion-preview * { transition: none; } }
+.bn-block-content.ProseMirror-selectednode > .bn-db-notion-preview,
+.ProseMirror-selectednode > .bn-block-content > .bn-db-notion-preview { outline: 0; box-shadow: none; }
+.bn-db-notion-preview .bn-db-open-peek { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.bn-db-notion-preview .bn-db-grid-row:hover .bn-db-title-input,
+.bn-db-notion-preview .bn-db-title-input:focus { padding-right: 68px; }
+.db-preview-colmenu { position: fixed; z-index: 1000; width: 230px; max-height: calc(100vh - 16px); overflow-y: auto; }
+.db-preview-colmenu .bn-db-colmenu-item { justify-content: flex-start; font: inherit; padding: 6px 8px; border-radius: 4px; }
+.db-preview-colmenu .bn-db-colmenu-current { margin-left: auto; }
+.db-preview-colmenu .bn-db-colmenu-rename { font: inherit; background: #202020; }
+/* Existing Atlas themes use !important on modal/editor chrome. Override only
+   the record panel opened from this opt-in table, including its frame layers. */
+#pagePeekOverlay.db-preview-peek { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+#pagePeekOverlay.db-preview-peek .page-peek-modal { background: #202020 !important; border: 0 !important; border-left: 1px solid #ffffff20 !important; border-radius: 0 !important; box-shadow: -12px 0 36px #0005 !important; padding: 0 !important; max-height: 100dvh !important; }
+#pagePeekOverlay.db-preview-peek .atlas-frame-decoration { display: none !important; }
+#pagePeekOverlay.db-preview-peek .page-peek-title { border: 0 !important; box-shadow: none !important; background: transparent !important; }
+#pagePeekOverlay.db-preview-peek .page-peek-actions button { border: 0 !important; box-shadow: none !important; background: transparent !important; color: #adada9 !important; border-radius: 4px !important; }
+#pagePeekOverlay.db-preview-peek .page-peek-actions button:hover { background: #ffffff0d !important; color: #e5e5e3 !important; }
+#pagePeekOverlay.db-preview-peek :is(.bn-container,.bn-editor) { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+#pagePeekOverlay.db-preview-peek .bn-editor h1 { font: 650 26px/1.3 var(--font-ui) !important; letter-spacing: -.02em; }
+#pagePeekOverlay.db-preview-peek .bn-editor h2 { font: 600 22px/1.4 var(--font-ui) !important; }
+#pagePeekOverlay.db-preview-peek .bn-editor p { font: 400 15px/1.6 var(--font-ui); }
+#pagePeekOverlay.db-preview-peek .prop-chip { background: color-mix(in srgb, var(--cc, #888) 38%, #252525) !important; color: #f0ebf0 !important; border: 0 !important; }
+#pagePeekOverlay.db-preview-peek .prop-status-chip { background: color-mix(in srgb, var(--sc) 20%, #252525) !important; border: 0 !important; }
+.bn-db-notion-preview .bn-db-grid-row.bn-db-row-selected:not(.bn-db-grid-header):not(.bn-db-grid-footer) > .bn-db-cell { background: #203344; }

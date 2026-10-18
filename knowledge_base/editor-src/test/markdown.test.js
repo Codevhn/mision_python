@@ -17,6 +17,8 @@ function check(name, md, expected) {
 
 check("heading", "# Title");
 check("h4", "#### Sub");
+check("h5", "##### Sub cinco");
+check("h6", "###### Sub seis");
 check("bullet", "- one\n\n- two");
 check("todo checked", "- [x] done");
 check("todo unchecked", "- [ ] pending");
@@ -133,3 +135,64 @@ assert.strictEqual(blocksToMd([adjacentBold]),'**DI EN VOZ ALTA: "Una frase comp
 const italicEdges={type:'paragraph',props:{},content:[{type:'text',text:'  Una observación. ',styles:{italic:true}}],children:[]};
 assert.strictEqual(blocksToMd([italicEdges]).trim(),'_Una observación._');
 console.log('ok - adjacent styled runs merge and whitespace stays outside formatting delimiters');
+
+// Explicit code → paragraph conversion must preserve literal markers and one
+// multiline block when saved and reopened, without reinterpreting its text.
+const literalSamples = [
+  "## Literal\n\n- Texto **sin negrita** _sin cursiva_",
+  "1. Numeración literal", "> Cita literal", "---", "```texto```",
+  ":::database", "| texto |", "<!--blank-->", "<br>",
+  String.raw`Un asterisco \* y una barra \\ junto a _variable_`,
+];
+const literalText = content => content.map(run => run.type === 'text' ? run.text : literalText(run.content || [])).join('');
+for (const sample of literalSamples) {
+  const literalEditor = BlockNoteEditor.create({ schema, _headless: true });
+  literalEditor.replaceBlocks(literalEditor.document, [{ type: 'paragraph', content: [{type:'text',text:sample,styles:{}}] }]);
+  const saved = blocksToMd(literalEditor.document);
+  literalEditor.replaceBlocks(literalEditor.document, mdToBlocks(saved));
+  assert.strictEqual(literalEditor.document[0].type, 'paragraph', sample);
+  assert.strictEqual(literalText(literalEditor.document[0].content), sample);
+  assert(literalEditor.document[0].content.every(run => !run.styles?.bold && !run.styles?.italic), sample);
+  assert.strictEqual(blocksToMd(literalEditor.document), saved, 'repeated save must be stable: ' + sample);
+}
+check('escaped Markdown punctuation remains literal', String.raw`\# Literal \*\*texto\*\*`);
+check('inline code keeps literal backslashes', String.raw`\`\*literal\*\``.replaceAll('\\`','`'));
+console.log('ok - literal paragraphs, escaped punctuation and H1-H6 survive save/reload');
+
+for (const type of ['image', 'video', 'audio', 'file']) {
+  for (const url of ['/static/covers/roundtrip.png', '', 'https://example.invalid/archivo%20(1).pdf']) {
+    const mediaEditor = BlockNoteEditor.create({ schema, _headless: true });
+    const props = { url, name: 'Nombre ]( "con comillas" y paréntesis (1).pdf',
+      caption: 'Pie <script>literal</script> --> **sin ejecutar**\nSegunda línea', backgroundColor: 'blue' };
+    if (type !== 'file') props.showPreview = false;
+    if (['image', 'video'].includes(type)) Object.assign(props, { previewWidth: 371, textAlignment: 'right' });
+    mediaEditor.replaceBlocks(mediaEditor.document, [{ type, props }]);
+    const saved = blocksToMd(mediaEditor.document);
+    assert(!saved.includes('<script>'), 'metadata must not introduce active HTML');
+    const metadata = JSON.parse(decodeURIComponent(saved.match(/<!-- atlas-media:([^\s]+) -->/)[1]));
+    assert(!('url' in metadata), 'export must be able to rewrite the only URL');
+    mediaEditor.replaceBlocks(mediaEditor.document, mdToBlocks(saved));
+    assert.strictEqual(mediaEditor.document[0].type, type);
+    const restored = mediaEditor.document[0].props;
+    for (const [key, value] of Object.entries(props)) assert.strictEqual(restored[key], key === 'url'
+      ? value.replaceAll('(', '%28').replaceAll(')', '%29') : value, type + '.' + key);
+    assert.strictEqual(blocksToMd(mediaEditor.document), saved, 'media save/reload must be stable');
+  }
+}
+const imageImport = mdToBlocks('![Descripción](https://example.invalid/image.png)');
+assert.strictEqual(imageImport[0].type, 'image');
+assert.strictEqual(imageImport[0].props.caption, 'Descripción');
+const mediaList = BlockNoteEditor.create({ schema, _headless: true });
+mediaList.replaceBlocks(mediaList.document, [{ type: 'bulletListItem', content: 'Adjuntos',
+  children: [{ type: 'file', props: { url:'/static/covers/file.pdf', name:'Archivo hijo', caption:'Conservar' } }] }]);
+const savedList = blocksToMd(mediaList.document);
+mediaList.replaceBlocks(mediaList.document, mdToBlocks(savedList));
+assert.strictEqual(mediaList.document[0].children[0].type, 'file');
+assert.strictEqual(mediaList.document[0].children[0].props.name, 'Archivo hijo');
+for (const metadata of ['%', encodeURIComponent('{invalid JSON'), encodeURIComponent(JSON.stringify({type:'script',name:'No ejecutar'}))]) {
+  const broken = '![visible](<https://example.invalid/image.png>) <!-- atlas-media:' + metadata + ' -->';
+  const blocks = mdToBlocks(broken);
+  assert.strictEqual(blocks[0].type, 'paragraph');
+  assert.strictEqual(literalText(blocks[0].content), broken, 'bad metadata must preserve visible source without throwing');
+}
+console.log('ok - image/video/audio/file URLs, names, captions, placeholders and preferences persist without fetching resources');

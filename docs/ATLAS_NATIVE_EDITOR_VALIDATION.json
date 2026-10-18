@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-16",
+  "source": "CUA on isolated Atlas demo; REA separately documented",
+  "firstLineMatrix": [
+    {
+      "name": "Encabezado grande de prueba",
+      "line": 460,
+      "handle": 460,
+      "delta": 0
+    },
+    {
+      "name": "Encabezado segundo de prueba",
+      "line": 460,
+      "handle": 460,
+      "delta": 0
+    },
+    {
+      "name": "Encabezado tercero de prueba",
+      "line": 460.6875,
+      "handle": 461,
+      "delta": 0.3125
+    },
+    {
+      "name": "Encabezado cuarto de prueba",
+      "line": 460.03125,
+      "handle": 460,
+      "delta": -0.03125
+    },
+    {
+      "name": "Encabezado quinto de prueba",
+      "line": 459.921875,
+      "handle": 460,
+      "delta": 0.078125
+    },
+    {
+      "name": "Encabezado sexto de prueba",
+      "line": 459.71875,
+      "handle": 460,
+      "delta": 0.28125
+    },
+    {
+      "name": "Párrafo de prueba.",
+      "line": 460.1875,
+      "handle": 460,
+      "delta": -0.1875
+    }
+  ],
+  "views": [
+    "Board",
+    "Galería",
+    "Lista",
+    "Dashboard",
+    "Todo"
+  ],
+  "zoom": {
+    "kind": "CSS zoom; browser zoom not established",
+    "scale125": {
+      "line": 548.875,
+      "handle": 548.75
+    },
+    "scale150": {
+      "line": 658.75,
+      "handle": 658.5
+    }
+  },
+  "responsive": {
+    "widths": [
+      1200,
+      900,
+      640,
+      390
+    ],
+    "smallest": {
+      "viewport": 390,
+      "document": 390,
+      "peek": 390,
+      "tableContainer": 316
+    }
+  },
+  "finalDragOrder": [
+    "C",
+    "A",
+    "B"
+  ],
+  "recordId": "record-96d2f869464d404a"
+}

@@ -2,6 +2,8 @@ FROM tailscale/tailscale@sha256:87c55d6be56ad85b3d8bceca5f87f73de288c609131460dd
 FROM python:3.11-slim
 
 WORKDIR /app
+ARG ATLAS_SOURCE_MANIFEST=unrecorded
+LABEL org.atlas.source-manifest=$ATLAS_SOURCE_MANIFEST
 
 COPY --from=tailscale /usr/local/bin/tailscale /usr/local/bin/tailscale
 COPY --from=tailscale /usr/local/bin/tailscaled /usr/local/bin/tailscaled
@@ -16,6 +18,7 @@ COPY knowledge_base/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY knowledge_base/ ./knowledge_base/
+COPY tools/migrate_database_identity.py tools/preserve_atlas_covers.py ./tools/
 COPY deploy/atlas-entrypoint.sh /usr/local/bin/atlas-entrypoint
 RUN chmod 755 /usr/local/bin/atlas-entrypoint
 

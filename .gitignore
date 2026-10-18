@@ -6,8 +6,12 @@ venv/
 .venv/
 env/
 
+# Isolated local demos and their session state (never real knowledge data)
+/local-demo/
+
 # Uploaded images (runtime-generated, must never be committed)
 knowledge_base/static/covers/
+knowledge_base/data/covers/
 
 # Automatic periodic backups (runtime-generated, must never be committed)
 knowledge_base/data/backups/

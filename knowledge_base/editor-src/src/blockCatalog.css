@@ -1,0 +1,51 @@
+/* The same compact row, icon and category rhythm in insert and conversion.
+   Every value follows Atlas tokens, including body-portalled menus. */
+.bn-mantine :is(.bn-suggestion-menu, .bn-drag-handle-menu) {
+  color: var(--text);
+  background: var(--bg-overlay);
+  border-color: var(--border);
+  border-radius: var(--native-menu-radius, 8px);
+  font-family: var(--font-ui, inherit);
+}
+.bn-mantine :is(.bn-suggestion-menu-item-small, .bn-drag-handle-menu .bn-menu-item) {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  color: var(--text);
+  border-radius: var(--native-control-radius, 4px);
+}
+.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-title {
+  font-size: 14px;
+  font-weight: 400;
+  color: inherit;
+}
+.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-body {
+  padding-right: 0;
+}
+.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  color: var(--text-muted);
+  margin-right: 10px;
+}
+.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-section[data-position="left"] svg {
+  width: 16px;
+  height: 16px;
+}
+.bn-mantine :is(.bn-suggestion-menu-label, .atlas-block-category) {
+  color: var(--text-muted);
+  padding: 6px 10px 3px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.bn-mantine :is(.bn-suggestion-menu-item[aria-selected="true"],
+  .bn-suggestion-menu-item:hover, .bn-drag-handle-menu .bn-menu-item[data-hovered],
+  .bn-drag-handle-menu .bn-menu-item:hover) {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.bn-mantine .bn-drag-handle-menu .bn-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
