@@ -1,0 +1,2 @@
+export const relationIssueLabel=reason=>({deleted:'En papelera',missing:'Registro no encontrado',wrong_source:'Pertenece a otra base',source_missing:'Base de destino no disponible',invalid_value:'Valor original pendiente de conversión'})[reason]||'Referencia no disponible';
+export function relationTitle(prop,id){return prop?.related_records?.find(r=>r.id===id)?.title||prop?.relation_issues?.find(r=>r.id===id)?.title||id;}

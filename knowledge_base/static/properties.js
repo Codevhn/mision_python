@@ -37,7 +37,12 @@ window.Properties = (() => {
   let _readonly  = false;
 
   // ── public API ─────────────────────────────────────────────────
-  function render(entryId, props, container, readonly) {
+  function render(entryId, props, container, readonly, meta) {
+    if (meta?.database_id && meta?.parent_id && window.AtlasDatabase) {
+      window.AtlasDatabase.mountProperties(container, entryId, meta);
+      return;
+    }
+    window.AtlasDatabase?.unmountProperties(container);
     _entryId   = entryId;
     _props     = JSON.parse(JSON.stringify(props || []));
     _container = container;
@@ -46,33 +51,21 @@ window.Properties = (() => {
   }
 
   // ── persistence ────────────────────────────────────────────────
+  const _queues = new Map();
   function _save() {
+    if (!_entryId) return;
+    const id = _entryId;
+    if (!_queues.has(id)) _queues.set(id, new AtlasDatabase.SaveQueue(async payload => {
+      const response = await fetch(`/api/entry/${id}/properties`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if (!response.ok) throw new Error('No se pudieron guardar las propiedades');
+    }));
+    _queues.get(id).set({properties:JSON.parse(JSON.stringify(_props))});
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(async () => {
-      _saveTimer = null;
-      await fetch(`/api/entry/${_entryId}/properties`, {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ properties: _props }),
-      });
-    }, 500);
+    _saveTimer=setTimeout(()=>_queues.get(id).flush().catch(error=>window.showToast?.(error.message,'error')),500);
   }
-
-  // Runs a pending debounced save immediately instead of waiting out the
-  // 500ms — the page peek calls this before closing (see app.js's
-  // _closePagePeek), so anything you just picked/typed and closed right
-  // away lands server-side BEFORE reload() re-fetches the row, instead of
-  // reload() racing the debounce and rendering stale data. A no-op when
-  // there's nothing pending.
-  function flush() {
-    if (!_saveTimer || !_entryId) return Promise.resolve();
+  async function flush() {
     clearTimeout(_saveTimer);
-    _saveTimer = null;
-    return fetch(`/api/entry/${_entryId}/properties`, {
-      method:  "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ properties: _props }),
-    }).catch(() => {});
+    for (const queue of _queues.values()) await queue.flush();
   }
 
   function _uid() {
@@ -399,6 +392,9 @@ window.Properties = (() => {
   }
 
   function _placePopover(pop, anchor) {
+    const owner=anchor.closest('[data-peek-owner]')?.dataset.peekOwner;
+    if(owner)pop.dataset.peekOwner=owner;
+    if (anchor.closest(".bn-db-notion-preview, .db-preview-peek")) pop.classList.add("db-preview-popover");
     document.body.appendChild(pop);
     const r  = anchor.getBoundingClientRect();
     const ph = pop.offsetHeight;

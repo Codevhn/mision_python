@@ -22,6 +22,10 @@
   --bn-colors-side-menu: var(--text-muted) !important;
 }
 
+/* First-line positioning is measured by blockAlignment.js. Let controls size
+   themselves, independently of heading level, multiline height or theme font. */
+.bn-container .bn-side-menu { height:auto!important; min-height:0!important; align-items:center; }
+
 .bn-block-content[data-content-type="codeBlock"] {
   background-color: #1e232b !important;
   /* The native component owns its frame; BlockNote's default vertical
@@ -1181,5 +1185,5 @@ div.bn-db-cell-input.bn-db-cell-text-wrap {
 
 /* Floating editor menus live outside decorative/blurred frame stacking contexts. */
 .atlas-editor-menu-layer { display:contents; }
-.atlas-editor-menu-layer .bn-drag-handle-menu { z-index:3000 !important; background:var(--bg-overlay) !important; color:var(--text); overscroll-behavior:contain; min-width:230px; }
+.atlas-editor-menu-layer .bn-drag-handle-menu { z-index:12020 !important; background:var(--bg-overlay) !important; color:var(--text); overscroll-behavior:contain; min-width:230px; }
 .atlas-editor-menu-layer .bn-menu-item { min-height:32px; }

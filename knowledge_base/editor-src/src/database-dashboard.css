@@ -1,0 +1,40 @@
+.adb-dashboard-builder{padding:12px 0 24px;min-width:0;container:atlas-dashboard / inline-size}
+.adb-dashboard-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4px 12px;flex-wrap:wrap}
+.adb-dashboard-bar>div{display:flex;align-items:center;gap:7px}.adb-dashboard-bar small{color:var(--adb-muted)}
+.adb-dashboard-bar button,.adb-dashboard-widget-tools button{padding:4px 8px!important;display:inline-flex;gap:5px;align-items:center}
+.adb-dashboard-bar button[aria-pressed="true"]{background:var(--adb-selected);color:var(--adb-accent)}
+.adb-dashboard-grid{--widget-gap:16px;display:flex;flex-wrap:wrap;gap:var(--widget-gap);min-width:0;align-items:flex-start}
+.adb-dashboard-widget{position:relative;flex:0 0 auto;width:calc((100% + var(--widget-gap))*var(--widget-width,.5) - var(--widget-gap));min-width:min(260px,100%);max-width:100%;border:1px solid var(--adb-border);border-radius:7px;background:var(--adb-bg);overflow:hidden}
+.adb-dashboard-widget.is-dragged{opacity:.45}.adb-dashboard-widget.editing{border-style:dashed}
+.adb-dashboard-widget-heading{display:flex;align-items:center;gap:6px;min-height:43px;padding:6px 10px;border-bottom:1px solid var(--adb-border)}
+.adb-dashboard-widget-heading h4{font:500 14px/1.4 var(--font-ui,inherit);margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adb-dashboard-widget-heading small{color:var(--adb-muted);font-size:11px}.adb-dashboard-handle{cursor:grab!important;padding:4px!important;color:var(--adb-muted)!important}
+.adb-dashboard-widget-body{height:var(--widget-height,400px);overflow:auto;min-width:0;padding:8px;scrollbar-width:thin}
+.adb-dashboard-widget-body .adb-board{min-height:0}.adb-dashboard-widget-body .adb-chart{padding:10px}.adb-dashboard-widget-body .adb-empty{padding:30px 8px}
+.adb-dashboard-widget-caption{font-size:11px;color:var(--adb-muted);padding:3px 30px 6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adb-dashboard-widget .adb-dashboard-resize{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:26px;height:26px;padding:5px;cursor:nwse-resize;color:var(--adb-muted);touch-action:none;user-select:none}
+.adb-dashboard-resize svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
+.adb-dashboard-widget.is-resizing{border-color:var(--adb-accent);user-select:none}
+.adb-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.adb-dashboard-widget-tools{display:flex;gap:2px;flex-shrink:0}.adb-dashboard-widget-tools .adb-icon-button{width:25px;height:26px;padding:5px!important}
+.adb-dashboard-empty{border:1px dashed var(--adb-border);border-radius:7px;text-align:center;padding:45px 20px;color:var(--adb-muted)}
+.adb-dashboard-empty p{margin:0 0 12px}.adb-dashboard-widget-table{border-collapse:collapse;width:max-content;min-width:100%;font-size:13px}
+.adb-dashboard-widget-table th{font-weight:400;color:var(--adb-muted);white-space:nowrap;background:var(--adb-bg);position:sticky;top:0;z-index:2;padding:6px 9px;text-align:left;border-bottom:1px solid var(--adb-border)}
+.adb-dashboard-widget-table td{min-width:140px;max-width:260px;border-bottom:1px solid var(--adb-border);border-right:1px solid var(--adb-border);padding:0;vertical-align:top}
+.adb-dashboard-widget-table td:first-child{min-width:200px}.adb-dashboard-widget-table td>button:first-child{padding:6px 9px;width:100%;font:inherit;display:flex;gap:7px;align-items:center}
+.adb-dashboard-panel{max-height:min(76vh,720px);overflow-y:auto;padding:8px;min-width:0;scrollbar-width:thin}
+.adb-dashboard-panel h3{font-size:15px;margin:3px 0 12px}.adb-dashboard-panel label{display:flex;flex-direction:column;gap:5px;padding:6px 0;color:var(--adb-muted);font-size:12px}
+.adb-dashboard-panel label>input,.adb-dashboard-panel label>select{color:var(--adb-text)}
+.adb-dashboard-panel details{border-top:1px solid var(--adb-border);padding:7px 0}.adb-dashboard-panel summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;color:var(--adb-text);font-size:13px;padding:5px 0}.adb-dashboard-panel summary::after{content:'›';font-size:17px;flex:0 0 18px;width:18px;height:18px;line-height:1;display:grid;place-items:center}.adb-dashboard-panel details[open]>summary::after{transform:rotate(90deg)}
+.adb-dashboard-panel .adb-dashboard-inline{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.adb-dashboard-panel .adb-dashboard-inline>label{flex:1;min-width:90px}
+.adb-dashboard-panel .adb-dashboard-check{display:flex;flex-direction:row;align-items:center;gap:8px;color:var(--adb-text);font-size:13px}
+.adb-dashboard-panel .adb-dashboard-rule{display:grid;grid-template-columns:minmax(90px,1fr) 92px minmax(70px,1fr) 25px;gap:5px;margin:7px 0;align-items:center}
+.adb-dashboard-panel .adb-dashboard-rule select,.adb-dashboard-panel .adb-dashboard-rule input{font-size:12px;padding:5px;min-width:0}
+.adb-dashboard-panel .adb-dashboard-rule button{padding:4px;text-align:center}.adb-dashboard-panel .adb-dashboard-add{padding:5px 0;color:var(--adb-muted);font-size:13px}
+.adb-dashboard-panel .adb-dashboard-global{padding:9px 0;border-top:1px solid var(--adb-border)}
+.adb-dashboard-global-status{color:var(--adb-muted);font-size:12px;margin:0 4px 10px}.adb-dashboard-global-status button{color:var(--adb-accent);text-decoration:underline}
+.adb-dashboard-panel select,.adb-dashboard-panel input{color-scheme:inherit}.adb-dashboard-panel select option{background:var(--adb-bg);color:var(--adb-text)}
+@container atlas-dashboard (max-width:640px){.adb-dashboard-grid{--widget-gap:10px}.adb-dashboard-widget{width:100%}.adb-dashboard-widget-heading{flex-wrap:wrap}.adb-dashboard-widget-heading h4{flex-basis:calc(100% - 60px)}.adb-dashboard-widget-heading small{max-width:130px;overflow:hidden;text-overflow:ellipsis}.adb-dashboard-widget-tools{margin-left:auto}.adb-dashboard-bar>div{flex-wrap:wrap}.adb-dashboard-widget .adb-dashboard-resize{cursor:ns-resize}.adb-dashboard-panel .adb-dashboard-rule{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 25px}.adb-dashboard-panel .adb-dashboard-rule>input{grid-column:1/3;grid-row:2}.adb-dashboard-panel .adb-dashboard-rule>button{grid-column:3;grid-row:1}}
+/* Configuration is a body portal, outside the dashboard query container. */
+@media(max-width:480px){.adb-dashboard-panel .adb-dashboard-rule{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 25px}.adb-dashboard-panel .adb-dashboard-rule>:nth-child(3){grid-column:1/3;grid-row:2}.adb-dashboard-panel .adb-dashboard-rule>button{grid-column:3;grid-row:1}}
+.adb-dashboard-group h5{font-size:13px;font-weight:500;margin:8px 3px;color:var(--adb-muted)}.adb-dashboard-group h5 small,.adb-dashboard-table-group small{font-weight:400;margin-left:7px}.adb-dashboard-table-group th{background:var(--adb-hover);position:static;font-weight:500}

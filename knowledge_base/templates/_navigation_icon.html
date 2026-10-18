@@ -1,0 +1,5 @@
+{# Both representations belong to one navigation component. Theme changes
+   only switch visibility; labels, focus, targets and actions stay untouched. #}
+{% macro atlas_nav_icon(name, size=24) -%}
+<span class="atlas-navigation-icon" aria-hidden="true" style="--atlas-nav-icon-size:{{ size }}px"><svg class="aero-nav-icon" viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" focusable="false"><use href="/static/aero-icons.svg#{{ name }}"></use></svg><svg class="atlas-native-nav-icon" viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><use href="/static/native-icons.svg#{{ name }}"></use></svg></span>
+{%- endmacro %}

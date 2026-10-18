@@ -1,10 +1,11 @@
 // Bidirectional converter between this app's markdown dialect (as produced by
 // the legacy static/editor.js: mdToBlocks / blocksToMd) and BlockNote's
 // PartialBlock tree. Kept independent from BlockNote's own (lossy, generic)
-// markdown import/export so the on-disk format used by app.py never changes.
+// markdown import/export so legacy syntax remains readable by app.py. Media
+// adds standard Markdown references plus inert presentation metadata.
 
 import { readableMath } from './mathText.js';
-const HEADING_PREFIX = ["#", "##", "###", "####"];
+const HEADING_PREFIX = ["#", "##", "###", "####", "#####", "######"];
 
 function textContent(str) {
   return str ? [{ type: "text", text: str, styles: {} }] : [];
@@ -49,7 +50,7 @@ function trimUrlTrail(raw) {
   return { url, trail };
 }
 
-function parseInline(text, baseStyles = {}) {
+function parseInlineRuns(text, baseStyles = {}) {
   if (!text) return [];
   let best = null;
   for (const p of INLINE_PATTERNS) {
@@ -64,7 +65,7 @@ function parseInline(text, baseStyles = {}) {
   if (before) runs.push({ type: "text", text: before, styles: { ...baseStyles } });
 
   if (p.type === "link") {
-    runs.push({ type: "link", href: m[2], content: parseInline(m[1], baseStyles) });
+    runs.push({ type: "link", href: m[2], content: parseInlineRuns(m[1], baseStyles) });
   } else if (p.type === "autolink") {
     const { url, trail } = trimUrlTrail(m[0]);
     if (!url) {
@@ -80,10 +81,48 @@ function parseInline(text, baseStyles = {}) {
     // parse underscores/asterisks inside the code span as Markdown.
     runs.push({ type: "text", text: m[1], styles: { code: true } });
   } else {
-    runs.push(...parseInline(m[1], { ...baseStyles, ...p.styles }));
+    runs.push(...parseInlineRuns(m[1], { ...baseStyles, ...p.styles }));
   }
-  runs.push(...parseInline(after, baseStyles));
+  runs.push(...parseInlineRuns(after, baseStyles));
   return runs;
+}
+
+// CommonMark punctuation escapes shield literal text from formatting patterns.
+// Keep the original spelling inside inline code, where backslashes are literal.
+function parseInline(text, baseStyles = {}) {
+  if (!text) return [];
+  let marker = "\uE000";
+  while (text.includes(marker)) marker += "\uE000";
+  const escaped = [];
+  const protectedText = text.replace(/\\([\\`*_[\]~#>|:.\-<!])/g, (_, char) => {
+    escaped.push(char);
+    return marker + (escaped.length - 1) + "\uE001";
+  });
+  const pattern = new RegExp(marker + "(\\d+)\uE001", "g");
+  const restore = (value, code = false) => value.replace(pattern, (_, index) =>
+    (code ? "\\" : "") + escaped[Number(index)]);
+  const restoreRuns = runs => runs.map(run => run.type === "text"
+    ? { ...run, text: restore(run.text, Boolean(run.styles?.code)) }
+    : run.type === "link"
+      ? { ...run, href: restore(run.href), content: restoreRuns(run.content) }
+      : run);
+  return restoreRuns(parseInlineRuns(protectedText, baseStyles));
+}
+
+function escapeLiteralInline(text) {
+  return text.replace(/\\(?=[\\`*_[\]~#>|:.\-<!])/g, "\\\\")
+    .replace(/[`*_[\]~]/g, "\\$&");
+}
+
+function paragraphLines(text) {
+  return text.split("\n").map(line => {
+    // A nonempty Markdown line keeps intentional blank lines in this one block.
+    if (!line) return "<br>";
+    if (line === "<br>") return "\\<br>";
+    if (!isSpecialLine(line)) return line;
+    if (/^\s*\d+\. /.test(line)) return line.replace(".", "\\.");
+    return line.replace(/^(\s*)(.)/, "$1\\$2");
+  });
 }
 
 function styleWrap(text, styles) {
@@ -119,7 +158,7 @@ function inlineToMd(content) {
       if (inner === c.href || inner === bareHref) return c.href;
       return `[${inner}](${c.href})`;
     }
-    if (c.type === "text") return styleWrap(c.text, c.styles || {});
+    if (c.type === "text") return styleWrap(c.styles?.code ? c.text : escapeLiteralInline(c.text), c.styles || {});
     return "";
   }).join("");
 }
@@ -141,6 +180,50 @@ function colorProps(block) {
   return props;
 }
 
+const MEDIA_TYPES = new Set(["image", "audio", "video", "file"]);
+const MEDIA_STRING_PROPS = ["name", "caption", "backgroundColor", "textAlignment"];
+
+function parseMediaLine(line) {
+  const metadata = line.match(/^(.*?)\s*<!-- atlas-media:([^\s]+) -->$/);
+  let props = {};
+  let type;
+  if (metadata) {
+    try {
+      const data = JSON.parse(decodeURIComponent(metadata[2]));
+      if (!MEDIA_TYPES.has(data.type)) return null;
+      type = data.type;
+      for (const key of MEDIA_STRING_PROPS) if (typeof data[key] === "string") props[key] = data[key];
+      if (typeof data.showPreview === "boolean") props.showPreview = data.showPreview;
+      if (Number.isFinite(data.previewWidth) && data.previewWidth > 0) props.previewWidth = data.previewWidth;
+    } catch { return null; }
+  }
+  const reference = (metadata ? metadata[1] : line).match(/^(!?)\[(.*)\]\(<([^<>\n]*)>\)$/)
+    || (metadata ? metadata[1] : line).match(/^(!?)\[(.*)\]\(([^\s)]+)\)$/);
+  if (!reference || (!metadata && reference[1] !== "!")) return null;
+  if (!type) type = "image";
+  if ((type === "image") !== Boolean(reference[1])) return null;
+  const label = plain(parseInline(reference[2]));
+  return { type, mediaProps: { name: type === "image" ? "" : label,
+    caption: type === "image" ? label : "", ...props, url: reference[3] } };
+}
+
+function mediaToMd(block) {
+  const props = block.props || {};
+  const metadata = { type: block.type };
+  for (const key of MEDIA_STRING_PROPS) if (typeof props[key] === "string") metadata[key] = props[key];
+  if (typeof props.showPreview === "boolean") metadata.showPreview = props.showPreview;
+  if (Number.isFinite(props.previewWidth) && props.previewWidth > 0) metadata.previewWidth = props.previewWidth;
+  // Standard Markdown remains useful to other renderers/exporters. The comment
+  // stores only presentation metadata, never a stale duplicate of the asset URL.
+  const label = escapeLiteralInline((block.type === "image" ? props.caption : props.name)
+    || props.name || props.caption || block.type).replaceAll("\n", " ")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll("\\[", "&#91;").replaceAll("\\]", "&#93;");
+  const url = String(props.url || "").replace(/[\s<>()]/g, char => encodeURIComponent(char)
+    .replaceAll("(", "%28").replaceAll(")", "%29"));
+  return `${block.type === "image" ? "!" : ""}[${label}](<${url}>) <!-- atlas-media:${encodeURIComponent(JSON.stringify(metadata))} -->`;
+}
+
 function isSpecialLine(l) {
   l = l.trimStart();
   return (
@@ -155,7 +238,8 @@ function isSpecialLine(l) {
     /^(?:`{3,}|~{3,})/.test(l) ||
     l.trimStart().startsWith("|") ||
     l === "<!--blank-->" ||
-    /^<!--\s*color:/.test(l)
+    /^<!--\s*color:/.test(l) ||
+    Boolean(parseMediaLine(l)) || /^!?\[.*\]\(.*\)\s*<!-- atlas-media:/.test(l)
   );
 }
 
@@ -200,13 +284,20 @@ function mdToFlat(md) {
     let hLevel = 0;
     for (let h = 6; h >= 1; h--) {
       const prefix = "#".repeat(h) + " ";
-      if (l.startsWith(prefix)) { hLevel = Math.min(h, 4); push({ id: uid(), type: "heading", level: hLevel, content: l.slice(prefix.length), indent: 0 }); break; }
+      if (l.startsWith(prefix)) { hLevel = h; push({ id: uid(), type: "heading", level: hLevel, content: l.slice(prefix.length), indent: 0 }); break; }
     }
     if (hLevel) { i++; continue; }
 
     const trimmedL = l.trimStart();
     const leadingSpaces = l.length - trimmedL.length;
     const listIndent = Math.floor(leadingSpaces / 2);
+
+    const media = parseMediaLine(trimmedL);
+    if (media) { push({ id: uid(), ...media, indent: listIndent }); i++; continue; }
+    if (/^!?\[.*\]\(.*\)\s*<!-- atlas-media:/.test(trimmedL)) {
+      push({ id: uid(), type: "paragraph", content: trimmedL, literal: true, indent: listIndent });
+      i++; continue;
+    }
 
     if (trimmedL.startsWith("- [x] ")) { push({ id: uid(), type: "todo", content: trimmedL.slice(6), checked: true, indent: listIndent }); i++; continue; }
     if (trimmedL.startsWith("- [ ] ")) { push({ id: uid(), type: "todo", content: trimmedL.slice(6), checked: false, indent: listIndent }); i++; continue; }
@@ -281,7 +372,7 @@ function mdToFlat(md) {
       Math.floor((lines[i].length - lines[i].trimStart().length) / 2) === listIndent) {
       paraLines.push(lines[i].slice(leadingSpaces)); i++;
     }
-    push({ id: uid(), type: "paragraph", content: paraLines.join("\n"), indent: listIndent });
+    push({ id: uid(), type: "paragraph", content: paraLines.map(line => line === "<br>" ? "" : line).join("\n"), indent: listIndent });
   }
 
   return blocks.length ? blocks : [{ id: uid(), type: "paragraph", content: "", indent: 0 }];
@@ -296,6 +387,11 @@ function parseMdTable(tableLines) {
 function flatToBlock(fb) {
   const props = colorProps(fb);
   switch (fb.type) {
+    case "image":
+    case "audio":
+    case "video":
+    case "file":
+      return { id: fb.id, type: fb.type, props: { ...fb.mediaProps, ...props }, children: [] };
     case "heading":
       return { id: fb.id, type: "heading", props: { ...props, level: fb.level }, content: parseInline(fb.content), children: [] };
     case "bullet":
@@ -337,7 +433,7 @@ function flatToBlock(fb) {
       return { id: fb.id, type: "toggleListItem", props, content: parseInline(fb.content), children };
     }
     default:
-      return { id: fb.id, type: "paragraph", props, content: parseInline(fb.content), children: [] };
+      return { id: fb.id, type: "paragraph", props, content: fb.literal ? textContent(fb.content) : parseInline(fb.content), children: [] };
   }
 }
 
@@ -392,12 +488,17 @@ function blockToMd(block, indentLevel = 0) {
   const text = block.type === "codeBlock" ? plain(block.content) : inlineToMd(block.content);
 
   switch (block.type) {
+    case "image":
+    case "audio":
+    case "video":
+    case "file":
+      return prefix + ind + mediaToMd(block);
     case "heading": {
       if (block.props.isToggleable) {
         const inner = (block.children || []).map((c) => blockToMd(c)).filter(Boolean).join("\n\n");
         return prefix + `:::toggle-h${block.props.level} ${text}\n${inner}\n:::`;
       }
-      return prefix + HEADING_PREFIX[Math.min(block.props.level, 4) - 1] + " " + text;
+      return prefix + HEADING_PREFIX[Math.min(Math.max(block.props.level, 1), 6) - 1] + " " + text;
     }
     case "bulletListItem":
       return prefix + ind + "- " + text + (block.children?.length ? "\n" + serializeListChildren(block.children, indentLevel + 1).join("\n") : "");
@@ -440,7 +541,7 @@ function blockToMd(block, indentLevel = 0) {
     }
     case "paragraph":
     default:
-      if (text.trim()) return prefix + text.split("\n").map(line => ind + line).join("\n");
+      if (text.trim()) return prefix + paragraphLines(text).map(line => ind + line).join("\n");
       return prefix ? prefix + "<!--blank-->" : null; // collapse pure-empty paragraphs below
   }
 }

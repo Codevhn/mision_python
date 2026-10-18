@@ -18,15 +18,18 @@
   window.addEventListener('storage', event => { if (event.key === 'kb_frame') setFrame(event.newValue); });
 
   function mount() {
+    // Page editing is a free-width surface, outside decorative window chrome.
+    // Keep frames on navigation, tools and dialogs; never reserve their inset
+    // around the BlockNote page.
     const windows = [
-      '.welcome', '.entry-view', '.course-view', '.course-empty-state', '.kanban-area',
+      '.welcome', '.course-view', '.course-empty-state', '.kanban-area',
       '.mindmap-area', '.concept-map-area', '.diagram-area', '.graph-view', '.radar-view',
       '.practice-view', '.lab-view', '.reader-shell', '.assistant-area', '.ai-panel',
       '.scratchpad', '.modal', 'dialog:not(.ag-dialog):not(.transaction-dialog)',
       '.cmd-modal', '.login-window', '.share-page', '.sr-page',
     ].join(',');
     const panels = [
-      '#activityBar', '#sidebar', '.related-sidebar', '.toc-panel', '.history-panel',
+      '#activityBar', '#sidebar', '.toc-panel', '.history-panel',
       '.practice-rail', '.dg-panel', '.reader-toc-panel', '.assistant-history',
       '.move-panel', '.content-panel', '.feature-panel',
     ].join(',');

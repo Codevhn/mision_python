@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {dashboardWriter} from '../src/dashboardSave.js';
+const cache=new Map(),storage={getItem:k=>cache.get(k),setItem:(k,v)=>cache.set(k,v),removeItem:k=>cache.delete(k)};
+const original={widgets:[{id:'a',title:'Original',width:50}],globalFilters:[]};
+let fail=true,clean=0,dirty=0,writes=[];
+const writer=dashboardWriter({initial:original,key:'source:view',storage,write:async value=>{if(fail)throw new Error('Sin conexión');writes.push(value);},onClean:()=>clean++,onDirty:()=>dirty++});
+const changed={...original,widgets:[{...original.widgets[0],title:'Conservado',width:43.7}]};
+await assert.rejects(writer.save(changed),/Sin conexión/);await Promise.resolve();
+assert.equal(writer.snapshot().dirty,true);assert.equal(writer.snapshot().error,'Sin conexión');assert.equal(clean,0);
+writer.install(original);assert.deepEqual(writer.snapshot().value,changed,'A saved refresh cannot erase a failed edit');
+assert.deepEqual(JSON.parse(cache.get('source:view')),changed);
+await assert.rejects(writer.flush(),/Sin conexión/,'Navigation must remain blocked while the draft cannot save');
+const restored=dashboardWriter({initial:original,key:'source:view',storage,write:async value=>writes.push(value)});
+assert.equal(restored.snapshot().dirty,true);assert.deepEqual(restored.snapshot().value,changed);
+await restored.flush();assert.equal(restored.snapshot().dirty,false);assert.equal(cache.has('source:view'),false);
+fail=false;await writer.retry();assert.equal(writer.snapshot().dirty,false);assert.equal(clean,1);assert.equal(dirty,3);
+// An older completion must not remove the latest pending draft or undo it.
+let unblock;const wait=new Promise(resolve=>unblock=resolve),saved=[];
+const queued=dashboardWriter({initial:original,key:'other:view',storage,write:async v=>{if(!saved.length)await wait;saved.push(v);}});
+const a=queued.save(changed),latest={...changed,globalFilters:[{id:'f',mapping:{}}]},b=queued.save(latest);
+await Promise.resolve();assert.equal(queued.snapshot().pending,2);unblock();await a;
+assert.equal(queued.snapshot().dirty,true);assert.deepEqual(JSON.parse(cache.get('other:view')),latest);
+await b;await Promise.resolve();assert.equal(queued.snapshot().pending,0);assert.equal(queued.snapshot().dirty,false);
+assert.deepEqual(saved,[changed,latest]);assert.deepEqual(queued.snapshot().value,latest);assert.equal(cache.has('other:view'),false);
+console.log('dashboard save: failed/queued writes, navigation blocking, refresh protection, session recovery and retry passed');

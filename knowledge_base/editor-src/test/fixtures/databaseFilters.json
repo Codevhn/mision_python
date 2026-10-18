@@ -1,0 +1,711 @@
+{
+  "rows": [
+    {
+      "id": "zoned",
+      "title": "Zona",
+      "order": 0,
+      "properties": [
+        {
+          "id": "d",
+          "type": "date",
+          "value": "2026-10-18T00:10:05+03:00"
+        },
+        {
+          "id": "n",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "id": "c",
+          "type": "checkbox",
+          "value": false
+        },
+        {
+          "id": "tags",
+          "type": "multi_select",
+          "value": [
+            "A",
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "late",
+      "title": "Posterior",
+      "order": 1,
+      "properties": [
+        {
+          "id": "d",
+          "type": "date",
+          "value": "2026-10-19"
+        },
+        {
+          "id": "n",
+          "type": "number",
+          "value": 8.5
+        },
+        {
+          "id": "c",
+          "type": "checkbox",
+          "value": true
+        },
+        {
+          "id": "tags",
+          "type": "multi_select",
+          "value": [
+            "AB"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "title": "Vacío",
+      "order": 2,
+      "properties": [
+        {
+          "id": "d",
+          "type": "date",
+          "value": ""
+        },
+        {
+          "id": "n",
+          "type": "number",
+          "value": ""
+        },
+        {
+          "id": "c",
+          "type": "checkbox",
+          "value": false
+        },
+        {
+          "id": "tags",
+          "type": "multi_select",
+          "value": []
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "rule": {
+        "colId": "d",
+        "op": "is",
+        "value": "2026-10-18"
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "d",
+        "op": "not",
+        "value": "2026-10-18"
+      },
+      "ids": [
+        "late",
+        "empty"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "d",
+        "op": "gt",
+        "value": "2026-10-18"
+      },
+      "ids": [
+        "late"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "d",
+        "op": "lt",
+        "value": "2026-10-19"
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "d",
+        "op": "empty",
+        "value": ""
+      },
+      "ids": [
+        "empty"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "d",
+        "op": "not_empty",
+        "value": ""
+      },
+      "ids": [
+        "zoned",
+        "late"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "is",
+        "value": "8.50"
+      },
+      "ids": [
+        "late"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "is",
+        "value": 0
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "gt",
+        "value": ""
+      },
+      "ids": []
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "gt",
+        "value": "Infinity"
+      },
+      "ids": []
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "gt",
+        "value": "0x1"
+      },
+      "ids": []
+    },
+    {
+      "rule": {
+        "colId": "n",
+        "op": "gt",
+        "value": "1e0"
+      },
+      "ids": [
+        "late"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "c",
+        "op": "is",
+        "value": false
+      },
+      "ids": [
+        "zoned",
+        "empty"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "tags",
+        "op": "contains",
+        "value": "A"
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "tags",
+        "op": "is",
+        "value": "A"
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "tags",
+        "op": "not",
+        "value": "A"
+      },
+      "ids": [
+        "late",
+        "empty"
+      ]
+    },
+    {
+      "rule": {
+        "colId": "tags",
+        "op": "empty",
+        "value": ""
+      },
+      "ids": [
+        "empty"
+      ]
+    }
+  ],
+  "tree_cases": [
+    {
+      "view": {
+        "filters": [
+          {
+            "mode": "or",
+            "rules": [
+              {
+                "colId": "n",
+                "op": "is",
+                "value": 0
+              },
+              {
+                "colId": "n",
+                "op": "gt",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "colId": "c",
+            "op": "is",
+            "value": false
+          }
+        ]
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "view": {
+        "filterMode": "or",
+        "filters": [
+          {
+            "mode": "and",
+            "rules": [
+              {
+                "colId": "tags",
+                "op": "contains",
+                "value": "A"
+              },
+              {
+                "colId": "n",
+                "op": "is",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "colId": "title",
+            "op": "is",
+            "value": "Vacío"
+          }
+        ]
+      },
+      "ids": [
+        "zoned",
+        "empty"
+      ]
+    },
+    {
+      "view": {
+        "filterMode": "or",
+        "filters": [
+          {
+            "mode": "and",
+            "rules": []
+          },
+          {
+            "colId": "title",
+            "op": "is",
+            "value": "Vacío"
+          }
+        ]
+      },
+      "ids": [
+        "empty"
+      ]
+    },
+    {
+      "view": {
+        "filters": [
+          {
+            "mode": "or",
+            "rules": [
+              {
+                "mode": "and",
+                "rules": []
+              }
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "zoned",
+        "late",
+        "empty"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filterTimeZone": "America/Tegucigalpa",
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "today"
+          }
+        ]
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filterTimeZone": "UTC",
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "today"
+          }
+        ]
+      },
+      "ids": [
+        "late"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filterTimeZone": "America/Tegucigalpa",
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "this_week"
+          }
+        ]
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filterTimeZone": "UTC",
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "this_week"
+          }
+        ]
+      },
+      "ids": [
+        "late"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filterTimeZone": "UTC",
+        "filters": [
+          {
+            "mode": "or",
+            "rules": [
+              {
+                "colId": "d",
+                "op": "relative",
+                "value": "today",
+                "timeZone": "America/Tegucigalpa"
+              },
+              {
+                "colId": "d",
+                "op": "relative",
+                "value": "tomorrow"
+              }
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "zoned"
+      ]
+    },
+    {
+      "now": "2026-10-19T00:30:00Z",
+      "view": {
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "not-a-period"
+          }
+        ]
+      },
+      "ids": []
+    },
+    {
+      "now": "2026-02-10T12:00:00Z",
+      "rows": [
+        {
+          "id": "invalid",
+          "title": "Fecha heredada inválida",
+          "properties": [
+            {
+              "id": "d",
+              "type": "date",
+              "value": "2026-02-31"
+            }
+          ]
+        }
+      ],
+      "view": {
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "this_month"
+          }
+        ]
+      },
+      "ids": []
+    },
+    {
+      "rows": [
+        {
+          "id": "range",
+          "title": "Intervalo",
+          "order": 0,
+          "properties": [
+            {
+              "id": "d",
+              "type": "date",
+              "value": {
+                "start": "2026-10-18T01:00:00+03:00",
+                "end": "2026-10-21T01:00:00+03:00"
+              }
+            }
+          ]
+        }
+      ],
+      "view": {
+        "filters": [
+          {
+            "colId": "d",
+            "op": "is",
+            "value": "2026-10-18"
+          }
+        ]
+      },
+      "ids": [
+        "range"
+      ]
+    },
+    {
+      "rows": [
+        {
+          "id": "range",
+          "title": "Intervalo",
+          "order": 0,
+          "properties": [
+            {
+              "id": "d",
+              "type": "date",
+              "value": {
+                "start": "2026-10-18T01:00:00+03:00",
+                "end": "2026-10-21T01:00:00+03:00"
+              }
+            }
+          ]
+        }
+      ],
+      "view": {
+        "filters": [
+          {
+            "colId": "d",
+            "op": "is",
+            "value": "2026-10-21"
+          }
+        ]
+      },
+      "ids": []
+    },
+    {
+      "rows": [
+        {
+          "id": "range",
+          "title": "Intervalo",
+          "order": 0,
+          "properties": [
+            {
+              "id": "d",
+              "type": "date",
+              "value": {
+                "start": "2026-10-18T01:00:00+03:00",
+                "end": "2026-10-21T01:00:00+03:00"
+              }
+            }
+          ]
+        }
+      ],
+      "now": "2026-10-18T12:00:00Z",
+      "view": {
+        "filters": [
+          {
+            "colId": "d",
+            "op": "relative",
+            "value": "today"
+          }
+        ]
+      },
+      "ids": [
+        "range"
+      ]
+    },
+    {
+      "rows": [
+        {
+          "id": "b",
+          "title": "B",
+          "properties": [
+            {
+              "id": "p",
+              "type": "place",
+              "value": {
+                "name": "B",
+                "lat": 0,
+                "lng": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "a",
+          "title": "A",
+          "properties": [
+            {
+              "id": "p",
+              "type": "place",
+              "value": {
+                "name": "A",
+                "lat": 1,
+                "lng": 1
+              }
+            }
+          ]
+        }
+      ],
+      "view": {
+        "sorts": [
+          {
+            "colId": "p",
+            "dir": "asc"
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b"
+      ]
+    }
+  ],
+  "range_cases": [
+    {
+      "today": "2024-02-29",
+      "period": "this_month",
+      "range": [
+        "2024-02-01",
+        "2024-02-29"
+      ]
+    },
+    {
+      "today": "2026-01-01",
+      "period": "last_month",
+      "range": [
+        "2025-12-01",
+        "2025-12-31"
+      ]
+    },
+    {
+      "today": "2026-12-31",
+      "period": "next_month",
+      "range": [
+        "2027-01-01",
+        "2027-01-31"
+      ]
+    },
+    {
+      "today": "2026-10-18",
+      "period": "this_week",
+      "range": [
+        "2026-10-12",
+        "2026-10-18"
+      ]
+    },
+    {
+      "today": "2026-10-19",
+      "period": "last_week",
+      "range": [
+        "2026-10-12",
+        "2026-10-18"
+      ]
+    },
+    {
+      "today": "2026-10-18",
+      "period": "next_week",
+      "range": [
+        "2026-10-19",
+        "2026-10-25"
+      ]
+    },
+    {
+      "today": "2026-01-02",
+      "period": "past_7_days",
+      "range": [
+        "2025-12-27",
+        "2026-01-02"
+      ]
+    },
+    {
+      "today": "2026-12-29",
+      "period": "next_7_days",
+      "range": [
+        "2026-12-29",
+        "2027-01-04"
+      ]
+    },
+    {
+      "today": "2024-03-01",
+      "period": "yesterday",
+      "range": [
+        "2024-02-29",
+        "2024-02-29"
+      ]
+    },
+    {
+      "today": "2026-12-31",
+      "period": "tomorrow",
+      "range": [
+        "2027-01-01",
+        "2027-01-01"
+      ]
+    }
+  ]
+}

@@ -1016,111 +1016,6 @@ button.link-btn:hover { opacity: 0.75; }
 /* Entry view */
 .entry-view { max-width: 1280px; margin: 0 auto; padding: 0 0 80px; position: relative; }
 
-/* ---- Related pages nav sidebar (right) — shown for Pages ---- */
-.entry-view.has-related-sidebar {
-  display: flex;
-  align-items: flex-start;
-  gap: 28px;
-  max-width: 1460px;
-}
-.entry-view.has-related-sidebar .entry-main {
-  flex: 1;
-  min-width: 0;
-}
-.related-sidebar {
-  width: 280px;
-  flex-shrink: 0;
-  position: sticky;
-  top: 18px;
-  max-height: calc(100vh - 36px);
-  overflow-y: auto;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  background: var(--panel-bg-2, var(--layer-3));
-  padding: 12px 10px;
-}
-.related-sidebar-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 2px 8px 10px;
-  border-bottom: 1px solid var(--border-light);
-}
-.related-sidebar-title {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.related-sidebar-count {
-  font-size: 0.7rem;
-  color: var(--text-faint);
-}
-.related-sidebar-body {
-  padding: 8px 0 0;
-}
-.related-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 8px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 0.84rem;
-  line-height: 1.35;
-  transition: background 0.15s, color 0.15s;
-}
-.related-item:hover { background: var(--accent-light); color: var(--text); }
-.related-item.active {
-  background: var(--accent-dim);
-  color: var(--accent);
-  font-weight: 600;
-}
-.related-item-icon {
-  flex-shrink: 0;
-  width: 18px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-.related-item-tags {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 0.68rem;
-  color: var(--text-faint);
-}
-.related-empty {
-  color: var(--text-faint);
-  font-size: 0.8rem;
-  padding: 10px 8px;
-}
-body.focus-mode .related-sidebar { display: none; }
-@media (max-width: 768px) {
-  /* The desktop rule sets align-items: flex-start for the side-by-side
-     row layout; switching to a stacked column here without overriding it
-     left each item sized to fit its own content (flex-start is a shrink-
-     to-fit cross-axis size in a column flex container) instead of
-     stretching to the full width — .entry-main's min-width: 0 only
-     guards the row layout's cross axis, not this one. A wide table (long
-     unbreakable URLs in a cell) then inflated .entry-main past the
-     viewport, and since the page itself can't scroll horizontally on
-     mobile, everything past the first column was silently clipped
-     instead of reachable with a swipe. */
-  .entry-view.has-related-sidebar { flex-direction: column; align-items: stretch; gap: 16px; }
-  .related-sidebar {
-    position: static;
-    width: 100%;
-    max-height: none;
-  }
-}
-
-
 /* ---- Entry cover ---- */
 .entry-cover {
   width: 100%;
@@ -7913,11 +7808,11 @@ body {
   padding: 0 !important;
 }
 
-/* BlockNote headings: neutral colors, no accent/purple tints */
-[data-content-type="heading"]              { color: var(--h1-color) !important; }
-[data-content-type="heading"][data-level="2"] { color: var(--h2-color) !important; }
-[data-content-type="heading"][data-level="3"] { color: var(--h3-color) !important; }
-[data-content-type="heading"][data-level="4"] { color: var(--text-muted) !important; }
+/* Theme heading defaults never override an explicit BlockNote block color. */
+[data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) { color: var(--h1-color) !important; }
+[data-content-type="heading"][data-level="2"]:where(:not([data-text-color]),[data-text-color="default"]) { color: var(--h2-color) !important; }
+[data-content-type="heading"][data-level="3"]:where(:not([data-text-color]),[data-text-color="default"]) { color: var(--h3-color) !important; }
+[data-content-type="heading"][data-level="4"]:where(:not([data-text-color]),[data-text-color="default"]) { color: var(--text-muted) !important; }
 
 @media (max-width: 768px) {
   /* AI panel: full-width bottom sheet on mobile */
@@ -10583,3 +10478,6 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   #sidebar #mobileSpaceNav:not(.hidden) ~ .sidebar-space { display:none !important; }
   #sidebar .msn-back-header { flex:none; }
 }
+
+/* A chosen block color also reaches the inline heading on full pages and Peek. */
+.bn-editor [data-content-type="heading"][data-text-color]:not([data-text-color="default"]) > :is(h1,h2,h3,h4,h5,h6){color:inherit}
