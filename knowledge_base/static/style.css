@@ -1820,6 +1820,28 @@ body.focus-mode .related-sidebar { display: none; }
   min-width: 0;
   flex: 1 1 auto;
 }
+/* Keep the editable code canvas and its content on the same surface. The
+   editor's generic light-theme code rules must not paint a white inner box.
+   Long lines scroll here, rather than widening the document on touch screens. */
+#entryBody .code-block-pre,
+#entryBody .code-block-pre .code-block-code,
+#entryBody .code-block-pre .bn-inline-content {
+  background: #1e232b !important;
+  color: #e1e4e8;
+  border: 0;
+  border-radius: 0;
+  text-align: start;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#entryBody .code-block-pre { margin:0; max-width:100%; border-radius:0 0 7px 7px; overflow-x:auto; overscroll-behavior-x:contain; }
+#entryBody .code-block-pre .code-block-code { padding:0; font:inherit; }
+@media (max-width:768px), (any-pointer:coarse) {
+  #entryBody .bn-editor > .bn-block-group { padding-inline:0; }
+  #entryBody .bn-block-content[data-content-type="codeBlock"] { min-width:0; max-width:100%; }
+  #entryBody .code-block-pre { padding:14px 12px; font-size:13px; }
+}
 /* ── Terminal / output: caja de consola real (oscura en ambos temas) ──
    Antes el body usaba el mismo fondo que el bloque de código (#212121 en dark,
    #f6f8fa en light) y el output se confundía con el editor. Ahora es una

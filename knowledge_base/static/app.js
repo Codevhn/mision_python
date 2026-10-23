@@ -11630,23 +11630,42 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   };
   const position = () => {
     const rect = trigger.getBoundingClientRect();
-    const width = Math.min(Math.max(rect.width, 360), window.innerWidth - 24);
-    const below = window.innerHeight - rect.bottom - 16;
-    const above = rect.top - 16;
+    // Android keeps the layout viewport behind the keyboard. Position in
+    // the visible viewport, including its offset after zooming or panning.
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const right = left + (viewport?.width || window.innerWidth);
+    const bottom = top + (viewport?.height || window.innerHeight);
+    const width = Math.max(0, Math.min(Math.max(rect.width, 360), right - left - 24));
+    const below = Math.max(0, bottom - rect.bottom - 16);
+    const above = Math.max(0, rect.top - top - 16);
     const up = below < 240 && above > below;
+    const height = Math.min(430, Math.max(above, below), bottom - top - 24);
     panel.style.width = `${width}px`;
-    panel.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
-    panel.style.maxHeight = `${Math.max(100, Math.min(430, up ? above : below))}px`;
+    panel.style.left = `${Math.max(left + 12, Math.min(rect.left, right - width - 12))}px`;
+    panel.style.maxHeight = `${Math.max(0, Math.min(height, up ? above : below))}px`;
     panel.style.setProperty('--model-reveal-offset', up ? '5px' : '-5px');
-    panel.style.top = up ? 'auto' : `${rect.bottom + 8}px`;
-    panel.style.bottom = up ? `${window.innerHeight - rect.top + 8}px` : 'auto';
+    // Measure after the max-height is applied so short result lists also
+    // stay anchored immediately above the trigger.
+    const panelHeight = panel.offsetHeight;
+    panel.style.top = `${Math.max(top + 12, Math.min(up ? rect.top - panelHeight - 8 : rect.bottom + 8, bottom - panelHeight - 12))}px`;
+    panel.style.bottom = 'auto';
+  };
+  let positionFrame;
+  const schedulePosition = () => {
+    cancelAnimationFrame(positionFrame);
+    positionFrame = requestAnimationFrame(position);
   };
   const close = (restoreFocus = false) => {
     panel.classList.add('hidden');
     trigger.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside);
     document.removeEventListener('keydown', escape);
-    window.removeEventListener('resize', position);
+    cancelAnimationFrame(positionFrame);
+    window.removeEventListener('resize', schedulePosition);
+    window.visualViewport?.removeEventListener('resize', schedulePosition);
+    window.visualViewport?.removeEventListener('scroll', schedulePosition);
     document.removeEventListener('scroll', onScroll, true);
     if (restoreFocus) trigger.focus();
   };
@@ -11658,16 +11677,20 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
     if (!panel.classList.contains('hidden')) { close(); return; }
     input.value = '';
     render();
-    position();
     panel.classList.remove('hidden');
+    position();
     trigger.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside);
     document.addEventListener('keydown', escape);
-    window.addEventListener('resize', position);
+    window.addEventListener('resize', schedulePosition);
+    window.visualViewport?.addEventListener('resize', schedulePosition);
+    window.visualViewport?.addEventListener('scroll', schedulePosition);
     document.addEventListener('scroll', onScroll, true);
-    input.focus();
+    // Browsing models should not summon the software keyboard on touch
+    // devices. The search remains available with an explicit tap.
+    if (!window.matchMedia('(any-pointer: coarse)').matches) input.focus({preventScroll:true});
   });
-  input.addEventListener('input', render);
+  input.addEventListener('input', () => { render(); position(); });
   panel.addEventListener('keydown', event => {
     if (event.key === 'Tab') { close(); return; }
     const items = [...results.querySelectorAll('button')];
