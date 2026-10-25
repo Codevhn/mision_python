@@ -393,7 +393,7 @@ async function loadKanbanSidebar() {
         el.classList.add('active');
         showKanbanArea();
         if (window.KanbanApp) window.KanbanApp.showBoard(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -443,7 +443,7 @@ async function loadMindmapSidebar() {
         el.classList.add('active');
         showMindmapArea();
         if (window.MindmapApp) window.MindmapApp.showMap(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -488,7 +488,7 @@ async function loadConceptMapSidebar() {
         el.classList.add('active');
         showConceptMapArea();
         if (window.ConceptMapApp) window.ConceptMapApp.showMap(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -749,14 +749,13 @@ const DRAWER_TREE_SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'page
 
 function toggleSidebar() {
   if (isMobile() || isCompact()) {
-    const open = $("sidebar").classList.toggle("mobile-open");
-    $("sidebarOverlay").classList.toggle("active", open);
-    document.body.classList.toggle("sidebar-open", open);
+    const open = !$("sidebar").classList.contains("mobile-open");
+    setSidebarVisible(open);
     // Reopening the drawer while already inside a space with a tree should
     // drop you back into that tree, not force you to re-pick it from the
     // full list every time — the back header is right there if you do
     // want to switch spaces.
-    if (open && isMobile() && window._setMobileDrawerMode) {
+    if (open && window._setMobileDrawerMode) {
       const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
       window._setMobileDrawerMode(
         activeSpace && DRAWER_TREE_SPACES.includes(activeSpace) ? 'content' : 'list',
@@ -772,6 +771,7 @@ function closeSidebarMobile() {
   $("sidebar").classList.remove("mobile-open");
   $("sidebarOverlay").classList.remove("active");
   document.body.classList.remove("sidebar-open");
+  $("sidebarToggle")?.setAttribute('aria-expanded', 'false');
 }
 
 // ---- TREE ----
@@ -6240,6 +6240,8 @@ function setSidebarVisible(visible) {
   if (isMobile() || isCompact()) {
     // Mobile + compact: sidebar is always in DOM, shown via drawer (transform).
     s.style.display = '';
+    s.classList.remove('sidebar--tucked', 'collapsed');
+    document.getElementById('sidebarToggle')?.setAttribute('aria-expanded', String(visible));
     if (visible) {
       // Auto-open drawer when switching to a space that has a sidebar tree.
       s.classList.add('mobile-open');
@@ -6263,17 +6265,12 @@ function setSidebarVisible(visible) {
 // Auto-manage sidebar when crossing the 1024px compact breakpoint
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
-  let _sidebarWasOpen = false;
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
-      // Desktop → compact: remember open state, then close sidebar as drawer
-      _sidebarWasOpen = document.body.classList.contains('sidebar-open');
-      const s = document.getElementById('sidebar');
-      if (s) { s.style.display = ''; s.classList.remove('mobile-open'); }
-      const ov = document.getElementById('sidebarOverlay');
-      if (ov) ov.classList.remove('active');
-      document.body.classList.remove('sidebar-open');
+      // Hide both navigation panels when narrowing the window. The menu
+      // button reopens the same tree without resetting its state.
+      setSidebarVisible(false);
     } else if (!_lastWasWide && nowWide) {
       // Compact → desktop
       const s = document.getElementById('sidebar');
@@ -6284,10 +6281,9 @@ function setSidebarVisible(visible) {
         // Only show sidebar + layout padding when a space panel has content.
         // Without this check, opening a note from the home screen (where all
         // sidebar panels are display:none) would create an empty panel on expand.
-        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spacePages','spaceRadar','spaceGraph'];
+        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spacePages','spaceRadar','spaceGraph','spaceMindmaps','spaceConceptmaps'];
         const _hasPanel = _PANEL_IDS.some(id => { const p = document.getElementById(id); return p && p.style.display !== 'none'; });
-        s.style.display = _hasPanel ? '' : 'none';
-        document.body.classList.toggle('sidebar-open', _hasPanel);
+        setSidebarVisible(_hasPanel);
       } else {
         if (s) s.style.display = 'none';
         document.body.classList.remove('sidebar-open');
@@ -11645,23 +11641,42 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   };
   const position = () => {
     const rect = trigger.getBoundingClientRect();
-    const width = Math.min(Math.max(rect.width, 360), window.innerWidth - 24);
-    const below = window.innerHeight - rect.bottom - 16;
-    const above = rect.top - 16;
+    // Android keeps the layout viewport behind the keyboard. Position in
+    // the visible viewport, including its offset after zooming or panning.
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const right = left + (viewport?.width || window.innerWidth);
+    const bottom = top + (viewport?.height || window.innerHeight);
+    const width = Math.max(0, Math.min(Math.max(rect.width, 360), right - left - 24));
+    const below = Math.max(0, bottom - rect.bottom - 16);
+    const above = Math.max(0, rect.top - top - 16);
     const up = below < 240 && above > below;
+    const height = Math.min(430, Math.max(above, below), bottom - top - 24);
     panel.style.width = `${width}px`;
-    panel.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
-    panel.style.maxHeight = `${Math.max(100, Math.min(430, up ? above : below))}px`;
+    panel.style.left = `${Math.max(left + 12, Math.min(rect.left, right - width - 12))}px`;
+    panel.style.maxHeight = `${Math.max(0, Math.min(height, up ? above : below))}px`;
     panel.style.setProperty('--model-reveal-offset', up ? '5px' : '-5px');
-    panel.style.top = up ? 'auto' : `${rect.bottom + 8}px`;
-    panel.style.bottom = up ? `${window.innerHeight - rect.top + 8}px` : 'auto';
+    // Measure after the max-height is applied so short result lists also
+    // stay anchored immediately above the trigger.
+    const panelHeight = panel.offsetHeight;
+    panel.style.top = `${Math.max(top + 12, Math.min(up ? rect.top - panelHeight - 8 : rect.bottom + 8, bottom - panelHeight - 12))}px`;
+    panel.style.bottom = 'auto';
+  };
+  let positionFrame;
+  const schedulePosition = () => {
+    cancelAnimationFrame(positionFrame);
+    positionFrame = requestAnimationFrame(position);
   };
   const close = (restoreFocus = false) => {
     panel.classList.add('hidden');
     trigger.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside);
     document.removeEventListener('keydown', escape);
-    window.removeEventListener('resize', position);
+    cancelAnimationFrame(positionFrame);
+    window.removeEventListener('resize', schedulePosition);
+    window.visualViewport?.removeEventListener('resize', schedulePosition);
+    window.visualViewport?.removeEventListener('scroll', schedulePosition);
     document.removeEventListener('scroll', onScroll, true);
     if (restoreFocus) trigger.focus();
   };
@@ -11673,16 +11688,20 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
     if (!panel.classList.contains('hidden')) { close(); return; }
     input.value = '';
     render();
-    position();
     panel.classList.remove('hidden');
+    position();
     trigger.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside);
     document.addEventListener('keydown', escape);
-    window.addEventListener('resize', position);
+    window.addEventListener('resize', schedulePosition);
+    window.visualViewport?.addEventListener('resize', schedulePosition);
+    window.visualViewport?.addEventListener('scroll', schedulePosition);
     document.addEventListener('scroll', onScroll, true);
-    input.focus();
+    // Browsing models should not summon the software keyboard on touch
+    // devices. The search remains available with an explicit tap.
+    if (!window.matchMedia('(any-pointer: coarse)').matches) input.focus({preventScroll:true});
   });
-  input.addEventListener('input', render);
+  input.addEventListener('input', () => { render(); position(); });
   panel.addEventListener('keydown', event => {
     if (event.key === 'Tab') { close(); return; }
     const items = [...results.querySelectorAll('button')];
