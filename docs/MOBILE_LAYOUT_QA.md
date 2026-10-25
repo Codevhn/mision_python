@@ -34,3 +34,21 @@ falla la comprobación del fondo interno del código, reproduciendo la regresió
 Esto verifica el componente en Chromium; no sustituye una comprobación física
 con el teclado Samsung en S24 Ultra y Tab S9 Ultra, que queda pendiente tras
 desplegar los cambios.
+
+## Navegación a media pantalla
+
+JavaScript ya usaba 1024 px como límite del modo compacto, pero CSS mantenía
+la barra de espacios y el árbol de navegación visibles entre 769 y 1024 px.
+En ese intervalo tampoco aparecía el botón de menú. Se unifica la navegación
+en un panel desplegable hasta 1024 px: ambos paneles quedan ocultos al reducir
+la ventana y el contenido recupera el ancho disponible. El botón abre el árbol
+actual, permite volver a la lista de espacios y mantiene accesible cerrar sesión.
+Se limpian los estados de ocultación de escritorio al pasar al panel compacto.
+El fondo para cerrar el menú queda por encima del activador lateral del índice.
+
+`node tools/check_sidebar_layout.cjs` carga la plantilla y los estilos reales,
+incluidos los marcos Centinela, y ejecuta las funciones de navegación sin datos
+de producción. Verifica 944, 1024, 769, 768 y 412 px, apertura, cierre al pulsar
+fuera o seleccionar una entrada, navegación interna y restauración a 1025 px.
+También comprueba la carga inicial a 944 px. Antes de incorporar la corrección,
+`--baseline` reproduce el fallo: la barra de espacios sigue visible a 944 px.

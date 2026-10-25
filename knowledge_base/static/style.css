@@ -4688,11 +4688,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   .layout { padding-left: 0 !important; }
 }
 
-/* Compact widths (769–1100px) used to show this panel as a floating overlay
-   drawer with a dimming scrim — confusing together with the rest of the
-   chrome. It now docks the same way it does on full desktop (base .sidebar/
-   .layout rules above already handle the width math via --ab-total-w), so
-   there's nothing left to override here. */
+/* Compact navigation uses the same drawer as mobile, up to 1024px.
+   The shared rules at the end of this file also override desktop frames. */
 
 /* =============================================
    PHASE D — Breadcrumb + Context Toolbar
@@ -5680,11 +5677,11 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
 [data-theme="light"] .topbar-btn:hover { color: rgba(0,0,0,0.80) !important; background: rgba(0,0,0,0.05) !important; }
 
 /* sidebar-toggle hidden on desktop since activity bar handles nav */
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   .sidebar-toggle { display: none !important; }
 }
 /* Show on mobile */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-toggle { display: inline-flex !important; }
 }
 
@@ -7464,10 +7461,10 @@ body.home-ambient .home-hero { overflow: visible; }
    drawer immediately, same as before — nothing to drill into there.
    ============================================================================= */
 
-/* Hidden on desktop — only rendered inside the mobile drawer */
+/* Hidden on wide desktop — rendered inside the mobile/compact drawer */
 .mobile-space-nav, .msn-back-header { display: none; }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   /* ── Space nav panel inside sidebar drawer ── */
   .mobile-space-nav {
     display: flex;
@@ -10589,7 +10586,7 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 }
 
 .mobile-session-actions { display:none; }
-@media(max-width:768px) {
+@media(max-width:1024px) {
   #sidebar { display:flex; flex-direction:column; height:calc(100dvh - var(--topbar-h)); overflow:hidden; }
   #sidebar .mobile-space-nav { position:static; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
   #sidebar .sidebar-space { height:auto; flex:1; min-height:0; overflow-y:auto; }
@@ -10600,8 +10597,31 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   .mobile-logout:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
   body:has(#sidebar.mobile-open) .assistant-launcher { display:none !important; }
 }
-@media(max-width:768px) {
+@media(max-width:1024px) {
   #sidebar .sidebar-space { min-height:0 !important; overflow-y:auto !important; }
   #sidebar #mobileSpaceNav:not(.hidden) ~ .sidebar-space { display:none !important; }
   #sidebar .msn-back-header { flex:none; }
+}
+
+/* Match isMobile()/isCompact() in app.js, including desktop split-screen.
+   Closed drawers must be invisible and unfocusable even when desktop theme
+   frames or a previous sidebar--tucked state are present. */
+@media (max-width:1024px) {
+  :root { --activity-bar-w:0px; --ab-gap:0px; }
+  .activity-bar { display:none; }
+  .layout { padding-left:0 !important; }
+  #sidebar {
+    left:0; top:calc(var(--topbar-h) + env(safe-area-inset-top)); bottom:0;
+    width:min(320px,calc(100vw - 32px)); max-width:none; min-width:0;
+    height:calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+    z-index:101; opacity:0; visibility:hidden; pointer-events:none;
+    transform:translateX(-110%); box-shadow:none;
+    transition:transform .22s ease,opacity .22s ease,visibility .22s;
+  }
+  #sidebar.mobile-open {
+    opacity:1; visibility:visible; pointer-events:auto; transform:translateX(0);
+    box-shadow:4px 0 24px #0005;
+  }
+  .sidebar-overlay { display:none; position:fixed; inset:calc(var(--topbar-h) + env(safe-area-inset-top)) 0 0; background:#0008; z-index:100; }
+  .sidebar-overlay.active { display:block; }
 }

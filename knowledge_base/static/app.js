@@ -392,7 +392,7 @@ async function loadKanbanSidebar() {
         el.classList.add('active');
         showKanbanArea();
         if (window.KanbanApp) window.KanbanApp.showBoard(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -442,7 +442,7 @@ async function loadMindmapSidebar() {
         el.classList.add('active');
         showMindmapArea();
         if (window.MindmapApp) window.MindmapApp.showMap(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -487,7 +487,7 @@ async function loadConceptMapSidebar() {
         el.classList.add('active');
         showConceptMapArea();
         if (window.ConceptMapApp) window.ConceptMapApp.showMap(el.dataset.id);
-        if (isMobile()) closeSidebarMobile();
+        if (isMobile() || isCompact()) closeSidebarMobile();
       });
     });
   } catch (e) {
@@ -744,14 +744,13 @@ const DRAWER_TREE_SPACES = ['knowledge', 'courses', 'boards', 'teamspace', 'page
 
 function toggleSidebar() {
   if (isMobile() || isCompact()) {
-    const open = $("sidebar").classList.toggle("mobile-open");
-    $("sidebarOverlay").classList.toggle("active", open);
-    document.body.classList.toggle("sidebar-open", open);
+    const open = !$("sidebar").classList.contains("mobile-open");
+    setSidebarVisible(open);
     // Reopening the drawer while already inside a space with a tree should
     // drop you back into that tree, not force you to re-pick it from the
     // full list every time — the back header is right there if you do
     // want to switch spaces.
-    if (open && isMobile() && window._setMobileDrawerMode) {
+    if (open && window._setMobileDrawerMode) {
       const activeSpace = (() => { try { return sessionStorage.getItem('activeSpace'); } catch (e) { return null; } })();
       window._setMobileDrawerMode(
         activeSpace && DRAWER_TREE_SPACES.includes(activeSpace) ? 'content' : 'list',
@@ -767,6 +766,7 @@ function closeSidebarMobile() {
   $("sidebar").classList.remove("mobile-open");
   $("sidebarOverlay").classList.remove("active");
   document.body.classList.remove("sidebar-open");
+  $("sidebarToggle")?.setAttribute('aria-expanded', 'false');
 }
 
 // ---- TREE ----
@@ -6225,6 +6225,8 @@ function setSidebarVisible(visible) {
   if (isMobile() || isCompact()) {
     // Mobile + compact: sidebar is always in DOM, shown via drawer (transform).
     s.style.display = '';
+    s.classList.remove('sidebar--tucked', 'collapsed');
+    document.getElementById('sidebarToggle')?.setAttribute('aria-expanded', String(visible));
     if (visible) {
       // Auto-open drawer when switching to a space that has a sidebar tree.
       s.classList.add('mobile-open');
@@ -6248,17 +6250,12 @@ function setSidebarVisible(visible) {
 // Auto-manage sidebar when crossing the 1024px compact breakpoint
 (function() {
   let _lastWasWide = window.innerWidth > 1024;
-  let _sidebarWasOpen = false;
   window.addEventListener('resize', () => {
     const nowWide = window.innerWidth > 1024;
     if (_lastWasWide && !nowWide) {
-      // Desktop → compact: remember open state, then close sidebar as drawer
-      _sidebarWasOpen = document.body.classList.contains('sidebar-open');
-      const s = document.getElementById('sidebar');
-      if (s) { s.style.display = ''; s.classList.remove('mobile-open'); }
-      const ov = document.getElementById('sidebarOverlay');
-      if (ov) ov.classList.remove('active');
-      document.body.classList.remove('sidebar-open');
+      // Hide both navigation panels when narrowing the window. The menu
+      // button reopens the same tree without resetting its state.
+      setSidebarVisible(false);
     } else if (!_lastWasWide && nowWide) {
       // Compact → desktop
       const s = document.getElementById('sidebar');
@@ -6269,10 +6266,9 @@ function setSidebarVisible(visible) {
         // Only show sidebar + layout padding when a space panel has content.
         // Without this check, opening a note from the home screen (where all
         // sidebar panels are display:none) would create an empty panel on expand.
-        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spacePages','spaceRadar','spaceGraph'];
+        const _PANEL_IDS = ['spaceKnowledge','spaceCourses','spaceBoards','spaceTeamspace','spacePages','spaceRadar','spaceGraph','spaceMindmaps','spaceConceptmaps'];
         const _hasPanel = _PANEL_IDS.some(id => { const p = document.getElementById(id); return p && p.style.display !== 'none'; });
-        s.style.display = _hasPanel ? '' : 'none';
-        document.body.classList.toggle('sidebar-open', _hasPanel);
+        setSidebarVisible(_hasPanel);
       } else {
         if (s) s.style.display = 'none';
         document.body.classList.remove('sidebar-open');
