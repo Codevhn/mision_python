@@ -6,7 +6,8 @@ Ronda de revisión del demo, 16 de octubre de 2026. Cambios sobre la rama y el �
 
 - El decorador de ventanas (`static/atlas-frames.js`) deja de registrar `.entry-view`. No se monta su capa ornamental ni se aplica el borde Centinela a la superficie de edición. Los marcos de navegación, herramientas y diálogos conservan su comportamiento.
 - `static/editing-surface.css`, cargado después de los temas, retira el límite de 1280/1460 px y el antiguo reparto entre editor y columna «Relacionadas». La página y sus contenedores admiten el ancho disponible; `min-width:0` impide que una tabla fuerce el ancho del contenedor flex.
-- Revisión posterior: tras retirar el límite inicial de 780 px, se ajustó prosa y código a un máximo compartido de 1040 px. En pantallas más estrechas usan el ancho disponible. El título y las propiedades se alinean con esa medida. Tablas, bases de datos y medios conservan el ancho de la superficie y su desplazamiento horizontal.
+- Revisión posterior: tras retirar el límite inicial de 780 px, se ajustó prosa y código a un máximo compartido de 1160 px. En pantallas más estrechas usan el ancho disponible. El título y las propiedades se alinean con esa medida. Tablas, bases de datos y medios conservan el ancho de la superficie y su desplazamiento horizontal.
+- Las tablas de BlockNote llenan el ancho disponible sin cambiar de alineación según el contenido. Las celdas largas envuelven el texto; el mínimo de columnas que guarda BlockNote sigue provocando scroll horizontal cuando la tabla excede la superficie.
 - Se conserva una franja de 56 px a la izquierda para los controles nativos de BlockNote (48 px en pantallas pequeñas) y un margen derecho de 24/16 px. No son los antiguos espacios ornamentales. El borde, sombra y capa decorativa central desaparecen.
 - Tablas y boards conservan su desplazamiento horizontal propio. Las columnas de la cuadrícula mantienen el ancho configurado; una tabla demasiado ancha se desplaza en vez de comprimirse. El tamaño cambia con el espacio que deja la navegación.
 - En escritorio de 1500 px o más, Side Peek reserva su anchura real y la página se reajusta a su izquierda. Center Peek y las pantallas más pequeñas mantienen la superposición para no dejar dos editores demasiado estrechos. El cierre devuelve el espacio sin persistir una anchura en los datos.
@@ -42,8 +43,9 @@ La retirada visual solicitada no requiere asumir una equivalencia. La inspecció
 ## Validación
 
 - Revisión de ancho posterior: lectura sin editar de una página real en Chrome: editor 1678 px, tabla 1598 px y prosa 780 px; `--atlas-reading-width` calculado en 780 px. En una página de prueba local con la hoja corregida, prosa, código y tabla miden 1180 px útiles dentro de un editor de 1260 px. En la variante de página de registro, título y propiedades miden 1260 px. El navegador cargó la hoja nueva; no se modificaron datos reales.
-- Ajuste posterior solicitado: el límite compartido de prosa y código queda en 1040 px; las tablas mantienen su ancho y scroll. Las mediciones de 1180 px de la revisión anterior describen la versión intermedia, no la actual.
+- Ajuste posterior solicitado: el límite compartido de prosa y código queda en 1160 px. Las mediciones de 1180 px de la revisión anterior describen una versión intermedia.
 - PostCSS analiza la hoja corregida y `git diff --check` no informa errores.
+- Revisión visual acotada en una página de prueba local con tablas de 3, 4 y 12 columnas: las tres comienzan en el mismo borde; las de 3 y 4 llenan el ancho disponible y la de 12 conserva scroll horizontal (1449 px de contenido frente a 736 px visibles). El texto largo se envuelve. La prueba no modificó contenido real.
 - `node --check knowledge_base/static/app.js`: correcto.
 - `node --check knowledge_base/static/atlas-frames.js`: correcto.
 - `git diff --check` de los archivos rastreados de esta superficie: correcto.
