@@ -1,4 +1,4 @@
-/* Language themes and browser-local course preferences. */
+/* Language themes remain available in Atlas's global theme selector. */
 const ATLAS_LANGUAGE_THEMES = [
   ['cybersecurity','Hacking Ético · Obsidiana y Verde','Cristal oscuro y reflejos verde terminal',145,26,'#83efad','#16643a',/\b(hacking|ciberseguridad|cybersecurity|pentesting|ethical\s+hacking)\b/i],
   ['skills','Desarrollo de Skills · Amatista','Cristal violeta y reflejos lavanda',269,32,'#d9b2ff','#7334a2',/\b(?:desarrollo|development|creacion|creation)\s+(?:(?:de|of)\s+)?skills?\b/i],
@@ -16,7 +16,7 @@ const ATLAS_LANGUAGE_THEMES = [
   ['git','Git · Obsidiana y Coral','Cristal carbón con reflejos coral',8,22,'#ffae9f','#963e31',/\b(git|github|gitlab)\b/i],
 ];
 function registerAtlasLanguageThemes(registry,catalog,groups) {
-  groups.languages='Lenguajes y temáticas · Windows 7';
+  groups.languages='Lenguajes y temáticas';
   for(const [language,title,description,hue,saturation,darkAccent,lightAccent] of ATLAS_LANGUAGE_THEMES) {
     for(const scheme of ['dark','light']) {
       const id=`language-${language}-${scheme}`;
@@ -26,61 +26,10 @@ function registerAtlasLanguageThemes(registry,catalog,groups) {
     }
   }
 }
-let _courseThemeContext=null;
 let _courseThemeNavigation=null;
-function _readCourseTheme(slug) {
-  try {const value=JSON.parse(localStorage.getItem('kb_course_theme:'+slug)||'null');
-    if(value?.mode==='general')return value;
-    if(value?.mode==='custom'&&ATLAS_THEMES[value.theme])return value;
-  }catch{}
-  return {mode:'auto'};
-}
-function _saveCourseTheme(slug,value) {try{localStorage.setItem('kb_course_theme:'+slug,JSON.stringify(value));}catch{}}
-function _generalAtlasTheme() {try{return localStorage.getItem('kb_theme')||'aero-night';}catch{return 'aero-night';}}
-function _languageForCourse(slug,label) {
-  const text=([label,slug].filter(Boolean).join(' ')).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[_-]/g,' ');
-  // More specific names precede C and Java, and SQL wins over a language mentioned in passing.
-  for(const id of ['cybersecurity','skills','sql','typescript','javascript','python','csharp','cpp','java','css','html','rust','go','git']) {
-    const spec=ATLAS_LANGUAGE_THEMES.find(item=>item[0]===id);if(spec[7].test(text))return id;
-  }
-  return null;
-}
-function _enterCourseTheme(slug,label) {
-  _courseThemeContext={slug,label:label||slug};
-  _courseThemeNavigation='courses';
-  const preference=_readCourseTheme(slug),general=_generalAtlasTheme();
-  const language=_languageForCourse(slug,label);
-  const scheme=ATLAS_THEMES[general]?.scheme||'dark';
-  // Native is an app-wide visual choice: automatic language themes must not
-  // replace it on navigation. An explicitly assigned course theme still wins.
-  const automaticLanguage=preference.mode==='auto'&&language&&ATLAS_THEMES[general]?.style!=='notion';
-  const theme=preference.mode==='custom'?preference.theme:automaticLanguage?`language-${language}-${scheme}`:general;
-  setAtlasTheme(theme);
-}
-function _leaveCourseTheme() {
-  if(!_courseThemeContext)return;
-  _courseThemeContext=null;setAtlasTheme(_generalAtlasTheme());
-}
+function _enterCourseTheme() { _courseThemeNavigation='courses'; }
+function _leaveCourseTheme() { /* Navigation no longer changes Atlas's theme. */ }
 function _courseThemeSpace(space) {
   _courseThemeNavigation=space;
-  if(space!=='courses'){_leaveCourseTheme();return;}
-  if(_activeCourseSlug)_enterCourseTheme(_activeCourseSlug,_coursesTreeData[_activeCourseSlug]?.label);
 }
-function _persistAtlasThemeChoice(id) {
-  if(_courseThemeContext&&_readCourseTheme(_courseThemeContext.slug).mode!=='general') {
-    _saveCourseTheme(_courseThemeContext.slug,{mode:'custom',theme:id});
-  }else{try{localStorage.setItem('kb_theme',id);}catch{}}
-}
-function _renderCourseThemeControls() {
-  const host=document.getElementById('courseThemeControls');if(!host)return;
-  host.replaceChildren();if(!_courseThemeContext){host.hidden=true;return;}host.hidden=false;
-  const context={..._courseThemeContext},preference=_readCourseTheme(context.slug);
-  const title=document.createElement('strong');title.textContent='Tema del curso · '+context.label;
-  const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=preference.mode!=='general';
-  label.append(toggle,document.createTextNode('Aplicar un tema propio al abrir este curso'));
-  const hint=document.createElement('small');hint.textContent=toggle.checked?'El tema que elijas abajo quedará asignado a este curso en este navegador.':'Usarás tu tema general de Atlas.';
-  const reset=document.createElement('button');reset.type='button';reset.className='btn-ghost';reset.textContent='Usar tema automático del curso';
-  toggle.addEventListener('change',()=>{_saveCourseTheme(context.slug,{mode:toggle.checked?'auto':'general'});_enterCourseTheme(context.slug,context.label);_renderCourseThemeControls();});
-  reset.addEventListener('click',()=>{_saveCourseTheme(context.slug,{mode:'auto'});_enterCourseTheme(context.slug,context.label);_renderCourseThemeControls();});
-  host.append(title,label,hint,reset);
-}
+function _persistAtlasThemeChoice(id) { try { localStorage.setItem('kb_theme',id); } catch {} }

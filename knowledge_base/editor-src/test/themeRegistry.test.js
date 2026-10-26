@@ -54,19 +54,22 @@ assert.equal(data.themeId,'notion-native-light');
 apply('aero-amber');
 assert.deepEqual(data,priorTheme,'previous presentation attributes restored exactly');
 
-// Automatic language selection does not silently replace app-wide Native.
+// Course navigation ignores former per-course choices without deleting them.
 storage.set('kb_theme','notion-native');
+apply('notion-native',false);
 vm.runInContext(`_enterCourseTheme('curso-python','Python')`,context);
 assert.equal(data.themeId,'notion-native');
-// Explicit course choices remain intact and still restore the general theme.
 storage.set('kb_course_theme:curso-python',JSON.stringify({mode:'custom',theme:'editor-nord'}));
 vm.runInContext(`_enterCourseTheme('curso-python','Python')`,context);
-assert.equal(data.themeId,'editor-nord');
-vm.runInContext('_leaveCourseTheme()',context);
 assert.equal(data.themeId,'notion-native');
+apply('editor-nord');
+assert.equal(storage.get('kb_theme'),'editor-nord','theme selection inside a course is global');
+vm.runInContext('_leaveCourseTheme()',context);
+assert.equal(data.themeId,'editor-nord');
 assert.equal(storage.get('kb_course_theme:curso-python'),JSON.stringify({mode:'custom',theme:'editor-nord'}));
-// Existing automatic course-language behavior is retained outside Native.
-storage.set('kb_theme','aero-night');
+apply('aero-night');
 vm.runInContext(`_enterCourseTheme('curso-javascript','JavaScript')`,context);
-assert.equal(data.themeId,'language-javascript-dark');
-console.log('Theme registry: persistence, reversibility and course preference scope passed');
+assert.equal(data.themeId,'aero-night');
+vm.runInContext(`_courseThemeSpace('home')`,context);
+assert.equal(data.themeId,'aero-night');
+console.log('Theme registry: persistence, reversibility and course navigation scope passed');

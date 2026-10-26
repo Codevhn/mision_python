@@ -2,7 +2,7 @@
    retain their Atlas chrome. Keep this sheet after themes/editor styles. */
 .content-area:has(> #entryView:not(.hidden)) { min-width:0; }
 #entryView {
-  --atlas-reading-width:100%;
+  --atlas-reading-width:1040px;
   --atlas-page-gutter-start:56px; /* Native BlockNote + / drag control runway. */
   --atlas-page-gutter-end:24px;
   box-sizing:border-box;
@@ -21,8 +21,8 @@
 #entryView #entryBody :is(.bn-container,.bn-editor) { width:100%; min-width:0; max-width:none; }
 #entryView #entryBody .bn-editor { overflow:visible; }
 #entryView #entryBody .bn-editor > .bn-block-group { width:100%; min-width:0; }
-/* Keep prose blocks aligned with the editor surface. Wide descendants still
-   promote their ancestor blocks so nested tables can use the available width. */
+/* Keep prose and code at a comfortable shared width. Tables and databases
+   can still promote their ancestor blocks to use the available surface. */
 #entryView #entryBody .bn-editor > .bn-block-group > .bn-block-outer {
   box-sizing:border-box;
   width:100%; max-width:var(--atlas-reading-width);
@@ -30,8 +30,8 @@
 }
 #entryView #entryBody .bn-editor > .bn-block-group > .bn-block-outer:has(
   [data-content-type="database"], [data-content-type="table"],
-  [data-content-type="codeBlock"], [data-content-type="image"],
-  [data-content-type="video"], [data-content-type="audio"], [data-content-type="file"]
+  [data-content-type="image"], [data-content-type="video"],
+  [data-content-type="audio"], [data-content-type="file"]
 ) { max-width:none; }
 /* Embedded databases can always use the free surface. */
 #entryView.adb-record-wide { --atlas-reading-width:100%; }
@@ -39,7 +39,7 @@
   box-sizing:border-box; width:100%; max-width:calc(var(--atlas-reading-width) + 80px);
   padding-inline:40px!important; margin-inline:auto;
 }
-#entryView.adb-record-page :is(#inlineTitleWrap,#propContainer) { max-width:none!important; }
+#entryView.adb-record-page :is(#inlineTitleWrap,#propContainer) { max-width:calc(var(--atlas-reading-width) + 80px)!important; }
 #entryView #inlineTitleWrap { padding-top:24px!important; }
 #entryView.adb-record-wide :is(#inlineTitleWrap,#propContainer) { max-width:none; }
 #entryView :is(.entry-tags-bar,.relations-panel,.backlinks-panel,.backlinks-section,.entry-children) {

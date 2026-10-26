@@ -11,9 +11,9 @@ Los paneles usan cristal oscuro translúcido. Campos, menús y zonas de texto ti
 más opacidad. El paisaje permanece al navegar a Biblioteca, Finanzas y otras
 secciones. Finanzas copia el identificador del tema al iframe y deja transparente
 su fondo para ver el mismo paisaje, sin ejecutar otro motor meteorológico.
-Los cursos conservan su tema automático por lenguaje o su elección personalizada.
-Horizonte vuelve al salir del curso. Desactivar «Aplicar un tema propio al abrir este curso»
-permite mantener el paisaje también dentro de ese curso. Los libros y PDF conservan sus
+Los cursos usan el tema general de Atlas, incluido Horizonte. La selección por
+lenguaje y los temas propios de cada curso dejaron de aplicarse al navegar.
+Los libros y PDF conservan sus
 opciones de lectura y el fondo propio del documento.
 
 La animación se pausa con el botón de viento de la barra superior. Se comparte

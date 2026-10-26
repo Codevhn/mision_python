@@ -711,7 +711,7 @@ function toggleTheme() {
   if (picker && !picker.open) {
     if (_peekEntryId) picker.dataset.peekOwner = _peekEntryId;
     else delete picker.dataset.peekOwner;
-    _renderCourseThemeControls(); picker.showModal();
+    picker.showModal();
   }
 }
 
@@ -7205,7 +7205,6 @@ function _openCourseGearMenu(anchor, courseSlug, course) {
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
   menu.innerHTML = `
-    <button data-action="theme">Tema del curso…</button>
     <button data-action="edit">Editar curso</button>
     <button data-action="archive">${course.archived ? 'Desarchivar' : 'Archivar'}</button>
     <button data-action="duplicate">Duplicar</button>
@@ -7918,9 +7917,7 @@ function _showLessonMenu(anchor, entry, courseSlug, modLabel) {
 
 // ── Course actions (⚙ menu) ───────────────────────────────────────────────
 async function handleCourseAction(action, courseSlug, courseEntity) {
-  if (action === 'theme') {
-    _enterCourseTheme(courseSlug,courseEntity.label);toggleTheme();
-  } else if (action === 'edit') {
+  if (action === 'edit') {
     openEditCourseModal(courseSlug, courseEntity);
   } else if (action === 'archive') {
     const archived = !courseEntity.archived;

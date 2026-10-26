@@ -79,12 +79,11 @@ interacción distinta de Native.
 
 ## Cursos y alcance de la preferencia
 
-Al entrar en un curso con selección automática de tema por lenguaje, Native
-general permanece activo. Las preferencias **explícitas** de tema propio de un
-curso siguen teniendo prioridad y no se borran. El selector contextual existente
-indica cuándo la elección se guarda para ese curso: desmarcar «Aplicar un tema
-propio al abrir este curso» permite usar el tema general. Esto preserva la
-función previa y no afecta a las preferencias de tipografía de sus páginas.
+Al entrar en cualquier curso permanece el tema general de Atlas, incluido Native.
+La selección automática por lenguaje y el selector contextual de tema de curso
+se retiraron después de esta revisión. Las antiguas preferencias locales de
+curso no se borran, pero ya no se aplican. Las preferencias de tipografía de
+las páginas se conservan.
 
 ## Verificación técnica y límites de la evidencia
 
