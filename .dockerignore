@@ -58,3 +58,7 @@ docs/
 tools/run_database_identity_demo.py
 tools/run_atlas_local.py
 tools/database_responsive_demo.html
+
+# Never send private inventory uploads in a Docker build context.
+private-imports/
+inventario-ultimos-libros-2026.json

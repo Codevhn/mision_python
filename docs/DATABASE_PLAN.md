@@ -110,6 +110,22 @@ documentación revisados; capturas/trazas privadas y demos permanecen locales.
 coinciden con el artefacto desplegado. Ver la revisión de versionado en
 [DATABASE_INTEGRATION.md](DATABASE_INTEGRATION.md). No cambia el estado de los IDs.
 
+## Ampliación autorizada: importación JSON/CSV — 20 de octubre de 2026
+
+Esta petición posterior habilita exclusivamente importación de inventario JSON/CSV;
+no reabre Markdown DB-PAGE-06 ni los demás aplazamientos. La primera entrega sigue
+cerrada. Evidencia y contrato: [DATABASE_IMPORT.md](DATABASE_IMPORT.md). El archivo
+privado real se localizó fuera de Git y se ensayó exclusivamente en una copia aislada;
+su colección es `/archivos`, no una lista plana ni una unión de colecciones.
+
+| ID | Resultado y aceptación | Estado | Evidencia | Limitación/dependencia | Compromiso | Ámbito |
+| --- | --- | --- | --- | --- | --- | --- |
+| DB-IMPORT-01 | Subir JSON/CSV, seleccionar colección anidada, muestra, mapear columnas/tipos, validar, confirmar y descargar informe desde UI. | parcial | API/parser:30 pruebas previas; CUA: diálogo/foco/selector y tabla416, scroll vertical/horizontal, edición de nota y persistencia tras recarga; informe/escape HTML y build previos aprobados. | Faltan subida/asignación/confirmación y Peek de registros importados desde UI; subida requiere Allow access to file URLs. Scroll/edición ya comprobados; barra horizontal al pie conservada y timeouts CDP documentados en IMPORT. No se confunde ensayo API con recorrido UI. | C | Ampliación aprobada |
+| DB-IMPORT-02 | Crear base/páginas nativas con identidades nuevas, IDs/URL originales, orden, tipos y persistencia; no mezclar colecciones ni DB. | verificado | IMPORT:451 pruebas globales; ensayo real416 registros/46 columnas, objetos/IDs/enlaces/orden cotejados; proceso nuevo e integridad SQLite; otra DB vacía independiente. | Validación API y disco. Interacción visual importador en01, sin atribuirla a esta evidencia. | C | Ampliación aprobada |
+| DB-IMPORT-03 | Reimportar por ID Drive sin duplicar ni sobrescribir cuerpo/propiedades/progreso; informar conflictos y recuperar fallos sin borrar datos anteriores. | verificado | Repetición del archivo, append con cambios, igualdad de metadatos existentes, papelera, clave desde columna antigua, lotes inválidos atómicos, fallo de disco/journal alterado y reintento. | Deduplicación por base destino. Archivo cambiado debe añadirse a su base existente; no hay fusión global entre DB independientes. | C | Ampliación aprobada |
+| DB-IMPORT-04 | Adaptar explícitamente inventario-ultimos-libros-2026.json, conservar manifest/grupos candidatos y autores provisionales; cotejar conteos, Drive IDs y repetir en copia. | verificado | IMPORT: perfil versión1.0, sólo archivos416;335 grupos y416 metadatos archivados sin crear filas;46 columnas y fuente exacta; repetición0 nuevos,416 omitidos en append; notas/valoración/progreso/cuerpo intactos; fuente sin cambios. | Ensayo real aislado por API, no importación habitual. Originales e informes privados fuera de Git. No confirma autoría ni fusiona grupos. | C | Ampliación aprobada |
+| DB-IMPORT-05 | Dejar artefacto final ensayado por digest, respaldo/reversión y propuesta para aprobación; conservar instalación habitual intacta. | parcial | IMPORT: contexto131 archivos, manifiesto/Gitleaks y exclusión de IDs privados; imagen local63d61e7e8e74 ensayada con416 registros, sin red/original sólo lectura; repetición, integridad y anotaciones conservadas. Procedimiento y reversión documentados. | Falta recorrido UI de01 antes de proponer activación. ID local de imagen registrado, sin digest de registro publicado. Sin despliegue ni importación habitual; respaldo final sólo en futura ventana autorizada. | C | Ampliación aprobada |
+
 ## Cómo interpretar y actualizar la lista
 
 - Los IDs son estables: no se renumeran, borran ni reutilizan al resolver un requisito. Una corrección posterior actualiza su fila y añade evidencia fechada.

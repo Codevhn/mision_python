@@ -1,4 +1,5 @@
 import React from "react";
+import {openDatabaseImport} from "./databaseImport.jsx";
 import {SideMenuExtension} from '@blocknote/core/extensions';
 import {installForegroundEditorHitTesting} from './editorHitTesting.js';
 import {SaveQueue} from "./databaseModel.js";
@@ -7,7 +8,7 @@ import {mountPeekToolbar,unmountPeekToolbar} from './databasePeek.jsx';
 import {clearRecordPresentation} from './databasePeekModel.js';
 import "./database-workspace.css";
 import './database-peek.css';
-window.AtlasDatabase = {SaveQueue, drafts:databaseDrafts, flush:flushDatabaseEditors, mountProperties:mountRecordProperties, unmountProperties:unmountRecordProperties, mountPeekToolbar,unmountPeekToolbar,clearRecordPresentation};
+window.AtlasDatabase = {openImport:openDatabaseImport,SaveQueue, drafts:databaseDrafts, flush:flushDatabaseEditors, mountProperties:mountRecordProperties, unmountProperties:unmountRecordProperties, mountPeekToolbar,unmountPeekToolbar,clearRecordPresentation};
 import { editorDatabaseContext, duplicateIdentityRepairs } from "./databaseIdentity.js";
 import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";

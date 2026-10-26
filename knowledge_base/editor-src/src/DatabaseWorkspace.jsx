@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {openDatabaseImport} from './databaseImport.jsx';
 import { DatabaseIcon as Icon } from './databaseIcons.jsx';
 import { editorDatabaseContext } from './databaseIdentity.js';
 import { normalizeSchema, columnsForView, moveViewColumn, clone, uid, api, VIEW_TYPES, PROPERTY_TYPES, COMPUTED, optionsFor, valueOf, displayValue, filteredRows, groupRows, aggregate } from './databaseModel.js';
@@ -742,7 +743,7 @@ function RecoveryMenu({
     api(base + '/deleted').then(setDeleted).catch(e => setError(e.message));
     api(base + '/recoveries').then(setBackups).catch(e => setError(e.message));
   }, [base]);
-  return <Popover anchor={anchor} wide label="Opciones y recuperación" onClose={onClose}><div className="adb-popover-title">Papelera de registros</div>{deleted.map(row => <MenuItem key={row.id} icon="page" label={'Restaurar ' + row.title} onClick={() => api(base + '/deleted/' + row.id, {}, 'POST').then(() => {
+  return <Popover anchor={anchor} wide label="Opciones y recuperación" onClose={onClose}><MenuItem icon="page" label="Importar JSON o CSV…" onClick={()=>{onClose();openDatabaseImport({base,schema,anchor});}}/><hr/><div className="adb-popover-title">Papelera de registros</div>{deleted.map(row => <MenuItem key={row.id} icon="page" label={'Restaurar ' + row.title} onClick={() => api(base + '/deleted/' + row.id, {}, 'POST').then(() => {
       reload();
       onClose();
     }).catch(e => setError(e.message))} />)}{!deleted.length && <p className="adb-help">Ningún registro en la papelera.</p>}<hr /><div className="adb-popover-title">Propiedades archivadas</div>{schema.archived_columns?.length ? schema.archived_columns.map(col => <MenuItem key={col.id} icon={col.type} label={'Restaurar ' + col.name} onClick={() => mutate({

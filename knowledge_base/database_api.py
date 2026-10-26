@@ -576,3 +576,6 @@ def register_database_api(app, g):
 
     from database_record_actions import register_record_actions
     register_record_actions(app,g,dict(connect=connect,read=read,source=source,projected=projected,put=put,checked_cell=checked_cell))
+
+    from database_import import register_database_import
+    register_database_import(app,g,dict(connect=connect,read=read,source=source,put=put,checked_cell=checked_cell))

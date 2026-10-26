@@ -32,3 +32,8 @@ knowledge_base/data/library_progress.json
 knowledge_base/data/library_bookmarks.json
 knowledge_base/data/library_notes.json
 knowledge_base/data/library_color_legend.json
+
+# Private import payloads, previews, source snapshots and recovery journals
+knowledge_base/data/database_imports/
+/private-imports/
+/inventario-ultimos-libros-2026.json

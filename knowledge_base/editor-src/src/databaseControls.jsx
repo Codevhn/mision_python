@@ -24,6 +24,6 @@ export function DatabaseDialog({title,owner,anchor,busy,onClose,children}){
         if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1).focus();}
         else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0].focus();}
       }
-    }}><div className="adb-config-heading"><strong>{title}</strong><IconButton icon="close" label="Cerrar exportación" disabled={busy} onClick={onClose}/></div>{children}</div>
+    }}><div className="adb-config-heading"><strong>{title}</strong><IconButton icon="close" label={title==='Importar base de datos'?'Cerrar importación':'Cerrar exportación'} disabled={busy} onClick={onClose}/></div>{children}</div>
   </div>,document.body);
 }

@@ -1427,6 +1427,10 @@ function openNewPageModal() {
 }
 
 $("newPageBtn").addEventListener("click", openNewPageModal);
+$("importDatabaseBtn").addEventListener("click", async e => {
+  const anchor=e.currentTarget;
+  window.AtlasDatabase?.openImport({anchor});
+});
 $("newPageClose").addEventListener("click", () => $("newPageOverlay").classList.add("hidden"));
 $("newPageCancel").addEventListener("click", () => $("newPageOverlay").classList.add("hidden"));
 $("newPageOverlay").addEventListener("click", e => { if (e.target === $("newPageOverlay")) $("newPageOverlay").classList.add("hidden"); });
