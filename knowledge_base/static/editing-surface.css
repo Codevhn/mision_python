@@ -2,7 +2,7 @@
    retain their Atlas chrome. Keep this sheet after themes/editor styles. */
 .content-area:has(> #entryView:not(.hidden)) { min-width:0; }
 #entryView {
-  --atlas-reading-width:780px;
+  --atlas-reading-width:100%;
   --atlas-page-gutter-start:56px; /* Native BlockNote + / drag control runway. */
   --atlas-page-gutter-end:24px;
   box-sizing:border-box;
@@ -21,9 +21,8 @@
 #entryView #entryBody :is(.bn-container,.bn-editor) { width:100%; min-width:0; max-width:none; }
 #entryView #entryBody .bn-editor { overflow:visible; }
 #entryView #entryBody .bn-editor > .bn-block-group { width:100%; min-width:0; }
-/* Constrain complete prose blocks (including their children), not the editor.
-   A database/table/media descendant promotes its whole ancestor block so
-   nested wide blocks retain their available space too. */
+/* Keep prose blocks aligned with the editor surface. Wide descendants still
+   promote their ancestor blocks so nested tables can use the available width. */
 #entryView #entryBody .bn-editor > .bn-block-group > .bn-block-outer {
   box-sizing:border-box;
   width:100%; max-width:var(--atlas-reading-width);
@@ -34,13 +33,13 @@
   [data-content-type="codeBlock"], [data-content-type="image"],
   [data-content-type="video"], [data-content-type="audio"], [data-content-type="file"]
 ) { max-width:none; }
-/* A record's full-width preference widens its prose; embedded databases are
-   always allowed to use the free surface, independent of that preference. */
+/* Embedded databases can always use the free surface. */
 #entryView.adb-record-wide { --atlas-reading-width:100%; }
 #entryView :is(#inlineTitleWrap,#propContainer) {
   box-sizing:border-box; width:100%; max-width:calc(var(--atlas-reading-width) + 80px);
   padding-inline:40px!important; margin-inline:auto;
 }
+#entryView.adb-record-page :is(#inlineTitleWrap,#propContainer) { max-width:none!important; }
 #entryView #inlineTitleWrap { padding-top:24px!important; }
 #entryView.adb-record-wide :is(#inlineTitleWrap,#propContainer) { max-width:none; }
 #entryView :is(.entry-tags-bar,.relations-panel,.backlinks-panel,.backlinks-section,.entry-children) {
