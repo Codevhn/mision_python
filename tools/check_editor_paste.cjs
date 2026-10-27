@@ -116,6 +116,37 @@ const mixed = '# Arquitectura de Python\n\nUn documento con **énfasis** y códi
       assert.equal(await page.locator('.bn-editor a[href="https://example.org/"]').count(),1);
       assert.equal(await page.locator('.bn-editor strong').filter({hasText:'importante'}).count(),1);
 
+      await reset();
+      await paste({'text/html':'<ul><li><p><strong>Longitud:</strong> Primera explicación.</p><p><br></p></li><li><p><strong>Líneas:</strong> Segunda explicación.</p><p><br></p><ul><li>Subtema conservado</li></ul></li></ul><ol><li><p>Primer paso.</p><p><br></p></li><li><p>Segundo paso.</p><p>Continuación importante.</p><p><br></p></li></ol><p>Python</p><pre><code># Ejemplo\ndef calculate_tax(amount):\n    return amount * 0.15</code></pre>'});
+      await waitText('calculate_tax');
+      const ai = await blocks();
+      assert.equal(ai.filter(b=>b.type==='paragraph' && !b.text).length,0,'No empty editor rows inside pasted lists');
+      assert.equal(ai.filter(b=>b.type==='bulletListItem').length,3,'Nested sublist preserved');
+      assert.equal(ai.filter(b=>b.type==='numberedListItem').length,2);
+      assert.ok(ai.some(b=>b.text==='Continuación importante.'),'Nonempty list continuation preserved');
+      assert.equal(ai.find(b=>b.type==='codeBlock').language,'python','Standalone Python label supplies language');
+      assert.equal(ai.find(b=>b.type==='codeBlock').text,'# Ejemplo\ndef calculate_tax(amount):\n    return amount * 0.15');
+      if (label==='desktop') {
+        assert.equal(await page.locator('.code-block-lang-name').textContent(),'Python');
+        assert.equal(await page.locator('.code-block-run').count(),1,'Python tools must be available without manual language selection');
+        await page.waitForFunction(()=>new Set([...document.querySelectorAll('.code-block-pre .shiki')].map(node=>node.style.color).filter(Boolean)).size>1);
+      }
+      const savedAI = await markdown();
+      await reset(savedAI);
+      assert.equal((await blocks()).find(b=>b.type==='codeBlock').language,'python');
+      assert.equal((await blocks()).filter(b=>b.type==='bulletListItem').length,3);
+
+      await reset();
+      await paste({'text/html':'<div><div><span>Python</span><button>Copiar código</button></div><pre><code>print("desde IA")</code></pre></div><p>Python</p><pre><code class="language-javascript">console.log("JS explícito")</code></pre><p>Python</p><pre><code class="language-text">Texto literal</code></pre><pre data-language="py"><code>print("atributo PRE")</code></pre>'});
+      await waitText('atributo PRE');
+      assert.deepEqual((await blocks()).filter(b=>b.type==='codeBlock').map(b=>b.language||'text'),['python','javascript','text','python'],'Labels, toolbars and metadata retain each block language');
+
+      await reset();
+      await paste({'text/plain':'Python\n\n```\nprint("Python indicado")\n```\n\nPython\n\n```text\nLiteral\n```\n\nSin indicación de lenguaje.\n\n```\nvalor = 1\n```'});
+      await waitText('valor = 1');
+      assert.deepEqual((await blocks()).filter(b=>b.type==='codeBlock').map(b=>b.language||'text'),['python','text','text'],'Markdown labels apply only when language is unspecified');
+      console.log(`PASS ${label}: AI list spacing, nested/continuation content, language labels/toolbars, metadata, explicit plain text and save/reload`);
+
       // Rich HTML is authoritative even if its text/plain fallback resembles
       // Markdown (e.g. Python comments copied from a formatted web document).
       await reset();

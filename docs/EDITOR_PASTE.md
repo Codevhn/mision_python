@@ -34,6 +34,9 @@ pegado se configura mediante la API oficial `pasteHandler` de BlockNote 0.51.4:
 - Dentro de código, BlockNote conserva texto literal. El contenido del pegado
   no decide cambiar el tipo del bloque de destino.
 - Imágenes/archivos siguen el flujo nativo de subida. No cambia el endpoint.
+- Los formatos externos pasan por los parsers públicos de BlockNote. Antes de
+  insertar, se normalizan los artefactos descritos abajo; la inserción final
+  sigue usando `pasteHTML` con HTML estructural generado por BlockNote.
 - El adaptador `src/clipboard.js` normaliza solo la intención explícita de código
   de `vscode-editor-data`. La ruta de VS Code de esta versión de BlockNote usa
   `view.pasteHTML` con código sin escapar; en la prueba el resultado quedaba en
@@ -48,6 +51,47 @@ pegarlo dentro de un bloque de código o copiar Markdown con sus delimitadores.
 No se reescriben entradas guardadas previamente; un bloque antiguo mal importado
 requiere volver a pegar su contenido en un párrafo vacío, fuera del bloque de
 código. Esto evita alterar código legítimo almacenado.
+
+## Listas y lenguajes de respuestas de IA
+
+El HTML de una respuesta de IA puede incluir `li > p` con párrafos vacíos
+adicionales (`p > br`). BlockNote los importaba como hijos vacíos de la lista:
+filas con sangría y guías verticales entre elementos. La prueba contra
+`89027e1` reproduce **cuatro filas vacías** en una lista de ejemplo.
+
+`src/clipboardContent.js` elimina únicamente los párrafos hijos vacíos de
+elementos de lista del contenido externo entrante. Conserva continuaciones
+con texto, sublistas, código, imágenes y espacios entre párrafos fuera de las
+listas. No se cambia el interlineado general ni se oculta contenido mediante CSS.
+
+Las respuestas de IA también suelen colocar el nombre del lenguaje en una
+cabecera separada del `pre`, sin una clase `language-python` en el código. Se
+reconoce ese rótulo cuando coincide exactamente con un lenguaje/alias conocido,
+incluidas cabeceras con un botón de copiar. También se respetan atributos de
+lenguaje en `pre`, `code` y su contenedor, y clases `language-*`/`lang-*`.
+Los alias, como `py`, se normalizan a `python`. Para Markdown se utiliza
+`markdownToHTML` exportado por BlockNote, por lo que las mismas reglas funcionan
+con rótulos seguidos por fences sin lenguaje.
+
+Un lenguaje explícito siempre prevalece sobre el rótulo: `javascript`, `text`
+y lenguajes desconocidos se conservan. No se aplica Python por estar dentro
+del curso de Python ni por coincidir palabras de la prosa. Se conserva el
+texto original del rótulo y del código. Dentro de un bloque de código ya
+existente, el pegado sigue siendo literal; la copia interna de BlockNote
+conserva su estructura sin esta normalización externa.
+
+La suite de navegador comprueba listas ordenadas/desordenadas con huecos,
+sublistas, continuaciones, cabeceras de IA, alias, Markdown y metadatos,
+precedencia del lenguaje explícito, ausencia de conjeturas sin rótulo y
+guardado/recarga, en escritorio y ambos perfiles Android. En escritorio
+comprueba además que el bloque indicado como Python muestra su nombre, el
+botón Ejecutar y colores de sintaxis sin intervención manual.
+
+La reproducción del fallo de listas con el bundle previo a esta mejora es:
+
+```bash
+node tools/check_editor_paste.cjs --baseline=89027e1
+```
 
 El bundle compilado está incluido en el cambio. El identificador de caché de
 `app.py` ya depende de su contenido; no requiere cambiar versiones manualmente.
