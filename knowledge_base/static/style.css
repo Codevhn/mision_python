@@ -9918,9 +9918,11 @@ body {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--text) !important;
+  color: inherit !important;
 }
 .bn-mt-suggestion-menu-item-body { flex: 1 !important; min-width: 0 !important; }
+.bn-suggestion-menu .bn-mt-suggestion-menu-item-title { font: inherit !important; margin: 0 !important; }
+.bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="right"] { display: none !important; }
 
 /* Side-menu (⋮⋮ drag handle / + add-block) is a hover-driven control with no
    real touch equivalent — on touchscreens it's positioned from the last tap
