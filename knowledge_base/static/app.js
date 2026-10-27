@@ -1875,8 +1875,6 @@ function renderHome() {
   welcome.querySelectorAll(".home-study-featured, .home-study-compact").forEach(card => {
     card.addEventListener("click", () => {
       const entryId = card.dataset.id;
-      const item = _getStudying().find(s => s.id === entryId);
-      if (item?.courseSlug) _activeCourseSlug = item.courseSlug;
       if (window.switchSpace) window.switchSpace('courses');
       openCourseLesson(entryId);
     });
@@ -2127,6 +2125,10 @@ async function loadEntry(id, opts = {}) {
   if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
   const data = await res.json();
 
+  // A lesson/page that finishes opening supersedes pending course overviews.
+  _courseViewRequest++;
+  $('courseView')?.classList.add('hidden');
+
   // CRITICAL: cancel any pending auto-save from the previous entry before switching
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = null;
@@ -2160,6 +2162,14 @@ async function loadEntry(id, opts = {}) {
 
   const m = data.meta;
   currentEntryMeta = m;
+  if (m.type === 'course' && m.course) {
+    const item = document.querySelector(`.course-list-item[data-course-id="${CSS.escape(m.course)}"]`);
+    const needsRefresh = _activeCourseSlug !== m.course || !expandedCourses[m.course] || !item?.classList.contains('active');
+    _activeCourseSlug = m.course;
+    expandedCourses[m.course] = true;
+    // Home, links and search restore the same sidebar context as a course click.
+    if (needsRefresh) renderCourseList();
+  }
   _inlineEditor?.setEditable(!m.database_locked);
   $('inlineTitle')?.setAttribute('contenteditable',m.database_locked?'false':'true');
   document.getElementById('knowledgeOriginLink')?.remove();
@@ -3860,6 +3870,7 @@ let _coursesTree = {};
 let _coursesTreeData = {}; // full courses tree from /api/courses/tree
 let _activeCourseSlug = null;
 let expandedCourses = {}; // tracks which courses have their inline tree visible
+let _courseViewRequest = 0; // prevents delayed overviews from replacing later navigation
 
 async function loadCourseSuggestions() {
   const res = await fetch("/api/courses/tree");
@@ -6339,6 +6350,7 @@ function setSidebarVisible(visible) {
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
   function switchSpace(space, targetMapId = null) {
+    if (space !== 'courses') _courseViewRequest++;
     _courseThemeSpace(space);
     if (space === 'assistant') space = 'home'; // migrate the previous dedicated view
     // Close floating panels that live outside #entryView
@@ -6441,13 +6453,19 @@ function setSidebarVisible(visible) {
       if (radarView) radarView.classList.remove('hidden');
       if (typeof loadRadarFeed === 'function') loadRadarFeed();
     } else if (space === 'courses' && _activeCourseSlug) {
-      // Active course — course view handles its own header; ctxBar stays hidden
-      if (courseView) courseView.classList.remove('hidden');
-      // Re-render active tab if cvBody was cleared (e.g. after navigating away)
-      const cvBody = document.getElementById('cvBody');
-      if (cvBody && !cvBody.hasChildNodes()) {
-        const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
-        if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
+      // A lesson can select a course before its overview has ever been loaded.
+      // The static courseView element alone is not an initialized course view.
+      if (courseView?.dataset.courseId !== _activeCourseSlug || courseView?.dataset.courseReady !== 'true') {
+        openCourseDetail(_activeCourseSlug);
+      } else {
+        // Active course — course view handles its own header; ctxBar stays hidden
+        if (courseView) courseView.classList.remove('hidden');
+        // Re-render active tab if cvBody was cleared (e.g. after navigating away)
+        const cvBody = document.getElementById('cvBody');
+        if (cvBody && !cvBody.hasChildNodes()) {
+          const activeTab = courseView?.querySelector('.cv-tab--active')?.dataset.tab || 'roadmap';
+          if (typeof renderCourseTab === 'function') renderCourseTab(activeTab, _activeCourseSlug, null);
+        }
       }
     } else if (space === 'courses') {
       // Courses space but no active course — show clean empty state, not the home screen
@@ -7191,6 +7209,7 @@ async function renderCourseList() {
 
 // ── Open course detail in sidebar + load course view in main ─────────────
 async function openCourseDetail(courseSlug) {
+  const request = ++_courseViewRequest;
   _enterCourseTheme(courseSlug,_coursesTreeData[courseSlug]?.label);
   _activeCourseSlug = courseSlug;
   expandedCourses[courseSlug] = true;
@@ -7205,9 +7224,9 @@ async function openCourseDetail(courseSlug) {
   // Re-render list — renderCourseList populates trees for all expanded courses
   await renderCourseList();
 
-  if (_activeCourseSlug !== courseSlug || _courseThemeNavigation !== 'courses') return;
+  if (request !== _courseViewRequest || _activeCourseSlug !== courseSlug || _courseThemeNavigation !== 'courses') return;
   _enterCourseTheme(courseSlug,course.label);
-  loadCourseView(courseSlug, course);
+  return loadCourseView(courseSlug, course);
 }
 
 // ── Gear menu for active course (shown inside courseList item) ────────────
@@ -7352,6 +7371,7 @@ async function openCourseShareModal(courseSlug, courseEntity) {
 
 // ── Deactivate course detail ──────────────────────────────────────────────
 function closeCourseDetail() {
+  _courseViewRequest++;
   _leaveCourseTheme();
   _activeCourseSlug = null;
 
@@ -7372,6 +7392,7 @@ function closeCourseDetail() {
 
 // ── Main: Course View ─────────────────────────────────────────────────────
 async function loadCourseView(courseSlug, courseEntity) {
+  const request = _courseViewRequest;
   _enterCourseTheme(courseSlug,courseEntity.label);
   const cv = $('courseView');
   const welcome = $('welcome');
@@ -7394,6 +7415,7 @@ async function loadCourseView(courseSlug, courseEntity) {
 
   // Populate header
   cv.dataset.courseId=courseSlug;
+  cv.dataset.courseReady='false';
   cv.dataset.courseTitle=courseEntity.label || courseSlug;
   $('cvTitle').textContent = courseEntity.label || courseSlug;
   $('cvDesc').textContent  = courseEntity.description || '';
@@ -7485,6 +7507,7 @@ async function loadCourseView(courseSlug, courseEntity) {
   try { stats = await fetch(`/api/courses/${courseSlug}/stats`).then(r => r.json()); }
   catch { stats = { pct: 0, done: 0, total: 0 }; }
 
+  if (request !== _courseViewRequest || _activeCourseSlug !== courseSlug || _courseThemeNavigation !== 'courses') return;
   $('cvProgressBar').style.width = stats.pct + '%';
   $('cvProgressLabel').textContent = `${stats.done} / ${stats.total} completadas · ${stats.pct}%`;
 
@@ -7523,6 +7546,7 @@ async function loadCourseView(courseSlug, courseEntity) {
 
   // Default tab
   renderCourseTab('roadmap', courseSlug, stats);
+  cv.dataset.courseReady='true';
 }
 
 function _statusIcon(s) {
@@ -8216,6 +8240,7 @@ function handleNewEntryTopbar() {
 
 // ── Open a course lesson: hide roadmap, show entry, keep Courses context ─
 function openCourseLesson(entryId) {
+  _courseViewRequest++;
   const cv = $('courseView');
   if (cv) cv.classList.add('hidden');
   return loadEntry(entryId);
@@ -8237,7 +8262,7 @@ function _scrollToHeadingText(text) {
 function setActiveCourse(slug) {
   if (slug && slug === _activeCourseSlug) {
     const cv = $('courseView');
-    const courseViewHidden = !cv || cv.classList.contains('hidden');
+    const courseViewHidden = !cv || cv.classList.contains('hidden') || cv.dataset.courseId !== slug || cv.dataset.courseReady !== 'true';
     if (courseViewHidden) {
       // Course view was closed: reopen it, ensure tree is expanded
       expandedCourses[slug] = true;
@@ -8246,7 +8271,13 @@ function setActiveCourse(slug) {
       // Course view is open: toggle tree expansion only
       expandedCourses[slug] = !expandedCourses[slug];
       const tree = document.querySelector(`.course-inline-tree[data-for-course="${slug}"]`);
-      if (tree) tree.classList.toggle('tree-collapsed', !expandedCourses[slug]);
+      if (tree) {
+        // A container created while collapsed can still be empty on first reveal.
+        if (expandedCourses[slug]) renderCoursesTree(_coursesTreeData, slug, tree);
+        tree.classList.toggle('tree-collapsed', !expandedCourses[slug]);
+      } else {
+        openCourseDetail(slug);
+      }
     }
     return;
   }
