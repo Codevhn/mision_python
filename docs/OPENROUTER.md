@@ -24,6 +24,33 @@ la opción con proveedor **OpenRouter**. La selección anterior puede seguir
 apuntando al combo de OmniRoute. Los modelos directos de OpenRouter no se
 añaden a la rotación automática de alternativas; se usan al seleccionarlos.
 
+## Proveedores visibles
+
+El selector incluye **Proveedores**, con casillas y un botón **Solo este** por
+proveedor. Para mostrar únicamente el catálogo original, elegir **Solo este**
+en **OpenRouter directo**. **OmniRoute · combos** es un proveedor separado:
+ocultarlo también oculta su combo llamado OpenRouter.
+
+La preferencia se guarda en este navegador, se conserva al recargar y se
+sincroniza entre sus selectores y pestañas. En otro navegador o dispositivo
+se configura por separado. Si el modelo seleccionado pertenece a un proveedor
+que se oculta, el selector elige uno visible y actualiza la selección del
+asistente. Al reabrir una conversación, su proveedor antiguo no prevalece
+sobre el filtro. Se mantiene al menos un proveedor activo en los controles;
+si ninguno de los disponibles coincide con las preferencias guardadas, el
+menú permite volver a activar uno. Se pueden restaurar proveedores marcando
+sus casillas. Ocultarlos no elimina sus claves ni modifica OmniRoute o Fly.
+
+La búsqueda también consulta las descripciones de los modelos, por lo que
+escribir **gratis** muestra los identificados como gratuitos antes de aplicar
+el límite de 80 resultados.
+
+`node tools/check_provider_preferences.cjs` verifica la distinción directo/combo,
+el filtro persistente, sincronización, selección de conversaciones antiguas,
+búsqueda de gratuitos, navegación con teclado y recuperación de preferencias.
+`node tools/check_mobile_layout.cjs` comprueba además el espacio del menú ante
+el teclado virtual en tamaños de móvil y tableta.
+
 ## Diagnóstico y validación
 
 Antes de esta corrección, existía una función que filtraba solo gratuitos,

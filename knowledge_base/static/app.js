@@ -11563,6 +11563,32 @@ function _getAvailableProviders(force = false) {
   return _aiProvidersPromise;
 }
 
+const _AI_DISABLED_PROVIDERS_KEY = 'kb_ai_disabled_providers:v1';
+let _aiDisabledProviders = null;
+function _getDisabledAiProviders() {
+  if (_aiDisabledProviders === null) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(_AI_DISABLED_PROVIDERS_KEY) || '[]');
+      _aiDisabledProviders = Array.isArray(stored) ? stored.filter(id => typeof id === 'string') : [];
+    } catch (_) { _aiDisabledProviders = []; }
+  }
+  return new Set(_aiDisabledProviders);
+}
+function _notifyAiProviderPreferences() {
+  document.querySelectorAll('.ai-model-panel').forEach(panel => panel.dispatchEvent(new Event('atlas-providers-change')));
+}
+function _setDisabledAiProviders(disabled) {
+  _aiDisabledProviders = [...disabled];
+  try { localStorage.setItem(_AI_DISABLED_PROVIDERS_KEY, JSON.stringify(_aiDisabledProviders)); } catch (_) { /* Keep working in memory. */ }
+  _notifyAiProviderPreferences();
+}
+window.addEventListener('storage', event => {
+  if (event.key === _AI_DISABLED_PROVIDERS_KEY || event.key === null) {
+    _aiDisabledProviders = null;
+    _notifyAiProviderPreferences();
+  }
+});
+
 function _modelChoiceStorageKey(context) { return `kb_ai_model:${context}`; }
 
 // Synchronous, unvalidated read of a context's last-saved model choice —
@@ -11574,21 +11600,23 @@ function _modelChoiceStorageKey(context) { return `kb_ai_model:${context}`; }
 function _getRawSavedModelChoice(context) {
   try {
     const raw = localStorage.getItem(_modelChoiceStorageKey(context));
-    return raw ? JSON.parse(raw) : null;
+    const saved = raw ? JSON.parse(raw) : null;
+    return saved && !_getDisabledAiProviders().has(saved.provider) ? saved : null;
   } catch (_) { return null; }
 }
 
 function _getSavedModelChoice(context, data) {
+  const providers = data.providers.filter(p => !_getDisabledAiProviders().has(p.id));
   try {
     const raw = localStorage.getItem(_modelChoiceStorageKey(context));
     if (raw) {
       const parsed = JSON.parse(raw);
-      const prov = data.providers.find(p => p.id === parsed.provider);
+      const prov = providers.find(p => p.id === parsed?.provider);
       if (prov && prov.models.some(m => m.id === parsed.model)) return parsed;
     }
   } catch (_) { /* ignore malformed/blocked localStorage */ }
-  if (data.providers.length) {
-    const def = data.providers.find(p => p.id === data.default.provider) || data.providers[0];
+  if (providers.length) {
+    const def = providers.find(p => p.id === data.default.provider) || providers[0];
     const model = def.models.find(m => m.id === data.default.model) || def.models[0];
     return { provider: def.id, model: model.id };
   }
@@ -11609,10 +11637,13 @@ function _saveModelChoice(context, choice) {
 // configured at all, so the caller should let the request fall through to
 // the backend's own default (which will surface the real "no configurada"
 // error same as today).
-function _mountSearchableModelSelect(container, { options, value, onChange }) {
+function _mountSearchableModelSelect(container, { options, value, onChange, onProvidersChange }) {
   container._cselectClose?.();
   container._cselectPortal?.remove();
-  let selected = options.find(option => option.value === value);
+  const providerId = option => option.providerId || (option.value.includes(':') ? option.value.split(':')[0] : option.provider);
+  const providers = new Map(options.map(option => [providerId(option), option.provider]));
+  const visibleOptions = () => options.filter(option => !_getDisabledAiProviders().has(providerId(option)));
+  let selected = visibleOptions().find(option => option.value === value);
   container.innerHTML = `<button type="button" class="ai-model-trigger" aria-label="Elegir modelo de IA" aria-haspopup="listbox" aria-expanded="false"><span class="ai-model-trigger-text"></span><span class="ai-model-arrow" aria-hidden="true">⌄</span></button>`;
   const trigger = container.querySelector('button');
   const caption = trigger.querySelector('.ai-model-trigger-text');
@@ -11624,21 +11655,58 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
   updateCaption();
   const panel = document.createElement('div');
   panel.className = 'ai-model-panel hidden';
-  panel.innerHTML = `<div class="ai-model-search"><input type="search" placeholder="Buscar modelo, combo o proveedor…" aria-label="Buscar modelo, combo o proveedor" autocomplete="off"></div><div class="ai-model-results" role="listbox" aria-label="Modelos de IA"></div><div class="ai-model-count" role="status"></div>`;
+  panel.innerHTML = `<div class="ai-model-search"><input type="search" placeholder="Buscar modelo, combo o proveedor…" aria-label="Buscar modelo, combo o proveedor" autocomplete="off"></div><details class="ai-model-providers"><summary>Proveedores</summary><div class="ai-model-provider-settings"><p>Elige los proveedores visibles. Se guarda en este navegador.</p><div class="ai-model-provider-list"></div></div></details><div class="ai-model-results" role="listbox" aria-label="Modelos de IA"></div><div class="ai-model-count" role="status"></div>`;
   (container.closest('dialog') || document.body).appendChild(panel);
   container._cselectPortal = panel;
   const input = panel.querySelector('input');
   const results = panel.querySelector('.ai-model-results');
   const count = panel.querySelector('.ai-model-count');
+  const settings = panel.querySelector('.ai-model-providers');
+  const providerList = panel.querySelector('.ai-model-provider-list');
+  const controls = new Map();
+  for (const [id, name] of providers) {
+    const row = document.createElement('div'); row.className = 'ai-model-provider-row';
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+    const text = document.createElement('span');
+    text.textContent = id === 'openrouter' ? 'OpenRouter directo' : id === 'omniroute' ? 'OmniRoute · combos' : name;
+    label.append(checkbox, text);
+    const only = document.createElement('button'); only.type = 'button'; only.textContent = 'Solo este';
+    only.setAttribute('aria-label', `Usar solo ${text.textContent}`);
+    checkbox.addEventListener('change', () => {
+      const disabled = _getDisabledAiProviders();
+      if (checkbox.checked) disabled.delete(id); else disabled.add(id);
+      _setDisabledAiProviders(disabled);
+    });
+    only.addEventListener('click', () => {
+      input.value = '';
+      const disabled = _getDisabledAiProviders();
+      for (const provider of providers.keys()) {
+        if (provider === id) disabled.delete(provider); else disabled.add(provider);
+      }
+      _setDisabledAiProviders(disabled);
+      settings.open = false;
+      settings.querySelector('summary').focus({preventScroll:true});
+    });
+    controls.set(id, checkbox); row.append(label, only); providerList.append(row);
+  }
   let shown = [];
   const normalize = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const render = () => {
     const terms = normalize(input.value).trim().split(/\s+/).filter(Boolean);
-    const matching = options.filter(option => terms.every(term => normalize(`${option.name} ${option.provider} ${option.value}`).includes(term)));
+    const active = visibleOptions();
+    const matching = active.filter(option => terms.every(term => normalize(`${option.name} ${option.provider} ${option.value} ${option.hint || ''}`).includes(term)));
     shown = matching.slice(0, 80);
-    results.innerHTML = shown.length ? shown.map((option, index) => `<button type="button" role="option" aria-selected="${selected?.value === option.value}" data-index="${index}" class="ai-model-option"><span class="ai-model-option-copy"><span class="ai-model-name">${escapeHtml(option.name)}</span><span class="ai-model-detail">${escapeHtml(option.hint || '')}</span></span><span class="ai-model-badge">${escapeHtml(option.provider)}</span><span class="ai-model-check" aria-hidden="true">${selected?.value === option.value ? '✓' : ''}</span></button>`).join('') : '<div class="ai-model-empty">No hay coincidencias. Prueba otro nombre.</div>';
+    results.innerHTML = shown.length ? shown.map((option, index) => `<button type="button" role="option" aria-selected="${selected?.value === option.value}" data-index="${index}" class="ai-model-option"><span class="ai-model-option-copy"><span class="ai-model-name">${escapeHtml(option.name)}</span><span class="ai-model-detail">${escapeHtml(option.hint || '')}</span></span><span class="ai-model-badge">${escapeHtml(option.provider)}</span><span class="ai-model-check" aria-hidden="true">${selected?.value === option.value ? '✓' : ''}</span></button>`).join('') : `<div class="ai-model-empty">${active.length ? 'No hay coincidencias. Prueba otro nombre.' : 'Activa un proveedor en Proveedores para elegir un modelo.'}</div>`;
     count.textContent = matching.length > 80 ? `80 de ${matching.length} resultados · Escribe para afinar la búsqueda` : `${matching.length} ${matching.length === 1 ? 'modelo disponible' : 'modelos disponibles'}`;
     results.scrollTop = 0;
+    const disabled = _getDisabledAiProviders();
+    const enabledCount = [...providers.keys()].filter(id => !disabled.has(id)).length;
+    settings.querySelector('summary').textContent = `Proveedores · ${enabledCount}/${providers.size}`;
+    for (const [id, checkbox] of controls) {
+      checkbox.checked = !disabled.has(id);
+      checkbox.disabled = checkbox.checked && enabledCount === 1;
+    }
   };
   const position = () => {
     const rect = trigger.getBoundingClientRect();
@@ -11702,9 +11770,25 @@ function _mountSearchableModelSelect(container, { options, value, onChange }) {
     // devices. The search remains available with an explicit tap.
     if (!window.matchMedia('(any-pointer: coarse)').matches) input.focus({preventScroll:true});
   });
+  const refreshProviders = () => {
+    if (!container.isConnected) { close(); panel.remove(); return; }
+    if (!selected || !visibleOptions().includes(selected)) {
+      selected = visibleOptions()[0];
+      updateCaption();
+      onChange(selected?.value || null);
+    }
+    render();
+    onProvidersChange?.();
+    if (!panel.classList.contains('hidden')) schedulePosition();
+  };
+  panel.addEventListener('atlas-providers-change', refreshProviders);
+  settings.addEventListener('toggle', () => { if (!panel.classList.contains('hidden')) schedulePosition(); });
   input.addEventListener('input', () => { render(); position(); });
+  panel.addEventListener('focusout', () => requestAnimationFrame(() => {
+    if (!panel.contains(document.activeElement) && !container.contains(document.activeElement)) close();
+  }));
   panel.addEventListener('keydown', event => {
-    if (event.key === 'Tab') { close(); return; }
+    if (event.key === 'Tab' || settings.contains(event.target)) return;
     const items = [...results.querySelectorAll('button')];
     const current = items.indexOf(document.activeElement);
     if (event.key === 'ArrowDown' && items.length) {
@@ -11732,9 +11816,12 @@ function _mountModelSelector(container, { context, value, onChange, warningConta
   return _getAvailableProviders().then(data => {
     if (!container.isConnected) return; // panel/parent was closed or re-rendered while this was in flight
     const showWarnings = () => {
+      (warningContainer || container).querySelectorAll('[data-provider-warning]').forEach(note => note.remove());
       (data.warnings || []).forEach(warning => {
+        if (_getDisabledAiProviders().has(warning.provider)) return;
         const note = document.createElement('div');
         note.className = 'practice-empty-note';
+        note.dataset.providerWarning = warning.provider || '';
         note.setAttribute('role', 'status');
         note.textContent = warning.message;
         (warningContainer || container).appendChild(note);
@@ -11748,9 +11835,10 @@ function _mountModelSelector(container, { context, value, onChange, warningConta
     }
     const options = [];
     data.providers.forEach(p => {
-      p.models.forEach(m => options.push({ value: `${p.id}:${m.id}`, name: m.label, provider: p.label, hint: m.hint }));
+      p.models.forEach(m => options.push({ value: `${p.id}:${m.id}`, name: m.label, provider: p.label, providerId: p.id, hint: m.hint }));
     });
-    const initial = value || _getSavedModelChoice(context, data);
+    const requested = value && options.some(option => option.providerId === value.provider && option.value === `${value.provider}:${value.model}`) && !_getDisabledAiProviders().has(value.provider) ? value : null;
+    const initial = requested || _getSavedModelChoice(context, data);
     onChange(initial);
     const wrap = document.createElement('div');
     wrap.className = 'practice-cselect';
@@ -11761,7 +11849,9 @@ function _mountModelSelector(container, { context, value, onChange, warningConta
       options,
       value: initial ? `${initial.provider}:${initial.model}` : '',
       placeholder: 'Elegir modelo…',
+      onProvidersChange: showWarnings,
       onChange: raw => {
+        if (!raw) { _saveModelChoice(context, null); onChange(null); return; }
         const separator = raw.indexOf(':');
         const provider = raw.slice(0, separator);
         const model = raw.slice(separator + 1);
