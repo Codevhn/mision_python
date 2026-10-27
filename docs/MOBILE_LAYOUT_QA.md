@@ -52,3 +52,7 @@ de producción. Verifica 944, 1024, 769, 768 y 412 px, apertura, cierre al pulsa
 fuera o seleccionar una entrada, navegación interna y restauración a 1025 px.
 También comprueba la carga inicial a 944 px. Antes de incorporar la corrección,
 `--baseline` reproduce el fallo: la barra de espacios sigue visible a 944 px.
+
+La navegación se amplía ahora a tabletas táctiles de más de 1024 px mediante
+`atlas-drawer-nav`, conservando la detección por hardware incluso con S Pen.
+Véanse `tools/check_tablet_layout.cjs` y [HYPRLAND_THEME.md](HYPRLAND_THEME.md).

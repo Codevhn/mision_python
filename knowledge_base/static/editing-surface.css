@@ -85,6 +85,20 @@
 }
 body.focus-mode #contentArea { padding-inline:0; }
 body.focus-mode #entryView { max-width:none; }
+/* Reading text grows independently of browser zoom and editor controls.
+   Record-specific typography, when explicitly set, keeps its own size. */
+@media screen {
+  :root { --atlas-reading-font-size:18px; }
+  html.is-touch-device #entryView:not(.adb-record-wide) { --atlas-reading-width:960px; }
+  #entryBody .bn-editor :is([data-content-type="paragraph"],[data-content-type="bulletListItem"],[data-content-type="numberedListItem"],[data-content-type="checkListItem"]) > .bn-inline-content,
+  #entryBody > p {
+    font-size:var(--adb-record-size,var(--atlas-reading-font-size))!important;
+    line-height:1.75!important;
+  }
+}
+@media screen and (max-width:768px) {
+  :root { --atlas-reading-font-size:17px; }
+}
 @media print {
   #entryView { --atlas-reading-width:100%; --atlas-page-gutter-start:0; --atlas-page-gutter-end:0; }
   #entryView #inlineTitleWrap { padding:0!important; }

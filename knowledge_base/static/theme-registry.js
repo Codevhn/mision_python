@@ -9,7 +9,7 @@ const ATLAS_THEMES = {
   'aero-emerald': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'emerald' },
   'aero-neon': { scheme: 'dark', style: 'aero', variant: 'night', palette: 'neon' },
 };
-const THEME_GROUPS = {classic:'Aero clásico',neon:'Aero neón',vivid:'Aero intenso',opencode:'OpenCode',glass:'Aero Glass',cyber:'Neón creativo',editor:'Estilos de editor',soft:'Claros suaves'};
+const THEME_GROUPS = {desktop:'Escritorios',classic:'Aero clásico',neon:'Aero neón',vivid:'Aero intenso',opencode:'OpenCode',glass:'Aero Glass',cyber:'Neón creativo',editor:'Estilos de editor',soft:'Claros suaves'};
 const THEME_CATALOG = [
   ['aero','Aero Claro','Cristal celeste y superficies luminosas','classic','aero'],
   ['aero-blue','Aero Azul Windows 7','Cristal azul profundo · Contenido claro','classic','blue'],
@@ -65,3 +65,7 @@ THEME_CATALOG.push(
   ['notion-native','Notion Native','Oscuro · Superficies neutras y controles discretos','notion','notion-native'],
   ['notion-native-light','Notion Native Claro','Claro · Papel, separadores suaves y tinta neutra','notion','notion-native-light']
 );
+
+ATLAS_THEMES.hyprland={scheme:'dark',style:'hyprland',variant:'night',
+  preview:'linear-gradient(135deg,#11131e 12%,#242337 50%,#8edee6 51%,#b6a0ef 54%,#151725 55%)'};
+THEME_CATALOG.unshift(['hyprland','Hyprland','Ventanas flotantes · Bordes cian y lavanda · Cristal oscuro','desktop','hyprland']);

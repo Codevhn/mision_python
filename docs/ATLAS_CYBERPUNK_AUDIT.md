@@ -1,5 +1,9 @@
 # Revisión de la mezcla Aero/Cyberpunk
 
+**Histórico, sustituido:** esta superposición terminó anulando la identidad de
+todos los temas Aero. La corrección actual la aísla en el tema independiente
+Hyprland y restaura el resto de la cascada. Véase [HYPRLAND_THEME.md](HYPRLAND_THEME.md).
+
 La hoja Cyberpunk se carga después de los estilos de Aero. En una lección real con
 `language-python-dark`, el tema de curso sobrescribía `--aero-toolbar` y
 `--aero-button`: los encabezados del código, la barra contextual, la navegación

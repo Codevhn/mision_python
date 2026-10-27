@@ -717,7 +717,13 @@ function toggleTheme() {
 
 // ---- SIDEBAR ----
 function isMobile()  { return window.innerWidth <= 768; }
-function isCompact() { return window.innerWidth > 768 && window.innerWidth <= 1024; }
+function isCompact() {
+  return window.innerWidth > 768 && (window.innerWidth <= 1024 || document.documentElement.classList.contains('is-touch-device'));
+}
+function _syncSidebarLayout() {
+  document.documentElement.classList.toggle('atlas-drawer-nav', isMobile() || isCompact());
+}
+_syncSidebarLayout();
 
 // Android Chrome: body overflow:hidden blocks touch scroll on fixed elements.
 // Handle sidebar scroll manually via touch events.
@@ -6266,11 +6272,12 @@ function setSidebarVisible(visible) {
   }
 }
 
-// Auto-manage sidebar when crossing the 1024px compact breakpoint
+// Width and touch hardware determine drawer navigation, including wide tablets.
 (function() {
-  let _lastWasWide = window.innerWidth > 1024;
+  let _lastWasWide = !(isMobile() || isCompact());
   window.addEventListener('resize', () => {
-    const nowWide = window.innerWidth > 1024;
+    _syncSidebarLayout();
+    const nowWide = !(isMobile() || isCompact());
     if (_lastWasWide && !nowWide) {
       // Hide both navigation panels when narrowing the window. The menu
       // button reopens the same tree without resetting its state.
@@ -6319,7 +6326,8 @@ function setSidebarVisible(visible) {
     if (!nav || !back) return;
     if (mode === 'content' && space) {
       const srcBtn = nav.querySelector(`.msn-item[data-space="${space}"]`);
-      $('msnBackSpaceIcon').textContent = srcBtn?.querySelector('.msn-icon')?.textContent || '';
+      const sourceIcon = srcBtn?.querySelector('.msn-icon');
+      $('msnBackSpaceIcon').replaceChildren(...(sourceIcon ? [...sourceIcon.childNodes].map(node => node.cloneNode(true)) : []));
       $('msnBackSpaceLabel').textContent = srcBtn?.querySelector('.msn-label')?.textContent || '';
       nav.classList.add('hidden');
       back.classList.remove('hidden');

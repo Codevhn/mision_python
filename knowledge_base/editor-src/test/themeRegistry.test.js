@@ -25,7 +25,7 @@ const apply=(id,persist=true)=>vm.runInContext(`setAtlasTheme(${JSON.stringify(i
 const theme=id=>vm.runInContext(`({...ATLAS_THEMES[${JSON.stringify(id)}]})`,context);
 const catalog=vm.runInContext('THEME_CATALOG.map(item=>item[0])',context);
 assert.equal(new Set(catalog).size,catalog.length,'every theme has a unique selector entry');
-for(const id of ['aero','aero-night','aero-amber','horizon','opencode-dark','soft-ivory','language-python-dark']) {
+for(const id of ['aero','aero-night','aero-amber','horizon','opencode-dark','soft-ivory','language-python-dark','hyprland']) {
   assert.ok(catalog.includes(id),`existing theme ${id} retained`);
 }
 assert.equal(theme('notion-native').style,'notion');
@@ -33,6 +33,17 @@ assert.equal(theme('notion-native').scheme,'dark');
 assert.equal(theme('notion-native-light').scheme,'light');
 apply('aero-amber');
 const priorTheme={...data};
+apply('hyprland');
+assert.equal(theme('hyprland').style,'hyprland','Hyprland has its own family');
+assert.equal(data.themeId,'hyprland');
+assert.equal(data.palette,'');
+assert.equal(data.languageTheme,'');
+assert.equal(storage.get('kb_theme'),'hyprland');
+assert.equal(data.frame,'sentinel','Hyprland must not erase the saved Aero frame');
+apply(storage.get('kb_theme'),false);
+assert.equal(data.style,'hyprland');
+apply('aero-amber');
+assert.deepEqual(data,priorTheme,'leaving Hyprland restores the chosen Aero palette');
 apply('notion-native');
 assert.equal(data.themeId,'notion-native');
 assert.equal(data.theme,'dark');

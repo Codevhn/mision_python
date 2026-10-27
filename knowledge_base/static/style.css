@@ -4583,7 +4583,7 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   .layout { padding-left: 0 !important; }
 }
 
-/* Compact navigation uses the same drawer as mobile, up to 1024px.
+/* Compact windows and touch tablets share the mobile drawer.
    The shared rules at the end of this file also override desktop frames. */
 
 /* =============================================
@@ -5576,9 +5576,9 @@ pre *, code *, kbd { font-family: var(--font-mono) !important; }
   .sidebar-toggle { display: none !important; }
 }
 /* Show on mobile */
-@media (max-width: 1024px) {
-  .sidebar-toggle { display: inline-flex !important; }
-}
+
+  :root.atlas-drawer-nav .sidebar-toggle { display: inline-flex !important; }
+
 
 /* ── Sidebar tree: hide ▶ arrow spans, keep ├─ tree lines ─────────────── */
 .tree-category-header .arrow,
@@ -7359,9 +7359,9 @@ body.home-ambient .home-hero { overflow: visible; }
 /* Hidden on wide desktop — rendered inside the mobile/compact drawer */
 .mobile-space-nav, .msn-back-header { display: none; }
 
-@media (max-width: 1024px) {
+
   /* ── Space nav panel inside sidebar drawer ── */
-  .mobile-space-nav {
+  :root.atlas-drawer-nav .mobile-space-nav {
     display: flex;
     flex-direction: column;
     padding: 6px 0;
@@ -7373,7 +7373,7 @@ body.home-ambient .home-hero { overflow: visible; }
     background: var(--layer-2);  /* covers tree rows scrolling behind */
   }
 
-  .msn-item {
+  :root.atlas-drawer-nav .msn-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -7393,14 +7393,14 @@ body.home-ambient .home-hero { overflow: visible; }
     -webkit-tap-highlight-color: transparent;
   }
 
-  .msn-item:active { background: var(--bg-hover); color: var(--text); }
+  :root.atlas-drawer-nav .msn-item:active { background: var(--bg-hover); color: var(--text); }
 
-  .msn-item.msn-active {
+  :root.atlas-drawer-nav .msn-item.msn-active {
     color: var(--accent);
     background: var(--accent-light);
   }
-  .msn-item.msn-active::before {
-    content: '';
+  :root.atlas-drawer-nav .msn-item.msn-active::before {
+    content: "";
     position: absolute;
     left: 0; top: 8px; bottom: 8px;
     width: 2px;
@@ -7408,7 +7408,7 @@ body.home-ambient .home-hero { overflow: visible; }
     border-radius: 0 2px 2px 0;
   }
 
-  .msn-icon {
+  :root.atlas-drawer-nav .msn-icon {
     font-size: 1rem;
     width: 20px;
     text-align: center;
@@ -7416,7 +7416,7 @@ body.home-ambient .home-hero { overflow: visible; }
     line-height: 1;
   }
 
-  .msn-label {
+  :root.atlas-drawer-nav .msn-label {
     letter-spacing: 0;
   }
 
@@ -7425,7 +7425,7 @@ body.home-ambient .home-hero { overflow: visible; }
      .hidden on whichever one isn't current). Styled a shade more prominent
      than a plain .msn-item so it reads as "you're inside a space", not just
      another list row. ── */
-  .msn-back-header {
+  :root.atlas-drawer-nav .msn-back-header {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -7447,19 +7447,19 @@ body.home-ambient .home-hero { overflow: visible; }
     z-index: 2;
     -webkit-tap-highlight-color: transparent;
   }
-  .msn-back-header.hidden { display: none; }
-  .msn-back-header:active { background: var(--accent-light); }
-  .msn-back-icon {
+  :root.atlas-drawer-nav .msn-back-header.hidden { display: none; }
+  :root.atlas-drawer-nav .msn-back-header:active { background: var(--accent-light); }
+  :root.atlas-drawer-nav .msn-back-icon {
     font-size: 1.1rem;
     color: var(--accent);
     flex-shrink: 0;
     width: 20px;
     text-align: center;
   }
-  .msn-back-header .msn-icon { font-size: 1rem; }
+  :root.atlas-drawer-nav .msn-back-header .msn-icon { font-size: 1rem; }
 
   /* ── Hamburger: proper 44×44 touch target ── */
-  .sidebar-toggle {
+  :root.atlas-drawer-nav .sidebar-toggle {
     min-width: 44px;
     min-height: 44px;
     padding: 0;
@@ -7469,7 +7469,7 @@ body.home-ambient .home-hero { overflow: visible; }
     justify-content: center;
     border-radius: var(--radius-sm);
   }
-}
+
 
 /* ── Light theme: solid drawer on mobile ── */
 @media (max-width: 768px) {
@@ -10427,33 +10427,33 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 }
 
 .mobile-session-actions { display:none; }
-@media(max-width:1024px) {
-  #sidebar { display:flex; flex-direction:column; height:calc(100dvh - var(--topbar-h)); overflow:hidden; }
-  #sidebar .mobile-space-nav { position:static; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
-  #sidebar .sidebar-space { height:auto; flex:1; min-height:0; overflow-y:auto; }
-  .mobile-session-actions { display:block; flex:none; order:100; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--aero-toolbar,var(--bg-sidebar)); }
-  .mobile-logout { display:flex; align-items:center; gap:10px; min-height:44px; padding:8px 10px; color:var(--text); text-decoration:none; font:500 .85rem var(--font-ui); border:1px solid transparent; border-radius:5px; }
-  .mobile-logout svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; }
-  .mobile-logout:is(:hover,:focus-visible) { background:var(--aero-selection,var(--bg-hover)); border-color:var(--accent); }
-  .mobile-logout:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-  body:has(#sidebar.mobile-open) .assistant-launcher { display:none !important; }
-}
-@media(max-width:1024px) {
-  #sidebar .sidebar-space { min-height:0 !important; overflow-y:auto !important; }
-  #sidebar #mobileSpaceNav:not(.hidden) ~ .sidebar-space { display:none !important; }
-  #sidebar .msn-back-header { flex:none; }
-}
+
+  :root.atlas-drawer-nav #sidebar { display:flex; flex-direction:column; height:calc(100dvh - var(--topbar-h)); overflow:hidden; }
+  :root.atlas-drawer-nav #sidebar .mobile-space-nav { position:static; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+  :root.atlas-drawer-nav #sidebar .sidebar-space { height:auto; flex:1; min-height:0; overflow-y:auto; }
+  :root.atlas-drawer-nav .mobile-session-actions { display:block; flex:none; order:100; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); background:var(--aero-toolbar,var(--bg-sidebar)); }
+  :root.atlas-drawer-nav .mobile-logout { display:flex; align-items:center; gap:10px; min-height:44px; padding:8px 10px; color:var(--text); text-decoration:none; font:500 .85rem var(--font-ui); border:1px solid transparent; border-radius:5px; }
+  :root.atlas-drawer-nav .mobile-logout svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; }
+  :root.atlas-drawer-nav .mobile-logout:is(:hover,:focus-visible) { background:var(--aero-selection,var(--bg-hover)); border-color:var(--accent); }
+  :root.atlas-drawer-nav .mobile-logout:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  :root.atlas-drawer-nav body:has(#sidebar.mobile-open) .assistant-launcher { display:none !important; }
+
+
+  :root.atlas-drawer-nav #sidebar .sidebar-space { min-height:0 !important; overflow-y:auto !important; }
+  :root.atlas-drawer-nav #sidebar #mobileSpaceNav:not(.hidden) ~ .sidebar-space { display:none !important; }
+  :root.atlas-drawer-nav #sidebar .msn-back-header { flex:none; }
+
 
 /* A chosen block color also reaches the inline heading on full pages and Peek. */
 .bn-editor [data-content-type="heading"][data-text-color]:not([data-text-color="default"]) > :is(h1,h2,h3,h4,h5,h6){color:inherit}
-/* Match isMobile()/isCompact() in app.js, including desktop split-screen.
+/* Match isMobile()/isCompact() in app.js: narrow windows and wide touch tablets.
    Closed drawers must be invisible and unfocusable even when desktop theme
    frames or a previous sidebar--tucked state are present. */
-@media (max-width:1024px) {
-  :root { --activity-bar-w:0px; --ab-gap:0px; }
-  .activity-bar { display:none; }
-  .layout { padding-left:0 !important; }
-  #sidebar {
+
+  :root.atlas-drawer-nav { --activity-bar-w:0px; --ab-gap:0px; }
+  :root.atlas-drawer-nav .activity-bar { display:none; }
+  :root.atlas-drawer-nav .layout { padding-left:0 !important; }
+  :root.atlas-drawer-nav #sidebar {
     left:0; top:calc(var(--topbar-h) + env(safe-area-inset-top)); bottom:0;
     width:min(320px,calc(100vw - 32px)); max-width:none; min-width:0;
     height:calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
@@ -10461,10 +10461,9 @@ html.is-touch-device .bn-side-menu { display: none !important; }
     transform:translateX(-110%); box-shadow:none;
     transition:transform .22s ease,opacity .22s ease,visibility .22s;
   }
-  #sidebar.mobile-open {
+  :root.atlas-drawer-nav #sidebar.mobile-open {
     opacity:1; visibility:visible; pointer-events:auto; transform:translateX(0);
     box-shadow:4px 0 24px #0005;
   }
-  .sidebar-overlay { display:none; position:fixed; inset:calc(var(--topbar-h) + env(safe-area-inset-top)) 0 0; background:#0008; z-index:100; }
-  .sidebar-overlay.active { display:block; }
-}
+  :root.atlas-drawer-nav .sidebar-overlay { display:none; position:fixed; inset:calc(var(--topbar-h) + env(safe-area-inset-top)) 0 0; background:#0008; z-index:100; }
+  :root.atlas-drawer-nav .sidebar-overlay.active { display:block; }

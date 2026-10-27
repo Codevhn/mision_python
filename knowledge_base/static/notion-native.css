@@ -140,8 +140,6 @@
 }
 .theme-swatch-notion-native {background:linear-gradient(90deg,#202020 32%,#191919 32%);border-color:#ffffff2b}
 .theme-swatch-notion-native-light {background:linear-gradient(90deg,#f7f7f5 32%,#fff 32%);border-color:#37352f33}
-.atlas-navigation-icon {display:inline-flex;align-items:center;justify-content:center;width:var(--atlas-nav-icon-size,24px);height:var(--atlas-nav-icon-size,24px);flex-shrink:0;vertical-align:middle;line-height:1}
-.atlas-native-nav-icon {display:none}
 
 @media screen {
   /* Shell and own modules use the same restrained surface system. The

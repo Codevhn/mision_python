@@ -16,8 +16,11 @@ const navigation = [
   app.slice(app.indexOf('function setSidebarVisible('),app.indexOf("(function() {\n  const SPACES =")),
   app.slice(app.indexOf('  function _setMobileDrawerMode('),app.indexOf('  function switchSpace(')),
 ].join('\n');
-const html = read('knowledge_base/templates/index.html')
+const template = read('knowledge_base/templates/index.html');
+const detection = template.match(/<script>\s*\/\/ Touch-capability detection[\s\S]*?<\/script>/)[0];
+const html = template
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'')
+  .replace('</head>',detection+'</head>')
   .replace(/{%[\s\S]*?%}|{{[\s\S]*?}}/g,'');
 (async()=>{
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
