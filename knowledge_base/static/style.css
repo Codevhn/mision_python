@@ -9893,8 +9893,8 @@ body {
 /* The insert menu uses the same compact rows as the drag-handle menu. */
 .bn-suggestion-menu {
   box-sizing: border-box;
-  width: 230px !important;
-  min-width: min(230px, calc(100vw - 24px)) !important;
+  width: 250px !important;
+  min-width: min(250px, calc(100vw - 24px)) !important;
   max-width: calc(100vw - 24px) !important;
   max-height: min(440px, calc(100dvh - 32px)) !important;
   overflow-y: auto !important;
