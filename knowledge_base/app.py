@@ -5302,10 +5302,8 @@ PROVIDERS = {
         "kind": "openai_compat",
         "base_url": "https://openrouter.ai/api/v1/chat/completions",
         "env": "OPENROUTER_API_KEY",
-        # Populated lazily and filtered to free-tier models only (see
-        # _fetch_openrouter_free_models) — OpenRouter exposes hundreds of
-        # paid models too, but the user explicitly doesn't want those
-        # showing up in the picker until they decide to start paying.
+        # Public chat catalog, including free and paid models. Selecting
+        # this provider uses OPENROUTER_API_KEY directly, not an OmniRoute combo.
         "models": [],
     },
 }
@@ -5330,12 +5328,9 @@ def _provider_configuration_error(pid, cfg):
 
 
 # OpenRouter's public model catalog (no API key needed to list) — cached in
-# memory so every /api/ai/providers call doesn't refetch it. "Free" here
-# means OpenRouter itself charges $0 (pricing.prompt/completion == "0", the
-# convention behind their own ":free" id suffix) — not a statement about
-# the underlying model's rate limits, which OpenRouter still enforces.
-_OPENROUTER_FREE_MODELS_CACHE = {"models": None, "fetched_at": 0.0}
-_OPENROUTER_FREE_MODELS_TTL = 3600
+# memory so every /api/ai/providers call doesn't refetch it.
+_OPENROUTER_MODELS_CACHE = {"models": None, "fetched_at": 0.0, "error": None}
+_OPENROUTER_MODELS_TTL = 3600
 
 _OMNIROUTE_MODELS_CACHE = {"models": None, "fetched_at": 0.0, "source": None, "error": None}
 
@@ -5391,32 +5386,49 @@ def _fetch_omniroute_models():
         return cache["models"] or []
 
 
-def _fetch_openrouter_free_models():
+def _fetch_openrouter_models():
     now = time.time()
-    cache = _OPENROUTER_FREE_MODELS_CACHE
-    if cache["models"] is not None and (now - cache["fetched_at"]) < _OPENROUTER_FREE_MODELS_TTL:
+    cache = _OPENROUTER_MODELS_CACHE
+    if cache["models"] is not None and (now - cache["fetched_at"]) < _OPENROUTER_MODELS_TTL:
         return cache["models"]
     try:
         req = urllib.request.Request("https://openrouter.ai/api/v1/models", headers=_AI_HTTP_HEADERS)
         with urllib.request.urlopen(req, timeout=15) as r:
             data = json.loads(r.read())
-        free = []
-        for m in data.get("data", []):
-            mid = m.get("id", "")
+        catalog = data["data"]
+        if not isinstance(catalog, list):
+            raise ValueError("Invalid model catalog")
+        models, seen = [], set()
+        for m in catalog:
+            if not isinstance(m, dict):
+                continue
+            mid = m.get("id")
+            if not isinstance(mid, str) or not mid or mid in seen:
+                continue
+            architecture = m.get("architecture") or {}
+            if "text" not in architecture.get("input_modalities", ["text"]) or "text" not in architecture.get("output_modalities", ["text"]):
+                continue  # Image/audio/embedding-only models cannot answer this chat.
             pricing = m.get("pricing") or {}
-            is_free = mid.endswith(":free") or (
-                str(pricing.get("prompt", "")) in ("0", "0.0") and str(pricing.get("completion", "")) in ("0", "0.0")
-            )
-            if is_free and mid:
-                free.append({"id": mid, "label": m.get("name") or mid, "hint": "Gratis vía OpenRouter"})
-        free.sort(key=lambda x: x["label"].lower())
-        cache["models"] = free
-        cache["fetched_at"] = now
-        return free
-    except Exception:
-        # Keep serving the last good list (even if stale) rather than
-        # having the provider vanish from the picker on a transient error.
-        return cache["models"] or []
+            try:
+                zero_price = float(pricing.get("prompt", "nan")) == 0 and float(pricing.get("completion", "nan")) == 0
+            except (TypeError, ValueError):
+                zero_price = False
+            is_free = mid.endswith(":free") or zero_price
+            models.append({"id": mid, "label": m.get("name") or mid,
+                           "hint": "Gratis vía OpenRouter" if is_free else "De pago vía OpenRouter"})
+            seen.add(mid)
+        models.sort(key=lambda x: x["label"].lower())
+        cache.update(models=models, fetched_at=now, error=None if models else "OpenRouter no devolvió modelos compatibles con el chat.")
+        return models
+    except urllib.error.HTTPError as error:
+        message = f"No se pudo consultar el catálogo de OpenRouter (HTTP {error.code}). Intenta de nuevo más tarde."
+    except OSError:
+        message = "No se pudo conectar con el catálogo de OpenRouter. Intenta de nuevo más tarde."
+    except (ValueError, KeyError, TypeError, AttributeError):
+        message = "OpenRouter devolvió un catálogo con formato inesperado. Intenta de nuevo más tarde."
+    cache["error"] = message
+    app.logger.warning("%s", message)
+    return cache["models"] or []
 
 
 # Python's urllib defaults to "Python-urllib/3.x", which some providers'
@@ -5623,6 +5635,8 @@ def _clean_ai_error(code, err_body):
 
     if code == 429:
         return f"Límite de la API alcanzado (429). Probá con otro modelo o proveedor, o esperá unos minutos. Detalle: {detail}"
+    if code == 402:
+        return f"Crédito insuficiente o límite de gasto de la clave (402). Revisa el saldo y el límite de esa clave en el proveedor. Detalle: {detail}"
     if code in (401, 403):
         return f"La API rechazó la solicitud ({code}). Revisá la API key configurada o probá otro proveedor. Detalle: {detail}"
     return f"Error de la API ({code}): {detail}"
@@ -5741,6 +5755,15 @@ def _stream_openai_compatible(base_url, api_key, model, messages, max_tokens, te
                 chunk = json.loads(data)
             except json.JSONDecodeError:
                 continue
+            if chunk.get("error"):
+                error = chunk["error"]
+                code = error.get("code", 502) if isinstance(error, dict) else 502
+                try:
+                    code = int(code)
+                except (TypeError, ValueError):
+                    code = 502
+                yield None, {"error": _clean_ai_error(code, json.dumps({"error": error})), "status": 502}
+                return
             if chunk.get("usage"):
                 usage = chunk["usage"]
             choices = chunk.get("choices") or []
@@ -5844,10 +5867,8 @@ def _provider_models(pid, cfg):
         return koboldcpp.models()[0]
     if pid == "omniroute":
         return _fetch_omniroute_models()
-    # OpenRouter is available through the user's OmniRoute combo. Its full
-    # public catalog should not clutter the picker or the fallback rotation.
     if pid == "openrouter":
-        return []
+        return _fetch_openrouter_models()
     return cfg["models"]
 
 
@@ -5885,8 +5906,10 @@ def list_ai_providers():
             models = _provider_models(pid, cfg)
         if pid == "omniroute" and _OMNIROUTE_MODELS_CACHE.get("error"):
             warnings.append({"provider": pid, "message": _OMNIROUTE_MODELS_CACHE["error"]})
+        if pid == "openrouter" and _OPENROUTER_MODELS_CACHE.get("error"):
+            warnings.append({"provider": pid, "message": _OPENROUTER_MODELS_CACHE["error"]})
         if not models:
-            continue  # OpenRouter's catalog fetch failed / returned nothing free right now
+            continue
         available.append({"id": pid, "label": cfg["label"], "models": models})
     return jsonify({"providers": available, "warnings": warnings, "local_configured": bool(os.environ.get("KOBOLDCPP_BASE_URL")), "default": {"provider": DEFAULT_PROVIDER, "model": DEFAULT_MODEL}})
 
@@ -5895,11 +5918,11 @@ def _list_available_ai_models():
     """[(provider_id, model_id), ...], round-robin across providers (one
     model per provider before circling back for each one's 2nd model, etc.)
     so a fallback loop reaches every configured PROVIDER quickly instead of
-    exhausting one provider's whole catalog — notably OpenRouter's free-tier
-    list, which can be dozens of models long — before ever trying the rest."""
+    exhausting one provider's whole catalog before ever trying the rest.
+    OpenRouter's large paid catalog is available by explicit selection only."""
     per_provider = []
     for pid, cfg in PROVIDERS.items():
-        if pid == "koboldcpp" or not _provider_enabled(pid, cfg):
+        if pid in ("koboldcpp", "openrouter") or not _provider_enabled(pid, cfg):
             continue
         models = _provider_models(pid, cfg)
         if models:

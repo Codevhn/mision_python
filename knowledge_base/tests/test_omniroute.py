@@ -11,13 +11,12 @@ def test_picker_keeps_direct_models_and_omniroute_combos(auth_client, monkeypatc
     for cfg in app_module.PROVIDERS.values():
         monkeypatch.setenv(cfg["env"], "test-key")
 
-    def unexpected_catalog():
-        raise AssertionError("OpenRouter individual catalog must not be fetched")
-
-    monkeypatch.setattr(app_module, "_fetch_openrouter_free_models", unexpected_catalog)
+    monkeypatch.setattr(app_module, "_fetch_openrouter_models", lambda: [
+        {"id": "vendor/paid-model", "label": "Paid model", "hint": "De pago vía OpenRouter"}])
     response = auth_client.get("/api/ai/providers")
     providers = {p["id"]: p for p in response.json["providers"]}
-    assert set(providers) == {"omniroute", "deepseek", "groq", "gemini"}
+    assert set(providers) == {"omniroute", "deepseek", "groq", "gemini", "openrouter"}
+    assert providers["openrouter"]["models"][0]["id"] == "vendor/paid-model"
     assert [model["id"] for model in providers["omniroute"]["models"]] == combos
     assert sum(len(providers[pid]["models"]) for pid in ("deepseek", "groq", "gemini")) == 6
     assert all(pid != "openrouter" for pid, model in app_module._list_available_ai_models())
