@@ -8799,6 +8799,8 @@ def delete_library_book(book_id):
             del d[book_id]
             saver(d)
     _OCR_JOBS.pop(book_id, None)
+    from library_context import cache_path
+    cache_path(globals(), book_id).unlink(missing_ok=True)
     return jsonify({"ok": True})
 
 

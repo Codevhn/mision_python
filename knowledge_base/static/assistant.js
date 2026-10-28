@@ -106,7 +106,9 @@
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = source.title;
       button.addEventListener('click', () => {
-        if (source.type === 'conceptmap' || source.type === 'mindmap') {
+        if (source.type === 'book') {
+          Promise.resolve(window._openLibrarySource?.(source)).catch(()=>status('No se pudo abrir esa ubicación del libro.',true));
+        } else if (source.type === 'conceptmap' || source.type === 'mindmap') {
           window._openAtlasMap?.(source.type, source.id);
         } else if (source.type === 'board') {
           document.getElementById('abBoards')?.click(); window.KanbanApp?.showBoard(source.id);
@@ -330,6 +332,11 @@
     el('assistantTranscript').innerHTML = '';
     if (!record?.messages.length) {
       el('assistantTranscript').innerHTML = `<div class="assistant-welcome"><span class="assistant-welcome-icon" aria-hidden="true">✦</span><h2>¿Qué quieres explorar?</h2><p>Pregunta, profundiza y conecta ideas. También puedes consultar tus notas y retomar lo que estabas estudiando.</p><div class="assistant-suggestions"><button type="button">¿Por dónde me quedé estudiando?</button><button type="button">¿Qué tengo pendiente?</button><button type="button">Explícame CSS Grid con ejemplos</button></div></div>`;
+      if (window._getAssistantVisibleContext?.()?.type === 'book') {
+        el('assistantTranscript').querySelector('.assistant-welcome p').textContent = 'Consulta el libro abierto. Las respuestas pueden incluir referencias para volver a sus páginas o secciones.';
+        const prompts = ['Dime los temas de este libro', 'Explícame la página o sección actual', 'Lista los temas de este libro que incluyan la palabra "ritual"'];
+        el('assistantTranscript').querySelectorAll('.assistant-suggestions button').forEach((button,index)=>{button.textContent=prompts[index];});
+      }
       area.querySelectorAll('.assistant-suggestions button').forEach(button => button.addEventListener('click', () => { el('assistantInput').value = button.textContent; el('assistantInput').dispatchEvent(new Event('input')); el('assistantInput').focus(); }));
     } else record.messages.forEach(bubble);
     scrollBottom();

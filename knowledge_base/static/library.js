@@ -561,13 +561,40 @@
     _progressTimer: null,
   };
 
-  window._openLibraryReader = async function (bookId) {
+  window._getLibraryAssistantContext = () => {
+    if (!_reader.bookId || $('libraryReaderView').classList.contains('hidden')) return null;
+    const context = {type:'book',id:_reader.bookId,title:_reader.book?.title || 'Libro',format:_reader.format};
+    if (_reader.format === 'pdf') context.page = _reader.pdfPage;
+    else context.href = _reader._epubCurrentHref || _reader.epubRendition?.currentLocation()?.start?.href || '';
+    return context;
+  };
+
+  window._openLibrarySource = async source => {
+    if (!source || source.type !== 'book') return;
+    if (_reader.bookId !== source.id || _reader.format !== source.format || $('libraryReaderView').classList.contains('hidden')) {
+      await window._openLibraryReader(source.id, source.format);
+    }
+    await window._libraryReaderReady;
+    if (_reader.bookId !== source.id) return;
+    if (source.format === 'pdf' && Number.isInteger(source.page)) _pdfGoTo(source.page);
+    else if (source.format === 'epub' && typeof source.location === 'string' && source.location.startsWith('epubcfi(')) {
+      await _reader.epubRendition?.display(source.location);
+    }
+    else if (source.format === 'epub' && typeof source.href === 'string' && !/^(?:[a-z]+:|\/\/|\/)/i.test(source.href)) {
+      await _reader.epubRendition?.display(source.href);
+    }
+  };
+
+  let libraryOpenSequence = 0;
+  window._openLibraryReader = async function (bookId, requestedFormat = null) {
+    const sequence = ++libraryOpenSequence;
     let book;
     try {
       book = await fetch('/api/library/' + bookId).then(r => r.json());
     } catch (e) {
       _toast('No se pudo abrir el libro', 'error'); return;
     }
+    if (sequence !== libraryOpenSequence) return;
     if (book.error) { _toast(book.error, 'error'); return; }
     _reader.bookId = bookId;
     _reader.book = book;
@@ -577,18 +604,25 @@
       if (book.formats.epub && book.formats.pdf) fmt = isMobile ? 'epub' : 'pdf';
       else fmt = book.formats.epub ? 'epub' : 'pdf';
     }
+    if (['pdf','epub'].includes(requestedFormat) && book.formats[requestedFormat]) fmt = requestedFormat;
     _reader.format = fmt;
     _reader.pdfFit = true;
     window._activeLibraryBookId = bookId;
     window.switchSpace('library');
+    await window._libraryReaderReady;
   };
 
-  window._reopenLibraryReader = async function () {
+  window._reopenLibraryReader = function () {
+    window._libraryReaderReady = _reopenLibraryReader();
+    return window._libraryReaderReady;
+  };
+  async function _reopenLibraryReader() {
     const book = _reader.book;
     if (!book) return;
     _flushReaderProgress();
     if (_reader.epubRendition) { try { _reader.epubRendition.destroy(); } catch {} }
     _reader.epubRendition=null;
+    _reader._epubCurrentHref='';
     _reader.pdfDoc=null;
     $('readerTitle').textContent = book.title;
     $('readerTitle').title=book.title;
@@ -607,9 +641,10 @@
       $('readerPage').innerHTML='<div class="reader-load-error" role="alert"><h2>No se pudo abrir el libro</h2><p>Vuelve a intentarlo o regresa a Biblioteca.</p><button type="button" id="readerRetry">Reintentar</button></div>';
       $('readerRetry').addEventListener('click',()=>window._reopenLibraryReader());
     }
-  };
+  }
 
   function _closeLibraryReader() {
+    libraryOpenSequence++;
     _flushReaderProgress();
     if (_reader.epubRendition) { try { _reader.epubRendition.destroy(); } catch (e) {} }
     _reader.epubRendition = null;
@@ -1016,6 +1051,7 @@
     $('readerScanBanner').classList.toggle('hidden', !scanned);
 
     const pdf = await window.pdfjsLib.getDocument(url).promise;
+    if (_reader.bookId !== book.id || _reader.format !== 'pdf') { pdf.destroy(); return; }
     _reader.pdfDoc = pdf;
     _reader.pdfPageCount = pdf.numPages;
 
@@ -1215,8 +1251,9 @@
     });
 
     rendition.on('relocated', (location) => {
-      _reader._epubCurrentCfi = location.start.cfi;
       if(_reader.epubRendition!==rendition)return;
+      _reader._epubCurrentCfi = location.start.cfi;
+      _reader._epubCurrentHref = location.start.href || '';
       const displayed=location.start.displayed;
       const chapters=Math.max(1,epubBook.spine.spineItems.length);
       const pct=location.atEnd?100:Math.min(99,Math.round(((location.start.index || 0)+(displayed?(displayed.page-1)/Math.max(1,displayed.total):0))/chapters*100));

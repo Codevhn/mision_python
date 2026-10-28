@@ -13322,6 +13322,10 @@ function _initKaTeX(container, blocks) {
 // Resolve visible context, never a stale entry hidden behind another space.
 window._getAssistantVisibleContext = (selectedText = '') => {
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden') && node.getClientRects().length; };
+  if (visible('libraryReaderView')) {
+    const book = window._getLibraryAssistantContext?.();
+    if (book) return book;
+  }
   if (visible('entryView') && currentEntryId && currentEntryMeta) {
     const text = document.getElementById('entryBody')?.innerText || '';
     const position = selectedText ? text.indexOf(selectedText.trim()) : -1;
