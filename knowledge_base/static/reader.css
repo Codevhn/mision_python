@@ -39,7 +39,10 @@ body.reader-focus :is(.topbar,#activityBar,#sidebar,.sidebar-overlay,#scratchpad
 body.reader-focus .layout { height:100dvh; }
 body.reader-focus .content-area { height:100%; }
 .reader-shell[data-dim-pdf="true"] .pdf-page-wrap canvas { filter:invert(.88) hue-rotate(180deg); }
-.pdf-scroller { justify-content:safe center; }
+/* #readerPage owns both axes. Give the fixed PDF its full zoomed width so
+   flex shrinking/centering cannot put the left edge outside the scroll range. */
+.pdf-scroller { justify-content:safe center; width:max-content; min-width:100%; box-sizing:border-box; }
+.pdf-page-wrap { flex:none; }
 @keyframes reader-reveal { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 @media(max-width:700px) {
  .reader-bar { padding:8px 10px; gap:8px; }

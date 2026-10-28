@@ -640,18 +640,16 @@
   }
   let wheelAmount=0,wheelTime=0,wheelLock=0;
   function _readerWheel(event) {
+    // PDF is a fixed-size page inside #readerPage (the actual scroll owner).
+    // Wheel/trackpad gestures must traverse that page, including at high zoom,
+    // and stop at its edges. Only explicit navigation changes the PDF page.
+    if (_reader.format==='pdf') return;
     if (!readerPrefs.wheel || $('libraryReaderView').classList.contains('hidden') ||
         event.ctrlKey || event.metaKey || event.altKey || Math.abs(event.deltaX)>Math.abs(event.deltaY) ||
         !$('assistantArea').classList.contains('hidden') || document.querySelector('dialog[open]') ||
         event.target.ownerDocument?.getSelection()?.isCollapsed===false) return;
     const direction=Math.sign(event.deltaY);
     if (!direction) return;
-    // A tall PDF scrolls normally. Only turn pages at its top/bottom edge.
-    const scroller=event.target.closest?.('.pdf-scroller');
-    if (_reader.format==='pdf' && scroller &&
-        (direction>0?scroller.scrollTop+scroller.clientHeight<scroller.scrollHeight-2:scroller.scrollTop>2)) {
-      wheelAmount=0; return;
-    }
     const button=$(direction>0?'readerNextBtn':'readerPrevBtn');
     if (!button || button.disabled) return;
     event.preventDefault();
@@ -1101,11 +1099,16 @@
 
     if(pdf!==_reader.pdfDoc || sequence!==pdfRenderSequence || $('libraryReaderView').classList.contains('hidden'))return;
     const pageEl = $('readerPage');
+    const samePage = pageEl.querySelector('.pdf-scroller')?.dataset.pdfPage === String(_reader.pdfPage);
     pageEl.innerHTML = '';
     const scroller = document.createElement('div');
     scroller.className = 'pdf-scroller';
+    scroller.dataset.pdfPage = String(_reader.pdfPage);
     scroller.appendChild(wrap);
     pageEl.appendChild(scroller);
+    // Explicit page navigation starts at the new page's top-left; a zoom
+    // render of the same page must not be treated as page navigation.
+    if (!samePage) { pageEl.scrollTop = 0; pageEl.scrollLeft = 0; }
 
     if (!scanned) _applyPdfHighlightsForPage(_reader.pdfPage);
 
