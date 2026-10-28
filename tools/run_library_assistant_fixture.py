@@ -48,9 +48,11 @@ def stream(system, messages, **kwargs):
     assert context['type'] == 'book'
     if 'Hécate' in messages[-1]['content']:
         assert context['id'] == 'book-a'
-        assert context['search']['terms'] == ['hecate']
-        assert any(item.get('page') == 2 for item in context['search']['results'])
-        yield 'Hécate es el término seleccionado. Esta explicación se centra en su mención en la página 2.'
+        assert context['purpose'] == 'explain_selected_concept'
+        assert context['selection_origin']['page'] == 2
+        assert 'search' not in context and 'outline' not in context
+        assert 'no resumas el libro' in system
+        yield 'Hécate es el término seleccionado. Esta es una explicación conceptual independiente del resumen del libro.'
     elif context['id'] == 'book-epub':
         assert context['search']['results'][0]['href'] == 'two.xhtml'
         yield 'El Ritual de gratitud aparece en la **sección 2** del EPUB.'

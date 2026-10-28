@@ -190,6 +190,7 @@ def test_stream_delivers_book_context_and_resumes_book_thread(library, monkeypat
 
 def test_explain_selection_retrieves_the_term_not_the_generic_instruction(library, monkeypatch):
     context = pdf(texts=['Materiales y preparación.', 'Hécate aparece en el pasaje seleccionado.'], outline=False)
+    context['page'] = 2
     captured = []
     setup_model(monkeypatch, captured)
     conversation = create(library)
@@ -201,13 +202,55 @@ def test_explain_selection_retrieves_the_term_not_the_generic_instruction(librar
     system, messages, _ = captured[0]
     start = system.index('{"current_context":')
     material, _ = json.JSONDecoder().raw_decode(system[start:])
-    search = material['current_context']['search']
-    assert search['terms'] == ['hecate']
-    assert search['results'][0]['page'] == 2
+    current = material['current_context']
+    assert current['purpose'] == 'explain_selected_concept'
+    assert current['selected_topic'] == 'Hécate'
+    assert current['selection_origin']['page'] == 2
+    assert 'Hécate' in current['selection_origin']['excerpt']
+    assert not {'search', 'outline', 'overview_samples', 'saved_notes', 'index_complete'} & current.keys()
+    assert 'no resumas el libro' in system
+    assert 'explicación neutral' in system
+    assert 'Responde sobre ese libro' not in system
+    assert 'Cita cada hallazgo' not in system
     assert 'Hécate' in messages[-1]['content']
     record = library.get(f'/api/assistant/conversations/{conversation}').json
     assert record['messages'][0]['selection_action'] == 'explain'
     assert record['messages'][0]['selection_context']['text'] == 'Hécate'
+    assert record['messages'][1]['sources'][0]['usage'] == 'selection_origin'
+
+
+@pytest.mark.parametrize('action', [None, 'summarize'])
+def test_book_content_queries_keep_book_retrieval(library, monkeypatch, action):
+    context = pdf()
+    captured = []
+    setup_model(monkeypatch, captured)
+    conversation = create(library)
+    response = library.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Resume lo que dice el libro sobre rituales',
+        'current_context': context, 'selection_action': action,
+        'selection_context': {'text': 'Ritual', 'title': 'Libro'}})
+    assert 'event: done' in response.get_data(as_text=True)
+    assert 'Responde sobre ese libro' in captured[0][0]
+    start = captured[0][0].index('{"current_context":')
+    material, _ = json.JSONDecoder().raw_decode(captured[0][0][start:])
+    assert 'search' in material['current_context']
+    assert 'outline' in material['current_context']
+
+
+def test_explain_concept_does_not_require_book_text(library, monkeypatch):
+    captured = []
+    setup_model(monkeypatch, captured)
+    conversation = create(library)
+    response = library.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Explica el concepto seleccionado', 'selection_action': 'explain',
+        'selection_context': {'text': 'Hécate', 'title': 'Origen'},
+        'current_context': {'type': 'book', 'id': 'missing-book', 'format': 'pdf', 'page': 1}})
+    assert 'event: done' in response.get_data(as_text=True)
+    start = captured[0][0].index('{"current_context":')
+    material, _ = json.JSONDecoder().raw_decode(captured[0][0][start:])
+    assert material['current_context']['selected_topic'] == 'Hécate'
+    assert 'status' not in material['current_context']
+    assert 'la falta de texto del libro no impide' in captured[0][0].lower()
 
 
 @pytest.mark.parametrize('change', [{'format': 'javascript'}, {'page': True}, {'page': -1}, {'href': 12}])

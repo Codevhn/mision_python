@@ -301,6 +301,46 @@ def location_response(current, namespace):
     return "Estás en " + " → ".join(str(part) for part in path if part) + "."
 
 
+def book_learning_material(material, sources, selection):
+    """Keep a short disambiguating passage, not a dossier that steers a summary."""
+    selected = json.loads(material).get('current_context') or {}
+    origin = selected.get('current_location')
+    for result in selected.get('search', {}).get('results', []):
+        if origin and ((origin.get('page') is not None and result.get('page') == origin['page'])
+                       or (origin.get('href') and result.get('href') == origin['href'])):
+            origin = result
+            break
+    if not origin:
+        origin = next(iter(selected.get('search', {}).get('results', [])), {})
+    origin = dict(origin)
+    text = origin.get('excerpt', '')
+    focus = (selection or {}).get('text', '').strip()
+    position = text.casefold().find(focus.casefold()) if focus else -1
+    start = max(0, position - 300)
+    origin['excerpt'] = text[start:start + 1200]
+    origin['usage'] = 'Origen de la selección y ayuda para desambiguar; no es autoridad ni verificación independiente.'
+    current = {key: selected[key] for key in ('type', 'id', 'title', 'author', 'format') if key in selected}
+    current.update(purpose="explain_selected_concept", selected_topic=focus[:500], selection_origin=origin)
+    references = []
+    for source in sources:
+        if ((origin.get('page') is not None and source.get('page') == origin['page'])
+                or (origin.get('href') and source.get('href') == origin['href'])):
+            references.append({**source, 'usage': 'selection_origin', 'title': 'Origen de la selección · ' + source['title']})
+            break
+    return json.dumps({'current_context': current}, ensure_ascii=False), references
+
+
+BOOK_LEARNING_GUIDANCE = (
+    '\nExplica directamente el concepto seleccionado con información nueva y conocimiento pertinente. '
+    'El pasaje de origen solo ayuda a desambiguar: no resumas el libro ni conviertas sus afirmaciones en autoridad. '
+    'Mantén una explicación neutral y centrada en comprender el concepto; no impongas refutaciones, objeciones '
+    'o advertencias que el usuario no pidió. No imites los resúmenes del libro de turnos anteriores. '
+    'Distingue con naturalidad el contexto general de lo que dice el autor, sin inventar citas o verificación externa. '
+    'No añadas informes de indexación, OCR o extractos truncados a una explicación conceptual. '
+    'La falta de texto del libro no impide explicar el concepto con conocimiento general.'
+)
+
+
 def atlas_context(namespace, query, current_context=None):
     """Read current Atlas data; lexical retrieval with explicit, limited excerpts."""
     if current_context and current_context.get('type') == 'book':
@@ -867,6 +907,7 @@ def register_assistant(app, namespace):
                     system += "\n\nResumen de turnos anteriores (puede omitir detalles):\n" + memory
                 sources = []
                 identity = None
+                explain_book_selection = bool(current_context and current_context.get('type') == 'book' and selection and selection_action == 'explain')
                 if (not is_smalltalk(prompt) or current_context) and (data.get("use_atlas", True) or current_context):
                     if current_context and current_context.get('type') == 'book':
                         yield event('status', {'message': 'Consultando el texto del libro abierto…'})
@@ -875,6 +916,8 @@ def register_assistant(app, namespace):
                         focus = selection['text'][:160].replace('"', ' ')
                         query = f'Busca "{focus}"'
                     context, sources = atlas_context(namespace, query, current_context)
+                    if not location_only and explain_book_selection:
+                        context, sources = book_learning_material(context, sources, selection)
                     if location_only:
                         selected = json.loads(context)["current_context"]
                         identity_keys = {"id", "type", "title", "course", "module", "ancestors",
@@ -899,7 +942,9 @@ def register_assistant(app, namespace):
                         "Responde con el nombre de la vista o contenido, sin mostrar claves internas como current_context. "
                         "Si faltan datos, dilo; no inventes qué quedó pendiente ni afirmes que revisaste todos los registros.\n" + context
                     )
-                    if current_context and current_context.get('type') == 'book':
+                    if explain_book_selection:
+                        system += BOOK_LEARNING_GUIDANCE
+                    elif current_context and current_context.get('type') == 'book':
                         system += ('\nEstás asistiendo la lectura del libro abierto en Biblioteca. '
                                    'Responde sobre ese libro, no sobre otros libros ni visitas anteriores. '
                                    'current_location es la página/sección actual; outline es el índice extraído, '

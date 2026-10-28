@@ -627,7 +627,7 @@
     }
     captureContext();
     const prompts = {explain:'Desarrolla el término o subtema seleccionado con profundidad moderada. Empieza identificándolo y definiéndolo; usa el contexto de la página y del curso de origen para ajustar el nivel, manteniendo el foco en lo seleccionado.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales, sin preámbulos ni un segundo resumen al final.',example:'Desarrolla un ejemplo representativo del subtema seleccionado, explicando su funcionamiento dentro de esta lección.'};
-    if (visible?.type === 'book') prompts.explain = 'Explica el término o fragmento seleccionado con claridad y profundidad moderada. Empieza diciendo qué es o quién es. Relaciona su significado con el pasaje del libro abierto y mantén el foco en lo seleccionado. Si aportas contexto general que el libro no explica, distínguelo expresamente de lo que afirma el libro; no inventes citas ni páginas.';
+    if (visible?.type === 'book') prompts.explain = 'Explícame el concepto seleccionado de forma directa, con información nueva y conocimiento pertinente para comprenderlo. El pasaje del libro abierto solo sirve para aclarar el contexto, no para resumir al autor. No conviertas la explicación en una crítica automática ni inventes fuentes.';
     const input = el('assistantInput');
     if (action && prompts[action]) {
       await modelReady;

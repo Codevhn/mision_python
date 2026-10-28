@@ -27,8 +27,9 @@ Al seleccionar una palabra o fragmento en el PDF/EPUB, la barra ofrece:
 
 - **Explicar con IA**: envía directamente una solicitud de explicación con el
   texto seleccionado y su contexto de origen. No requiere escribir otra pregunta
-  ni confirmar una segunda vez. La petición pide definir el término, relacionarlo
-  con el pasaje y distinguir el contexto general añadido de lo que dice el libro.
+  ni confirmar una segunda vez. La petición pide una explicación directa y nueva
+  del concepto. El libro sirve únicamente para aclarar el sentido, no para resumir
+  al autor ni para imponer una crítica automática.
 - **Preguntar otra cosa…**: prepara la selección y permite escribir una consulta
   personalizada, sin enviar nada hasta pulsar Enviar.
 
@@ -43,12 +44,23 @@ no en las palabras genéricas de la instrucción automática. Se captura la iden
 del libro y ubicación al preparar la selección. El contenido e historial de la
 conversación siguen conservándose como antes.
 
+En esta acción se entrega al modelo un pasaje breve (hasta 1.200 caracteres),
+identificado como origen de la selección. Se retiran el índice, las listas de
+coincidencias, las notas y las muestras generales del libro del contexto del
+modelo: ese dossier favorecía que respondiera «en este libro…» en lugar de
+explicar el concepto. La referencia navegable se etiqueta **Origen de la
+selección**, no como verificación independiente del conocimiento añadido.
+No se requiere clasificar la consulta ni elegir un modo adicional. Las consultas
+explícitas al contenido del libro y la acción de resumir conservan su contexto
+de lectura. Una explicación conceptual tampoco depende de que el libro tenga
+texto extraíble y no debe añadir informes sobre OCR o índices truncados.
+
 La integración de navegador verifica la selección real en el text layer del PDF,
 cero solicitudes de generación al seleccionar/preparar, exactamente una al
 pulsar Explicar, el término y ubicación enviados, la conservación del borrador,
 el texto visible de la selección y el foco del campo de entrada. Pasa en los tres
 perfiles descritos abajo usando el modelo simulado, sin consumir una API real.
-La suite completa posterior al cambio pasa: **474 pruebas**, con 63 avisos
+La suite completa posterior al cambio pasa: **477 pruebas**, con 63 avisos
 de deprecación existentes.
 
 ## Contexto y extracción
