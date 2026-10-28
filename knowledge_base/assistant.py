@@ -871,6 +871,9 @@ def register_assistant(app, namespace):
                     if current_context and current_context.get('type') == 'book':
                         yield event('status', {'message': 'Consultando el texto del libro abierto…'})
                     query = prompt if current_context and current_context.get('type') == 'book' else " ".join(item["content"] for item in messages[-5:] if item["role"] == "user")
+                    if current_context and current_context.get('type') == 'book' and selection:
+                        focus = selection['text'][:160].replace('"', ' ')
+                        query = f'Busca "{focus}"'
                     context, sources = atlas_context(namespace, query, current_context)
                     if location_only:
                         selected = json.loads(context)["current_context"]

@@ -188,6 +188,28 @@ def test_stream_delivers_book_context_and_resumes_book_thread(library, monkeypat
     assert library.get('/api/assistant/conversations/resume?type=book&id=book-a').json['conversation']['id'] == conversation
 
 
+def test_explain_selection_retrieves_the_term_not_the_generic_instruction(library, monkeypatch):
+    context = pdf(texts=['Materiales y preparación.', 'Hécate aparece en el pasaje seleccionado.'], outline=False)
+    captured = []
+    setup_model(monkeypatch, captured)
+    conversation = create(library)
+    response = library.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Explica el término seleccionado y su contexto en el libro abierto.',
+        'selection_context': {'text': 'Hécate', 'title': 'Libro de origen'}, 'selection_action': 'explain',
+        'current_context': context})
+    assert 'event: done' in response.get_data(as_text=True)
+    system, messages, _ = captured[0]
+    start = system.index('{"current_context":')
+    material, _ = json.JSONDecoder().raw_decode(system[start:])
+    search = material['current_context']['search']
+    assert search['terms'] == ['hecate']
+    assert search['results'][0]['page'] == 2
+    assert 'Hécate' in messages[-1]['content']
+    record = library.get(f'/api/assistant/conversations/{conversation}').json
+    assert record['messages'][0]['selection_action'] == 'explain'
+    assert record['messages'][0]['selection_context']['text'] == 'Hécate'
+
+
 @pytest.mark.parametrize('change', [{'format': 'javascript'}, {'page': True}, {'page': -1}, {'href': 12}])
 def test_reject_invalid_book_context_before_generation(library, change):
     context = pdf()

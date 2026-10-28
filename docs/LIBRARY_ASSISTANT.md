@@ -21,6 +21,36 @@ libro, la referencia vuelve al libro y formato de origen. La conversación puede
 recuperarse por el identificador del libro, independientemente de las entradas
 de Conocimiento o de los cursos.
 
+## Explicar una selección en un clic
+
+Al seleccionar una palabra o fragmento en el PDF/EPUB, la barra ofrece:
+
+- **Explicar con IA**: envía directamente una solicitud de explicación con el
+  texto seleccionado y su contexto de origen. No requiere escribir otra pregunta
+  ni confirmar una segunda vez. La petición pide definir el término, relacionarlo
+  con el pasaje y distinguir el contexto general añadido de lo que dice el libro.
+- **Preguntar otra cosa…**: prepara la selección y permite escribir una consulta
+  personalizada, sin enviar nada hasta pulsar Enviar.
+
+Seleccionar texto por sí solo no genera una respuesta del modelo. La acción
+directa usa el modelo elegido, conserva cualquier borrador sin enviarlo y no
+fuerza el foco en el campo de texto ni la apertura del teclado. El modo
+personalizado muestra el término seleccionado en el encabezado; el nombre del
+libro se conserva como origen dentro del desplegable.
+
+Las búsquedas que acompañan una explicación se centran en el término seleccionado,
+no en las palabras genéricas de la instrucción automática. Se captura la identidad
+del libro y ubicación al preparar la selección. El contenido e historial de la
+conversación siguen conservándose como antes.
+
+La integración de navegador verifica la selección real en el text layer del PDF,
+cero solicitudes de generación al seleccionar/preparar, exactamente una al
+pulsar Explicar, el término y ubicación enviados, la conservación del borrador,
+el texto visible de la selección y el foco del campo de entrada. Pasa en los tres
+perfiles descritos abajo usando el modelo simulado, sin consumir una API real.
+La suite completa posterior al cambio pasa: **474 pruebas**, con 63 avisos
+de deprecación existentes.
+
 ## Contexto y extracción
 
 `library.js` expone identidad, formato y ubicación del lector. `app.js` prioriza

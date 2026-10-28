@@ -942,6 +942,7 @@
   function _showSelectionToolbar(text, location, rect) {
     _removeSelToolbar();
     if (!text || !text.trim()) return;
+    const selectionSource = window._getLibraryAssistantContext();
     const bar = document.createElement('div');
     bar.className = 'sel-toolbar sel-toolbar-floating';
     const swatchesHtml = HL_COLOR_KEYS.map(key => {
@@ -952,7 +953,8 @@
       ${swatchesHtml}
       <span class="sep"></span>
       <span class="act" data-act="note"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#edit"></use></svg> Nota</span>
-      <span class="act" data-act="ask"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#hint"></use></svg> Preguntar a la IA</span>
+      <button type="button" class="act" data-act="explain" title="Explicar la selección con el modelo elegido"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/aero-icons.svg#hint"></use></svg> Explicar con IA</button>
+      <button type="button" class="act" data-act="ask">Preguntar otra cosa…</button>
       <span class="act" data-act="concept"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#practice"></use></svg> Crear concepto</span>
     `;
     bar.style.position = 'fixed';
@@ -981,11 +983,15 @@
       await _createNoteFromSelection(text, location, 'yellow', noteText);
       _removeSelToolbar();
     });
-    bar.querySelector('[data-act="ask"]').addEventListener('click', () => {
-      _removeSelToolbar();
-      if (typeof window._openAiAskPanel === 'function') window._openAiAskPanel(text, { title: $('readerTitle').textContent || 'Biblioteca' });
-      else _toast('El panel de IA no está disponible aquí todavía.', 'error');
-    });
+    for (const action of ['explain', 'ask']) {
+      bar.querySelector(`[data-act="${action}"]`).addEventListener('click', () => {
+        _removeSelToolbar();
+        if (typeof window._openAiAskPanel === 'function') {
+          Promise.resolve(window._openAiAskPanel(text, selectionSource, action === 'explain' ? 'explain' : null))
+            .catch(()=>_toast('No se pudo preparar la consulta. Vuelve a intentarlo.', 'error'));
+        } else _toast('El panel de IA no está disponible aquí todavía.', 'error');
+      });
+    }
     bar.querySelector('[data-act="concept"]').addEventListener('click', async () => {
       const note = await _createNoteFromSelection(text, location, 'yellow', '');
       _removeSelToolbar();
@@ -1029,9 +1035,9 @@
     return range.getBoundingClientRect();
   }
 
-  document.addEventListener('mouseup', () => {
+  document.addEventListener('mouseup', event => {
     const readerPage = $('readerPage');
-    if (!readerPage || readerPage.closest('.hidden')) return;
+    if (!readerPage || readerPage.closest('.hidden') || !readerPage.contains(event.target)) return;
     if (window._activeLibraryBookId == null) return;
     setTimeout(() => {
       const sel = window.getSelection();

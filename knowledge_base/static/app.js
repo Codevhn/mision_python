@@ -9679,8 +9679,8 @@ function initAIPanel() {
   // Exposed so features outside this closure (the Biblioteca reader's
   // "Preguntar a la IA" selection action, which has no currentEntryId to
   // hook into) can still open this same panel prefilled with selected text.
-  window._openAiAskPanel = (selText, source) => window.AssistantApp
-    ? window.AssistantApp.askSelection(selText || '', null, source)
+  window._openAiAskPanel = (selText, source, action = null) => window.AssistantApp
+    ? window.AssistantApp.askSelection(selText || '', action, source)
     : openPanel(selText || null);
 
   function closePanel() {

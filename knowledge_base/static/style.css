@@ -10317,6 +10317,8 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 .sel-toolbar .sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
 .sel-toolbar .act { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 600; color: var(--text); padding: 5px 9px; border-radius: 999px; white-space: nowrap; cursor: pointer; }
 .sel-toolbar .act:hover { background: var(--layer-4); }
+.sel-toolbar button { border:0; background:transparent; font-family:inherit; line-height:inherit; }
+.sel-toolbar button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
 
 /* ── Bandeja de subida (progreso real por archivo) ── */
 .lib-upload-tray {

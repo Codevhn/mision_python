@@ -496,7 +496,7 @@
   }
   async function send(event, options={}) {
     event?.preventDefault();
-    const prompt = el('assistantInput').value.trim();
+    const prompt = (options.prompt ?? el('assistantInput').value).trim();
     if (busy || !prompt) return;
     if (!choice) { status('Selecciona un modelo configurado para empezar.', true); return; }
     const selection = options.retry ? options.selection : selectedFragment && !fragmentSent ? selectedFragment : null;
@@ -509,9 +509,10 @@
       el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
       if(!options.retry || record.messages.at(-1)?.role!=='user')bubble({ role: 'user', content: prompt, selection_context: selection, selection_action:options.selectionAction,revision_request:options.revision });
       content = bubble({ role: 'assistant', content: 'Pensando…',pending:true,provider:choice.provider,model:choice.model });
-      el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; scrollBottom(); status('Preparando respuesta…');
+      if (!options.preserveDraft) { el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; }
+      scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? visibleContext : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? (options.currentContext || visibleContext) : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) {
@@ -548,7 +549,7 @@
         await refreshHistory();
       } catch (error) { status(`No se pudo recuperar el historial: ${error.message}`, true); }
       setBusy(false);
-      if (!area.classList.contains('hidden')) el('assistantInput').focus({ preventScroll: true });
+      if (options.focusInput !== false && !area.classList.contains('hidden')) el('assistantInput').focus({ preventScroll: true });
     }
   }
   function closeModel() {
@@ -587,7 +588,7 @@
     if (busy) { status('Espera a que termine la respuesta o detenla antes de cambiar la selección.', true); return; }
     const visible = source || window._getAssistantVisibleContext?.();
     const insertionTarget=window._getAssistantInsertionTarget?.(text);
-    await open();
+    await open({focusInput:!action});
     if (busy) return;
     if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
@@ -616,21 +617,27 @@
       selectedFragment = {text, title: String(visible?.title || 'Texto seleccionado').slice(0,300),...(insertionTarget||{})};
       const strip = document.createElement('div'), details = document.createElement('details'), summary = document.createElement('summary'), quote = document.createElement('blockquote'), remove = document.createElement('button');
       strip.id = 'assistantSelection'; strip.className = 'assistant-selection';
-      summary.textContent = `Selección · ${selectedFragment.title}`; quote.textContent = text;
-      details.append(summary, quote); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Quitar selección');
+      const preview = text.replace(/\s+/g,' ').trim();
+      summary.textContent = `Selección · ${preview.length > 100 ? preview.slice(0,100)+'…' : preview}`;
+      summary.title = selectedFragment.title; quote.textContent = text;
+      const origin=document.createElement('p');origin.textContent=`Origen: ${selectedFragment.title}`;
+      details.append(summary, origin, quote); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label','Quitar selección');
       remove.addEventListener('click', () => { const sent = fragmentSent; clearSelection(); status(sent ? 'La selección enviada permanece en el historial.' : 'Selección retirada.'); });
       strip.append(details,remove); el('assistantTranscript').before(strip);
     }
     captureContext();
     const prompts = {explain:'Desarrolla el término o subtema seleccionado con profundidad moderada. Empieza identificándolo y definiéndolo; usa el contexto de la página y del curso de origen para ajustar el nivel, manteniendo el foco en lo seleccionado.',summarize:'Sintetiza el contenido seleccionado conservando sus conceptos y relaciones esenciales, sin preámbulos ni un segundo resumen al final.',example:'Desarrolla un ejemplo representativo del subtema seleccionado, explicando su funcionamiento dentro de esta lección.'};
+    if (visible?.type === 'book') prompts.explain = 'Explica el término o fragmento seleccionado con claridad y profundidad moderada. Empieza diciendo qué es o quién es. Relaciona su significado con el pasaje del libro abierto y mantén el foco en lo seleccionado. Si aportas contexto general que el libro no explica, distínguelo expresamente de lo que afirma el libro; no inventes citas ni páginas.';
     const input = el('assistantInput');
-    if (action && prompts[action] && !input.value.trim()) {
-      input.value = prompts[action]; input.dispatchEvent(new Event('input')); await modelReady; await send(null,{selectionAction:action});
+    if (action && prompts[action]) {
+      await modelReady;
+      if (!choice && !input.value.trim()) { input.value=prompts[action];input.dispatchEvent(new Event('input')); }
+      await send(null,{selectionAction:action,prompt:prompts[action],preserveDraft:true,focusInput:false,currentContext:visible});
     } else {
       status(input.value.trim() ? 'Selección preparada. Conservé tu borrador.' : 'Selección preparada. Pregunta sobre ella.'); input.focus();
     }
   }
-  async function open() {
+  async function open({focusInput=true}={}) {
     returnFocus = document.activeElement;
     launcherLabel(false);
     area.classList.remove('hidden');
@@ -642,7 +649,7 @@
         try { await restoreContextConversation(visibleContext); }
         catch (error) { status(error.message, true); }
       }
-      el('assistantInput').focus({preventScroll:true}); return;
+      if(focusInput)el('assistantInput').focus({preventScroll:true}); return;
     }
     mounted = true;
     area.innerHTML = `<div class="assistant-chat"><header class="assistant-header"><div class="assistant-heading"><span class="assistant-brand-icon" aria-hidden="true">✦</span><div><strong>Asistente Atlas</strong><h1 id="assistantTitle"></h1></div></div><div class="assistant-header-actions"><button type="button" id="assistantHistoryToggle" aria-label="Ver conversaciones" aria-expanded="false" title="Conversaciones"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h8"/></svg></button><button type="button" id="assistantNew" aria-label="Nueva conversación" title="Nueva conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8"/></svg></button><button type="button" id="assistantMinimize" aria-label="Minimizar asistente" title="Minimizar sin perder la conversación"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 9h8"/></svg></button><button type="button" id="assistantExpand" aria-label="Ampliar asistente" aria-pressed="false" title="Ampliar"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg></button><button type="button" id="assistantClose" aria-label="Cerrar asistente" title="Cerrar"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6"/></svg></button></div></header><aside class="assistant-history hidden" id="assistantHistoryPanel"><div class="assistant-history-heading">Tus conversaciones</div><div id="assistantHistory"></div></aside><div class="assistant-transcript" id="assistantTranscript" aria-label="Mensajes de la conversación"></div><form class="assistant-composer" id="assistantForm"><div class="assistant-input-box"><label class="sr-only" for="assistantInput">Mensaje al asistente</label><textarea id="assistantInput" maxlength="20000" rows="1" spellcheck="true" lang="es" placeholder="Pregunta algo o continúa el tema…"></textarea><div class="assistant-composer-footer"><div id="assistantModel"></div><details class="assistant-context-menu"><summary id="assistantContextSummary">Contexto · Atlas</summary><div class="assistant-context-popover"><strong>Contexto de esta consulta</strong><label><input type="checkbox" id="assistantUseAtlas" checked> Consultar Atlas</label><p>Páginas, Teamspaces, cursos y pendientes.</p><label><input type="checkbox" id="assistantUseCurrent"><span id="assistantCurrentLabel"></span></label><button type="button" id="assistantRefreshContext">Actualizar vista actual</button><p>La ubicación y el contenido de la vista abierta se actualizan al enviar cada consulta. Puedes desactivar este contexto.</p></div></details><button type="button" class="hidden" id="assistantStop" aria-label="Detener respuesta">■</button><button type="button" id="assistantProofread" aria-label="Revisar ortografía del borrador" title="Revisar ortografía">Abc✓</button><button type="submit" id="assistantSend" aria-label="Enviar mensaje">↑</button></div></div><details class="assistant-model-alerts" id="assistantWarnings"><summary>Estado de modelos</summary><button type="button" class="btn-ghost" id="assistantLocalCheck" hidden>Comprobar KoboldCpp</button><p id="assistantLocalStatus" role="status"></p></details><span id="assistantStatus" role="status"></span><div class="assistant-disclaimer">La IA puede equivocarse. Revisa las fuentes.</div></form></div>`;

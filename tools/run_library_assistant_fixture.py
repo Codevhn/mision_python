@@ -17,7 +17,7 @@ for identifier, title in [('book-a', 'Libro de rituales QA'), ('book-b', 'Libro 
     folder = atlas.LIBRARY_DIR / identifier
     folder.mkdir(parents=True, exist_ok=True)
     with pymupdf.open() as doc:
-        for text in (['Introduccion. Materiales.', 'Ritual de gratitud. Oracion y practica.', 'Fin del libro.']
+        for text in (['Introduccion. Materiales.', 'Ritual de gratitud. Hécate aparece en este pasaje.', 'Fin del libro.']
                      if identifier == 'book-a' else ['Recetas de cocina. Ingredientes.', 'Preparar una sopa.']):
             doc.new_page(width=600, height=900).insert_text((40, 70), text)
         doc.set_toc([[1, 'Introduccion', 1], [1, 'Ritual de gratitud' if identifier == 'book-a' else 'Sopas', 2]])
@@ -46,7 +46,12 @@ def stream(system, messages, **kwargs):
     assert position >= 0, 'Missing book context in model request'
     context, _ = json.JSONDecoder().raw_decode(system[position + len(marker):].lstrip())
     assert context['type'] == 'book'
-    if context['id'] == 'book-epub':
+    if 'Hécate' in messages[-1]['content']:
+        assert context['id'] == 'book-a'
+        assert context['search']['terms'] == ['hecate']
+        assert any(item.get('page') == 2 for item in context['search']['results'])
+        yield 'Hécate es el término seleccionado. Esta explicación se centra en su mención en la página 2.'
+    elif context['id'] == 'book-epub':
         assert context['search']['results'][0]['href'] == 'two.xhtml'
         yield 'El Ritual de gratitud aparece en la **sección 2** del EPUB.'
     elif context['id'] == 'book-a':
