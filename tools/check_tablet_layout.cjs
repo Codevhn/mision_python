@@ -63,7 +63,7 @@ const output=process.env.ATLAS_SCREENSHOTS||'/tmp/atlas-tablet-evidence';fs.mkdi
             viewport:innerWidth,document:document.documentElement.scrollWidth,scale:visualViewport.scale,
             touch:navigator.maxTouchPoints,fine:matchMedia('(pointer:fine)').matches};
         });
-        assert.equal(layout.font,'18px');assert.equal(layout.scale,1);
+        assert.equal(layout.font,'20px');assert.equal(layout.scale,1);
         assert.ok(layout.paragraphWidth<=960,JSON.stringify(layout));
         assert.ok(layout.left>=0&&layout.right<=config.width,JSON.stringify(layout));
         assert.ok(layout.document<=config.width+1&&layout.contentLeft<=16,JSON.stringify(layout));
@@ -77,7 +77,7 @@ const output=process.env.ATLAS_SCREENSHOTS||'/tmp/atlas-tablet-evidence';fs.mkdi
       assert.equal(await page.locator('#sidebarToggle').isVisible(),true);
       assert.equal(await page.locator('#activityBar').isVisible(),false);
       assert.equal(await page.locator('#sidebar').isVisible(),false);
-      console.log(`PASS ${config.name}: six themes, native/Aero icons, menu open/close, 18px text, reading width, no zoom, orientation`);
+      console.log(`PASS ${config.name}: six themes, native/Aero icons, menu open/close, 20px text, reading width, no zoom, orientation`);
       await context.close();
     }
     fs.writeFileSync(path.join(output,'tablet-layout.json'),JSON.stringify(evidence,null,2));

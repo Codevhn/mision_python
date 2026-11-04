@@ -40,9 +40,11 @@ volver a Aero. No se procesan texto de notas, imágenes ni SVG subidos.
 
 ## Lectura y Galaxy Tab S9 Ultra
 
-Los párrafos y listas del editor usan 18 px en escritorio/tableta y 17 px en
-ventanas de hasta 768 px, con interlineado 1,75. Código, controles, títulos e
-impresión no se amplían. Se respeta el tamaño específico de un registro cuando
+La interfaz usa una base de 17 px en pantalla (antes 16 px), sin cambiar la
+base de impresión ni el zoom del navegador. Los párrafos y listas del editor
+usan 20 px en escritorio/tableta y 19 px en ventanas de hasta 768 px, con
+interlineado 1,75. Los controles y títulos definidos en rem crecen con la base;
+el código conserva su tamaño independiente. Se respeta el tamaño de un registro cuando
 este tiene configurada su propia tipografía.
 
 La referencia de hardware de la Tab S9 Ultra es una pantalla de 14,6 pulgadas,

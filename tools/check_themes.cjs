@@ -75,7 +75,7 @@ async function snapshot(page){return page.evaluate(()=>{
       const withSheet=await snapshot(page);
       assert.deepEqual(withSheet,without,`Hyprland leaked into ${theme}`);
       assert.equal(withSheet.canvas,'',`Hyprland tokens leaked into ${theme}`);
-      assert.equal(withSheet.paragraph.fontSize,'18px',`${theme} reading text`);
+      assert.equal(withSheet.paragraph.fontSize,'20px',`${theme} reading text`);
       assert.equal(withSheet.code.fontSize,'13.5px',`${theme} code size must stay independent`);
       const flat=withSheet.style!=='aero';
       assert.equal(withSheet.nativeIcon.display!=='none',flat,`${theme} native navigation icons`);
@@ -129,7 +129,7 @@ async function snapshot(page){return page.evaluate(()=>{
           contentLeft:document.querySelector('.content-area').getBoundingClientRect().left,
           viewport:innerWidth,document:document.documentElement.scrollWidth,barLeft:r.left,barRight:r.right};
       });
-      assert.equal(state.font,width<=768?'17px':'18px');
+      assert.equal(state.font,width<=768?'19px':'20px');
       assert.ok(state.document<=width+1,JSON.stringify(state));
       assert.ok(state.barLeft>=0&&state.barRight<=width,JSON.stringify(state));
       if(width<=1024)assert.ok(state.contentLeft<=12,JSON.stringify(state));
