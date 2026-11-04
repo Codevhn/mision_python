@@ -84,6 +84,43 @@ const mixed = '# Arquitectura de Python\n\nUn documento con **énfasis** y códi
       await assertMixed();
       console.log(`PASS ${label}: mixed Markdown, separate blocks, formatting and save/reload`);
 
+      const pdfLines = 'Crear un espacio para la lectura y el estudio es una parte importante\n'
+        + 'de nuestra rutina diaria y permite concentrarnos con mayor facilidad\n'
+        + 'en el contenido del libro sin distracciones.';
+      await reset();
+      await paste({'text/plain':pdfLines + '\n\nOtro párrafo independiente.'});
+      await waitText('Otro párrafo independiente.');
+      let prose = await blocks();
+      assert.equal(prose[0].text, pdfLines.replaceAll('\n',' '), 'PDF printed line endings reflow');
+      assert.ok(prose.some(b=>b.text==='Otro párrafo independiente.'), 'Real paragraph preserved');
+      await page.keyboard.press('Control+z');
+      assert.equal((await markdown()).trim(), '', 'Reflow remains one undo operation');
+      await page.keyboard.press('Control+Shift+z');
+      assert.equal((await blocks())[0].text, pdfLines.replaceAll('\n',' '));
+      const reflowSaved = await markdown();
+      await reset(reflowSaved);
+      assert.equal((await blocks())[0].text, pdfLines.replaceAll('\n',' '));
+
+      await reset();
+      await paste({'text/html':'<div style="width:280px;font-family:Courier;font-size:9px;text-align:justify;color:red"><p style="width:220px;margin-left:80px">Crear un espacio para la lectura y el estudio es una parte importante<br>de nuestra rutina diaria y permite concentrarnos con mayor facilidad<br>en el contenido del libro sin distracciones.</p><p><span style="font-weight:700">Énfasis conservado</span> y <a href="https://example.org/">enlace</a>.</p><p>Verso breve<br>Otro verso</p><pre><code class="language-python">def example():\n    return 42</code></pre></div>'});
+      await waitText('Énfasis conservado');
+      prose = await blocks();
+      assert.equal(prose[0].text, pdfLines.replaceAll('\n',' '));
+      assert.equal(await page.locator('.bn-editor strong').filter({hasText:'Énfasis conservado'}).count(),1);
+      assert.equal(await page.locator('.bn-editor a[href="https://example.org/"]').count(),1);
+      assert.equal(prose.find(b=>b.type==='codeBlock').text,'def example():\n    return 42');
+      assert.equal(await page.locator('.bn-editor [style*="220px"], .bn-editor [style*="Courier"], .bn-editor [style*="80px"]').count(),0,'Source layout discarded');
+      assert.equal(await page.locator('.bn-editor .bn-inline-content').filter({hasText:'Verso breve'}).locator('br').count(),1,'Short intentional breaks preserved');
+      await reset();
+      await paste({'text/markdown':pdfLines.split('\n')[0] + '  \nSalto Markdown deliberado.'});
+      await waitText('Salto Markdown deliberado.');
+      assert.equal(await page.locator('.bn-editor .bn-inline-content').first().locator('br').count(),1,'Explicit Markdown hard break is authoritative');
+      console.log(`PASS ${label}: PDF prose reflow, paragraph boundaries, Atlas presentation, emphasis, links, literal code and short lines`);
+
+      await reset();
+      await paste({'text/plain':mixed});
+      await waitText('Fin del documento.');
+
       // Obtain the proprietary clipboard payload from the editor itself, rather
       // than inventing it. A copy/paste within Atlas must retain block structure.
       await page.keyboard.press('Control+a');

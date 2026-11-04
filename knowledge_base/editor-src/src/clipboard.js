@@ -1,6 +1,7 @@
 // Clipboard source policy; parsing, insertion, selection and history belong to
 // BlockNote. Never infer that an entire document is code from its vocabulary.
 import { markdownToHTML } from '@blocknote/core';
+import { reflowClipboardText } from './clipboardProse.js';
 import { normalizeClipboardHTML, normalizeClipboardLists } from './clipboardContent.js';
 
 export function pasteClipboard({ event, editor, defaultPasteHandler }) {
@@ -33,10 +34,11 @@ export function pasteClipboard({ event, editor, defaultPasteHandler }) {
   // Use BlockNote's own Markdown/HTML parser, then normalize source artifacts
   // before its native paste inserts the slice with selection and undo support.
   const markdown = data.getData('text/markdown');
+  const sourceHTML = data.getData('text/html');
   const html = markdown ? markdownToHTML(markdown)
-    : data.getData('text/html') || (text ? markdownToHTML(text) : '');
+    : sourceHTML || (text ? markdownToHTML(reflowClipboardText(text)) : '');
   if (!html) return defaultPasteHandler({ prioritizeMarkdownOverHTML: false });
-  const blocks = normalizeClipboardLists(editor.tryParseHTMLToBlocks(normalizeClipboardHTML(html)));
+  const blocks = normalizeClipboardLists(editor.tryParseHTMLToBlocks(normalizeClipboardHTML(html, { reflowProse: !markdown && Boolean(sourceHTML) })));
   editor.pasteHTML(editor.blocksToFullHTML(blocks), true);
   return true;
 }

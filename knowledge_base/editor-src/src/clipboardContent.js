@@ -1,3 +1,4 @@
+import { normalizeProseHTML } from './clipboardProse.js';
 import { getLanguageId } from './codeBlock.jsx';
 
 function languageId(value) {
@@ -28,7 +29,7 @@ function precedingLanguage(pre, root) {
   return undefined;
 }
 
-export function normalizeClipboardHTML(html) {
+export function normalizeClipboardHTML(html, { reflowProse = true } = {}) {
   // Detached, inert document: never attach source HTML or toolbar handlers.
   const document = globalThis.document.implementation.createHTMLDocument('');
   document.body.innerHTML = html;
@@ -48,6 +49,7 @@ export function normalizeClipboardHTML(html) {
       code.dataset.language = language;
     }
   }
+  normalizeProseHTML(document, reflowProse);
   return document.body.innerHTML;
 }
 

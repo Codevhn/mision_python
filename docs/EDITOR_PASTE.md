@@ -161,3 +161,41 @@ formatos MIME disponibles y bloques obtenidos al pegar fuera/dentro de código y
 sobre una selección. Esa evidencia permitiría comparar comportamientos concretos;
 la equivalencia con Notion queda pendiente. La emulación Android tampoco sustituye
 una comprobación física en Samsung Internet o Chrome del dispositivo.
+
+## Adaptar prosa externa al formato de Atlas
+
+El pegado externo descarta la presentación de origen (`style`, ancho/alto de
+contenedores, alineación y atributos tipográficos). Conserva la estructura de
+párrafos, encabezados, listas, tablas, enlaces y código. Negrita y cursiva
+expresadas mediante estilos inline se convierten en énfasis semántico antes de
+retirar esos estilos. Las dimensiones intrínsecas de imágenes/vídeos se mantienen.
+Así, la prosa utiliza la fuente y el ancho del editor, sin importar el ancho de
+la columna del sitio o libro original.
+
+`src/clipboardProse.js` normaliza los cortes de línea de prosa externa:
+
+- En texto plano, une una línea de al menos 45 caracteres y siete palabras con
+  la continuación, si tiene al menos 12 caracteres y dos palabras. Mantiene las
+  líneas vacías como límites de párrafo y excluye delimitadores Markdown, listas,
+  encabezados, citas, tablas, código con sangría y bloques delimitados por fences.
+- En HTML, aplica el mismo criterio a `br` dentro de un solo párrafo, elemento de
+  lista o contenedor de texto. Nunca cruza límites de párrafos/listas ni modifica
+  el contenido de `pre`/`code`. Las líneas cortas se conservan.
+- El MIME Markdown explícito conserva sus saltos deliberados; en texto plano se
+  respetan también los saltos Markdown de dos espacios o barra invertida.
+- Copias internas de BlockNote, metadatos de VS Code y pegado dentro de código
+  conservan sus rutas anteriores. La inserción continúa siendo nativa y se
+  deshace en una sola operación. No se reescriben entradas ya guardadas.
+
+Es una heurística conservadora, no una reconstrucción del PDF: el portapapeles
+puede perder los límites semánticos de párrafos. No une bloques `p` distintos ni
+adivina cómo recomponer columnas, versos largos o palabras divididas por guiones.
+Si el origen aporta cada línea como un párrafo independiente, esos límites se
+conservan para evitar fusionar párrafos reales.
+
+Verificación: `npm test`, build de producción y
+`node tools/check_editor_paste.cjs`. La prueba real del editor incluye prosa PDF
+simulada en texto/HTML, retirada de presentación externa, énfasis y enlaces,
+saltos cortos y Markdown deliberados, código literal, deshacer/rehacer y
+persistencia al guardar/recargar. Se ejecuta en escritorio y los perfiles Android
+de teléfono y tablet; no equivale a probar el portapapeles físico de cada lector.
