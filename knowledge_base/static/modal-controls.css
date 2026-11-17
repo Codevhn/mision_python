@@ -73,3 +73,6 @@ select.atlas-select-native {position:absolute !important;width:1px !important;he
 [data-style=aero] .assistant-edit-dialog .assistant-confirm-body label {margin-top:10px}
 [data-style=aero] :is(.modal-body > p,#irPasteFields > p,#irGenerateFields > p,.assistant-confirm-body > p) code {font-size:inherit}
 
+
+/* A subpage naming dialog opened by a Peek must remain above its owner. */
+#pageNameOverlay[data-peek-owner] { z-index:11000; }

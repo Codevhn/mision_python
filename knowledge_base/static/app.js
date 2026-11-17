@@ -4964,6 +4964,7 @@ function initTemplates() {
 // ============================================================
 let _pendingPageBlockId = null;
 let _pendingPageContext = null;
+let _pageCreationBusy = false;
 
 function initPageNameModal() {
   $("pageNameClose").addEventListener("click", cancelPageNameModal);
@@ -4971,7 +4972,12 @@ function initPageNameModal() {
   $("pageNameConfirm").addEventListener("click", confirmPageCreate);
   $("pageNameInput").addEventListener("keydown", e => {
     if (e.key === "Enter") confirmPageCreate();
-    if (e.key === "Escape") cancelPageNameModal();
+    if (e.key === "Escape" && !_pendingPageContext?.isPeek) cancelPageNameModal();
+  });
+  $("pageNameOverlay").addEventListener("keydown", e => {
+    if (e.key === "Escape" && !e.defaultPrevented && _pendingPageContext?.isPeek) {
+      e.preventDefault(); e.stopPropagation(); cancelPageNameModal();
+    }
   });
 
   window._promptPageName = (blockId, context) => {
@@ -4993,6 +4999,7 @@ function closePageNameModal() {
 }
 
 function cancelPageNameModal() {
+  if (_pageCreationBusy) return;
   // Remove the pending placeholder pageLink block (inserted by the "/" menu)
   // when the user cancels, so no orphan "Nueva página" chip is left behind.
   // The placeholder lives in whichever editor had the "/" menu open (the
@@ -5007,7 +5014,41 @@ function cancelPageNameModal() {
   }
 }
 
+async function confirmPeekPageCreate() {
+  const name = $("pageNameInput").value.trim();
+  if (!name || _pageCreationBusy) return;
+  const icon = getIconButtonValue("pageNameIconBtn");
+  const savedBlockId = _pendingPageBlockId;
+  const savedContext = _pendingPageContext;
+  const parentId = savedContext?.pageId;
+  _pageCreationBusy = true;
+  $("pageNameConfirm").disabled = true;
+  try {
+    if (!parentId || !savedBlockId || !savedContext?.api) throw new Error("No se pudo identificar la subpágina del Peek");
+    const res = await fetch("/api/entry", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({entry_type:"page", title:name, raw_text:"# " + name + "\n\n",
+        parent_id:parentId || null, icon, already_markdown:true}),
+    });
+    if (!res.ok) throw new Error("Error al crear sub-página");
+    const d = await res.json();
+    savedContext.api.updatePageBlock(savedBlockId, name, d.id);
+    closePageNameModal();
+    // The record owns the link; flush its queue before announcing completion.
+    if (savedContext?.pageId === _peekEntryId) await savedContext.flush?.();
+    await loadTree();
+    showToast(`⬡ "${name}" creada — haz clic en el enlace para abrirla`);
+  } catch (error) {
+    // On creation failure keep the name and placeholder available for retry/cancel.
+    showToast(error.message || "Error al crear sub-página", "error");
+  } finally {
+    _pageCreationBusy = false;
+    $("pageNameConfirm").disabled = false;
+  }
+}
+
 async function confirmPageCreate() {
+  if (_pendingPageContext?.isPeek) return confirmPeekPageCreate();
   const name = $("pageNameInput").value.trim();
   if (!name) return;
   const icon = getIconButtonValue("pageNameIconBtn");
@@ -13029,9 +13070,14 @@ window._openPagePeek=async function(id,opts={}) {
   if(_peekEntryId && !(await _closePagePeek()))return false;
   const token=++_peekRequest;
   try {
-    const response=await fetch(`/api/entry/${id}`);
+    const [response, children] = await Promise.all([
+      fetch(`/api/entry/${id}`),
+      fetch(`/api/entry/${id}/children`).then(res=>res.ok?res.json():[]).catch(()=>[]),
+    ]);
     if(!response.ok)throw new Error('No se pudo abrir el registro');
     const data=await response.json();if(token!==_peekRequest)return;
+    // Display current child titles in this Peek only. Never rewrite stored links.
+    const pageLinkTitles=Object.fromEntries((Array.isArray(children)?children:[]).map(child=>[child.id,child.title]));
     _peekEntryId=id;_peekOnClose=opts.onClose||null;
     const overlay=$('pagePeekOverlay');overlay.dataset.peekOwner=id;
     overlay.classList.toggle('db-preview-peek',!!opts.databasePreview||!!data.meta?.database_id);overlay.classList.remove('hidden');
@@ -13065,7 +13111,7 @@ window._openPagePeek=async function(id,opts={}) {
     });
     Properties.render(id,meta.properties||[],$('pagePeekProps'),false,meta);
     $('pagePeekTitle').readOnly=!!meta.database_locked;
-    _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
+    _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,isPeek:true,pageLinkTitles,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
     _peekEditor.load(draft?.raw_text??_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown||'',meta.title||'')));
     if(draft){_peekQueue.set(draft);_peekSaveError(new Error('Se recuperó un borrador que no se había guardado'));}
     requestAnimationFrame(_resizePeekTitle);
@@ -13083,6 +13129,10 @@ async function _flushPeekPendingSaves(options) {
 async function _closePagePeek() {
   if(_peekClosing)return _peekClosing;
   if(!_peekEntryId)return true;
+  if (_pendingPageContext?.pageId === _peekEntryId && !$('pageNameOverlay').classList.contains('hidden')) {
+    if (_pageCreationBusy) return false;
+    cancelPageNameModal();
+  }
   _peekClosing=(async()=>{
     try {
       await _flushPeekPendingSaves();const onClose=_peekOnClose;

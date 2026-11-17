@@ -112,7 +112,7 @@ function EditorView({ instanceRef, onChange, onReady }) {
 
 function createInstance(opts) {
   const { container, onChange } = opts || {};
-  const instanceRef = { editor: null, editable:opts?.editable!==false, suppressChange: false, context: { pageId: opts?.pageId || null, flush: opts?.flush }, identities: new Map() };
+  const instanceRef = { editor: null, editable:opts?.editable!==false, suppressChange: false, context: { pageId: opts?.pageId || null, flush: opts?.flush, isPeek:!!opts?.isPeek, pageLinkTitles:opts?.pageLinkTitles }, identities: new Map() };
   const root = createRoot(container);
   let pendingMarkdown = null;
   let ready = false;
@@ -242,13 +242,13 @@ function createInstance(opts) {
 updatePageBlock(blockId, title, pageId) {
       const ed = instanceRef.editor;
       if (!ed || !blockId) return;
-      const target = ed.document.find((b) => b.id === blockId);
+      const target = instanceRef.context.isPeek ? ed.getBlock(blockId) : ed.document.find((b) => b.id === blockId);
       if (target) ed.updateBlock(target, { props: { title, pageId } });
     },
     removeBlock(blockId) {
       const ed = instanceRef.editor;
       if (!ed || !blockId) return;
-      const target = ed.document.find((b) => b.id === blockId);
+      const target = instanceRef.context.isPeek ? ed.getBlock(blockId) : ed.document.find((b) => b.id === blockId);
       if (target) ed.removeBlocks([target]);
     },
     getInsertionTargets() {

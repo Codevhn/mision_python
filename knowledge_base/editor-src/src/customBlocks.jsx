@@ -22,16 +22,19 @@ export const pageLink = createReactBlockSpec(
   {
     render: (props) => {
       const { title, pageId } = props.block.props;
+      const context = editorDatabaseContext.get(props.editor);
+      const displayTitle = context?.isPeek ? (context.pageLinkTitles?.[pageId] ?? title) : title;
       return (
         <div
           className="bn-pagelink-chip"
           contentEditable={false}
           onClick={() => {
             if (pageId && window._loadEntryById) window._loadEntryById(pageId);
+            else if (!pageId && context?.isPeek) window._promptPageName?.(props.block.id, context);
           }}
         >
           <span className="bn-pagelink-icon">📄</span>
-          <span className="bn-pagelink-title">{title || "Sin título"}</span>
+          <span className="bn-pagelink-title">{displayTitle || "Sin título"}</span>
         </div>
       );
     },

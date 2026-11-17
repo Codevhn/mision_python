@@ -8,14 +8,14 @@
   padding:5px 10px!important;min-height:42px;flex-direction:row!important;gap:0!important;z-index:2;
 }
 #pagePeekToolbar{width:100%;min-width:0}
-.adb-peek-toolbar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;font:13px/1.5 var(--font-ui,system-ui);color:#9b9b98}
+.adb-peek-toolbar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;font:13px/1.5 var(--font-ui,system-ui);color:var(--text-muted)}
 .adb-peek-nav{display:flex;align-items:center;gap:2px;flex-shrink:0}
 .adb-peek-toolbar .adb-icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:5px;border:0;border-radius:4px;background:transparent;color:inherit;box-shadow:none}
-.adb-peek-toolbar .adb-icon-button:hover{background:#ffffff0e;color:#e3e3e0}
+.adb-peek-toolbar .adb-icon-button:hover{background:var(--bg-hover);color:var(--text)}
 .adb-peek-toolbar .adb-icon-button:disabled{opacity:.28;cursor:default}
 .adb-peek-toolbar .adb-icon-button:focus-visible{outline:2px solid #529cca;outline-offset:-2px}
-.adb-peek-toolbar .adb-icon-button.active{background:#ffffff0e;color:#e3e3e0}
-.adb-peek-nav-divider{height:14px;border-left:1px solid #ffffff16;margin:0 5px}
+.adb-peek-toolbar .adb-icon-button.active{background:var(--bg-hover);color:var(--text)}
+.adb-peek-nav-divider{height:14px;border-left:1px solid var(--border);margin:0 5px}
 .adb-peek-status{font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:auto}
 .adb-peek-toolbar-error{position:absolute;top:32px;right:0;z-index:2;background:#392b2b;color:#edb8b0;border:1px solid #a85555;padding:8px;max-width:320px;border-radius:5px}
 .adb-peek-toolbar-error button{font:inherit;display:block;margin-top:5px;background:transparent;color:inherit;border:0;text-decoration:underline;cursor:pointer}
@@ -32,7 +32,7 @@
 #pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-label{padding:6px 0;font-weight:400}
 #pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-property .adb-cell-value{padding:6px 8px!important;min-height:32px;line-height:22px!important}
 #pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-properties{padding:0 0 20px}
-#pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-divider{margin-top:24px;background:#ffffff17}
+#pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-divider{margin-top:24px;background:var(--border)}
 #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-editor .bn-editor{font-family:var(--adb-record-font,var(--font-ui,system-ui))!important;font-size:var(--adb-record-size,16px)!important;line-height:1.6!important}
 #pagePeekOverlay.db-preview-peek.adb-record-page .bn-editor :is(p,h1,h2,h3){font-family:var(--adb-record-font,var(--font-ui,system-ui))!important}
 #pagePeekOverlay.db-preview-peek.adb-record-page .bn-editor p{font-size:var(--adb-record-size,16px)!important}
@@ -78,7 +78,7 @@
 @media(max-width:750px){.adb-record-property-groups:has(.adb-record-panel){display:block}.adb-record-panel{margin-top:16px}.adb-record-panel .adb-record-property{grid-template-columns:116px minmax(0,1fr)!important}}
 #pagePeekOverlay.db-preview-peek.adb-record-page.adb-record-wide .page-peek-modal{--adb-page-gutter:24px}
 #pagePeekOverlay.db-preview-peek.adb-record-page[data-peek-mode="center"]{justify-content:center!important;align-items:center!important}
-#pagePeekOverlay.db-preview-peek.adb-record-page[data-peek-mode="center"] .page-peek-modal{width:min(900px,calc(100vw - 64px));height:calc(100dvh - 64px);max-height:calc(100dvh - 64px)!important;border:1px solid #ffffff20!important;border-radius:10px!important;box-shadow:0 18px 80px #0006!important}
+#pagePeekOverlay.db-preview-peek.adb-record-page[data-peek-mode="center"] .page-peek-modal{width:min(900px,calc(100vw - 64px));height:calc(100dvh - 64px);max-height:calc(100dvh - 64px)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 18px 80px #0006!important}
 .adb-peek-fonts{display:flex;gap:5px;padding:10px 0}
 .adb-peek-fonts button{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px!important;padding:8px 4px!important;border:1px solid transparent!important}
 .adb-peek-fonts button[aria-pressed="true"]{color:var(--adb-accent)!important;background:var(--adb-selected)!important;border-color:#529cca44!important}
@@ -99,8 +99,16 @@
 #entryView.adb-record-page #entryBody .bn-editor p{font-size:var(--adb-record-size,16px)!important}
 #entryView.adb-record-page:not(.adb-record-wide) :is(#inlineTitleWrap,#propContainer,#entryBody){max-width:920px;margin-left:auto;margin-right:auto;width:100%}
 #entryView.adb-record-page.adb-record-wide :is(#inlineTitleWrap,#propContainer,#entryBody){max-width:none}
-[data-theme="light"] #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal{background:#fff!important;border-color:#37352f22!important}
-[data-theme="light"] .adb-peek-toolbar{color:#787774}
-[data-theme="light"] .adb-peek-toolbar .adb-icon-button:hover{background:#37352f0a;color:#37352f}
-[data-theme="light"] #pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-divider{background:#37352f20}
+[data-theme="light"] #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal{background:var(--bg-surface)!important;border-color:var(--border)!important}
+[data-theme="light"] .adb-peek-toolbar{color:var(--text-muted)}
+[data-theme="light"] .adb-peek-toolbar .adb-icon-button:hover{background:var(--bg-hover);color:var(--text)}
+[data-theme="light"] #pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-divider{background:var(--border)}
 @media(max-width:650px){#pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal{width:100vw;--adb-page-gutter:28px}#pagePeekOverlay.db-preview-peek.adb-record-page[data-peek-mode="center"] .page-peek-modal{width:calc(100vw - 20px);height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)!important}#pagePeekOverlay.db-preview-peek.adb-record-page .adb-record-property{grid-template-columns:116px minmax(0,1fr);gap:5px}}
+
+/* Record properties inherit the same theme as the Peek editor, without
+   changing database grids or popovers elsewhere in the application. */
+#pagePeekOverlay.db-preview-peek .adb-record-properties {
+  --adb-bg:var(--bg-surface);--adb-text:var(--text);--adb-muted:var(--text-muted);
+  --adb-border:var(--border);--adb-hover:var(--bg-hover);
+  --adb-selected:var(--accent-light);--adb-accent:var(--accent);color-scheme:inherit;
+}
