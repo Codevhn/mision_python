@@ -28,14 +28,26 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
   console.log('Name dialog:',JSON.stringify(diagnostic));
   assert.equal(diagnostic.owner,row,'Name dialog belongs to the Peek record');
   assert.equal(diagnostic.front,diagnostic.expected,'Name input must be above the Peek and clickable');
-  await page.locator('#pageNameInput').fill('Subpágina desde Peek');await page.locator('#pageNameConfirm').click();
+  await page.locator('#pageNameInput').fill('Subpágina desde Peek');
+  await page.locator('#pageNameIconBtn').click();
+  const iconPicker=page.locator('.icon-picker-popover[data-peek-owner]');
+  await iconPicker.waitFor({state:'attached'});
+  const iconFront=await iconPicker.locator('.icon-picker-search').evaluate(input=>{
+   const r=input.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===input;
+  });
+  assert.equal(iconFront,true,'Icon selector must be above the Peek naming dialog');
+  await iconPicker.locator('[data-icon="lucide:book-open"]').click();
+  assert.equal(await page.locator('#pageNameIconBtn').getAttribute('data-icon'),'lucide:book-open');
+  assert.equal(await page.locator('#pageNameInput').inputValue(),'Subpágina desde Peek','Icon selection preserves the entered name');
+  assert.equal(await page.locator('#pagePeekOverlay').isVisible(),true);
+  await page.locator('#pageNameConfirm').click();
   await page.locator('#pagePeekEditor .bn-pagelink-chip').filter({hasText:'Subpágina desde Peek'}).waitFor();
   await page.getByRole('button',{name:'Cerrar Peek',exact:true}).click();
   const saved=await (await context.request.get(base+`/api/entry/${row}`)).json();
   assert.ok(saved.markdown.includes('Subpágina desde Peek|'),'Real link persisted in correct record');
   assert.ok(!saved.markdown.includes('Nueva página'),'No placeholder left behind');
   const children=await (await context.request.get(base+`/api/entry/${row}/children`)).json();
-  assert.ok(children.some(child=>child.title==='Subpágina desde Peek'));
+  assert.ok(children.some(child=>child.title==='Subpágina desde Peek'&&child.icon==='lucide:book-open'),'Chosen icon is saved in child metadata');
   assert.equal((await (await context.request.get(base+`/api/entry/${parent}`)).json()).markdown.includes('Subpágina desde Peek'),false,'Background page stays unchanged');
   const open=async(mode='side')=>{
    await page.evaluate(({row,mode})=>_openPagePeek(row,{databasePreview:true,mode}),{row,mode});

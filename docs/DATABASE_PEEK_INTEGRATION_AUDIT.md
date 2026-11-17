@@ -115,3 +115,18 @@ con otros editores: sus cambios están condicionados por `context.isPeek` y el
 flujo de creación original fuera del Peek se conserva. Los mapas de títulos son
 locales a cada instancia del Peek; no se instala una caché global de nombres. No se hizo una auditoría general de toda la aplicación ni
 se afirmó haber inspeccionado una sesión de Notion.
+
+
+## Selector de iconos del diálogo (seguimiento)
+
+Se reprodujo que el selector existía en el DOM, conservaba `data-peek-owner`,
+pero su `z-index:9500` quedaba por debajo del diálogo de nombre (`11000`).
+El hit testing sobre el buscador devolvía otro elemento; la prueba fallaba antes
+de corregirlo. Se eleva únicamente `.icon-picker-popover[data-peek-owner]` a
+`12001`. Los selectores fuera del Peek conservan su nivel original.
+
+La prueba de integración ahora abre el selector desde el diálogo con nombre ya
+escrito, comprueba que el buscador recibe interacción, selecciona `lucide:book-open`,
+verifica que conserva el nombre y el Peek abierto y comprueba que el icono
+seleccionado se guarda en los metadatos de la subpágina. La regla reside en
+`style.css`, que ya participa en la invalidación de caché de los assets.

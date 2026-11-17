@@ -4122,6 +4122,8 @@ input[type="date"].filter-chip::-webkit-calendar-picker-indicator {
   box-shadow: 0 14px 40px rgba(0,0,0,0.45);
   overflow: hidden;
 }
+/* Peek-owned icon pickers sit above its subpage naming dialog (11000). */
+.icon-picker-popover[data-peek-owner] { z-index:12001; }
 .icon-picker-head {
   padding: 12px;
   border-bottom: 1px solid var(--border);
