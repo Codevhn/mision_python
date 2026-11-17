@@ -29,7 +29,8 @@ export const pageLink = createReactBlockSpec(
           className="bn-pagelink-chip"
           contentEditable={false}
           onClick={() => {
-            if (pageId && window._loadEntryById) window._loadEntryById(pageId);
+            if (pageId && context?.isPeek && context.openPage) context.openPage(pageId);
+            else if (pageId && window._loadEntryById) window._loadEntryById(pageId);
             else if (!pageId && context?.isPeek) window._promptPageName?.(props.block.id, context);
           }}
         >

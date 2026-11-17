@@ -130,3 +130,9 @@ escrito, comprueba que el buscador recibe interacción, selecciona `lucide:book-
 verifica que conserva el nombre y el Peek abierto y comprueba que el icono
 seleccionado se guarda en los metadatos de la subpágina. La regla reside en
 `style.css`, que ya participa en la invalidación de caché de los assets.
+
+
+La navegación a subpáginas y el regreso por breadcrumb se auditan y corrigen en
+[DATABASE_PEEK_NAVIGATION_AUDIT.md](DATABASE_PEEK_NAVIGATION_AUDIT.md). Ese cambio
+sustituye la expectativa anterior de salir a página completa al pulsar un enlace
+dentro del Peek.

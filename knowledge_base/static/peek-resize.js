@@ -79,7 +79,7 @@
       new ResizeObserver(()=>{
         if(titleFrame)return;
         titleFrame=requestAnimationFrame(()=>{titleFrame=0;if(overlay.classList.contains('hidden'))return;
-          const title=document.getElementById('pagePeekTitle');if(title){title.style.height='auto';title.style.height=title.scrollHeight+'px';}
+          if(typeof _resizePeekTitle==='function')_resizePeekTitle();
         });
       }).observe(panel);
     }

@@ -10477,3 +10477,11 @@ html.is-touch-device .bn-side-menu { display: none !important; }
   }
   :root.atlas-drawer-nav .sidebar-overlay { display:none; position:fixed; inset:calc(var(--topbar-h) + env(safe-area-inset-top)) 0 0; background:#0008; z-index:100; }
   :root.atlas-drawer-nav .sidebar-overlay.active { display:block; }
+
+/* A local route inside the Peek; navigation does not replace the source page. */
+#pagePeekBreadcrumbs { display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 20px;font:13px/1.5 var(--font-ui);color:var(--text-muted); }
+#pagePeekBreadcrumbs[hidden] { display:none; }
+#pagePeekBreadcrumbs button { padding:3px 5px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;border-radius:4px;max-width:100%;overflow-wrap:anywhere; }
+#pagePeekBreadcrumbs button:hover { background:var(--bg-hover);color:var(--text); }
+#pagePeekBreadcrumbs button:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+#pagePeekBreadcrumbs button[aria-current] { color:var(--text);cursor:default; }

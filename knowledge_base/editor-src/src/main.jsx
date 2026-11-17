@@ -112,7 +112,7 @@ function EditorView({ instanceRef, onChange, onReady }) {
 
 function createInstance(opts) {
   const { container, onChange } = opts || {};
-  const instanceRef = { editor: null, editable:opts?.editable!==false, suppressChange: false, context: { pageId: opts?.pageId || null, flush: opts?.flush, isPeek:!!opts?.isPeek, pageLinkTitles:opts?.pageLinkTitles }, identities: new Map() };
+  const instanceRef = { editor: null, editable:opts?.editable!==false, suppressChange: false, context: { pageId: opts?.pageId || null, flush: opts?.flush, isPeek:!!opts?.isPeek, pageLinkTitles:opts?.pageLinkTitles, openPage:opts?.openPage }, identities: new Map() };
   const root = createRoot(container);
   let pendingMarkdown = null;
   let ready = false;
@@ -172,6 +172,7 @@ function createInstance(opts) {
     }
   }
   const api = {
+    whenReady,
     reviewSpellingParagraph() { instanceRef.spelling?.reviewParagraph(); },
     captureSpellingSelection() {
       const editor = instanceRef.editor;

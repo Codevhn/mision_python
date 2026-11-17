@@ -18,7 +18,7 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
   await page.evaluate(id=>_loadEntryById(id),parent);await page.waitForSelector('#entryBody [data-content-type="database"]');
   await page.evaluate(()=>localStorage.setItem('atlas_db_peek_width','1100'));
   await page.evaluate(id=>_openPagePeek(id,{databasePreview:true,mode:'side'}),row);
-  await page.waitForSelector('#pagePeekEditor .bn-inline-content');
+  await page.waitForSelector('#pagePeekEditor .bn-inline-content');await page.evaluate(()=>_peekEditor.whenReady());
   // Exercise the actual (+) button reported by the user.
   await page.locator('#pagePeekEditor .bn-inline-content').last().hover();
   await page.getByRole('button',{name:'Agregar bloque',exact:true}).click();
@@ -51,16 +51,17 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
   assert.equal((await (await context.request.get(base+`/api/entry/${parent}`)).json()).markdown.includes('Subpágina desde Peek'),false,'Background page stays unchanged');
   const open=async(mode='side')=>{
    await page.evaluate(({row,mode})=>_openPagePeek(row,{databasePreview:true,mode}),{row,mode});
-   await page.waitForSelector('#pagePeekEditor .bn-inline-content');
+   await page.waitForSelector('#pagePeekEditor .bn-inline-content');await page.evaluate(()=>_peekEditor.whenReady());
   };
   await open();
   await page.locator('#pagePeekEditor .bn-pagelink-chip').filter({hasText:'Subpágina desde Peek'}).click();
-  await page.waitForSelector('#pagePeekOverlay.hidden',{state:'attached'});
-  assert.equal(await page.evaluate(()=>currentEntryId),children.find(child=>child.title==='Subpágina desde Peek').id,'Created link navigates to actual child');
+  await page.waitForFunction(id=>_peekEntryId===id,children.find(child=>child.title==='Subpágina desde Peek').id);
+  assert.equal(await page.locator('#pagePeekOverlay').isVisible(),true,'Subpage remains in Peek');
+  assert.equal(await page.evaluate(()=>currentEntryId),parent,'Source database stays in the main page');
   // Rename and paste content inside the child Peek; revisit its parent Peek.
   const renamedChild=children.find(child=>child.title==='Subpágina desde Peek').id;
   await page.evaluate(id=>_openPagePeek(id,{databasePreview:true,mode:'side'}),renamedChild);
-  await page.waitForSelector('#pagePeekEditor .bn-inline-content');
+  await page.waitForSelector('#pagePeekEditor .bn-inline-content');await page.evaluate(()=>_peekEditor.whenReady());
   await page.locator('#pagePeekEditor .bn-inline-content').last().click();
   await page.keyboard.insertText('Contenido pegado dentro de la subpágina.');
   await page.locator('#pagePeekTitle').fill('Título definitivo dentro del Peek');

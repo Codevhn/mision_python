@@ -13029,10 +13029,36 @@ async function _resumePracticeFromHistory(challengeId) {
 // table, not just a read-only preview.
 let _peekEntryId=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
 let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0;
-let _peekMode='side';
+let _peekMode='side', _peekPath=[], _peekRootOptions=null, _peekRevision=0;
+function _renderPeekPath() {
+  let nav=$('pagePeekBreadcrumbs');
+  if(!nav){nav=document.createElement('nav');nav.id='pagePeekBreadcrumbs';nav.setAttribute('aria-label','Ruta del Peek');$('pagePeekOverlay').querySelector('.page-peek-body').prepend(nav);}
+  nav.replaceChildren();nav.hidden=_peekPath.length<2;
+  _peekPath.forEach((item,index)=>{
+    if(index){const separator=document.createElement('span');separator.textContent='›';separator.setAttribute('aria-hidden','true');nav.append(separator);}
+    const button=document.createElement('button');button.type='button';button.textContent=item.title||'Sin título';
+    if(index===_peekPath.length-1){button.setAttribute('aria-current','page');button.disabled=true;}
+    else button.onclick=()=>_navigatePeek(item.id,index);
+    nav.append(button);
+  });
+}
+async function _navigatePeek(id,index) {
+  if(!_peekEntryId||!id)return false;
+  const path=_peekPath.map(item=>({...item}));
+  const current=path[path.length-1];
+  if(current){current.title=$('pagePeekTitle').value;current.scrollTop=$('pagePeekOverlay').querySelector('.page-peek-body').scrollTop;}
+  const target=Number.isInteger(index)?index:path.findIndex(item=>item.id===id);
+  const next=target>=0?path.slice(0,target+1):[...path,{id,title:'',scrollTop:0}];
+  return window._openPagePeek(id,{..._peekRootOptions,databasePreview:true,mode:_peekMode,
+    recordIds:id===next[0].id?(_peekRootOptions?.recordIds||[]):[],_peekPath:next});
+}
+
 function _resizePeekTitle() {
   const title=$('pagePeekTitle');if(!title)return;
+  const body=title.closest('.page-peek-body'),scroll=body?.scrollTop,anchor=body?.style.overflowAnchor;
+  if(body)body.style.overflowAnchor='none';
   title.style.height='auto';title.style.height=title.scrollHeight+'px';
+  if(body){body.scrollTop=scroll;body.style.overflowAnchor=anchor;}
 }
 window._flushDatabaseSource=async parent=>{
   if(currentEntryId===parent)await _flushInlineDatabase();
@@ -13045,6 +13071,7 @@ function _setPeekMode(mode) {
 }
 function _peekDraft(payload) {
   if (!_peekQueue || !_peekEntryId) return;
+  ++_peekRevision;
   _peekQueue.set(payload);
   try { sessionStorage.setItem('atlas-peek-draft:'+_peekEntryId,JSON.stringify(_peekQueue.pending)); } catch {}
   clearTimeout(_peekAutoSaveTimer);
@@ -13066,25 +13093,40 @@ function _peekSaveError(error) {
 }
 window._openPagePeek=async function(id,opts={}) {
   if(!id||!$('pagePeekOverlay'))return;
-  if(_peekEntryId===id){if(opts.mode)_setPeekMode(opts.mode);return true;}
-  if(_peekEntryId && !(await _closePagePeek()))return false;
+  if(_peekClosing)await _peekClosing;
+  if(_peekEntryId===id&&!opts._reload){if(opts.mode)_setPeekMode(opts.mode);return true;}
   const token=++_peekRequest;
+  const internal=Array.isArray(opts._peekPath)&&!!_peekRootOptions;
+  const rootOptions=internal?_peekRootOptions:opts;
   try {
+    // Save before reading destination metadata, including the title of the
+    // child we are leaving when returning to its parent.
+    if(_peekEntryId){try{await _flushPeekPendingSaves();}catch(error){_peekSaveError(error);return false;}}
+    if(token!==_peekRequest)return false;
+    const revision=_peekRevision;
     const [response, children] = await Promise.all([
       fetch(`/api/entry/${id}`),
       fetch(`/api/entry/${id}/children`).then(res=>res.ok?res.json():[]).catch(()=>[]),
     ]);
     if(!response.ok)throw new Error('No se pudo abrir el registro');
-    const data=await response.json();if(token!==_peekRequest)return;
+    const data=await response.json();if(token!==_peekRequest)return false;
+    if(_peekEntryId && !(await _closePagePeek({navigationToken:token,expectedRevision:revision,keepSession:internal})))return false;
+    if(token!==_peekRequest)return false;
     // Display current child titles in this Peek only. Never rewrite stored links.
     const pageLinkTitles=Object.fromEntries((Array.isArray(children)?children:[]).map(child=>[child.id,child.title]));
-    _peekEntryId=id;_peekOnClose=opts.onClose||null;
+    const peekBody=$('pagePeekOverlay').querySelector('.page-peek-body');
+    // This navigator restores reading positions; browser anchoring must not compete.
+    peekBody.style.overflowAnchor='none';
+    _peekEntryId=id;_peekRootOptions=rootOptions;_peekOnClose=rootOptions.onClose||null;
+    _peekPath=internal?opts._peekPath:[{id,title:data.meta?.title||'',scrollTop:0}];
+    _peekPath[_peekPath.length-1].title=data.meta?.title||'Sin título';
     const overlay=$('pagePeekOverlay');overlay.dataset.peekOwner=id;
     overlay.classList.toggle('db-preview-peek',!!opts.databasePreview||!!data.meta?.database_id);overlay.classList.remove('hidden');
     $('pagePeekSaveError')?.remove();
     const meta=data.meta||{};let draft=null;
     try {draft=JSON.parse(sessionStorage.getItem('atlas-peek-draft:'+id)||'null');}catch{}
     $('pagePeekTitle').value=draft?.title??meta.title??'';$('pagePeekIcon').textContent=meta.icon||'';
+    _renderPeekPath();
     const controls=$('pagePeekToolbar');const isDatabase=overlay.classList.contains('db-preview-peek');
     controls.classList.toggle('hidden',!isDatabase);
     overlay.querySelector('.page-peek-actions').classList.toggle('hidden',isDatabase);
@@ -13093,13 +13135,13 @@ window._openPagePeek=async function(id,opts={}) {
       const mountControls=()=>AtlasDatabase.mountPeekToolbar(controls,{entryId:id,meta,mode:_peekMode,recordIds:opts.recordIds||[],actions:{
         close:_closePagePeek,
         flush:_flushPeekPendingSaves,
-        refresh:async()=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de actualizar');await window._openPagePeek(id,{...opts,mode:_peekMode});},
+        refresh:async()=>window._openPagePeek(id,{...opts,mode:_peekMode,_peekPath:_peekPath.map(item=>({...item})),_reload:true}),
         openRecord:async(next,records)=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de abrir otro registro');await window._openPagePeek(next,{...opts,recordIds:records||[next],mode:_peekMode});},
         setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;},
         appendMarkdown:async text=>{await _flushPeekPendingSaves();await _peekEditor.appendMarkdown(text);await _flushPeekPendingSaves();},
         fullPage:async()=>{if(await _closePagePeek())await window._loadEntryById?.(id);},
         mode:async mode=>{await _flushPeekPendingSaves();_setPeekMode(mode);mountControls();},
-        navigate:async next=>{if((opts.recordIds||[]).includes(next))await window._openPagePeek(next,{...opts,mode:_peekMode});},
+        navigate:async next=>{if((opts.recordIds||[]).includes(next))await window._openPagePeek(next,{..._peekRootOptions,recordIds:opts.recordIds,mode:_peekMode});},
         link:()=>location.origin+location.pathname+'?open='+encodeURIComponent(id),
         markdown:()=>['# '+($('pagePeekTitle').value.trim()||'Sin título'),_peekEditor?.getMarkdown()||''].join('\n\n')
       }});
@@ -13111,8 +13153,17 @@ window._openPagePeek=async function(id,opts={}) {
     });
     Properties.render(id,meta.properties||[],$('pagePeekProps'),false,meta);
     $('pagePeekTitle').readOnly=!!meta.database_locked;
-    _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,isPeek:true,pageLinkTitles,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
+    $('pagePeekEditor').inert=true;$('pagePeekEditor').setAttribute('aria-busy','true');
+    _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,isPeek:true,pageLinkTitles,openPage:_navigatePeek,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
     _peekEditor.load(draft?.raw_text??_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown||'',meta.title||'')));
+    await _peekEditor.whenReady();
+    const panel=overlay.querySelector('.page-peek-modal');
+    await Promise.all(panel.getAnimations().filter(animation=>Number.isFinite(animation.effect.getComputedTiming().iterations)).map(animation=>animation.finished.catch(()=>{})));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    if(token!==_peekRequest)return false;
+    _resizePeekTitle();
+    $('pagePeekEditor').inert=false;$('pagePeekEditor').removeAttribute('aria-busy');
+    peekBody.scrollTop=_peekPath[_peekPath.length-1].scrollTop||0;
     if(draft){_peekQueue.set(draft);_peekSaveError(new Error('Se recuperó un borrador que no se había guardado'));}
     requestAnimationFrame(_resizePeekTitle);
     return true;
@@ -13126,7 +13177,8 @@ async function _flushPeekPendingSaves(options) {
   if(_peekEntryId)try{sessionStorage.removeItem('atlas-peek-draft:'+_peekEntryId);}catch{}
   $('pagePeekSaveError')?.remove();
 }
-async function _closePagePeek() {
+async function _closePagePeek(options={}) {
+  if(!options.navigationToken)++_peekRequest;
   if(_peekClosing)return _peekClosing;
   if(!_peekEntryId)return true;
   if (_pendingPageContext?.pageId === _peekEntryId && !$('pageNameOverlay').classList.contains('hidden')) {
@@ -13135,13 +13187,16 @@ async function _closePagePeek() {
   }
   _peekClosing=(async()=>{
     try {
-      await _flushPeekPendingSaves();const onClose=_peekOnClose;
+      await _flushPeekPendingSaves();
+      if(options.navigationToken&&(options.navigationToken!==_peekRequest||options.expectedRevision!==_peekRevision))return false;
+      const onClose=options.keepSession?null:_peekOnClose;
       AtlasDatabase.unmountProperties($('pagePeekProps'));
       AtlasDatabase.unmountPeekToolbar($('pagePeekToolbar'));
       AtlasDatabase.clearRecordPresentation($('pagePeekOverlay'));
       document.querySelectorAll('[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)delete node.dataset.peekOwner;});
       _peekEditor?.destroy();_peekEditor=null;_peekEntryId=null;_peekQueue=null;_peekOnClose=null;
       $('pagePeekOverlay').classList.add('hidden');delete $('pagePeekOverlay').dataset.peekOwner;
+      if(!options.keepSession){_peekPath=[];_peekRootOptions=null;_renderPeekPath();}
       if(onClose)await onClose();
       return true;
     }catch(error){_peekSaveError(error);return false;}
@@ -13178,6 +13233,7 @@ function initPagePeek() {
     _closePagePeek();
   });
   $('pagePeekTitle')?.addEventListener('input',()=>_peekDraft({title:$('pagePeekTitle').value}));
+  $('pagePeekTitle')?.addEventListener('input',()=>{if(_peekPath.length){_peekPath[_peekPath.length-1].title=$('pagePeekTitle').value;_renderPeekPath();}});
   $('pagePeekTitle')?.addEventListener('input',_resizePeekTitle);
   overlay.addEventListener('atlas:record-presentation',()=>requestAnimationFrame(_resizePeekTitle));
   $('pagePeekTitle')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();event.target.blur();}});
