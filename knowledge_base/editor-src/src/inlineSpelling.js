@@ -69,6 +69,10 @@ export function installInlineSpelling(tip){
   let active=true,timer=null,spell=null,issues=[],scannedDoc=null,popup=null,popupAnchor=null,review=null,requestTimer=null,hoverTimer=null;
   let language=getSpellingSettings().language,loadSequence=0;
   const issueById=new Map(),dirtyContexts=new Map();
+  function ownPeekPortal(portal){
+    const owner=tip.view.dom.closest('#pagePeekOverlay')?.dataset.peekOwner;
+    if(owner)portal.dataset.peekOwner=owner;
+  }
   function closePopup(){const hadPopup=Boolean(popup);clearTimeout(requestTimer);clearTimeout(hoverTimer);popup?.remove();popup=null;popupAnchor=null;
     if(hadPopup&&dirtyContexts.size)queueMicrotask(()=>{if(!popup&&active&&spell&&!tip.isDestroyed)check();});
   }
@@ -167,7 +171,7 @@ export function installInlineSpelling(tip){
       apply(picks.filter(({item,select})=>item.word!==select.value).map(({item,select})=>({...item,text:select.value})),doc);dialog.close();
     }catch(error){status.textContent=error.message;submit.disabled=true;}});
     dialog.addEventListener('close',()=>{dialog.remove();if(review===dialog)review=null;if(active&&!tip.isDestroyed){check();if(tip.isEditable)tip.commands.focus();}},{once:true});
-    closePopup();document.body.append(dialog);dialog.showModal();
+    closePopup();ownPeekPortal(dialog);document.body.append(dialog);dialog.showModal();
     if(method==='local')render(issues.filter(item=>item.paragraph===fragment.paragraph).map(item=>({...item,replacements:spell.candidatesFor(item.word,item.text,language)})));
     else contextual();
   }
@@ -214,7 +218,7 @@ export function installInlineSpelling(tip){
     for(const [value,label] of [['auto','Automático · español e inglés'],['es','Español preferido'],['en-US','English preferred']]){const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);}select.value=language;select.addEventListener('change',()=>setSpellingSettings({language:select.value}));actions.append(select);
     button(method==='local'?'Usar LanguageTool':'Usar revisión local sin conexión',()=>setSpellingSettings({method:method==='local'?'languagetool':'local'}),actions);
     panel.addEventListener('mouseenter',()=>clearTimeout(hoverTimer));
-    popupAnchor=node;document.body.append(panel);positionPopup();
+    popupAnchor=node;ownPeekPortal(panel);document.body.append(panel);positionPopup();
   }
   function positionPopup(){
     if(!popup)return;if(!popupAnchor?.isConnected){closePopup();return;}

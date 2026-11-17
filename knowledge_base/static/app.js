@@ -13125,7 +13125,7 @@ window._openPagePeek=async function(id,opts={}) {
     $('pagePeekSaveError')?.remove();
     const meta=data.meta||{};let draft=null;
     try {draft=JSON.parse(sessionStorage.getItem('atlas-peek-draft:'+id)||'null');}catch{}
-    $('pagePeekTitle').value=draft?.title??meta.title??'';$('pagePeekIcon').textContent=meta.icon||'';
+    $('pagePeekTitle').value=draft?.title??meta.title??'';$('pagePeekIcon').innerHTML=meta.icon?renderIconMarkup(meta.icon,'page-peek-icon-glyph',''):'';
     _renderPeekPath();
     const controls=$('pagePeekToolbar');const isDatabase=overlay.classList.contains('db-preview-peek');
     controls.classList.toggle('hidden',!isDatabase);

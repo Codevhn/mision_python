@@ -10485,3 +10485,7 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 #pagePeekBreadcrumbs button:hover { background:var(--bg-hover);color:var(--text); }
 #pagePeekBreadcrumbs button:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
 #pagePeekBreadcrumbs button[aria-current] { color:var(--text);cursor:default; }
+
+/* Spelling suggestions owned by a Peek stay above the panel, without
+   changing popup layers in full-page editors. */
+.atlas-spelling-popover[data-peek-owner] { z-index:12001; }
