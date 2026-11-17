@@ -48,3 +48,25 @@ sustituyen una prueba en hardware físico.
 
 Pasaron los cuatro perfiles y las 27 pruebas backend de acciones y workspace de
 bases de datos. No se utilizaron servicios de IA ni datos personales.
+
+## Apariencia de tablas en Peek (2026-11-17)
+
+El editor lateral no tenía la clase `entry-body`. Por eso las reglas de fondos
+alternos y celdas de `style.css`, y los bordes suaves de `editing-surface.css`,
+solo se aplicaban en página completa. El Peek heredaba los bordes de BlockNote.
+Además, su paleta oscura local sobrescribía los colores del tema activo.
+
+Las tablas de contenido ahora comparten las reglas de presentación en página
+completa, Side Peek y Center Peek. Los colores de tabla se resuelven en el tema
+raíz para que la paleta local del Peek no los sustituya; las celdas mantienen
+bordes de 1 px con contraste suave (9 %). El cambio conserva los datos y permite
+que cada vista adapte el ancho a su espacio disponible. `editing-surface.css`
+forma parte del identificador de caché de los assets.
+
+Verificación: `node tools/check_peek_tables.cjs` contra el servidor desechable
+anterior. Pasaron 1697×1000, 1480×924 y 412×915, cada uno con Aero, OpenCode,
+Hyprland, Notion Native y el alias claro `light`. Se comparan los estilos
+calculados de las seis celdas del mismo contenido en los tres modos: los cuatro
+bordes, fondos, color de texto, padding, tamaño y peso de fuente. También se
+comprueba que el Markdown guardado no cambia. No se usaron consultas a IA ni
+datos personales. Son perfiles de Chromium, no dispositivos Samsung físicos.

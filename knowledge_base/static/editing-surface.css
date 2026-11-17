@@ -50,26 +50,27 @@
 #entryView .entry-content-actions {
   max-width:var(--atlas-reading-width); margin-inline:auto; padding-inline:0;
 }
+/* Simple tables share their appearance in full pages and both Peek modes. */
 /* Each broad representation owns its horizontal scroll; never shrink grid
    columns to hide overflow or clip a whole page at the first table column. */
 #entryView #entryBody :is(.bn-database,.adb-workspace,.adb-view-body,.adb-view-canvas) { min-width:0; max-width:100%; }
 #entryView #entryBody :is(.adb-table-scroll,.adb-board,.tableWrapper) { max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
 #entryView #entryBody .adb-grid { width:max-content; min-width:100%; }
-#entryView #entryBody .tableWrapper table {
+:is(#entryView #entryBody,#pagePeekEditor) .tableWrapper table {
   width:fit-content!important;
   max-width:100%!important;
   margin-inline:0!important;
   table-layout:auto;
-  border:1px solid color-mix(in srgb,var(--text) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--atlas-table-ink) 9%,transparent);
   border-collapse:collapse;
   border-radius:0;
   box-shadow:none;
 }
-#entryView #entryBody .tableWrapper :is(th,td) {
+:is(#entryView #entryBody,#pagePeekEditor) .tableWrapper :is(th,td) {
   max-width:360px;
   overflow-wrap:anywhere;
   text-align:start;
-  border:1px solid color-mix(in srgb,var(--text) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--atlas-table-ink) 9%,transparent);
 }
 /* A side Peek shares the desktop with the editable page. The overlay is used
    at smaller sizes, where keeping two narrow editors would waste the space. */
