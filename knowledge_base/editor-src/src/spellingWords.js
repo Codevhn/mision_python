@@ -16,13 +16,17 @@ export function editDistance(left, right) {
 }
 
 export function createSpellingDictionary(...dictionaries) {
+  const correctCache=new Map(),suggestCache=new Map();
+  const remember=(cache,key,value)=>{cache.set(key,value);if(cache.size>2000)cache.delete(cache.keys().next().value);return value;};
   return {
-    correct: word => technical.has(normalize(word)) || dictionaries.some(dictionary => dictionary.correct(word)),
-    suggest: word => [...technical.values(), ...dictionaries.flatMap(dictionary => dictionary.suggest(word))]
+    correct(word){const key=word.normalize('NFC');return correctCache.has(key)?correctCache.get(key):remember(correctCache,key,technical.has(normalize(key))||dictionaries.some(dictionary=>dictionary.correct(key)));},
+    suggest(word){const key=word.normalize('NFC');return suggestCache.has(key)?suggestCache.get(key):remember(suggestCache,key,[...technical.values(),...dictionaries.flatMap(dictionary=>dictionary.suggest(key))]);}
   };
 }
 
 export function suggestionsFor(spell, word) {
+  word=word.normalize('NFC');
+  if(spell.correct(word))return [];
   const normalized = normalize(word);
   const limit = word.length <= 5 ? 1 : 2;
   const candidates = new Map();

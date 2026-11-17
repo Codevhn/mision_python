@@ -23,6 +23,7 @@ import { schema } from "./schema.js";
 import { mdToBlocks, blocksToMd } from "./markdown.js";
 import { pasteClipboard } from "./clipboard.js";
 import { CustomSideMenu } from "./dragHandleMenu.jsx";
+import {closeHistory} from '@tiptap/pm/history';
 import { textEdits } from "./textEdits.js";
 import { installInlineSpelling } from "./inlineSpelling.js";
 
@@ -180,13 +181,15 @@ function createInstance(opts) {
       if (from === to) return null;
       const text = doc.textBetween(from, to, '\n');
       let code = false;
-      doc.nodesBetween(from, to, node => { if (node.type.name === 'codeBlock' || node.marks?.some(mark => mark.type.name === 'code')) code = true; });
-      const safe = $from.parent === $to.parent && $from.parent.isTextblock && !code;
+      doc.nodesBetween(from, to, node => { if (node.type.name === 'codeBlock' || (node.isInline && node.isLeaf && !node.isText) || node.marks?.some(mark => mark.type.name === 'code')) code = true; });
+      const safe = editor.isEditable && $from.parent === $to.parent && $from.parent.isTextblock && !code;
       return {text, focus:() => editor.focus(), apply: safe ? corrected => {
+        if(!editor.isEditable)throw Error('La página está en solo lectura. Desbloquéala antes de corregir.');
         if (instanceRef.editor !== editor || tip.state.doc !== doc || !container.isConnected) throw new Error('El texto cambió. Selecciónalo de nuevo antes de aplicar la corrección.');
-        const tr = tip.state.tr;
+        const tr = closeHistory(tip.state.tr);
         for (const edit of textEdits(text, corrected).reverse()) tr.insertText(edit.text, from + edit.from, from + edit.to);
-        tip.view.dispatch(tr); return true;
+        tip.view.dispatch(tr);
+        tip.view.dispatch(closeHistory(tip.state.tr).setMeta('addToHistory',false)); return true;
       } : null};
     },
     load(markdown, pageId) {

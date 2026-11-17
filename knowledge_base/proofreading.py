@@ -21,6 +21,9 @@ def register_proofreading(app, namespace):
             text.encode('utf-8')
         except UnicodeError:
             return jsonify(error='El fragmento contiene caracteres inválidos.'), 400
+        language = body.get('language', 'es')
+        if not isinstance(language, str) or language not in ('es', 'en-US'):
+            return jsonify(error='Elige español o inglés para la revisión.'), 400
         mode = body.get('mode', 'languagetool')
         if mode == 'ai':
             provider = body.get('provider') or namespace['DEFAULT_PROVIDER']
@@ -28,7 +31,7 @@ def register_proofreading(app, namespace):
             if not isinstance(provider, str) or provider not in namespace['PROVIDERS'] or not isinstance(model, str) or len(model) > 300:
                 return jsonify(error='Elige un modelo válido.'), 400
             system = (
-                'Eres un corrector ortográfico de español. Corrige únicamente ortografía, '
+                f'Eres un corrector ortográfico de {"español" if language == "es" else "inglés"}. Corrige únicamente ortografía, '
                 'acentos, puntuación y concordancia del texto recibido. Conserva significado, '
                 'tono, nombres, saltos de línea y expresiones coloquiales. No añadas explicaciones, '
                 'saludos, Markdown ni comillas externas. Devuelve solo el texto corregido, '
@@ -48,7 +51,7 @@ def register_proofreading(app, namespace):
             return jsonify(error='Método de corrección desconocido.'), 400
         # URL is deployment configuration, never supplied by the browser.
         endpoint = os.environ.get('LANGUAGETOOL_URL', 'https://api.languagetool.org/v2/check')
-        payload = urllib.parse.urlencode({'text': text, 'language': 'es', 'enabledOnly': 'false'}).encode()
+        payload = urllib.parse.urlencode({'text': text, 'language': language, 'enabledOnly': 'false'}).encode()
         req = urllib.request.Request(endpoint, data=payload, headers={
             'Content-Type': 'application/x-www-form-urlencoded',
             'User-Agent': 'Atlas-Spelling/1.0',
@@ -63,19 +66,30 @@ def register_proofreading(app, namespace):
             if not isinstance(matches, list):
                 raise ValueError('Invalid response')
             # LanguageTool/Java offsets and JavaScript strings use UTF-16 units.
-            length = len(text.encode('utf-16-le')) // 2
+            encoded = text.encode('utf-16-le')
+            length = len(encoded) // 2
+            boundaries = {0}
+            position = 0
+            for character in text:
+                position += len(character.encode('utf-16-le')) // 2
+                boundaries.add(position)
             safe = []
             for match in matches[:500]:
+                if not isinstance(match, dict):
+                    continue
                 offset, size = match.get('offset'), match.get('length')
-                if type(offset) is not int or type(size) is not int or offset < 0 or size < 0 or offset + size > length:
+                if type(offset) is not int or type(size) is not int or offset < 0 or size < 0 or offset + size > length or offset not in boundaries or offset + size not in boundaries:
+                    continue
+                replacements = match.get('replacements', [])
+                if not isinstance(replacements, list):
                     continue
                 safe.append({
                     'offset': offset, 'length': size,
                     'message': str(match.get('message', 'Revisa este fragmento.'))[:500],
-                    'replacements': [item['value'][:1000] for item in match.get('replacements', [])[:8]
+                    'replacements': [item['value'][:1000] for item in replacements[:8]
                                      if isinstance(item, dict) and isinstance(item.get('value'), str)],
                 })
-            return jsonify(matches=safe, mode=mode)
+            return jsonify(matches=safe, mode=mode, language=language)
         except urllib.error.HTTPError as error:
             if error.code == 429:
                 return jsonify(error='LanguageTool alcanzó su límite gratuito. Espera un momento o usa el corrector del navegador.'), 429

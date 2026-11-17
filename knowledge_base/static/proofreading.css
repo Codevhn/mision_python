@@ -29,3 +29,6 @@
 #proofreadingToggle { width:auto; padding:0 8px; font-size:.8rem; font-weight:600; white-space:nowrap; }
 #assistantProofread { flex-shrink:0; padding:5px 3px; border:0; background:none; color:var(--text-muted); cursor:pointer; font:600 .65rem var(--font-ui); }
 @media(max-width:600px) { .proofreader-texts { grid-template-columns:1fr; } .proofreader textarea { height:120px; } .proofreader-body { padding:12px; } .proofreader-footer { padding:10px 12px; } }
+.proofreader-settings { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
+.proofreader-settings label { display:flex; flex:1 1 200px; flex-direction:column; gap:5px; }
+.proofreader-settings select,.atlas-spelling-actions select { font:inherit; color:var(--text); background:var(--bg-elevated); border:1px solid var(--border); border-radius:5px; padding:7px; max-width:100%; }

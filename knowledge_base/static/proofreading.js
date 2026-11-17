@@ -5,6 +5,13 @@
   let mode = 'browser', target = null, lastField = null, pendingTarget = null;
   let choice = null, matches = [], picks = new Map(), reviewed = false, requestId = 0, controller = null, busy = false;
   const source = el('proofreadingSource'), preview = el('proofreadingPreview');
+  const settings=window.AtlasSpellingSettings;
+  const languageField=el('proofreadingLanguage'),inlineMethod=el('proofreadingInlineMethod');
+  function syncSettings(){const value=settings.get();languageField.value=value.language;inlineMethod.value=value.method;source.lang=preview.lang=value.language;invalidate();}
+  languageField.addEventListener('change',()=>settings.set({language:languageField.value}));
+  inlineMethod.addEventListener('change',()=>settings.set({method:inlineMethod.value}));
+  window.addEventListener('atlas-spelling-settings',syncSettings);
+
   const isField = node => node && !dialog.contains(node) && !node.disabled && !node.readOnly &&
     (node.matches('textarea:not([spellcheck="false"]), input[type="text"], input:not([type]), .inline-title[contenteditable="true"]'));
   document.addEventListener('focusin', event => { if (isField(event.target)) lastField = event.target; });
@@ -29,7 +36,7 @@
     const end = title ? original.length : field.selectionEnd || 0;
     const from = start === end ? 0 : start, to = start === end ? original.length : end;
     return {text:original.slice(from, to), focus:() => field.focus(), apply: corrected => {
-      if (!field.isConnected || (title && entryId !== window._getAssistantVisibleContext?.()?.id) || (title ? field.textContent : field.value) !== original) throw new Error('El texto cambió. Abre de nuevo el corrector para revisar la versión actual.');
+      if (!isField(field) || !field.isConnected || (title && entryId !== window._getAssistantVisibleContext?.()?.id) || (title ? field.textContent : field.value) !== original) throw new Error('El texto cambió. Abre de nuevo el corrector para revisar la versión actual.');
       if (title) { field.textContent = corrected; }
       else field.setRangeText(corrected, from, to, 'end');
       field.dispatchEvent(new Event('input', {bubbles:true}));
@@ -56,7 +63,7 @@
     el('proofreadingCheck').hidden = mode === 'browser';
     el('proofreadingPreviewLabel').hidden = mode === 'browser';
     el('proofreadingHint').textContent = {
-      browser:'El navegador subraya posibles errores. Haz clic derecho en una palabra marcada para elegir una sugerencia. Configura español en su corrector. No se envía texto desde Atlas a LanguageTool ni a la IA.',
+      browser:'El navegador subraya posibles errores. Haz clic derecho en una palabra marcada para elegir una sugerencia. Configura el idioma elegido en su corrector. No se envía texto desde Atlas a LanguageTool ni a la IA.',
       languagetool:'Revisa ortografía y gramática sin IA. Al pulsar Revisar texto se envía únicamente este fragmento a LanguageTool. El servicio público gratuito tiene límites de uso.',
       ai:'Al pulsar Revisar texto se envía únicamente este fragmento al modelo elegido. No se incluyen notas, historial ni contexto de Atlas. Puedes editar la propuesta antes de aplicarla.',
     }[mode];
@@ -67,7 +74,7 @@
     target = explicitField ? capture(explicitField) : pendingTarget || capture(); pendingTarget = null;
     source.value = target?.text || '';
     el('proofreadingTargetHint').textContent = target?.apply ? 'Se reemplazará solo el fragmento capturado. Puedes deshacer el cambio del editor con Ctrl+Z.' : 'Puedes copiar la propuesta. Para aplicarla directamente, selecciona texto de un solo párrafo en el editor o abre el corrector desde un campo de texto. Los bloques de código no se reemplazan.';
-    setMode('browser'); dialog.showModal(); source.focus();
+    syncSettings();setMode(settings.get().method==='languagetool'?'languagetool':'browser'); dialog.showModal(); source.focus();
   }
   function buildPreview() {
     let text = source.value, boundary = text.length;
@@ -100,13 +107,16 @@
   }
   el('proofreadingCheck').addEventListener('click', async () => {
     if (busy || !source.value.trim() || source.value.length > 10000) return;
-    const sequence = ++requestId, text = source.value, checkedMode = mode;
+    const sequence = ++requestId, text = source.value, checkedMode = mode, language = settings.get().language;
     controller?.abort(); controller = new AbortController(); busy = true; reviewed = false; preview.value = ''; el('proofreadingIssues').replaceChildren(); buttons(); status('Revisando el fragmento…');
     try {
-      const response = await fetch('/api/proofreading/check', {method:'POST', headers:{'Content-Type':'application/json'}, signal:controller.signal, body:JSON.stringify({text, mode:checkedMode, ...(checkedMode === 'ai' ? choice : {})})});
-      const data = await response.json();
+      let data;
+      if(checkedMode==='languagetool')data={matches:await settings.reviewContext(text,language)};
+      else {
+        const response=await fetch('/api/proofreading/check',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({text,language,mode:checkedMode,...choice})});
+        data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo revisar el texto.');
+      }
       if (sequence !== requestId || !dialog.open) return;
-      if (!response.ok) throw new Error(data.error || 'No se pudo revisar el texto.');
       reviewed = true;
       if (checkedMode === 'ai') { preview.value = data.corrected; status(data.corrected === text ? 'El modelo no propuso cambios.' : 'Propuesta lista. Revísala antes de aplicar.'); }
       else { matches = data.matches; picks.clear(); buildPreview(); showIssues(); status(matches.length ? `${matches.length} posibles errores. Elige las sugerencias que quieras aplicar.` : 'LanguageTool no encontró errores en este fragmento.'); }
@@ -136,5 +146,6 @@
   el('proofreadingToggle').addEventListener('click', () => open());
   document.addEventListener('click', event => { if (event.target.closest('#assistantProofread')) open(el('assistantInput')); });
   window._mountModelSelector(el('proofreadingModel'), {context:'proofreading', onChange:value => { choice=value; buttons(); }});
+  syncSettings();
   window.AtlasProofreader = {open};
 })();

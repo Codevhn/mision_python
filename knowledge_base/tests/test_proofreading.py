@@ -83,3 +83,47 @@ def test_service_bad_response_and_unavailable_connection(auth_client, monkeypatc
 
 def test_authentication_is_required(client):
     assert client.post('/api/proofreading/check', json={'text': 'hola'}).status_code == 401
+
+
+def test_selected_language_and_unicode_boundaries(auth_client, monkeypatch):
+    captured = []
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, limit):
+            return json.dumps({'matches': [
+                {'offset': 1, 'length': 1, 'replacements': [{'value': 'bad surrogate'}]},
+                {'offset': 3, 'length': 6, 'message': 'Spelling', 'replacements': [{'value': 'receipt'}]},
+                'invalid finding',
+                {'offset': 0, 'length': 2, 'replacements': None},
+            ]}).encode()
+
+    def urlopen(req, **kwargs):
+        captured.append(urllib.parse.parse_qs(req.data.decode()))
+        return Response()
+
+    monkeypatch.setattr(proofreading.urllib.request, 'urlopen', urlopen)
+    response = auth_client.post('/api/proofreading/check', json={'text': '😀 recipt', 'language': 'en-US'})
+    assert response.status_code == 200
+    assert captured[0]['language'] == ['en-US']
+    assert response.json['language'] == 'en-US'
+    assert response.json['matches'] == [{'offset': 3, 'length': 6, 'message': 'Spelling', 'replacements': ['receipt']}]
+
+
+def test_bad_language_never_calls_service(auth_client, monkeypatch):
+    def fail(*args, **kwargs): raise AssertionError('Unexpected service request')
+    monkeypatch.setattr(proofreading.urllib.request, 'urlopen', fail)
+    for language in [None, [], {}, 'auto', 'unknown']:
+        assert auth_client.post('/api/proofreading/check', json={'text': 'hello', 'language': language}).status_code == 400
+
+
+def test_english_ai_review_has_explicit_language(auth_client, monkeypatch):
+    seen = []
+    def call(system, text, **kwargs):
+        seen.append(system)
+        return 'A receipt.', None
+    monkeypatch.setattr(app_module, '_call_ai', call)
+    response = auth_client.post('/api/proofreading/check', json={'text': 'A reciept.', 'mode': 'ai', 'language': 'en-US'})
+    assert response.status_code == 200
+    assert 'corrector ortográfico de inglés' in seen[0]

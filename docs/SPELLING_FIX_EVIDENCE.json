@@ -1,0 +1,166 @@
+{
+  "scope": "Local audit of shipped fixed editor; contextual integration is separately checked with simulated LanguageTool by tools/check_spelling.cjs",
+  "backend": "480 passed, 63 existing warnings",
+  "editor_tests": "npm test passed",
+  "browser_checks": "tools/check_spelling.cjs passed desktop, phone and tablet",
+  "paste_checks": "tools/check_editor_paste.cjs passed desktop, phone and tablet",
+  "live_provider": "Public LanguageTool request blocked by environment proxy: Tunnel connection failed: 403 Forbidden",
+  "local_audit": [
+    {
+      "profile": "desktop",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor",
+        "aver"
+      ],
+      "wordSuggestions": [
+        "Sécate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Hécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "abjeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "reciept"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librery"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomejor"
+        },
+        {
+          "word": "Corrección de aver",
+          "selected": "aver"
+        }
+      ],
+      "defaultApplyDisabled": true,
+      "paragraphAfterAcceptingDefaults": "Hécate abjeto reciept librery alomejor aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyProposalDisabled": true,
+      "readonlyAfter": "abjeto",
+      "readonlyMutated": false,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    },
+    {
+      "profile": "phone",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor",
+        "aver"
+      ],
+      "wordSuggestions": [
+        "Sécate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Hécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "abjeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "reciept"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librery"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomejor"
+        },
+        {
+          "word": "Corrección de aver",
+          "selected": "aver"
+        }
+      ],
+      "defaultApplyDisabled": true,
+      "paragraphAfterAcceptingDefaults": "Hécate abjeto reciept librery alomejor aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyProposalDisabled": true,
+      "readonlyAfter": "abjeto",
+      "readonlyMutated": false,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    },
+    {
+      "profile": "tablet",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor",
+        "aver"
+      ],
+      "wordSuggestions": [
+        "Sécate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Hécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "abjeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "reciept"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librery"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomejor"
+        },
+        {
+          "word": "Corrección de aver",
+          "selected": "aver"
+        }
+      ],
+      "defaultApplyDisabled": true,
+      "paragraphAfterAcceptingDefaults": "Hécate abjeto reciept librery alomejor aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyProposalDisabled": true,
+      "readonlyAfter": "abjeto",
+      "readonlyMutated": false,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    }
+  ]
+}

@@ -1,0 +1,317 @@
+{
+  "baseline": "b020676 (implementation unchanged from 12282a7)",
+  "scope": "Real dictionaries and shipped BlockNote bundle; disposable browser profiles; no external services or user data",
+  "dictionary": {
+    "words": [
+      {
+        "word": "Hécate",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "Sécate",
+          "Hecate"
+        ]
+      },
+      {
+        "word": "canalizador",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "canalizados",
+          "catalizador",
+          "analizador",
+          "canalizado"
+        ]
+      },
+      {
+        "word": "abjeto",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "objeto",
+          "abeto",
+          "abject"
+        ]
+      },
+      {
+        "word": "reciept",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "receipt",
+          "recepta",
+          "recepte",
+          "recepté",
+          "recepto",
+          "receptó"
+        ]
+      },
+      {
+        "word": "librery",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "librera",
+          "librero",
+          "library"
+        ]
+      },
+      {
+        "word": "prueva",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "prueba",
+          "reva"
+        ]
+      },
+      {
+        "word": "mas",
+        "spanish": true,
+        "english": true,
+        "accepted": true,
+        "suggestions": []
+      },
+      {
+        "word": "esta",
+        "spanish": true,
+        "english": false,
+        "accepted": true,
+        "suggestions": [
+          "vesta",
+          "etta",
+          "est",
+          "eta",
+          "sta"
+        ]
+      },
+      {
+        "word": "conosimiento",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "conocimiento"
+        ]
+      },
+      {
+        "word": "árbol",
+        "spanish": true,
+        "english": false,
+        "accepted": true,
+        "suggestions": []
+      },
+      {
+        "word": "árbol",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "arbor"
+        ]
+      },
+      {
+        "word": "alomejor",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "alomemos"
+        ]
+      },
+      {
+        "word": "aver",
+        "spanish": false,
+        "english": true,
+        "accepted": true,
+        "suggestions": [
+          "ayer",
+          "aves",
+          "ver",
+          "ave"
+        ]
+      },
+      {
+        "word": "REPiL",
+        "spanish": false,
+        "english": false,
+        "accepted": false,
+        "suggestions": [
+          "REPL"
+        ]
+      }
+    ],
+    "segmentation": [
+      {
+        "word": "UTF",
+        "offset": 0
+      },
+      {
+        "word": "PyCharm",
+        "offset": 6
+      },
+      {
+        "word": "árbol",
+        "offset": 14
+      },
+      {
+        "word": "árbol",
+        "offset": 20
+      },
+      {
+        "word": "foo",
+        "offset": 27
+      },
+      {
+        "word": "bar",
+        "offset": 31
+      }
+    ]
+  },
+  "browser": [
+    {
+      "profile": "desktop",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor"
+      ],
+      "wordSuggestions": [
+        "Sécate",
+        "Hecate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Sécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "objeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "receipt"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librera"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomemos"
+        }
+      ],
+      "paragraphAfterAcceptingDefaults": "Sécate objeto receipt librera alomemos aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyAfter": "objeto",
+      "readonlyMutated": true,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    },
+    {
+      "profile": "phone",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor"
+      ],
+      "wordSuggestions": [
+        "Sécate",
+        "Hecate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Sécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "objeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "receipt"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librera"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomemos"
+        }
+      ],
+      "paragraphAfterAcceptingDefaults": "Sécate objeto receipt librera alomemos aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyAfter": "objeto",
+      "readonlyMutated": true,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    },
+    {
+      "profile": "tablet",
+      "marked": [
+        "Hécate",
+        "abjeto",
+        "reciept",
+        "librery",
+        "alomejor"
+      ],
+      "wordSuggestions": [
+        "Sécate",
+        "Hecate"
+      ],
+      "paragraphDefaults": [
+        {
+          "word": "Corrección de Hécate",
+          "selected": "Sécate"
+        },
+        {
+          "word": "Corrección de abjeto",
+          "selected": "objeto"
+        },
+        {
+          "word": "Corrección de reciept",
+          "selected": "receipt"
+        },
+        {
+          "word": "Corrección de librery",
+          "selected": "librera"
+        },
+        {
+          "word": "Corrección de alomejor",
+          "selected": "alomemos"
+        }
+      ],
+      "paragraphAfterAcceptingDefaults": "Sécate objeto receipt librera alomemos aver.",
+      "readonlyBefore": "abjeto",
+      "readonlyAfter": "objeto",
+      "readonlyMutated": true,
+      "staleReviewMessage": "El párrafo cambió. Revísalo de nuevo antes de corregir.",
+      "staleDocument": "Documento actualizado.",
+      "codeMarks": 0,
+      "linkMarks": 0,
+      "remoteOrigins": [],
+      "browserErrors": []
+    }
+  ]
+}
