@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import nspell from 'nspell';
-import {wordRanges,suggestionsFor,createSpellingDictionary,editDistance} from '../src/spellingWords.js';
+import {wordRanges,suggestionsFor,createSpellingDictionary,editDistance,isRomanNumeral} from '../src/spellingWords.js';
 const spell=nspell(fs.readFileSync('node_modules/dictionary-es/index.aff','utf8'),fs.readFileSync('node_modules/dictionary-es/index.dic','utf8'));
 assert.equal(spell.correct('abjeto'),false);
 assert.equal(spell.correct('objeto'),true);
@@ -31,3 +31,9 @@ assert.equal(spanishOnly.correct('a\u0301rbol'),true,'NFD and NFC spelling are e
 assert.deepEqual(suggestionsFor(spanishOnly,'a\u0301rbol'),[]);
 assert.deepEqual(suggestionsFor(spanishOnly,'árbol'),[]);
 console.log('PASS: language isolation, English correction ranking and NFC/NFD equivalence.');
+for(const word of ['JVM','JDBC','JPA','Spring','Boot','Hibernate','REST','streaming','Microservicios','Cloud','native','CI','CD'])assert.equal(spanishOnly.correct(word),true,word);
+assert.equal(spanishOnly.correct('ABJETO'),false,'Ordinary uppercase typos must still be detected');
+console.log('PASS: Java/framework and architecture vocabulary without suppressing uppercase misspellings.');
+
+for(const number of ['IV','V','VI','VII','XXIII','MCMXCIX'])assert.equal(isRomanNumeral(number),true,number);
+for(const word of ['IIV','IM','JVM','CDIXX','incorrecto','ABJETO'])assert.equal(isRomanNumeral(word),false,word);

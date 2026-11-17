@@ -32,3 +32,5 @@
 .proofreader-settings { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
 .proofreader-settings label { display:flex; flex:1 1 200px; flex-direction:column; gap:5px; }
 .proofreader-settings select,.atlas-spelling-actions select { font:inherit; color:var(--text); background:var(--bg-elevated); border:1px solid var(--border); border-radius:5px; padding:7px; max-width:100%; }
+.proofreader-settings .proofreader-mark-toggle { flex-direction:row; align-items:center; gap:8px; }
+.atlas-spelling-context-status { margin:6px 8px; font-size:.75rem; line-height:1.45; color:var(--text-muted); }

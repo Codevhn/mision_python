@@ -1,15 +1,17 @@
 // Shared settings and contextual review transport for the editor and Abc panel.
 const LANGUAGES = new Set(['es','en-US']);
 const storageKey = 'atlas_spelling_settings';
-let settings = {language:'es', method:'languagetool'};
+let settings = {language:'es', method:'languagetool', underline:true};
 try {const saved=JSON.parse(localStorage.getItem(storageKey)||'{}');
+  if(typeof saved.underline==='boolean')settings.underline=saved.underline;
   if(LANGUAGES.has(saved.language))settings.language=saved.language;
   if(['local','languagetool'].includes(saved.method))settings.method=saved.method;
 } catch {}
 export function getSpellingSettings(){return {...settings};}
 export function setSpellingSettings(next){
   settings={language:LANGUAGES.has(next.language)?next.language:settings.language,
-    method:['local','languagetool'].includes(next.method)?next.method:settings.method};
+    method:['local','languagetool'].includes(next.method)?next.method:settings.method,
+    underline:typeof next.underline==='boolean'?next.underline:settings.underline};
   try {localStorage.setItem(storageKey,JSON.stringify(settings));}catch{}
   window.dispatchEvent(new CustomEvent('atlas-spelling-settings',{detail:getSpellingSettings()}));
 }

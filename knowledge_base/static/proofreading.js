@@ -6,8 +6,9 @@
   let choice = null, matches = [], picks = new Map(), reviewed = false, requestId = 0, controller = null, busy = false;
   const source = el('proofreadingSource'), preview = el('proofreadingPreview');
   const settings=window.AtlasSpellingSettings;
-  const languageField=el('proofreadingLanguage'),inlineMethod=el('proofreadingInlineMethod');
-  function syncSettings(){const value=settings.get();languageField.value=value.language;inlineMethod.value=value.method;source.lang=preview.lang=value.language;invalidate();}
+  const languageField=el('proofreadingLanguage'),inlineMethod=el('proofreadingInlineMethod'),underlineField=el('proofreadingUnderline');
+  function syncSettings(){const value=settings.get();languageField.value=value.language;inlineMethod.value=value.method;underlineField.checked=value.underline;source.lang=preview.lang=value.language;invalidate();}
+  underlineField.addEventListener('change',()=>settings.set({underline:underlineField.checked}));
   languageField.addEventListener('change',()=>settings.set({language:languageField.value}));
   inlineMethod.addEventListener('change',()=>settings.set({method:inlineMethod.value}));
   window.addEventListener('atlas-spelling-settings',syncSettings);

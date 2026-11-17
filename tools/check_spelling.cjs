@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const dialog=fs.readFileSync(path.join(root,'knowledge_base/templates/index.html'),'utf8').match(/<dialog id="proofreadingDialog"[\s\S]*?<\/dialog>/)[0];
-const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/blocknote/editor.bundle.css"><link rel="stylesheet" href="/static/proofreading.css"><button id="proofreadingToggle">Abc</button><div id="entryBody"></div>${dialog}<script>window._mountModelSelector=()=>{};window.showToast=(message)=>window.lastToast=message;</script><script src="/static/blocknote/editor.bundle.js"></script><script src="/static/proofreading.js"></script></html>`;
+const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/blocknote/editor.bundle.css"><link rel="stylesheet" href="/static/proofreading.css"><link rel="stylesheet" href="/static/themes.css"><button id="proofreadingToggle">Abc</button><div id="entryBody"></div>${dialog}<script>window._mountModelSelector=()=>{};window.showToast=(message)=>window.lastToast=message;</script><script src="/static/blocknote/editor.bundle.js"></script><script src="/static/proofreading.js"></script></html>`;
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
  try{
@@ -42,7 +42,7 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
 
    await reset('Hécate abjeto.');
    await openWord('Hécate');
-   await page.locator('.atlas-spelling-suggestions p').waitFor();
+   await page.locator('.atlas-spelling-section-label').filter({hasText:'LanguageTool'}).waitFor();
    assert.equal(await page.locator('.atlas-spelling-suggestions button').count(),0,'Contextual service does not propose Sécate');
    assert.equal(requests.length,1);assert.equal(requests[0].text,'Hécate abjeto.');
    await close();
@@ -98,7 +98,6 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
    assert.deepEqual(await page.locator('.atlas-spelling-suggestions button').allTextContents(),['library']);await close();
 
    await reset('Tardio abjeto.');await openWord('abjeto');
-   await page.waitForFunction(()=>document.querySelector('.atlas-spelling-suggestions')?.textContent.includes('Revisando'));
    while(!delayed)await page.waitForTimeout(30);
    await page.evaluate(()=>editor.load('Una página diferente.'));delayed();delayed=null;await settle();
    assert.equal(await page.locator('.atlas-spelling-popover').count(),0,'Stale reply cannot reopen popup');
@@ -127,8 +126,9 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
    await page.keyboard.press('Control+z');assert.equal(await md(),'A librery.');
 
    rateLimit=true;await reset('Otro abjeto para límite.');await openWord('abjeto');
-   await page.waitForFunction(()=>document.querySelector('.atlas-spelling-suggestions')?.textContent.includes('límite'));
-   assert.equal(await page.locator('.atlas-spelling-suggestions button').count(),0,'Quota failure is not replaced with local candidates');
+   await page.waitForFunction(()=>document.querySelector('.atlas-spelling-context-status')?.textContent.includes('límite'));
+   assert.ok((await page.locator('.atlas-spelling-suggestions button').allTextContents()).includes('objeto'),'Explicit local candidates stay usable after a quota error');
+   assert.ok((await page.locator('.atlas-spelling-section-label').textContent()).includes('local'));
    assert.deepEqual(errors,[]);
    console.log(`PASS ${label}: contextual popup/cache, language/NFD, preserve defaults, read-only/stale guards, formatted edits/undo, Abc panel, viewport and quota errors`);
    await context.close();

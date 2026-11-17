@@ -2,7 +2,8 @@
 
 Abre **Abc✓** para elegir el idioma (**Español** o **English**) y el método de
 las sugerencias del editor. La elección se guarda en este navegador y se comparte
-entre páginas, ventanas Peek y el panel de revisión.
+entre páginas, ventanas Peek y el panel de revisión. **Subrayar posibles errores**
+permite quitar las marcas mientras lees sin desactivar el menú de sugerencias.
 
 ## Sugerencias al señalar una palabra
 
@@ -12,12 +13,18 @@ e inglés. El vocabulario técnico de Atlas sigue reconociéndose en ambos idiom
 Las formas Unicode equivalentes de un acento se reconocen sin cambiar el texto
 ni las posiciones de la selección.
 
+El menú muestra candidatos locales inmediatamente, identificados como
+**sin contexto**. Se actualiza al pasar a otra palabra y permite mover el puntero
+al menú para elegir una propuesta, sin exigir un clic previo ni cerrar el anterior.
+
 El método predeterminado es **LanguageTool · con contexto**. Al detener el puntero
 o tocar una palabra marcada, Atlas envía únicamente su párrafo al endpoint de
 revisión de Atlas, que consulta LanguageTool. No envía otras entradas, notas ni
-historial y no llama a un modelo de IA. Las propuestas se limitan a la palabra o
-frase señalada. Si el servicio no señala un error, no se muestran candidatos
-locales como si fueran un resultado contextual. Los diagnósticos del párrafo
+historial y no llama a un modelo de IA. Cuando llega la respuesta, sustituye los candidatos locales por propuestas
+contextuales limitadas a la palabra o frase señalada. Si el servicio no señala un
+error, no se muestran candidatos locales como si fueran un resultado contextual.
+Si no hay conexión o hay un error de cuota, los candidatos locales siguen siendo
+utilizables y el panel explica que no se completó la revisión contextual. Los diagnósticos del párrafo
 revisado se reutilizan mientras su contenido permanezca igual.
 
 **Local · sin conexión ni contexto** utiliza nspell y Hunspell. Su panel identifica
@@ -76,9 +83,13 @@ las posiciones y decoraciones.
 La consulta por hover espera 350 ms. El servicio recibe un párrafo por solicitud,
 no una solicitud por palabra. Popup y Abc✓ comparten solicitudes simultáneas y una
 caché de cinco minutos, limitada a 64 fragmentos y separada por texto e idioma.
+Los números romanos canónicos no se marcan como errores; el vocabulario técnico
+incluye Java, Spring y arquitectura de software. No se ignoran todas las palabras
+en mayúsculas: una errata como «ABJETO» sigue detectándose.
+
 Se descartan respuestas de una página, documento o idioma que ya cambió. Un 429
 activa una pausa de un minuto; errores de conexión, tiempo o cuota se muestran
-sin cambiar silenciosamente a candidatos locales ni a IA.
+sin presentar los candidatos locales como revisión contextual ni recurrir a IA.
 
 El endpoint predeterminado es `https://api.languagetool.org/v2/check`.
 `LANGUAGETOOL_URL` permite usar `/v2/check` de una instancia propia. La dirección
@@ -99,6 +110,9 @@ El build copia sus archivos y licencias a `static/spelling/`.
 - `editor-src/test/spellingReview.test.js`: rangos protegidos, inserciones,
   deduplicación y caché.
 - `editor-src/test/textEdits.test.js`: diferencias conservadoras y formato.
+- `tools/check_spelling_hover.cjs`: Atlas completo y cuatro temas reales; hover
+  entre palabras, proveedor no disponible, términos de una página técnica,
+  alcance del menú, deshacer y subrayado opcional sin perder sugerencias.
 - `tools/check_spelling.cjs`: editor compilado y panel reales en escritorio,
   teléfono y tablet; solo las respuestas de LanguageTool están simuladas.
 

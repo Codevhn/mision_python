@@ -47,6 +47,11 @@ export function suggestionsFor(spell, word) {
   return ranked.sort((a,b) => a.distance-b.distance || Number(b.technical)-Number(a.technical) || a.relativeDistance-b.relativeDistance || a.lengthDifference-b.lengthDifference || a.index-b.index)
     .slice(0,6).map(candidate => candidate.text);
 }
+// Structural numbering is not prose; validate canonical Roman numerals rather
+// than treating arbitrary uppercase words as acronyms and hiding their typos.
+export function isRomanNumeral(word) {
+  return /^[MDCLXVI]+$/.test(word) && /^(?=.)M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/.test(word);
+}
 export function wordRanges(text) {
   return [...text.matchAll(/[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*/gu)].map(match=>({word:match[0],offset:match.index}));
 }

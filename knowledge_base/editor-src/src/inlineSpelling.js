@@ -2,7 +2,7 @@ import nspell from 'nspell';
 import {Plugin, PluginKey} from '@tiptap/pm/state';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import {closeHistory} from '@tiptap/pm/history';
-import {wordRanges, suggestionsFor, createSpellingDictionary} from './spellingWords.js';
+import {wordRanges, suggestionsFor, createSpellingDictionary, isRomanNumeral} from './spellingWords.js';
 import {getSpellingSettings, setSpellingSettings, reviewContext, mappedFinding, clearSpellingCache} from './spellingReview.js';
 
 const key=new PluginKey('atlasSpelling');
@@ -55,7 +55,7 @@ function scan(doc,spell,language,method){
     let perDictionary=analyses.get(node);
     if(!perDictionary){perDictionary=new WeakMap();analyses.set(node,perDictionary);}
     let tokens=perDictionary.get(spell);
-    if(!tokens){tokens=wordRanges(fragment.text).filter(({word,offset})=>word.length>=2&&word.length<=60&&!fragment.blocked.slice(offset,offset+word.length).some(Boolean)&&!spell.correct(word));perDictionary.set(spell,tokens);}
+    if(!tokens){tokens=wordRanges(fragment.text).filter(({word,offset})=>word.length>=2&&word.length<=60&&!isRomanNumeral(word)&&!fragment.blocked.slice(offset,offset+word.length).some(Boolean)&&!spell.correct(word));perDictionary.set(spell,tokens);}
     for(const {word,offset} of tokens){
       if(ignored.has(normalize(word))||personal.has(normalize(word)))continue;
       issues.push({word,offset,from:fragment.positions[offset],to:fragment.positions[offset+word.length-1]+1,paragraph:pos,text:fragment.text});
@@ -65,9 +65,9 @@ function scan(doc,spell,language,method){
   return issues;
 }
 export function installInlineSpelling(tip){
-  let active=true,timer=null,spell=null,issues=[],scannedDoc=null,popup=null,popupAnchor=null,review=null,requestTimer=null;
+  let active=true,timer=null,spell=null,issues=[],scannedDoc=null,popup=null,popupAnchor=null,review=null,requestTimer=null,hoverTimer=null;
   let language=getSpellingSettings().language,loadSequence=0;
-  function closePopup(){const hadPopup=Boolean(popup);clearTimeout(requestTimer);popup?.remove();popup=null;popupAnchor=null;
+  function closePopup(){const hadPopup=Boolean(popup);clearTimeout(requestTimer);clearTimeout(hoverTimer);popup?.remove();popup=null;popupAnchor=null;
     if(hadPopup)queueMicrotask(()=>{if(!popup&&active&&spell&&!tip.isDestroyed)check();});
   }
   function rememberContext(doc,fragment,matches,reviewLanguage){
@@ -85,7 +85,7 @@ export function installInlineSpelling(tip){
   function check(){
     if(!active||!spell||tip.isDestroyed)return;
     scannedDoc=tip.state.doc;issues=scan(scannedDoc,spell,language,getSpellingSettings().method);
-    const decorations=issues.map((issue,index)=>Decoration.inline(issue.from,issue.to,{class:'atlas-spelling-error','data-spelling-index':String(index),'aria-label':'Posible error ortográfico: '+issue.word}));
+    const decorations=issues.map((issue,index)=>Decoration.inline(issue.from,issue.to,{class:'atlas-spelling-target'+(getSpellingSettings().underline?' atlas-spelling-error':''),'data-spelling-index':String(index),'aria-label':'Posible error ortográfico: '+issue.word}));
     tip.view.dispatch(tip.state.tr.setMeta(key,DecorationSet.create(scannedDoc,decorations)).setMeta('addToHistory',false));
   }
   function schedule(){clearTimeout(timer);timer=setTimeout(check,450);}
@@ -165,9 +165,12 @@ export function installInlineSpelling(tip){
       if(panel.isConnected)positionPopup();
     }
     const method=getSpellingSettings().method;
-    if(method==='local')render([{...issue,replacements:suggestionsFor(spell,issue.word)}],'Candidatos locales · sin contexto');
-    else{
-      suggestions.textContent='Revisando el párrafo con LanguageTool…';
+    // Local candidates are immediately usable, even during a slow/unavailable
+    // contextual check. Never label them as LanguageTool's recommendations.
+    render([{...issue,replacements:suggestionsFor(spell,issue.word)}],'Candidatos locales · sin contexto');
+    const contextStatus=document.createElement('p');contextStatus.className='atlas-spelling-context-status';contextStatus.setAttribute('role','status');panel.append(contextStatus);
+    if(method==='languagetool'){
+      contextStatus.textContent='Consultando también el contexto con LanguageTool…';
       const fragment=paragraphFragment(issue),requestedLanguage=language;
       requestTimer=setTimeout(async()=>{
         try{
@@ -175,7 +178,8 @@ export function installInlineSpelling(tip){
           if(popup!==panel||!valid(issue)||language!==requestedLanguage)return;
           rememberContext(scannedDoc,fragment,matches,requestedLanguage);
           render(matches.map(match=>mappedFinding(fragment,match)).filter(item=>item&&item.from<issue.to&&item.to>issue.from),'LanguageTool · según el contexto');
-        }catch(error){if(popup===panel&&valid(issue)){suggestions.textContent=error.message;positionPopup();}}
+          contextStatus.textContent='';
+        }catch(error){if(popup===panel&&valid(issue)){contextStatus.textContent=error.message+' Se mantienen los candidatos locales, sin revisión contextual.';positionPopup();}}
       },350);
     }
     const actions=document.createElement('div');actions.className='atlas-spelling-actions';panel.append(actions);
@@ -185,6 +189,7 @@ export function installInlineSpelling(tip){
     const select=document.createElement('select');select.setAttribute('aria-label','Idioma del corrector');
     for(const [value,label] of [['es','Español'],['en-US','English']]){const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);}select.value=language;select.addEventListener('change',()=>setSpellingSettings({language:select.value}));actions.append(select);
     button(method==='local'?'Usar LanguageTool':'Usar revisión local sin conexión',()=>setSpellingSettings({method:method==='local'?'languagetool':'local'}),actions);
+    panel.addEventListener('mouseenter',()=>clearTimeout(hoverTimer));
     popupAnchor=node;document.body.append(panel);positionPopup();
   }
   function positionPopup(){
@@ -199,14 +204,23 @@ export function installInlineSpelling(tip){
   const plugin=new Plugin({key,
     state:{init:()=>DecorationSet.empty,apply:(tr,old)=>tr.getMeta(key)||(tr.docChanged?DecorationSet.empty:old.map(tr.mapping,tr.doc))},
     props:{decorations:state=>key.getState(state),handleDOMEvents:{
-      mouseover:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-error');if(node&&!popup)showPopup(node);return false;},
-      click:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-error');if(node)showPopup(node);return false;}
+      mouseover:(view,event)=>{
+        const node=event.target.closest?.('.atlas-spelling-target');
+        clearTimeout(hoverTimer);
+        if(node){
+          if(!popup)showPopup(node);
+          else if(popup.dataset.from!==String(issues[Number(node.dataset.spellingIndex)]?.from))hoverTimer=setTimeout(()=>{if(node.isConnected)showPopup(node);},120);
+        }
+        return false;
+      },
+      mouseout:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-target');if(node&&!node.contains(event.relatedTarget))clearTimeout(hoverTimer);return false;},
+      click:(view,event)=>{const node=event.target.closest?.('.atlas-spelling-target');if(node)showPopup(node);return false;}
     }},
     view:()=>({update:(view,previous)=>{if(view.state.doc!==previous.doc){closePopup();if(review){review.querySelector('[type="submit"]').disabled=true;review.querySelector('[role="status"]').textContent='El párrafo cambió. Revísalo de nuevo antes de corregir.';}schedule();}else if(review&&!tip.isEditable){review.querySelector('[type="submit"]').disabled=true;}},destroy:()=>{active=false;clearTimeout(timer);closePopup();review?.close();}})
   });
   tip.registerPlugin(plugin);loadDictionary();
   const onKey=event=>{if(event.key==='Escape'&&popup){closePopup();event.stopPropagation();}};
-  const dismiss=event=>{if(popup&&!popup.contains(event.target)&&!event.target.closest?.('.atlas-spelling-error'))closePopup();};
+  const dismiss=event=>{if(popup&&!popup.contains(event.target)&&!event.target.closest?.('.atlas-spelling-target'))closePopup();};
   document.addEventListener('keydown',onKey,true);document.addEventListener('pointerdown',dismiss);document.addEventListener('scroll',positionPopup,true);window.addEventListener('resize',positionPopup);window.visualViewport?.addEventListener('resize',positionPopup);window.visualViewport?.addEventListener('scroll',positionPopup);window.addEventListener('atlas-spelling-settings',settingsChanged);
   return {reviewParagraph:()=>{if(!spell){window.showToast?.('El diccionario se está cargando.','info');return;}reviewParagraph();},destroy:()=>{
     active=false;clearTimeout(timer);closePopup();review?.close();document.removeEventListener('keydown',onKey,true);document.removeEventListener('pointerdown',dismiss);document.removeEventListener('scroll',positionPopup,true);window.removeEventListener('resize',positionPopup);window.visualViewport?.removeEventListener('resize',positionPopup);window.visualViewport?.removeEventListener('scroll',positionPopup);window.removeEventListener('atlas-spelling-settings',settingsChanged);if(!tip.isDestroyed)tip.unregisterPlugin(key);
