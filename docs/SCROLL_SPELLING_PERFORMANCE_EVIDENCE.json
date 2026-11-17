@@ -1,0 +1,2496 @@
+{
+  "baseline": "504bf53",
+  "scope": "Disposable full Atlas; synthetic text; controlled LanguageTool replies; not the user document or physical device",
+  "baseline_bundle_sha256": "5b5f66f5f6643fd41dcae80d633262810a2ac734ea76e8cff48dc8e6f77b0864",
+  "corrected_bundle_sha256": "92c05658f0b582c89393c7f2a58e6f26990e8fc95f0891f2739a673b2ece0d6d",
+  "experiments": {
+    "steady_exploratory": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 80,
+          "chars": 37532,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "off",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 175,
+              "totalMs": 2.9999999962747097,
+              "maxMs": 0.19999999925494194
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 7.999999998137355,
+              "maxMs": 6.799999998882413
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 44.600000001490116,
+              "maxMs": 40.90000000037253
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            }
+          },
+          "blocks": 87,
+          "marks": 320,
+          "targets": 320,
+          "domNodes": 2927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.699999999999818,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.800000000000182,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.09999999962747097
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 12.721999999999998,
+            "layoutMs": 0,
+            "styleMs": 26.613,
+            "taskMs": 148.35300000000007,
+            "heapMb": 46.62626266479492
+          }
+        },
+        {
+          "paragraphs": 80,
+          "chars": 37532,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "popup",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 175,
+              "totalMs": 5.100000001490116,
+              "maxMs": 0.900000000372529
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 12.099999999627471,
+              "maxMs": 10.599999999627471
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 52.999999998137355,
+              "maxMs": 50.19999999925494
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            }
+          },
+          "blocks": 87,
+          "marks": 320,
+          "targets": 320,
+          "domNodes": 2927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 33.29999999999927,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 38.600000005215406,
+                "maxMs": 1.800000000745058
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 32.193,
+            "layoutMs": 1.8289999999999973,
+            "styleMs": 34.04999999999997,
+            "taskMs": 219.50100000000018,
+            "heapMb": 49.9171028137207
+          }
+        },
+        {
+          "paragraphs": 80,
+          "chars": 37532,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "popup",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 175,
+              "totalMs": 7.199999991804361,
+              "maxMs": 1.199999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 14.199999999254942,
+              "maxMs": 12.899999998509884
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 44.5,
+              "maxMs": 42.29999999888241
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            }
+          },
+          "blocks": 87,
+          "marks": 320,
+          "targets": 320,
+          "domNodes": 2927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.799999999999272,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 30.600000005215406,
+                "maxMs": 1.599999999627471
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 27.63500000000002,
+            "layoutMs": 1.8720000000000125,
+            "styleMs": 28.442999999999998,
+            "taskMs": 261.12100000000015,
+            "heapMb": 52.19411849975586
+          }
+        },
+        {
+          "paragraphs": 80,
+          "chars": 37532,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "off",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 175,
+              "totalMs": 6.700000004842877,
+              "maxMs": 1.400000000372529
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 17.899999998509884,
+              "maxMs": 16.199999999254942
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 48.5,
+              "maxMs": 45.90000000037253
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.19999999925494194,
+              "maxMs": 0.19999999925494194
+            }
+          },
+          "blocks": 87,
+          "marks": 320,
+          "targets": 320,
+          "domNodes": 2927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 33.299999999995634,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 236,
+                "totalMs": 1.200000001117587,
+                "maxMs": 0.900000000372529
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 11.255999999999933,
+            "layoutMs": 0,
+            "styleMs": 26.31400000000006,
+            "taskMs": 120.79599999999945,
+            "heapMb": 53.08545684814453
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "off",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 91.3999999947846,
+              "maxMs": 25.199999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 168.7999999988824,
+              "maxMs": 147.59999999962747
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 545.3999999985099,
+              "maxMs": 507.69999999925494
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000004366,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.6999999973922968,
+                "maxMs": 0.09999999962747097
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 11.960999999999999,
+            "layoutMs": 0,
+            "styleMs": 26.886999999999883,
+            "taskMs": 148.40799999999987,
+            "heapMb": 57.9318962097168
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "popup",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 25.19999999552965,
+              "maxMs": 2
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 74.09999999962747,
+              "maxMs": 62.09999999962747
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 362.7000000011176,
+              "maxMs": 336.69999999925494
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999995634,
+            "maxMs": 33.400000000001455,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 35.80000000447035,
+                "maxMs": 2.400000000372529
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 27.231000000000005,
+            "layoutMs": 1.39099999999992,
+            "styleMs": 34.32799999999992,
+            "taskMs": 200.52199999999942,
+            "heapMb": 67.6074333190918
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "popup",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 92.39999998360872,
+              "maxMs": 9.199999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 248.99999999813735,
+              "maxMs": 224.39999999850988
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 703.4000000003725,
+              "maxMs": 668.7999999988824
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.09999999962747097,
+              "maxMs": 0.09999999962747097
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 131,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999995634,
+            "maxMs": 50,
+            "framesOver33Ms": 2,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 236,
+                "totalMs": 40.600000001490116,
+                "maxMs": 5.199999999254942
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 31.613000000000113,
+            "layoutMs": 2.471000000000334,
+            "styleMs": 41.661999999999644,
+            "taskMs": 286.0949999999996,
+            "heapMb": 85.95824813842773
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "off",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 64.20000000484288,
+              "maxMs": 1.900000000372529
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 148.19999999925494,
+              "maxMs": 135.19999999925494
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 563.2999999988824,
+              "maxMs": 541.2999999988824
+            },
+            "positionPopup": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.09999999962747097,
+              "maxMs": 0.09999999962747097
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8927,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.70000000001164,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.09999999962747097,
+                "maxMs": 0.09999999962747097
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 12.805999999999873,
+            "layoutMs": 0,
+            "styleMs": 31.509999999999927,
+            "taskMs": 139.4340000000014,
+            "heapMb": 95.14789199829102
+          }
+        }
+      ]
+    },
+    "close_before_instrumented": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 22.8000000230968,
+              "maxMs": 1.800000000745058
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 82.10000000149012,
+              "maxMs": 65.80000000074506
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 404.30000000447035,
+              "maxMs": 372.80000000074506
+            },
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.20000000298023224,
+              "maxMs": 0.20000000298023224
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 9005,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.699999999999818,
+            "p95Ms": 16.800000000000182,
+            "maxMs": 71.42200000074536,
+            "framesOver33Ms": 3,
+            "longTasks": [
+              {
+                "start": 6881.199999999255,
+                "duration": 71
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "fragmentFor": {
+                "count": 867,
+                "totalMs": 4.200000002980232,
+                "maxMs": 0.10000000149011612
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 10.800000000745058,
+                "maxMs": 10.800000000745058
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 68.20000000298023,
+                "maxMs": 68.20000000298023
+              },
+              "positionPopup": {
+                "count": 238,
+                "totalMs": 0.5,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 95.65,
+            "layoutMs": 1.6190000000000093,
+            "styleMs": 33.997,
+            "taskMs": 311.3539999999999,
+            "heapMb": 57.07019805908203
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 26.600000016391277,
+              "maxMs": 1.1000000014901161
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 81.69999999925494,
+              "maxMs": 66.90000000223517
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 421.8999999985099,
+              "maxMs": 395
+            },
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.600000001490116,
+              "maxMs": 2.600000001490116
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 1.1000000014901161,
+              "maxMs": 1.1000000014901161
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.400000002235174,
+              "maxMs": 4.400000002235174
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 9022,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 17.23199999851022,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.19999999925494194
+              },
+              "fragmentFor": {
+                "count": 867,
+                "totalMs": 6.100000001490116,
+                "maxMs": 0.6000000014901161
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 11.300000000745058,
+                "maxMs": 11.300000000745058
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 23.5,
+                "maxMs": 23.5
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.30000000074505806,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 46.093999999999966,
+            "layoutMs": 0.5060000000000064,
+            "styleMs": 30.027000000000026,
+            "taskMs": 217.62300000000013,
+            "heapMb": 57.655033111572266
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 27.499999973922968,
+              "maxMs": 7.099999997764826
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 72.09999999776483,
+              "maxMs": 62.5
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 365.3999999985099,
+              "maxMs": 348
+            },
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.100000001490116,
+              "maxMs": 2.100000001490116
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.6999999992549419,
+              "maxMs": 0.6999999992549419
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.300000000745058,
+              "maxMs": 3.300000000745058
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 9022,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.19999999925494194
+              },
+              "fragmentFor": {
+                "count": 867,
+                "totalMs": 6.200000002980232,
+                "maxMs": 0.3999999985098839
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 13.200000002980232,
+                "maxMs": 13.200000002980232
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 24.100000001490116,
+                "maxMs": 24.100000001490116
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0,
+                "maxMs": 0
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 46.022000000000006,
+            "layoutMs": 0.144000000000033,
+            "styleMs": 34.96700000000019,
+            "taskMs": 221.14800000000034,
+            "heapMb": 63.93263626098633
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 1736,
+              "totalMs": 26.200000017881393,
+              "maxMs": 2.199999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 82.49999999627471,
+              "maxMs": 67.09999999776483
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 430,
+              "maxMs": 406.19999999925494
+            },
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 3,
+              "maxMs": 2.199999999254942
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.8999999985098839,
+              "maxMs": 0.8999999985098839
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.800000000745058,
+              "maxMs": 3.800000000745058
+            }
+          },
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 9021,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.80000000000291,
+            "maxMs": 54.16400000000067,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 21514,
+                "duration": 54
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.09999999776482582,
+                "maxMs": 0.09999999776482582
+              },
+              "fragmentFor": {
+                "count": 867,
+                "totalMs": 6.5999999940395355,
+                "maxMs": 0.8000000007450581
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 13.399999998509884,
+                "maxMs": 13.399999998509884
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 54.099999997764826,
+                "maxMs": 54.099999997764826
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.20000000298023224,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 74.33599999999996,
+            "layoutMs": 2.2400000000000198,
+            "styleMs": 27.48000000000017,
+            "taskMs": 278.55800000000033,
+            "heapMb": 70.44570541381836
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 3470,
+              "totalMs": 53.00000002607703,
+              "maxMs": 2.400000002235174
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 141.40000000223517,
+              "maxMs": 115.70000000298023
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 918.0000000037253,
+              "maxMs": 860.7000000029802
+            },
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 2.899999998509884,
+              "maxMs": 2.2999999970197678
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.19999999925494194,
+              "maxMs": 0.19999999925494194
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.5999999977648258,
+              "maxMs": 0.5999999977648258
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.5,
+              "maxMs": 3.5
+            }
+          },
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15689,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 137.29400000074384,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 27680.800000000745,
+                "duration": 147
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.19999999925494194
+              },
+              "fragmentFor": {
+                "count": 1734,
+                "totalMs": 10.899999987334013,
+                "maxMs": 0.9000000022351742
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 22.399999998509884,
+                "maxMs": 22.399999998509884
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 147,
+                "maxMs": 147
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.6000000014901161,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 169.34800000000027,
+            "layoutMs": 2.927000000000124,
+            "styleMs": 30.69199999999972,
+            "taskMs": 345.130000000001,
+            "heapMb": 80.92363739013672
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 3469,
+              "totalMs": 55.5,
+              "maxMs": 7.5
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 139.59999999403954,
+              "maxMs": 113.09999999776483
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 754.4999999962747,
+              "maxMs": 699.8999999985099
+            },
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.399999998509884,
+              "maxMs": 2.2999999970197678
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.19999999925494194,
+              "maxMs": 0.19999999925494194
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.6999999992549419,
+              "maxMs": 0.6999999992549419
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.5,
+              "maxMs": 3.5
+            }
+          },
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15690,
+          "scroll": {
+            "distance": 2800,
+            "frames": 134,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000004366,
+            "maxMs": 53.764000000745,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 33746.5,
+                "duration": 55
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0,
+                "maxMs": 0
+              },
+              "fragmentFor": {
+                "count": 1734,
+                "totalMs": 13.600000016391277,
+                "maxMs": 0.8999999985098839
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 26,
+                "maxMs": 26
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 54.80000000074506,
+                "maxMs": 54.80000000074506
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.30000000074505806,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 81.5990000000002,
+            "layoutMs": 0.688000000000244,
+            "styleMs": 25.098999999999982,
+            "taskMs": 281.88300000000055,
+            "heapMb": 80.87896728515625
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 3469,
+              "totalMs": 58.69999999180436,
+              "maxMs": 10.699999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 145.20000000298023,
+              "maxMs": 113.5
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 743.2000000029802,
+              "maxMs": 682.1999999992549
+            },
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.800000000745058,
+              "maxMs": 2.800000000745058
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.10000000149011612,
+              "maxMs": 0.10000000149011612
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.7999999970197678,
+              "maxMs": 0.7999999970197678
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.300000000745058,
+              "maxMs": 4.300000000745058
+            }
+          },
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15690,
+          "scroll": {
+            "distance": 2800,
+            "frames": 134,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000004366,
+            "maxMs": 50.099999999998545,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 39905.800000000745,
+                "duration": 54
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.19999999925494194
+              },
+              "fragmentFor": {
+                "count": 1734,
+                "totalMs": 11.699999995529652,
+                "maxMs": 1
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 24,
+                "maxMs": 24
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 54.399999998509884,
+                "maxMs": 54.399999998509884
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.20000000298023224,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 74.951,
+            "layoutMs": 0.15800000000032455,
+            "styleMs": 25.622000000000256,
+            "taskMs": 239.28000000000083,
+            "heapMb": 94.22161483764648
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "fragmentFor": {
+              "count": 3470,
+              "totalMs": 57.899999994784594,
+              "maxMs": 7.699999999254942
+            },
+            "scan": {
+              "count": 3,
+              "totalMs": 136.80000000074506,
+              "maxMs": 107.69999999925494
+            },
+            "check": {
+              "count": 3,
+              "totalMs": 751.3000000007451,
+              "maxMs": 694.3999999985099
+            },
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 3.399999998509884,
+              "maxMs": 2.5
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.29999999701976776,
+              "maxMs": 0.29999999701976776
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 1.0999999977648258,
+              "maxMs": 1.0999999977648258
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.200000002980232,
+              "maxMs": 4.200000002980232
+            }
+          },
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15689,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999995634,
+            "maxMs": 125.32800000149291,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 46042.39999999851,
+                "duration": 133
+              }
+            ],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.19999999925494194,
+                "maxMs": 0.19999999925494194
+              },
+              "fragmentFor": {
+                "count": 1734,
+                "totalMs": 12.400000017136335,
+                "maxMs": 0.9000000022351742
+              },
+              "scan": {
+                "count": 1,
+                "totalMs": 25,
+                "maxMs": 25
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 132.59999999776483,
+                "maxMs": 132.59999999776483
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.6000000052154064,
+                "maxMs": 0.19999999925494194
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 154.61100000000005,
+            "layoutMs": 3.854000000000024,
+            "styleMs": 24.526999999999965,
+            "taskMs": 355.6819999999981,
+            "heapMb": 107.98717498779297
+          }
+        }
+      ]
+    },
+    "close_after_instrumented": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "closePopup": {
+              "count": 2,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.30000000074505806,
+              "maxMs": 0.30000000074505806
+            },
+            "fragmentFor": {
+              "count": 867,
+              "totalMs": 24.80000000447035,
+              "maxMs": 6.399999998509884
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 58.399999998509884,
+              "maxMs": 58.399999998509884
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 411.19999999925494,
+              "maxMs": 411.19999999925494
+            }
+          },
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7352,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.699999999999818,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.800000000000182,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "fragmentFor": {
+                "count": 1,
+                "totalMs": 0,
+                "maxMs": 0
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 3.800000000745058,
+                "maxMs": 3.800000000745058
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.30000000074505806,
+                "maxMs": 0.19999999925494194
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 27.39800000000003,
+            "layoutMs": 1.4660000000000228,
+            "styleMs": 23.34400000000003,
+            "taskMs": 196.66000000000005,
+            "heapMb": 61.6068229675293
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.300000000745058,
+              "maxMs": 2.300000000745058
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.09999999776482582,
+              "maxMs": 0.09999999776482582
+            },
+            "fragmentFor": {
+              "count": 867,
+              "totalMs": 20.599999982863665,
+              "maxMs": 1.699999999254942
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 60.19999999925494,
+              "maxMs": 60.19999999925494
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 340.1000000014901,
+              "maxMs": 340.1000000014901
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.8000000007450581,
+              "maxMs": 0.8000000007450581
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.800000000745058,
+              "maxMs": 3.800000000745058
+            }
+          },
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7370,
+          "scroll": {
+            "distance": 2800,
+            "frames": 134,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 16.80000000000109,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.09999999776482582,
+                "maxMs": 0.09999999776482582
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.5,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 21.737000000000005,
+            "layoutMs": 0.1140000000000585,
+            "styleMs": 26.974000000000053,
+            "taskMs": 204.7500000000002,
+            "heapMb": 61.324440002441406
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.400000002235174,
+              "maxMs": 2.400000002235174
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.10000000149011612,
+              "maxMs": 0.10000000149011612
+            },
+            "fragmentFor": {
+              "count": 867,
+              "totalMs": 42.100000005215406,
+              "maxMs": 7
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 93.69999999925494,
+              "maxMs": 93.69999999925494
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 389.3999999985099,
+              "maxMs": 389.3999999985099
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.8000000007450581,
+              "maxMs": 0.8000000007450581
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 3.900000002235174,
+              "maxMs": 3.900000002235174
+            }
+          },
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7370,
+          "scroll": {
+            "distance": 2800,
+            "frames": 125,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 150,
+            "framesOver33Ms": 2,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.09999999776482582,
+                "maxMs": 0.09999999776482582
+              },
+              "positionPopup": {
+                "count": 224,
+                "totalMs": 0.3999999947845936,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 25.53300000000003,
+            "layoutMs": 0.14900000000006575,
+            "styleMs": 23.010999999999893,
+            "taskMs": 181.96799999999945,
+            "heapMb": 67.65523147583008
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 2.7999999970197678,
+              "maxMs": 2.2999999970197678
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.10000000149011612,
+              "maxMs": 0.10000000149011612
+            },
+            "fragmentFor": {
+              "count": 868,
+              "totalMs": 25.400000009685755,
+              "maxMs": 2
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 68.30000000074506,
+              "maxMs": 68.30000000074506
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 304.8999999985099,
+              "maxMs": 304.8999999985099
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.8000000007450581,
+              "maxMs": 0.8000000007450581
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.199999999254942,
+              "maxMs": 4.199999999254942
+            }
+          },
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7369,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "fragmentFor": {
+                "count": 1,
+                "totalMs": 0,
+                "maxMs": 0
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 4.100000001490116,
+                "maxMs": 4.100000001490116
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.4000000022351742,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 33.06100000000001,
+            "layoutMs": 1.3449999999999296,
+            "styleMs": 28.61899999999995,
+            "taskMs": 216.43499999999972,
+            "heapMb": 73.8235969543457
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 3.2999999970197678,
+              "maxMs": 2.399999998509884
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.09999999776482582,
+              "maxMs": 0.09999999776482582
+            },
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 46.099999975413084,
+              "maxMs": 2.800000000745058
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 116.89999999850988,
+              "maxMs": 116.89999999850988
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 752.7999999970198,
+              "maxMs": 752.7999999970198
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.6999999992549419,
+              "maxMs": 0.6999999992549419
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.299999997019768,
+              "maxMs": 4.299999997019768
+            }
+          },
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12437,
+          "scroll": {
+            "distance": 2800,
+            "frames": 134,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.09999999776482582,
+                "maxMs": 0.09999999776482582
+              },
+              "fragmentFor": {
+                "count": 1,
+                "totalMs": 0,
+                "maxMs": 0
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 4.599999997764826,
+                "maxMs": 4.599999997764826
+              },
+              "positionPopup": {
+                "count": 242,
+                "totalMs": 0.6000000052154064,
+                "maxMs": 0.20000000298023224
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 30.208000000000013,
+            "layoutMs": 1.9209999999998395,
+            "styleMs": 37.28200000000026,
+            "taskMs": 245.72799999999972,
+            "heapMb": 80.78831100463867
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 2.800000000745058,
+              "maxMs": 2.800000000745058
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.10000000149011612,
+              "maxMs": 0.10000000149011612
+            },
+            "fragmentFor": {
+              "count": 1734,
+              "totalMs": 79.69999995455146,
+              "maxMs": 4.399999998509884
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 214.19999999925494,
+              "maxMs": 214.19999999925494
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 814.3999999985099,
+              "maxMs": 814.3999999985099
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 0.6000000014901161,
+              "maxMs": 0.6000000014901161
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.099999997764826,
+              "maxMs": 4.099999997764826
+            }
+          },
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12438,
+          "scroll": {
+            "distance": 2800,
+            "frames": 132,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.80000000000291,
+            "maxMs": 50,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "positionPopup": {
+                "count": 238,
+                "totalMs": 0.30000000074505806,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 29.76599999999996,
+            "layoutMs": 0.11099999999997223,
+            "styleMs": 23.625000000000007,
+            "taskMs": 235.5160000000005,
+            "heapMb": 80.58794403076172
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "escape-local",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 2,
+              "totalMs": 3,
+              "maxMs": 3
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "fragmentFor": {
+              "count": 1734,
+              "totalMs": 39.900000020861626,
+              "maxMs": 3.099999997764826
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 112.60000000149012,
+              "maxMs": 112.60000000149012
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 673.8000000007451,
+              "maxMs": 673.8000000007451
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 2,
+              "maxMs": 2
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 6,
+              "maxMs": 6
+            }
+          },
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12438,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000004366,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.3999999947845936,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 23.099000000000203,
+            "layoutMs": 0.440000000000218,
+            "styleMs": 27.2199999999998,
+            "taskMs": 210.28800000000203,
+            "heapMb": 92.1656265258789
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 1,
+          "mode": "context-close",
+          "instrumented": true,
+          "calls": {
+            "positionPopup": {
+              "count": 3,
+              "totalMs": 3.5,
+              "maxMs": 2.300000000745058
+            },
+            "closePopup": {
+              "count": 3,
+              "totalMs": 0,
+              "maxMs": 0
+            },
+            "duplicateIdentityRepairs": {
+              "count": 1,
+              "totalMs": 0.19999999925494194,
+              "maxMs": 0.19999999925494194
+            },
+            "fragmentFor": {
+              "count": 1735,
+              "totalMs": 35.00000000745058,
+              "maxMs": 1.699999999254942
+            },
+            "scan": {
+              "count": 1,
+              "totalMs": 106.40000000223517,
+              "maxMs": 106.40000000223517
+            },
+            "check": {
+              "count": 2,
+              "totalMs": 610.3000000007451,
+              "maxMs": 610.3000000007451
+            },
+            "suggestionsFor": {
+              "count": 1,
+              "totalMs": 1.2000000029802322,
+              "maxMs": 1.2000000029802322
+            },
+            "showPopup": {
+              "count": 1,
+              "totalMs": 4.300000000745058,
+              "maxMs": 4.300000000745058
+            }
+          },
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12437,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.73399999999674,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {
+              "closePopup": {
+                "count": 1,
+                "totalMs": 0.10000000149011612,
+                "maxMs": 0.10000000149011612
+              },
+              "fragmentFor": {
+                "count": 1,
+                "totalMs": 0,
+                "maxMs": 0
+              },
+              "check": {
+                "count": 1,
+                "totalMs": 15.800000000745058,
+                "maxMs": 15.800000000745058
+              },
+              "positionPopup": {
+                "count": 240,
+                "totalMs": 0.30000000074505806,
+                "maxMs": 0.10000000149011612
+              }
+            },
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 37.828999999999894,
+            "layoutMs": 2.946000000000115,
+            "styleMs": 29.866999999999422,
+            "taskMs": 209.94899999999816,
+            "heapMb": 104.15654373168945
+          }
+        }
+      ]
+    },
+    "production_before": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8957,
+          "scroll": {
+            "distance": 2800,
+            "frames": 138,
+            "p50Ms": 16.699999999999818,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 61.96399999999994,
+            "framesOver33Ms": 1,
+            "longTasks": [
+              {
+                "start": 6591.39999999851,
+                "duration": 69
+              }
+            ],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 85.98800000000001,
+            "layoutMs": 1.517000000000046,
+            "styleMs": 28.542000000000012,
+            "taskMs": 269.579,
+            "heapMb": 57.365501403808594
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 867,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 8974,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 29.032000001490815,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 50.072,
+            "layoutMs": 0.7670000000000732,
+            "styleMs": 25.704999999999977,
+            "taskMs": 228.5330000000001,
+            "heapMb": 57.36351776123047
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15641,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 133.29999999999927,
+            "framesOver33Ms": 2,
+            "longTasks": [
+              {
+                "start": 17569.5,
+                "duration": 141
+              }
+            ],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 162.31600000000012,
+            "layoutMs": 13.136999999999954,
+            "styleMs": 25.545999999999847,
+            "taskMs": 451.4830000000005,
+            "heapMb": 74.55274200439453
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 6400,
+          "targets": 6400,
+          "domNodes": 15642,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 44.397999998509476,
+            "framesOver33Ms": 3,
+            "longTasks": [
+              {
+                "start": 23774.39999999851,
+                "duration": 52
+              }
+            ],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 71.43300000000008,
+            "layoutMs": 0.6839999999999069,
+            "styleMs": 24.29199999999998,
+            "taskMs": 305.8490000000003,
+            "heapMb": 74.62714385986328
+          }
+        }
+      ]
+    },
+    "production_after": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7370,
+          "scroll": {
+            "distance": 2800,
+            "frames": 136,
+            "p50Ms": 16.699999999999818,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 33.400000000001455,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 24.851999999999986,
+            "layoutMs": 1.3600000000000279,
+            "styleMs": 28.24700000000002,
+            "taskMs": 220.70099999999982,
+            "heapMb": 61.425689697265625
+          }
+        },
+        {
+          "paragraphs": 800,
+          "chars": 375973,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 867,
+          "marks": 1600,
+          "targets": 1600,
+          "domNodes": 7388,
+          "scroll": {
+            "distance": 2800,
+            "frames": 133,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 16.80000000000109,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 19.55499999999999,
+            "layoutMs": 0.35999999999991594,
+            "styleMs": 29.499000000000052,
+            "taskMs": 196.75500000000002,
+            "heapMb": 61.38294219970703
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12455,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 24.407000000000068,
+            "layoutMs": 3.247,
+            "styleMs": 29.513000000000122,
+            "taskMs": 206.7269999999999,
+            "heapMb": 74.22706604003906
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12456,
+          "scroll": {
+            "distance": 2800,
+            "frames": 132,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 16.700000000000728,
+            "maxMs": 33.29999999999927,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 24.639999999999993,
+            "layoutMs": 0.5999999999999339,
+            "styleMs": 28.907999999999934,
+            "taskMs": 253.35999999999893,
+            "heapMb": 74.09400939941406
+          }
+        }
+      ]
+    },
+    "hyprland_probe": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "hyprland",
+          "iteration": 0,
+          "mode": "popup",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12523,
+          "scroll": {
+            "distance": 2800,
+            "frames": 115,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 33.399999999999636,
+            "maxMs": 66.70000000000073,
+            "framesOver33Ms": 21,
+            "longTasks": [
+              {
+                "start": 9649.099999997765,
+                "duration": 62
+              }
+            ],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 24.187999999999988,
+            "layoutMs": 1.583000000000001,
+            "styleMs": 10.086999999999957,
+            "taskMs": 451.635,
+            "heapMb": 68.05609893798828
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "hyprland",
+          "iteration": 0,
+          "mode": "popup-no-blur",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12542,
+          "scroll": {
+            "distance": 2800,
+            "frames": 93,
+            "p50Ms": 16.700000000000728,
+            "p95Ms": 33.399999999999636,
+            "maxMs": 50,
+            "framesOver33Ms": 39,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": true,
+            "scriptMs": 18.623000000000054,
+            "layoutMs": 1.527000000000056,
+            "styleMs": 9.260000000000268,
+            "taskMs": 211.76400000000052,
+            "heapMb": 79.33758926391602
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "hyprland",
+          "iteration": 0,
+          "mode": "off",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12541,
+          "scroll": {
+            "distance": 2800,
+            "frames": 120,
+            "p50Ms": 16.69999999999709,
+            "p95Ms": 33.400000000001455,
+            "maxMs": 66.60000000000218,
+            "framesOver33Ms": 16,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 11.220999999999925,
+            "layoutMs": 0,
+            "styleMs": 0,
+            "taskMs": 317.50199999999927,
+            "heapMb": 88.10969543457031
+          }
+        }
+      ]
+    },
+    "production_final": {
+      "browser": "151.0.7922.173",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "errors": [],
+      "results": [
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "context-close",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12559,
+          "scroll": {
+            "distance": 2800,
+            "frames": 135,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 16.799999999999272,
+            "maxMs": 33.399999999999636,
+            "framesOver33Ms": 1,
+            "longTasks": [],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 30.972999999999974,
+            "layoutMs": 2.1689999999999765,
+            "styleMs": 31.820999999999987,
+            "taskMs": 281.32100000000014,
+            "heapMb": 68.83024215698242
+          }
+        },
+        {
+          "paragraphs": 1600,
+          "chars": 752657,
+          "theme": "opencode-dark",
+          "iteration": 0,
+          "mode": "escape-local",
+          "instrumented": false,
+          "calls": {},
+          "blocks": 1734,
+          "marks": 3200,
+          "targets": 3200,
+          "domNodes": 12577,
+          "scroll": {
+            "distance": 2800,
+            "frames": 125,
+            "p50Ms": 16.69999999999891,
+            "p95Ms": 33.399999999999636,
+            "maxMs": 133.29999999999927,
+            "framesOver33Ms": 9,
+            "longTasks": [
+              {
+                "start": 17336.699999999255,
+                "duration": 114
+              }
+            ],
+            "callbacks": {},
+            "saveCallbacks": 0,
+            "popupOpenAtEnd": false,
+            "scriptMs": 69.3189999999999,
+            "layoutMs": 0.19999999999997797,
+            "styleMs": 87.5309999999998,
+            "taskMs": 578.4849999999997,
+            "heapMb": 67.73444366455078
+          }
+        }
+      ]
+    }
+  }
+}

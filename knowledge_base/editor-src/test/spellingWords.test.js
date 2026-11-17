@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import nspell from 'nspell';
-import {wordRanges,suggestionsFor,createSpellingDictionary,editDistance,isRomanNumeral} from '../src/spellingWords.js';
+import {wordRanges,suggestionsFor,createSpellingDictionary,editDistance,isRomanNumeral,createMultilingualSpelling} from '../src/spellingWords.js';
 const spell=nspell(fs.readFileSync('node_modules/dictionary-es/index.aff','utf8'),fs.readFileSync('node_modules/dictionary-es/index.dic','utf8'));
 assert.equal(spell.correct('abjeto'),false);
 assert.equal(spell.correct('objeto'),true);
@@ -37,3 +37,16 @@ console.log('PASS: Java/framework and architecture vocabulary without suppressin
 
 for(const number of ['IV','V','VI','VII','XXIII','MCMXCIX'])assert.equal(isRomanNumeral(number),true,number);
 for(const word of ['IIV','IM','JVM','CDIXX','incorrecto','ABJETO'])assert.equal(isRomanNumeral(word),false,word);
+
+const mixed=createMultilingualSpelling(spell,english);
+for(const word of ['repo','repos','staging','commits','merges','push','fetch','pull','PRs','tags','widening','narrowing','casting','stack','heap','Javadoc','identificadores','parámetros','sintaxis','básica'])assert.equal(mixed.correct(word),true,word);
+for(const word of ['abjeto','prueva','reciept','incorecto'])assert.equal(mixed.correct(word),false,word);
+assert.equal(mixed.languageFor('Tipos primitivos: enteros, flotantes y booleanos','en-US'),'es');
+assert.equal(mixed.languageFor('This librery contains several books.','es'),'en-US');
+assert.ok(mixed.candidatesFor('abjeto','Un abjeto de prueba.').includes('objeto'));
+assert.deepEqual(mixed.candidatesFor('librery','This librery contains several books.'),['library']);
+assert.deepEqual(mixed.candidatesFor('staging','Control de versiones y staging.'),[]);
+console.log('PASS: mixed-language recognition with separately scoped replacements and contextual language selection.');
+
+assert.equal(mixed.languageFor('Control de versiones local: repo, staging, commits, ramas, merges, conflictos'),'es');
+assert.ok(mixed.candidatesFor('reciept','El reciept del pago.').includes('receipt'));

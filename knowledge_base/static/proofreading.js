@@ -7,7 +7,7 @@
   const source = el('proofreadingSource'), preview = el('proofreadingPreview');
   const settings=window.AtlasSpellingSettings;
   const languageField=el('proofreadingLanguage'),inlineMethod=el('proofreadingInlineMethod'),underlineField=el('proofreadingUnderline');
-  function syncSettings(){const value=settings.get();languageField.value=value.language;inlineMethod.value=value.method;underlineField.checked=value.underline;source.lang=preview.lang=value.language;invalidate();}
+  function syncSettings(){const value=settings.get();languageField.value=value.language;inlineMethod.value=value.method;underlineField.checked=value.underline;source.lang=preview.lang=value.language==='auto'?'':value.language;invalidate();}
   underlineField.addEventListener('change',()=>settings.set({underline:underlineField.checked}));
   languageField.addEventListener('change',()=>settings.set({language:languageField.value}));
   inlineMethod.addEventListener('change',()=>settings.set({method:inlineMethod.value}));
@@ -114,7 +114,7 @@
       let data;
       if(checkedMode==='languagetool')data={matches:await settings.reviewContext(text,language)};
       else {
-        const response=await fetch('/api/proofreading/check',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({text,language,mode:checkedMode,...choice})});
+        const response=await fetch('/api/proofreading/check',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({text,language:settings.languageFor(text,language),mode:checkedMode,...choice})});
         data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo revisar el texto.');
       }
       if (sequence !== requestId || !dialog.open) return;

@@ -273,3 +273,15 @@ La suite backend completa pasó: **480 pruebas**, con 63 avisos existentes.
 También pasaron `npm test`, el build y las pruebas del corrector y del pegado
 en escritorio, teléfono y tablet. El servicio contextual se simuló en esas
 pruebas; su calidad real no se presenta como comprobada, por el bloqueo del proxy.
+
+## Revisión posterior: texto mixto y coste del menú
+
+La prueba posterior con tablas técnicas mostró que forzar un único diccionario
+para aceptar palabras era demasiado restrictivo. Se separaron las dos tareas:
+reconocer vocabulario válido de español e inglés y generar candidatos de un
+idioma según el párrafo. La aceptación bilingüe no implica concatenar sus listas
+de propuestas. La preferencia pasa a ser un desempate, no una exclusión.
+
+`SCROLL_SPELLING_AUDIT.md` documenta esa corrección y las mediciones de las
+actualizaciones globales al cerrar el menú, con evidencia antes/después y sus
+límites. Los resultados históricos de esta auditoría se conservan como tales.

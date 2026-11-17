@@ -55,3 +55,40 @@ export function isRomanNumeral(word) {
 export function wordRanges(text) {
   return [...text.matchAll(/[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*/gu)].map(match=>({word:match[0],offset:match.index}));
 }
+
+// Recognition and candidate generation have different jobs: accept correctly
+// spelled words from either language, but rank replacements in one language.
+// The preferred language is only a tie-breaker, never a ban on foreign words.
+export function createMultilingualSpelling(spanish, english) {
+  const recognition=createSpellingDictionary(spanish,english);
+  const es=createSpellingDictionary(spanish),en=createSpellingDictionary(english);
+  const spanishConnectors=new Set('de el la los las del que para por con sin una unos unas este esta estos estas como'.split(' '));
+  const englishConnectors=new Set('the with and from this that these those is are was were which where have has their your our of for to'.split(' '));
+  function languageFor(text,preferred='auto') {
+    let spanishWords=0,englishWords=0;
+    for(const {word} of wordRanges(text)) {
+      if(isRomanNumeral(word))continue;
+      const lower=normalize(word);
+      if(spanishConnectors.has(lower))spanishWords+=3;
+      if(englishConnectors.has(lower))englishWords+=3;
+      const a=es.correct(word),b=en.correct(word);
+      if(a&&!b)spanishWords++;else if(b&&!a)englishWords++;
+    }
+    if(spanishWords>englishWords)return 'es';
+    if(englishWords>spanishWords)return 'en-US';
+    return preferred==='en-US'?'en-US':'es';
+  }
+  return {
+    correct:recognition.correct,
+    languageFor,
+    candidatesFor(word,text,preferred='auto') {
+      if(recognition.correct(word))return [];
+      const primary=languageFor(text,preferred)==='es'?es:en;
+      const candidates=suggestionsFor(primary,word),alternative=suggestionsFor(primary===es?en:es,word);
+      // A clearly closer correction can belong to an embedded foreign word.
+      // Keep a single language's list; ties follow the paragraph preference.
+      if(alternative.length&&(!candidates.length||editDistance(word,alternative[0])<editDistance(word,candidates[0])))return alternative;
+      return candidates;
+    },
+  };
+}

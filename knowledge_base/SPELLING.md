@@ -1,15 +1,23 @@
 # Corrector ortográfico
 
-Abre **Abc✓** para elegir el idioma (**Español** o **English**) y el método de
-las sugerencias del editor. La elección se guarda en este navegador y se comparte
+Abre **Abc✓** para elegir la preferencia de revisión (**Automático · español e
+inglés**, **Español preferido** o **English preferred**) y el método de sugerencias. La elección se guarda en este navegador y se comparte
 entre páginas, ventanas Peek y el panel de revisión. **Subrayar posibles errores**
 permite quitar las marcas mientras lees sin desactivar el menú de sugerencias.
 
 ## Sugerencias al señalar una palabra
 
-El editor detecta posibles errores con un diccionario local del idioma elegido.
-No acepta ni mezcla automáticamente todas las palabras y propuestas de español
-e inglés. El vocabulario técnico de Atlas sigue reconociéndose en ambos idiomas.
+El editor reconoce palabras válidas tanto en español como en inglés. Elegir una
+preferencia no convierte las palabras correctas del otro idioma en errores. Esto
+permite leer párrafos y tablas técnicas mixtos sin subrayar «staging», «commits»,
+«widening» o «identificadores» por pertenecer al otro idioma. El vocabulario
+técnico complementario sigue reconociendo nombres y abreviaturas de productos.
+
+Reconocer ambos idiomas no significa mezclar sus candidatos: las propuestas se
+generan en una lista de un idioma, usando pistas léxicas del párrafo y la
+preferencia en casos ambiguos. Una corrección claramente más cercana puede
+corresponder a una palabra extranjera insertada en la frase. No es comprensión
+semántica; una palabra válida mal usada necesita revisión contextual.
 Las formas Unicode equivalentes de un acento se reconocen sin cambiar el texto
 ni las posiciones de la selección.
 
@@ -30,8 +38,9 @@ revisado se reutilizan mientras su contenido permanezca igual.
 **Local · sin conexión ni contexto** utiliza nspell y Hunspell. Su panel identifica
 las propuestas como candidatos locales, no como recomendaciones contextuales.
 Puede servir sin red, pero no resuelve significado, homófonos o todas las
-separaciones de palabras. Si el idioma es inglés, selecciónalo en Abc✓ o en el
-propio menú de la palabra. No se adivina el idioma a partir de una palabra aislada.
+separaciones de palabras. La selección del menú es una preferencia para contextos ambiguos, no una
+exclusión del otro idioma. La preferencia automática es el valor inicial y
+sustituye las preferencias antiguas que forzaban un idioma sobre toda la página.
 
 No se modifica el contenido al señalarlo. El usuario elige el reemplazo.
 **Agregar al diccionario** guarda la palabra en este navegador; **Ignorar esta
@@ -75,6 +84,11 @@ revisarse y copiarse, pero no se reemplazan directamente.
 
 ## Eficiencia y configuración
 
+Cerrar un menú local no provoca otro análisis si el documento no cambió. Una
+respuesta contextual actualiza únicamente las decoraciones del párrafo revisado,
+con identificadores que no renumeran el resto de marcas. Durante una edición las
+decoraciones existentes se mapean a las nuevas posiciones y después se revisan.
+
 La detección local reutiliza el análisis de los nodos inmutables de ProseMirror y
 memoriza consultas de diccionario; una edición no vuelve a analizar todas las
 palabras de los bloques vecinos. Se mantiene el recorrido ligero para reconstruir
@@ -91,12 +105,19 @@ Se descartan respuestas de una página, documento o idioma que ya cambió. Un 42
 activa una pausa de un minuto; errores de conexión, tiempo o cuota se muestran
 sin presentar los candidatos locales como revisión contextual ni recurrir a IA.
 
+Las faltas genéricas que LanguageTool atribuya a una palabra válida del otro
+idioma se descartan utilizando el identificador de su regla. Se mantienen las
+reglas gramaticales específicas: reconocer vocabulario bilingüe no desactiva
+la revisión del uso de las palabras en la frase.
+
 El endpoint predeterminado es `https://api.languagetool.org/v2/check`.
 `LANGUAGETOOL_URL` permite usar `/v2/check` de una instancia propia. La dirección
 solo la configura el servidor, nunca la petición del navegador. El servicio
 público gratuito tiene límites; su disponibilidad y capacidad no están
 garantizadas. Para uso intensivo debe configurarse una instancia con capacidad
-adecuada. La revisión acepta hasta 10 000 caracteres y requiere sesión de Atlas.
+adecuada. La revisión acepta hasta 10 000 caracteres y requiere sesión de Atlas. Puede
+resolver el idioma por párrafo; si aún es ambiguo se permite detección automática
+del servicio. La revisión con IA debe conservar el idioma de cada fragmento.
 
 Los diccionarios son `dictionary-es` y `dictionary-en` 4.0.0 con `nspell` 2.1.5.
 El build copia sus archivos y licencias a `static/spelling/`.
@@ -105,7 +126,7 @@ El build copia sus archivos y licencias a `static/spelling/`.
 
 - `tests/test_proofreading.py`: idioma, autenticación, límites, transporte,
   cuota, respuestas inválidas y offsets UTF-16 sin dividir emojis.
-- `editor-src/test/spellingWords.test.js`: aislamiento de idiomas, errores
+- `editor-src/test/spellingWords.test.js`: reconocimiento bilingüe con propuestas separadas, errores
   comunes, vocabulario técnico, NFC/NFD y candidatos.
 - `editor-src/test/spellingReview.test.js`: rangos protegidos, inserciones,
   deduplicación y caché.

@@ -114,7 +114,7 @@ def test_selected_language_and_unicode_boundaries(auth_client, monkeypatch):
 def test_bad_language_never_calls_service(auth_client, monkeypatch):
     def fail(*args, **kwargs): raise AssertionError('Unexpected service request')
     monkeypatch.setattr(proofreading.urllib.request, 'urlopen', fail)
-    for language in [None, [], {}, 'auto', 'unknown']:
+    for language in [None, [], {}, 'de', 'unknown']:
         assert auth_client.post('/api/proofreading/check', json={'text': 'hello', 'language': language}).status_code == 400
 
 
@@ -127,3 +127,23 @@ def test_english_ai_review_has_explicit_language(auth_client, monkeypatch):
     response = auth_client.post('/api/proofreading/check', json={'text': 'A reciept.', 'mode': 'ai', 'language': 'en-US'})
     assert response.status_code == 200
     assert 'corrector ortográfico de inglés' in seen[0]
+
+
+def test_automatic_language_and_rule_identity(auth_client, monkeypatch):
+    requests = []
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, limit):
+            return json.dumps({'matches': [{'offset': 0, 'length': 7,
+                'rule': {'id': 'MORFOLOGIK_RULE_ES'},
+                'replacements': [{'value': 'stagings'}]}]}).encode()
+    def urlopen(req, **kwargs):
+        requests.append(urllib.parse.parse_qs(req.data.decode()))
+        return Response()
+    monkeypatch.setattr(proofreading.urllib.request, 'urlopen', urlopen)
+    response = auth_client.post('/api/proofreading/check', json={'text': 'staging', 'language': 'auto'})
+    assert response.status_code == 200
+    assert requests[0]['language'] == ['auto']
+    assert requests[0]['preferredVariants'] == ['en-US']
+    assert response.json['matches'][0]['ruleId'] == 'MORFOLOGIK_RULE_ES'

@@ -1,41 +1,54 @@
 // Shared settings and contextual review transport for the editor and Abc panel.
-const LANGUAGES = new Set(['es','en-US']);
+const LANGUAGES = new Set(['auto','es','en-US']);
 const storageKey = 'atlas_spelling_settings';
-let settings = {language:'es', method:'languagetool', underline:true};
+let settings = {language:'auto', method:'languagetool', underline:true};
 try {const saved=JSON.parse(localStorage.getItem(storageKey)||'{}');
   if(typeof saved.underline==='boolean')settings.underline=saved.underline;
-  if(LANGUAGES.has(saved.language))settings.language=saved.language;
+  if(saved.languagePolicyVersion===2&&LANGUAGES.has(saved.language))settings.language=saved.language;
   if(['local','languagetool'].includes(saved.method))settings.method=saved.method;
 } catch {}
 export function getSpellingSettings(){return {...settings};}
 export function setSpellingSettings(next){
   settings={language:LANGUAGES.has(next.language)?next.language:settings.language,
     method:['local','languagetool'].includes(next.method)?next.method:settings.method,
-    underline:typeof next.underline==='boolean'?next.underline:settings.underline};
+    underline:typeof next.underline==='boolean'?next.underline:settings.underline,languagePolicyVersion:2};
   try {localStorage.setItem(storageKey,JSON.stringify(settings));}catch{}
   window.dispatchEvent(new CustomEvent('atlas-spelling-settings',{detail:getSpellingSettings()}));
+}
+let spellingEngine=null;
+export function registerSpellingEngine(engine){spellingEngine=engine;}
+export function languageFor(text,preferred=settings.language){return spellingEngine?.languageFor(text,preferred)||preferred;}
+function contextualFindings(text,matches){
+  // Generic dictionary misses are not evidence against a correctly spelled
+  // Spanish/English word or known identifier. Specific grammar rules survive.
+  return matches.filter(match=>{
+    if(!spellingEngine||! /^(MORFOLOGIK_RULE|HUNSPELL_RULE|SPELLING_RULE)/.test(match.ruleId||''))return true;
+    const word=text.slice(match.offset,match.offset+match.length);
+    return !word||!spellingEngine.correct(word);
+  });
 }
 const cache=new Map(),pending=new Map();
 let cooldown=0;
 export function clearSpellingCache(){cache.clear();}
 export async function reviewContext(text, language=getSpellingSettings().language){
   if(!LANGUAGES.has(language)||!text.trim()||text.length>10000)throw Error('Revisa un párrafo de hasta 10 000 caracteres.');
-  const key=JSON.stringify([text,language]);
+  const resolvedLanguage=languageFor(text,language);
+  const key=JSON.stringify([text,resolvedLanguage]);
   const saved=cache.get(key);
-  if(saved&&saved.expires>Date.now())return saved.value;
+  if(saved&&saved.expires>Date.now())return contextualFindings(text,saved.value);
   if(pending.has(key))return pending.get(key);
   if(Date.now()<cooldown)throw Error('LanguageTool alcanzó su límite. Espera un momento o elige revisión local en Abc✓.');
   const operation=(async()=>{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
     try {
-      const response=await fetch('/api/proofreading/check',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({text,language,mode:'languagetool'})});
+      const response=await fetch('/api/proofreading/check',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({text,language:resolvedLanguage,mode:'languagetool'})});
       const data=await response.json();
       if(!response.ok){if(response.status===429)cooldown=Date.now()+60000;throw Error(data.error||'No se pudo revisar el párrafo.');}
       if(!Array.isArray(data.matches))throw Error('Respuesta de revisión inválida.');
       const matches=data.matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.offset>=0&&m.length>=0&&m.offset+m.length<=text.length&&Array.isArray(m.replacements));
       cache.set(key,{value:matches,expires:Date.now()+300000});
       while(cache.size>64)cache.delete(cache.keys().next().value);
-      return matches;
+      return contextualFindings(text,matches);
     } catch(error){if(error.name==='AbortError')throw Error('La revisión tardó demasiado. Inténtalo de nuevo.');throw error;}
     finally{clearTimeout(timer);}
   })();
@@ -60,4 +73,4 @@ export function mappedFinding(fragment, match){
   return {word:fragment.text.slice(offset,end),offset,from:fragment.positions[offset],to:fragment.positions[end-1]+1,
     paragraph:fragment.paragraph,text:fragment.text,replacements:match.replacements.filter(value=>typeof value==='string'),message:match.message};
 }
-if(typeof window!=='undefined')window.AtlasSpellingSettings={get:getSpellingSettings,set:setSpellingSettings,reviewContext};
+if(typeof window!=='undefined')window.AtlasSpellingSettings={get:getSpellingSettings,set:setSpellingSettings,reviewContext,languageFor};

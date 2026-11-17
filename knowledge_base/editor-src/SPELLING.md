@@ -5,7 +5,10 @@ Implementación: `src/inlineSpelling.js` (detección, decoraciones y aplicación
 (preferencias, contrato de rangos y transporte contextual compartido con Abc✓).
 La documentación de uso y configuración está en `../SPELLING.md`.
 
-Se carga solo el diccionario del idioma seleccionado: español o inglés. El
+Se cargan y memorizan los diccionarios de español e inglés para reconocer texto
+mixto. `createMultilingualSpelling` separa reconocimiento de generación de
+candidatos; no concatena listas de ambos idiomas. La preferencia de revisión
+solo resuelve ambigüedades y no prohíbe palabras válidas del otro idioma. El
 vocabulario de `src/technicalVocabulary.json` es una colección complementaria de
 nombres canónicos, no un diccionario general ni un sustituto de revisión contextual.
 NFC se usa para consultar y comparar palabras, sin normalizar el documento ni
@@ -37,3 +40,9 @@ El subrayado es una preferencia visual independiente: las decoraciones conservan
 `atlas-spelling-target` como destino de hover y añaden `atlas-spelling-error` solo
 cuando está activado. No se eliminan decoraciones ni se desactiva la interacción
 para ocultar las marcas. Los números romanos se validan estructuralmente.
+
+Las decoraciones usan identidad de bloque/ocurrencia y rango, no índices de una
+lista global. Un resultado contextual elimina y añade marcas solo en su párrafo;
+`check()` no vuelve a recorrer el documento si no hay cambios pendientes. Las
+transacciones de edición mapean las decoraciones existentes, evitando vaciar el
+conjunto entero en cada pulsación. Véase `../../docs/SCROLL_SPELLING_AUDIT.md`.

@@ -11,6 +11,7 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
   for(const config of [{label:'desktop',viewport:{width:1440,height:900}},{label:'phone',viewport:{width:412,height:915},hasTouch:true,isMobile:true},{label:'tablet',viewport:{width:1480,height:924},hasTouch:true,isMobile:true}]){
    const {label,...options}=config,context=await browser.newContext(options),page=await context.newPage();
    const requests=[],errors=[];let delayed=null,rateLimit=false;
+   await context.addInitScript(()=>localStorage.setItem('atlas_spelling_settings',JSON.stringify({language:'en-US',method:'local',underline:true})));
    page.on('pageerror',error=>errors.push(error.message));
    await page.route('http://atlas.test/**',async route=>{
     const url=new URL(route.request().url());
@@ -19,7 +20,7 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
      if(body.text.includes('Tardio'))await new Promise(resolve=>delayed=resolve);
      if(rateLimit)return route.fulfill({status:429,json:{error:'LanguageTool alcanzó su límite.'}});
      const matches=[];
-     for(const [wrong,right] of [['abjeto','objeto'],['librery','library'],['reciept','receipt'],['aver','a ver']]){
+     for(const [wrong,right] of [['abjeto','objeto'],['librery','library'],['reciept','receipt'],['prueva','prueba']]){
       const offset=body.text.indexOf(wrong);if(offset>=0)matches.push({offset,length:wrong.length,message:'Propuesta contextual',replacements:[right]});
      }
      return route.fulfill({json:{matches,mode:'languagetool',language:body.language}});
@@ -30,6 +31,7 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
     return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/plain'});
    });
    await page.goto('http://atlas.test/');
+   assert.equal(await page.evaluate(()=>AtlasSpellingSettings.get().language),'auto','Old forced-language preferences migrate to mixed recognition');
    const reset=async(text,settings={language:'es',method:'languagetool'})=>{
     await page.evaluate(({text,settings})=>{window.editor?.destroy();AtlasSpellingSettings.set(settings);window.editor=BlockEditor.create({container:document.getElementById('entryBody')});editor.load(text);},{text,settings});
     await page.waitForSelector('.bn-inline-content');
@@ -53,6 +55,31 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
    await page.locator('.atlas-spelling-suggestions button').filter({hasText:'objeto'}).click();
    assert.equal(await md(),'Hécate objeto.');
    await page.keyboard.press('Control+z');assert.equal(await md(),'Hécate abjeto.');
+
+   await reset('Hécate.\n\nUn abjeto vecino.');
+   await page.waitForSelector('.atlas-spelling-target');
+   const neighborId=await word('abjeto').getAttribute('data-spelling-id');
+   await word('abjeto').evaluate(node=>window.__spellingNeighbor=node);
+   await openWord('Hécate');
+   await page.locator('.atlas-spelling-section-label').filter({hasText:'LanguageTool'}).waitFor();
+   await close();
+   await page.waitForFunction(()=>![...document.querySelectorAll('.atlas-spelling-target')].some(n=>n.textContent==='Hécate'));
+   assert.equal(await word('abjeto').getAttribute('data-spelling-id'),neighborId,'Neighbor identity is stable after paragraph review');
+   assert.equal(await word('abjeto').evaluate(node=>node===window.__spellingNeighbor),true,'Unchanged neighbor DOM is not replaced');
+
+   await reset('Un abjeto repetido.\n\nUn abjeto repetido.',{language:'auto',method:'local'});
+   await settle();
+   await page.evaluate(()=>{
+    const tip=document.querySelector('.bn-editor').editor,items=[];
+    tip.state.doc.descendants((node,pos)=>{if(node.isTextblock){items.push({node,pos});return false;}});
+    tip.view.dispatch(tip.state.tr.replaceWith(items[1].pos,items[1].pos+items[1].node.nodeSize,items[0].node));
+   });
+   await settle();
+   const repeatedIds=await page.locator('.atlas-spelling-target').evaluateAll(nodes=>nodes.map(node=>node.dataset.spellingId));
+   assert.equal(new Set(repeatedIds).size,2,'Repeated/shared paragraph nodes have distinct targets');
+   await openWord('abjeto');
+   await page.locator('.atlas-spelling-suggestions button').filter({hasText:'objeto'}).click();
+   assert.equal(await md(),'Un objeto repetido.\n\nUn abjeto repetido.','Only the pointed occurrence is corrected');
 
    await reset('😀 **abjeto** junto a [abjeto](https://example.org).\n\n```text\nabjeto\n```');
    await openWord('abjeto');
@@ -97,20 +124,33 @@ const html=`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="vie
    await reset('A librery with a reciept.',{language:'en-US',method:'local'});await openWord('librery');
    assert.deepEqual(await page.locator('.atlas-spelling-suggestions button').allTextContents(),['library']);await close();
 
+   for(const language of ['auto','es','en-US']){
+    await reset('Sintaxis básica: identificadores, palabras reservadas y parámetros. Git staging, commits, merges, push/fetch/pull, PRs y tags. An abjeto and a reciept.',{language,method:'local'});
+    await settle();
+    assert.deepEqual((await page.locator('.atlas-spelling-error').allTextContents()).sort(),['abjeto','reciept'],'Valid Spanish and English words stay unmarked under every preference');
+   }
+
+   const mixedTable='### M03. Sintaxis básica y tipos de datos\n\n| # | Lección | h |\n|---|---|---|\n|03.1|Elementos léxicos: identificadores, palabras reservadas, literales, Javadoc|2|\n|03.2|Tipos primitivos: enteros, flotantes, `char`, `boolean`, rangos|3|\n|03.3|Control de versiones local: repo, staging, commits, ramas, merges, conflictos|3|\n|03.4|Colaboración con GitHub: remotos, push/fetch/pull, PRs, tags|2|\n|03.5|Conversión de tipos: widening, narrowing, casting, promoción, desbordamiento|2|\n|03.6|Un abjeto mal escrito junto al código `prueva`|2|';
+   for(const language of ['auto','es','en-US']){
+    await reset(mixedTable,{language,method:'local'});await settle();
+    assert.ok(await page.locator('.bn-editor table').count(),'Actual table is rendered');
+    assert.deepEqual(await page.locator('.atlas-spelling-error').allTextContents(),['abjeto'],'Screenshot table: no language flood, real typo found, inline code protected');
+   }
+
    await reset('Tardio abjeto.');await openWord('abjeto');
    while(!delayed)await page.waitForTimeout(30);
    await page.evaluate(()=>editor.load('Una página diferente.'));delayed();delayed=null;await settle();
    assert.equal(await page.locator('.atlas-spelling-popover').count(),0,'Stale reply cannot reopen popup');
    assert.equal(await md(),'Una página diferente.');
 
-   await reset('aver lo que pasa.');await openWord('aver');
+   await reset('Una prueva del contexto.');await openWord('prueva');
    const panelRect=await page.locator('.atlas-spelling-popover').boundingBox();
    assert.ok(panelRect.x>=0&&panelRect.y>=0&&panelRect.x+panelRect.width<=options.viewport.width+1&&panelRect.y+panelRect.height<=options.viewport.height+1,'Popup inside viewport');
    await page.locator('.atlas-spelling-actions button').filter({hasText:'Corregir párrafo'}).click();
    await page.locator('.atlas-spelling-review select').waitFor();
-   assert.equal(await page.locator('.atlas-spelling-review select').inputValue(),'aver');
-   await page.locator('.atlas-spelling-review select').selectOption('a ver');
-   await page.locator('.atlas-spelling-review [type="submit"]').click();assert.equal(await md(),'a ver lo que pasa.');
+   assert.equal(await page.locator('.atlas-spelling-review select').inputValue(),'prueva');
+   await page.locator('.atlas-spelling-review select').selectOption('prueba');
+   await page.locator('.atlas-spelling-review [type="submit"]').click();assert.equal(await md(),'Una prueba del contexto.');
 
    // The full Abc panel shares language/settings and the contextual transport.
    await page.evaluate(()=>{editor.load('A librery.');AtlasSpellingSettings.set({language:'en-US'});});
