@@ -1,7 +1,10 @@
+import {courseTopics,linkedTopicTables,inlineText} from './courseTopicTables.js';
 import {pageCover} from './databaseCardModel.js';
 import React from "react";
 import {openDatabaseImport} from "./databaseImport.jsx";
 import {SideMenuExtension} from '@blocknote/core/extensions';
+import {createExtension} from '@blocknote/core';
+import {Plugin} from '@tiptap/pm/state';
 import {installForegroundEditorHitTesting} from './editorHitTesting.js';
 import {SaveQueue} from "./databaseModel.js";
 import {flushDatabaseEditors,mountRecordProperties,unmountRecordProperties,databaseDrafts,notifyDatabase} from "./databaseUI.jsx";
@@ -52,9 +55,18 @@ async function uploadFile(file) {
   return data.url;
 }
 
+// BlockNote handles links on mouseup, before the document click handler.
+// Reserve only Atlas syllabus links for validated in-app navigation.
+const courseTopicNavigation=createExtension({
+  key:'atlas-course-topic-navigation',runsBefore:['link'],
+  prosemirrorPlugins:[new Plugin({props:{handleClick(_view,_position,event){
+    const anchor=event.target.closest?.('a[href]');if(!anchor)return false;
+    try{const url=new URL(anchor.href,location.href);return url.origin===location.origin&&url.searchParams.get('atlas-topic')==='1';}catch{return false;}
+  }}})]
+});
 function EditorView({ instanceRef, onChange, onReady }) {
   const editor = useCreateBlockNote({
-    schema, uploadFile, dictionary: es,
+    schema, uploadFile, dictionary: es, extensions:[courseTopicNavigation()],
     domAttributes: {editor: {spellcheck:"false", lang:"es"}},
     pasteHandler: pasteClipboard,
   });
@@ -172,8 +184,31 @@ function createInstance(opts) {
       try { editor.setTextCursorPosition(editor.document[0].id, "start"); } catch (_) {}
     }
   }
+  let topicScanDoc=null;
   const api = {
     whenReady,
+    getCourseTopics(){topicScanDoc=instanceRef.editor?._tiptapEditor.state.doc;return courseTopics(instanceRef.editor?.document||[]);},
+    applyCourseTopicLinks(assignments){
+      const ed=instanceRef.editor;
+      if(!ed?.isEditable)throw Error('Desbloquea el temario antes de vincularlo.');
+      if(ed._tiptapEditor.state.doc!==topicScanDoc)throw Error('El temario cambió. Analízalo de nuevo antes de aplicar los vínculos.');
+      for(const change of linkedTopicTables(ed.document,assignments))ed.updateBlock(change.id,{content:change.content});
+    },
+    scrollToCourseHeading(heading,occurrence=0){
+      if(!heading)return true;
+      const key=text=>text.normalize('NFC').replace(/\s+/g,' ').trim();
+      const target=api.getInsertionTargets().filter(item=>item.type==='heading'&&key(item.text)===key(heading))[occurrence];
+      if(!target)return false;
+      const node=container.querySelector('[data-id="'+CSS.escape(target.block_id)+'"]');
+      if(!node)return false;node.classList.add('atlas-course-topic-target');node.scrollIntoView({block:'start'});return true;
+    },
+    scrollToCourseTopic(text,module){
+      const topic=courseTopics(instanceRef.editor?.document||[]).find(item=>item.text===text&&(!module||item.module===module));
+      if(!topic)return false;
+      const table=container.querySelector('[data-id="'+CSS.escape(topic.blockId)+'"] table');
+      const cell=table?.rows[topic.row]?.cells[topic.column];if(!cell)return false;
+      cell.scrollIntoView({block:'center'});return true;
+    },
     capturePeekSelection() {
       const editor=instanceRef.editor;if(!instanceRef.context.isPeek||!editor)return null;
       const current=editor.getTextCursorPosition().block;

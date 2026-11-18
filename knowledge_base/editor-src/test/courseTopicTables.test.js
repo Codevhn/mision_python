@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {courseTopics,linkedTopicTables,inlineText} from '../src/courseTopicTables.js';
+const text=value=>[{type:'text',text:value,styles:{bold:true}}];
+const blocks=[{id:'h',type:'heading',content:text('M01 — Entorno'),children:[]},{id:'t',type:'table',content:{type:'tableContent',rows:[{cells:[text('#'),text('Lección'),text('h')]},{cells:[text('1'),text('Un concepto'),text('1')]},{cells:[text(''),text('Subtotal M01'),text('1')]}]},children:[]}];
+const before=JSON.stringify(blocks),topics=courseTopics(blocks);assert.equal(topics.length,1);assert.equal(topics[0].module,'M01 — Entorno');
+const linked=linkedTopicTables(blocks,[{key:topics[0].key,href:'/?open=lesson&atlas-topic=1'}]);
+assert.equal(linked.length,1);assert.equal(linked[0].content.rows[1].cells[1][0].type,'link');assert.equal(linked[0].content.rows[1].cells[1][0].content[0].styles.bold,true);
+assert.equal(inlineText(linked[0].content.rows[1].cells[1]),'Un concepto');assert.equal(JSON.stringify(blocks),before);
+const modern={...blocks[1],content:{rows:blocks[1].content.rows.map(row=>({...row,cells:row.cells.map(content=>({type:'tableCell',props:{backgroundColor:'red'},content}))}))}};
+const topic=courseTopics([modern])[0],changes=linkedTopicTables([modern],[{key:topic.key,href:'/?open=other'}]);
+assert.equal(changes[0].content.rows[1].cells[1].props.backgroundColor,'red');assert.equal(changes[0].content.rows[1].cells[1].content[0].type,'link');
+const restored=linkedTopicTables([{...blocks[1],content:linked[0].content}],[{key:topics[0].key,href:null}]);
+assert.deepEqual(restored[0].content,blocks[1].content);
+console.log('course topics: semantic table column, subtotal exclusion, styled/modern cells, native links and source immutability passed');

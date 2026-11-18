@@ -2282,6 +2282,7 @@ async function loadEntry(id, opts = {}) {
     _autoSaveTimer = null;
   }
   $("contentArea").scrollTo(0, 0);
+  window.dispatchEvent(new CustomEvent('atlas:entry-opened',{detail:{id,meta:m}}));
 
   // Word count + reading time
   const wordCount = getWordCount($("entryBody"));
@@ -13084,6 +13085,27 @@ async function _savePeekCover(value,state=_peekCoverState) {
   _peekCoverSave=save;
   try{await save;}finally{if(_peekCoverSave===save)_peekCoverSave=null;}
 }
+window.AtlasCourseLessonState=()=>({id:currentEntryId,editor:_inlineEditor});
+window.AtlasPeekCourseContext={
+  flush:_flushPeekPendingSaves,
+  editor:()=>_peekEditor,
+  capture:()=>_peekEntryId?{sourceId:_peekEntryId,rootId:currentEntryId,mode:_peekMode,path:_peekPath.map(item=>({...item,scrollTop:item.id===_peekEntryId?$('pagePeekOverlay').querySelector('.page-peek-body').scrollTop:item.scrollTop}))}:null,
+  async restore(context){
+    await window._loadEntryById(context.rootId||context.sourceId);
+    if(currentEntryId!==(context.rootId||context.sourceId))return false;
+    const path=context.path?.length?context.path:[{id:context.sourceId}];
+    const onClose=async()=>{const response=await fetch(`/api/entry/${path[0].id}`);if(response.ok){const meta=(await response.json()).meta;if(meta.parent_id&&meta.database_id)AtlasDatabase.notify(`/api/databases/${meta.parent_id}/${meta.database_id}`);}};
+    if(!(await window._openPagePeek(path[0].id,{databasePreview:true,mode:context.mode,onClose})))return false;
+    for(let index=0;index<path.length;index++){
+      const item=path[index];
+      if(index&&!(await _navigatePeek(item.id)))return false;
+      _peekEditor.restorePeekSelection(item.selection);
+      $('pagePeekOverlay').querySelector('.page-peek-body').scrollTop=item.scrollTop||0;
+    }
+    _peekEditor.scrollToCourseTopic(context.topic,context.module);
+    return true;
+  }
+};
 function _resizePeekTitle() {
   const title=$('pagePeekTitle');if(!title)return;
   const body=title.closest('.page-peek-body'),scroll=body?.scrollTop,anchor=body?.style.overflowAnchor;
@@ -13171,7 +13193,7 @@ window._openPagePeek=async function(id,opts={}) {
         flush:_flushPeekPendingSaves,
         refresh:async()=>window._openPagePeek(id,{...opts,mode:_peekMode,_peekPath:_peekPath.map(item=>({...item})),_reload:true}),
         openRecord:async(next,records)=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de abrir otro registro');await window._openPagePeek(next,{...opts,recordIds:records||[next],mode:_peekMode});},
-        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;$('pagePeekIcon').disabled=!!value;$('pagePeekCoverChange').disabled=$('pagePeekCoverRemove').disabled=!!value;},
+        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;$('pagePeekIcon').disabled=!!value;$('pagePeekCoverChange').disabled=$('pagePeekCoverRemove').disabled=!!value;$('pagePeekLinkCourse').disabled=!!value;},
         appendMarkdown:async text=>{await _flushPeekPendingSaves();await _peekEditor.appendMarkdown(text);await _flushPeekPendingSaves();},
         fullPage:async()=>{if(await _closePagePeek())await window._loadEntryById?.(id);},
         mode:async mode=>{await _flushPeekPendingSaves();_setPeekMode(mode);mountControls();},
@@ -13192,6 +13214,8 @@ window._openPagePeek=async function(id,opts={}) {
     _peekEditor.load(draft?.raw_text??_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown||'',meta.title||'')));
     await _peekEditor.whenReady();
     _peekEditor.restorePeekSelection(_peekPath[_peekPath.length-1].selection);
+    $('pagePeekLinkCourse').hidden=!_peekEditor.getCourseTopics().length;
+    $('pagePeekLinkCourse').disabled=!!meta.database_locked;
     const panel=overlay.querySelector('.page-peek-modal');
     await Promise.all(panel.getAnimations().filter(animation=>Number.isFinite(animation.effect.getComputedTiming().iterations)).map(animation=>animation.finished.catch(()=>{})));
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

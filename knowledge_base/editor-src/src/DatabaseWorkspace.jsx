@@ -61,6 +61,7 @@ export function DatabaseWorkspace({
       }
       if (mounted.current) {
         const current=editor.getBlock(block.id);
+        if(!current)return; // A late response must not write into a replaced document.
         const saved=JSON.parse(current?.props.data||'{}');
         if((data.schema._schema_version||0)>(saved._schema_version||0)){
           editor.updateBlock(block.id,{props:{data:JSON.stringify(data.schema)}});

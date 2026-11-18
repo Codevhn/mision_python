@@ -1090,7 +1090,7 @@ def _build_id():
         'blocknote/editor.bundle.js', 'pygments.css',
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
-        'navigation-hierarchy.css', 'editing-surface.css', 'peek-resize.css', 'peek-resize.js',
+        'course-topic-links.js', 'navigation-hierarchy.css', 'editing-surface.css', 'peek-resize.css', 'peek-resize.js',
         'login.css', 'login.js',
         'reader.css', 'library.js',
         'weather-hero.css', 'weather-hero.js', 'horizon.css', 'horizon.js', 'theme-registry.js', 'course-themes.js',
@@ -9095,6 +9095,10 @@ from assistant import register_assistant
 register_assistant(app, globals())
 from proofreading import register_proofreading
 register_proofreading(app, globals())
+
+
+from course_topic_links import register_course_topic_links
+register_course_topic_links(app, globals())
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
