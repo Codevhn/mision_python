@@ -13046,7 +13046,9 @@ async function _navigatePeek(id,index) {
   if(!_peekEntryId||!id)return false;
   const path=_peekPath.map(item=>({...item}));
   const current=path[path.length-1];
-  if(current){current.title=$('pagePeekTitle').value;current.scrollTop=$('pagePeekOverlay').querySelector('.page-peek-body').scrollTop;}
+  if(current){current.title=$('pagePeekTitle').value;current.scrollTop=$('pagePeekOverlay').querySelector('.page-peek-body').scrollTop;
+    current.selection=Number.isInteger(index)?_peekEditor.capturePeekSelection():{type:'pageLink',pageId:id};
+  }
   const target=Number.isInteger(index)?index:path.findIndex(item=>item.id===id);
   const next=target>=0?path.slice(0,target+1):[...path,{id,title:'',scrollTop:0}];
   return window._openPagePeek(id,{..._peekRootOptions,databasePreview:true,mode:_peekMode,
@@ -13157,6 +13159,7 @@ window._openPagePeek=async function(id,opts={}) {
     _peekEditor=BlockEditor.create({container:$('pagePeekEditor'),pageId:id,isPeek:true,pageLinkTitles,openPage:_navigatePeek,editable:!meta.database_locked,onChange:md=>_peekDraft({raw_text:md,already_markdown:true}),flush:_flushPeekPendingSaves});
     _peekEditor.load(draft?.raw_text??_sanitizeMarkdownForEditor(_stripDuplicateHeading(data.markdown||'',meta.title||'')));
     await _peekEditor.whenReady();
+    _peekEditor.restorePeekSelection(_peekPath[_peekPath.length-1].selection);
     const panel=overlay.querySelector('.page-peek-modal');
     await Promise.all(panel.getAnimations().filter(animation=>Number.isFinite(animation.effect.getComputedTiming().iterations)).map(animation=>animation.finished.catch(()=>{})));
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

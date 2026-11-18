@@ -173,6 +173,31 @@ function createInstance(opts) {
   }
   const api = {
     whenReady,
+    capturePeekSelection() {
+      const editor=instanceRef.editor;if(!instanceRef.context.isPeek||!editor)return null;
+      const current=editor.getTextCursorPosition().block;
+      if(current.type==='pageLink')return {type:'pageLink',pageId:current.props.pageId};
+      const locate=(blocks,path=[])=>{
+        for(let i=0;i<blocks.length;i++){
+          if(blocks[i].id===current.id)return {type:current.type,path:[...path,i]};
+          const nested=locate(blocks[i].children||[],[...path,i]);if(nested)return nested;
+        }
+        return null;
+      };
+      return locate(editor.document);
+    },
+    restorePeekSelection(saved) {
+      const editor=instanceRef.editor;if(!instanceRef.context.isPeek||!editor||!saved)return;
+      let target;
+      if(saved.type==='pageLink'){
+        const find=blocks=>{for(const block of blocks){if(block.type==='pageLink'&&block.props.pageId===saved.pageId)return block;const nested=find(block.children||[]);if(nested)return nested;}};
+        target=find(editor.document);
+      }else if(Array.isArray(saved.path)){
+        let blocks=editor.document;
+        for(const index of saved.path){target=blocks[index];if(!target)return;blocks=target.children||[];}
+      }
+      if(target?.type===saved.type)editor.setTextCursorPosition(target.id,'start');
+    },
     reviewSpellingParagraph() { instanceRef.spelling?.reviewParagraph(); },
     captureSpellingSelection() {
       const editor = instanceRef.editor;

@@ -10499,3 +10499,13 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 #pagePeekOverlay .page-peek-body #pagePeekIcon:hover { outline:1px solid var(--border); }
 #pagePeekOverlay .page-peek-body #pagePeekIcon:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
 #pagePeekOverlay .page-peek-body #pagePeekIcon:disabled { cursor:default; }
+
+/* Page links keep their native selection semantics without the atom frame.
+   Other block selections (code, tables, media) retain BlockNote's indicators. */
+#pagePeekEditor .ProseMirror-selectednode:has(> .bn-block-content[data-content-type="pageLink"]),
+#pagePeekEditor .ProseMirror-selectednode > .bn-block-content[data-content-type="pageLink"],
+#pagePeekEditor .bn-block-content[data-content-type="pageLink"].ProseMirror-selectednode,
+#pagePeekEditor .bn-block-content[data-content-type="pageLink"].ProseMirror-selectednode > *,
+#pagePeekEditor .ProseMirror-selectednode > .bn-block-content[data-content-type="pageLink"] > * {
+  outline:none;box-shadow:none;
+}
