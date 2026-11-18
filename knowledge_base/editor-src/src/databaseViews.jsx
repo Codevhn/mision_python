@@ -20,6 +20,9 @@ function RecordCard({
   onDrop
 }) {
   const [content, setContent] = useState('');
+  const cover=cardCover(row,view);
+  const [coverFailed,setCoverFailed]=useState(false);
+  useEffect(()=>setCoverFailed(false),[cover?.url,cover?.background]);
   useEffect(() => {
     let active = true;
     if (view.cardPreview === 'content' || view.type === 'feed') api('/api/entry/' + row.id).then(data => {
@@ -29,11 +32,10 @@ function RecordCard({
       active = false;
     };
   }, [row.id, row.updated_at, view.cardPreview, view.type]);
-  const cover=cardCover(row,view);
   return <article className={'adb-record-card ' + (view.cardSize || 'medium') + (view.wrap ? ' wrap' : ' nowrap')} draggable={draggable} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}>
-    {view.cardPreview === 'cover' && cover && <button type="button" className="adb-card-cover" aria-label={'Abrir '+row.title+' desde imagen'} onClick={() => openRow(row)}><img alt={cover.alt} style={{objectFit:view.cardImageFit==='contain'?'contain':'cover'}} src={cover.url.startsWith('/api/databases/files/') ? cover.url + '?preview=1' : cover.url} /></button>}
+    {view.cardPreview === 'cover' && cover && <button type="button" className="adb-card-cover" aria-label={'Abrir '+row.title+' desde imagen'} onClick={() => openRow(row)}>{cover.background?<span role="img" aria-label={cover.alt} style={{display:'block',height:'100%',background:cover.background}}/>:coverFailed?<span className="adb-cover-unavailable">Portada no disponible</span>:<img alt={cover.alt} onError={()=>setCoverFailed(true)} style={{objectFit:view.cardImageFit==='contain'?'contain':'cover'}} src={cover.url.startsWith('/api/databases/files/') ? cover.url + '?preview=1' : cover.url} />}</button>}
     {view.type!=='feed' && view.cardPreview === 'content' && content && <button type="button" className="adb-card-preview" onClick={() => openRow(row)}>{content.replace(/^#+\s*/gm, '').slice(0, 300)}</button>}
-    <button type="button" className="adb-card-title" onClick={() => openRow(row)}>{view.showIcon !== false && <span>{row.icon || <Icon type="page" />}</span>}<span className="adb-card-name">{row.title}</span></button>
+    <button type="button" className="adb-card-title" onClick={() => openRow(row)}>{view.showIcon !== false && <span>{row.icon?(row.icon.includes(':')?<iconify-icon icon={row.icon} aria-hidden="true"/>:row.icon):<Icon type="page" />}</span>}<span className="adb-card-name">{row.title}</span></button>
     {view.type === 'feed' && <><time>{new Date(view.feedOrder === 'created' ? row.created_at : row.updated_at || row.created_at).toLocaleString('es')}</time><p className="adb-feed-content">{content.replace(/^#+\s*/gm, '').slice(0, 650)}</p></>}
     <div className="adb-card-properties">{columns.map(col => <div key={col.id} className="adb-card-property"><span title={col.name}><Icon type={col.type} /></span><Cell {...{
           row,

@@ -10509,3 +10509,10 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 #pagePeekEditor .ProseMirror-selectednode > .bn-block-content[data-content-type="pageLink"] > * {
   outline:none;box-shadow:none;
 }
+
+/* The existing Atlas cover picker is owned by its Peek, like the icon picker. */
+.cover-picker-overlay[data-peek-owner] { z-index:12001; }
+.page-peek-cover { height:180px;background-size:cover!important;background-position:center!important;border-radius:5px;margin-bottom:10px; }
+.page-peek-cover-actions { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px; }
+.page-peek-cover-actions button { font-size:13px; }
+@media(max-width:650px){ .page-peek-cover {height:130px;} }

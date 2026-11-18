@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {cardCover,listRowHeight} from '../src/databaseCardModel.js';
+import {cardCover,listRowHeight,pageCover} from '../src/databaseCardModel.js';
 const row={id:'same',title:'Registro',cover:'/static/covers/page.png',properties:[{id:'first',type:'files',value:[{id:'a'.repeat(32),name:'Primera.png',url:'/ignored'}]},{id:'second',type:'files',value:[{id:'b'.repeat(32),name:'Elegida.png'}]}]};
 assert.equal(cardCover(row,{}).url,row.cover);
 assert.equal(cardCover(row,{cardPreviewProperty:'second'}).url,'/api/databases/files/'+'b'.repeat(32),'A chosen property overrides the page cover and earlier properties, including metadata without a URL');
@@ -8,3 +8,13 @@ assert.equal(cardCover({...row,cover:null},{cardPreviewProperty:'__page_cover'})
 assert.equal(cardCover({...row,cover:null},{}).alt,'Primera.png');
 assert.equal(listRowHeight({}),38);assert.equal(listRowHeight({listDensity:'compact'}),30);assert.equal(listRowHeight({listDensity:'comfortable'}),48);
 console.log('card/list: explicit file property, canonical asset identity, no silent fallback, legacy defaults and density passed');
+
+assert.equal(pageCover('url(/static/covers/a.png)','A').url,'/static/covers/a.png');
+assert.equal(pageCover('url("https://example.com/a (1).png")').url,'https://example.com/a (1).png');
+assert.equal(pageCover("url('https://example.com/a.png')").url,'https://example.com/a.png');
+assert.equal(pageCover('linear-gradient(135deg,#123,#456)').background,'linear-gradient(135deg,#123,#456)');
+assert.equal(pageCover('#abcdef').background,'#abcdef');
+assert.equal(pageCover('repeating-linear-gradient(0deg,red,blue)').url,undefined);
+assert.equal(pageCover(''),null);assert.equal(pageCover('url()'),null);
+assert.equal(cardCover({...row,cover:'url(/static/covers/a.png)'},{cardPreviewProperty:'__page_cover'}).url,'/static/covers/a.png');
+console.log('page covers: CSS image wrappers, gradients/colors, legacy URLs and empty values passed');

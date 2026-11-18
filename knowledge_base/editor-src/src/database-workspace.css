@@ -293,3 +293,5 @@
 .adb-list.properties-below .adb-list-property{margin-left:4px}
 
 .adb-filter-group{border:1px solid var(--adb-border);border-radius:4px;padding:6px;margin:8px 0;min-width:0}.adb-filter-group legend{color:var(--adb-muted);font-size:12px}.adb-filter-add{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.adb-filter-add button{color:var(--adb-muted);border:0;background:transparent;padding:5px;border-radius:4px}.adb-filter-add button:hover{background:var(--adb-hover)}.adb-filter-add button:disabled{opacity:.4}
+
+.adb-cover-unavailable{display:flex;align-items:center;justify-content:center;height:100%;color:var(--adb-muted);font-size:12px}

@@ -2533,11 +2533,20 @@ function applyCover(coverValue) {
   }
 }
 
-function openCoverPicker(saveFn) {
-  const _save = saveFn || saveCover;
+function openCoverPicker(saveFn, options={}) {
+  const persist = saveFn || saveCover;
+  let saving=false;
+  const _save=async value=>{
+    if(options.peekOwner&&saving)return false;
+    saving=true;
+    try{await persist(value);return true;}
+    catch(error){if(!options.peekOwner)throw error;showToast(error.message||'No se pudo guardar la portada','error');return false;}
+    finally{saving=false;}
+  };
   document.querySelectorAll(".cover-picker-overlay").forEach(e => e.remove());
   const overlay = document.createElement("div");
   overlay.className = "cover-picker-overlay";
+  if(options.peekOwner){overlay.dataset.peekOwner=options.peekOwner;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Elige una portada');}
   overlay.innerHTML = `
     <div class="cover-picker">
       <div class="cover-picker-title">Elige una portada</div>
@@ -2598,8 +2607,7 @@ function openCoverPicker(saveFn) {
     swatch.className = "cover-preset-swatch";
     swatch.style.background = preset;
     swatch.addEventListener("click", async () => {
-      await _save(preset);
-      overlay.remove();
+      if(await _save(preset))overlay.remove();
     });
     grid.appendChild(swatch);
   });
@@ -2623,8 +2631,7 @@ function openCoverPicker(saveFn) {
       swatch.appendChild(lbl);
     }
     swatch.addEventListener("click", async () => {
-      await _save(`url(${saveUrl || url})`);
-      overlay.remove();
+      if(await _save(`url(${saveUrl || url})`))overlay.remove();
     });
     photoGrid.appendChild(swatch);
   }
@@ -2687,8 +2694,7 @@ function openCoverPicker(saveFn) {
   overlay.querySelector("#coverUrlApply").addEventListener("click", async () => {
     const val = urlInput.value.trim();
     if (!val) return;
-    await _save(`url(${val})`);
-    overlay.remove();
+    if(await _save(`url(${val})`))overlay.remove();
   });
 
   // File upload tab
@@ -2726,8 +2732,8 @@ function openCoverPicker(saveFn) {
     });
     if (!res.ok) { showToast("Error al subir imagen", "error"); uploadApply.disabled = false; uploadApply.textContent = "Aplicar imagen"; return; }
     const { url } = await res.json();
-    await _save(`url(${url})`);
-    overlay.remove();
+    if(await _save(`url(${url})`))overlay.remove();
+    else{uploadApply.disabled=false;uploadApply.textContent="Aplicar imagen";}
   });
 
   overlay.querySelector("#coverPickerCancel").addEventListener("click", () => overlay.remove());
@@ -13028,7 +13034,7 @@ async function _resumePracticeFromHistory(challengeId) {
 // properties AND body content are genuinely editable without leaving the
 // table, not just a read-only preview.
 let _peekEntryId=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
-let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0, _peekIconSave=null;
+let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0, _peekIconSave=null, _peekCoverSave=null, _peekCoverState=null;
 let _peekMode='side', _peekPath=[], _peekRootOptions=null, _peekRevision=0;
 function _renderPeekPath() {
   let nav=$('pagePeekBreadcrumbs');
@@ -13055,6 +13061,29 @@ async function _navigatePeek(id,index) {
     recordIds:id===next[0].id?(_peekRootOptions?.recordIds||[]):[],_peekPath:next});
 }
 
+function _applyPeekCover(value) {
+  const cover=AtlasDatabase.pageCover(value,$('pagePeekTitle').value),element=$('pagePeekCover');
+  element.style.background='';element.style.backgroundImage='';
+  if(cover?.background)element.style.background=cover.background;
+  else if(cover?.url)element.style.backgroundImage=`url(${JSON.stringify(cover.url)})`;
+  element.classList.toggle('hidden',!cover);
+  $('pagePeekCoverChange').textContent=cover?'Cambiar portada':'Añadir portada';
+  $('pagePeekCoverRemove').classList.toggle('hidden',!cover);
+}
+async function _savePeekCover(value,state=_peekCoverState) {
+  if(!state||state.id!==_peekEntryId||$('pagePeekTitle').readOnly)throw Error('La página no está disponible para editar su portada');
+  if(_peekCoverSave)return _peekCoverSave;
+  ++_peekRevision;
+  const save=(async()=>{
+    const response=await fetch(`/api/entry/${state.id}/cover`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({cover:value})});
+    if(!response.ok)throw Error('No se pudo guardar la portada. Inténtalo de nuevo.');
+    state.cover=value;
+    if(_peekEntryId===state.id)_applyPeekCover(value);
+    if(state.base)AtlasDatabase.notify(state.base);
+  })();
+  _peekCoverSave=save;
+  try{await save;}finally{if(_peekCoverSave===save)_peekCoverSave=null;}
+}
 function _resizePeekTitle() {
   const title=$('pagePeekTitle');if(!title)return;
   const body=title.closest('.page-peek-body'),scroll=body?.scrollTop,anchor=body?.style.overflowAnchor;
@@ -13128,6 +13157,9 @@ window._openPagePeek=async function(id,opts={}) {
     const meta=data.meta||{};let draft=null;
     try {draft=JSON.parse(sessionStorage.getItem('atlas-peek-draft:'+id)||'null');}catch{}
     $('pagePeekTitle').value=draft?.title??meta.title??'';setIconButtonValue($('pagePeekIcon'),meta.icon||'',ENTRY_ICON_DEFAULTS.page);$('pagePeekIcon').disabled=!!meta.database_locked;
+    _peekCoverState={id,cover:meta.cover||'',base:meta.parent_id&&meta.database_id?`/api/databases/${meta.parent_id}/${meta.database_id}`:null};
+    _applyPeekCover(meta.cover||'');
+    $('pagePeekCoverChange').disabled=$('pagePeekCoverRemove').disabled=!!meta.database_locked;
     _renderPeekPath();
     const controls=$('pagePeekToolbar');const isDatabase=overlay.classList.contains('db-preview-peek');
     controls.classList.toggle('hidden',!isDatabase);
@@ -13139,7 +13171,7 @@ window._openPagePeek=async function(id,opts={}) {
         flush:_flushPeekPendingSaves,
         refresh:async()=>window._openPagePeek(id,{...opts,mode:_peekMode,_peekPath:_peekPath.map(item=>({...item})),_reload:true}),
         openRecord:async(next,records)=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de abrir otro registro');await window._openPagePeek(next,{...opts,recordIds:records||[next],mode:_peekMode});},
-        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;$('pagePeekIcon').disabled=!!value;},
+        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;$('pagePeekIcon').disabled=!!value;$('pagePeekCoverChange').disabled=$('pagePeekCoverRemove').disabled=!!value;},
         appendMarkdown:async text=>{await _flushPeekPendingSaves();await _peekEditor.appendMarkdown(text);await _flushPeekPendingSaves();},
         fullPage:async()=>{if(await _closePagePeek())await window._loadEntryById?.(id);},
         mode:async mode=>{await _flushPeekPendingSaves();_setPeekMode(mode);mountControls();},
@@ -13175,6 +13207,7 @@ window._openPagePeek=async function(id,opts={}) {
 async function _flushPeekPendingSaves(options) {
   clearTimeout(_peekAutoSaveTimer);
   if(_peekIconSave)await _peekIconSave;
+  if(_peekCoverSave)await _peekCoverSave;
   await AtlasDatabase.flush(options);
   await Properties.flush();
   if(_peekQueue)await _peekQueue.flush();
@@ -13197,7 +13230,7 @@ async function _closePagePeek(options={}) {
       AtlasDatabase.unmountProperties($('pagePeekProps'));
       AtlasDatabase.unmountPeekToolbar($('pagePeekToolbar'));
       AtlasDatabase.clearRecordPresentation($('pagePeekOverlay'));
-      document.querySelectorAll('.icon-picker-popover[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)node.remove();});
+      document.querySelectorAll('.icon-picker-popover[data-peek-owner],.cover-picker-overlay[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)node.remove();});
       document.querySelectorAll('[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)delete node.dataset.peekOwner;});
       _peekEditor?.destroy();_peekEditor=null;_peekEntryId=null;_peekQueue=null;_peekOnClose=null;
       $('pagePeekOverlay').classList.add('hidden');delete $('pagePeekOverlay').dataset.peekOwner;
@@ -13216,6 +13249,11 @@ function initPagePeek() {
   $('pagePeekClose')?.setAttribute('aria-label','Cerrar Peek');
   $('pagePeekTitle')?.setAttribute('aria-label','Título del registro');
   $('pagePeekClose')?.addEventListener('click',()=>_closePagePeek());
+  $('pagePeekCoverChange')?.addEventListener('click',()=>{
+    const state=_peekCoverState;if(!state||state.id!==_peekEntryId||$('pagePeekCoverChange').disabled)return;
+    openCoverPicker(value=>_savePeekCover(value,state),{peekOwner:state.id});
+  });
+  $('pagePeekCoverRemove')?.addEventListener('click',()=>_savePeekCover('').catch(error=>showToast(error.message,'error')));
   $('pagePeekIcon')?.addEventListener('click',()=>{
     const button=$('pagePeekIcon'),id=_peekEntryId;
     if(!id||button.disabled)return;
