@@ -13028,7 +13028,7 @@ async function _resumePracticeFromHistory(challengeId) {
 // properties AND body content are genuinely editable without leaving the
 // table, not just a read-only preview.
 let _peekEntryId=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
-let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0;
+let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0, _peekIconSave=null;
 let _peekMode='side', _peekPath=[], _peekRootOptions=null, _peekRevision=0;
 function _renderPeekPath() {
   let nav=$('pagePeekBreadcrumbs');
@@ -13125,7 +13125,7 @@ window._openPagePeek=async function(id,opts={}) {
     $('pagePeekSaveError')?.remove();
     const meta=data.meta||{};let draft=null;
     try {draft=JSON.parse(sessionStorage.getItem('atlas-peek-draft:'+id)||'null');}catch{}
-    $('pagePeekTitle').value=draft?.title??meta.title??'';$('pagePeekIcon').innerHTML=meta.icon?renderIconMarkup(meta.icon,'page-peek-icon-glyph',''):'';
+    $('pagePeekTitle').value=draft?.title??meta.title??'';setIconButtonValue($('pagePeekIcon'),meta.icon||'',ENTRY_ICON_DEFAULTS.page);$('pagePeekIcon').disabled=!!meta.database_locked;
     _renderPeekPath();
     const controls=$('pagePeekToolbar');const isDatabase=overlay.classList.contains('db-preview-peek');
     controls.classList.toggle('hidden',!isDatabase);
@@ -13137,7 +13137,7 @@ window._openPagePeek=async function(id,opts={}) {
         flush:_flushPeekPendingSaves,
         refresh:async()=>window._openPagePeek(id,{...opts,mode:_peekMode,_peekPath:_peekPath.map(item=>({...item})),_reload:true}),
         openRecord:async(next,records)=>{if(!(await _closePagePeek()))throw new Error('No se pudo guardar antes de abrir otro registro');await window._openPagePeek(next,{...opts,recordIds:records||[next],mode:_peekMode});},
-        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;},
+        setLocked:value=>{meta.database_locked=value;_peekEditor?.setEditable(!value);$('pagePeekTitle').readOnly=value;$('pagePeekIcon').disabled=!!value;},
         appendMarkdown:async text=>{await _flushPeekPendingSaves();await _peekEditor.appendMarkdown(text);await _flushPeekPendingSaves();},
         fullPage:async()=>{if(await _closePagePeek())await window._loadEntryById?.(id);},
         mode:async mode=>{await _flushPeekPendingSaves();_setPeekMode(mode);mountControls();},
@@ -13171,6 +13171,7 @@ window._openPagePeek=async function(id,opts={}) {
 };
 async function _flushPeekPendingSaves(options) {
   clearTimeout(_peekAutoSaveTimer);
+  if(_peekIconSave)await _peekIconSave;
   await AtlasDatabase.flush(options);
   await Properties.flush();
   if(_peekQueue)await _peekQueue.flush();
@@ -13193,6 +13194,7 @@ async function _closePagePeek(options={}) {
       AtlasDatabase.unmountProperties($('pagePeekProps'));
       AtlasDatabase.unmountPeekToolbar($('pagePeekToolbar'));
       AtlasDatabase.clearRecordPresentation($('pagePeekOverlay'));
+      document.querySelectorAll('.icon-picker-popover[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)node.remove();});
       document.querySelectorAll('[data-peek-owner]').forEach(node=>{if(node.dataset.peekOwner===_peekEntryId)delete node.dataset.peekOwner;});
       _peekEditor?.destroy();_peekEditor=null;_peekEntryId=null;_peekQueue=null;_peekOnClose=null;
       $('pagePeekOverlay').classList.add('hidden');delete $('pagePeekOverlay').dataset.peekOwner;
@@ -13211,6 +13213,23 @@ function initPagePeek() {
   $('pagePeekClose')?.setAttribute('aria-label','Cerrar Peek');
   $('pagePeekTitle')?.setAttribute('aria-label','Título del registro');
   $('pagePeekClose')?.addEventListener('click',()=>_closePagePeek());
+  $('pagePeekIcon')?.addEventListener('click',()=>{
+    const button=$('pagePeekIcon'),id=_peekEntryId;
+    if(!id||button.disabled)return;
+    openIconPicker(button,button.dataset.icon||'',async icon=>{
+      if(_peekEntryId!==id||button.disabled)return;
+      button.disabled=true;
+      const save=(async()=>{
+        const response=await fetch(`/api/entry/${id}/icon`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({icon})});
+        if(!response.ok)throw new Error('No se pudo guardar el icono. Inténtalo de nuevo.');
+        if(_peekEntryId===id)setIconButtonValue(button,icon,ENTRY_ICON_DEFAULTS.page);
+      })();
+      _peekIconSave=save;
+      try{await save;}
+      catch(error){if(_peekEntryId===id)showToast(error.message,'error');}
+      finally{if(_peekIconSave===save)_peekIconSave=null;if(_peekEntryId===id)button.disabled=$('pagePeekTitle').readOnly;}
+    });
+  });
   const inside=target=>!!(target.closest?.('.page-peek-modal')||(_peekEntryId&&target.closest?.('[data-peek-owner="'+_peekEntryId+'"]')));
   document.addEventListener('pointerdown',event=>{
     if(!_peekEntryId)return;

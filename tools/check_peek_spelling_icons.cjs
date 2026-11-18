@@ -15,6 +15,7 @@ const collection={prefix:icons.prefix,width:icons.width,height:icons.height,icon
    await context.route('**/*',route=>{
     const u=new URL(route.request().url());
     if(u.hostname==='code.iconify.design')return route.fulfill({body:runtime,contentType:'application/javascript'});
+    if(u.hostname==='api.iconify.design'&&u.pathname==='/search')return route.fulfill({json:{icons:['material-icon-theme:python'],total:1}});
     if(['api.iconify.design','api.simplesvg.com','api.unisvg.com'].includes(u.hostname))return route.fulfill({json:collection});
     if(u.origin!==base)return route.abort();
     if(u.pathname==='/api/proofreading/check'){
@@ -42,6 +43,35 @@ const collection={prefix:icons.prefix,width:icons.width,height:icons.height,icon
     assert.equal(await page.locator('#pagePeekIcon').textContent(),'','Icon identifier is not printed as text');
     assert.ok(await page.locator('#pagePeekIcon iconify-icon').evaluate(icon=>{const r=icon.shadowRoot.querySelector('svg').getBoundingClientRect();return r.width>0&&r.height>0;}),'Python glyph has visible dimensions');
    }
+   const iconButton=page.getByRole('button',{name:'Cambiar icono de la página',exact:true});
+   const picker=()=>page.locator('.icon-picker-popover');
+   await iconButton.click();await picker().waitFor();
+   assert.equal(await picker().getAttribute('data-peek-owner'),row,'Uses Atlas picker owned by this Peek');
+   const book=picker().locator('[data-icon="lucide:book-open"]');
+   assert.ok(await book.evaluate(node=>{const r=node.getBoundingClientRect();return node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}));
+   // Close immediately while the regular /icon endpoint is still saving.
+   let release,started;const requested=new Promise(r=>started=r),delay=new Promise(r=>release=r);
+   await page.route(`**/api/entry/${encodeURIComponent(row)}/icon`,async route=>{started();await delay;const response=await route.fetch();await route.fulfill({response});});
+   await book.click();let requestTimer;await Promise.race([requested,new Promise((_,reject)=>{requestTimer=setTimeout(()=>reject(Error("Icon save request did not start")),5000);})]);clearTimeout(requestTimer);
+   await page.getByRole('button',{name:'Cerrar Peek',exact:true}).click();
+   assert.equal(await page.locator('#pagePeekOverlay').isVisible(),true,'Close waits for icon persistence');
+   release();await page.waitForSelector('#pagePeekOverlay.hidden',{state:'attached'});
+   await page.unroute(`**/api/entry/${encodeURIComponent(row)}/icon`);
+   await page.evaluate(id=>_openPagePeek(id,{databasePreview:true,mode:'side'}),row);
+   assert.equal(await iconButton.getAttribute('data-icon'),'lucide:book-open','Selected icon survives reopening');
+   assert.equal((await (await context.request.get(base+`/api/entry/${row}`)).json()).meta.icon,'lucide:book-open');
+   // Exercise the same searchable catalogue used throughout Atlas.
+   await iconButton.click();await picker().locator('.icon-picker-search').fill('python');
+   await picker().locator('[data-icon="material-icon-theme:python"]').click();
+   await page.waitForFunction(()=>document.getElementById('pagePeekIcon').dataset.icon==='material-icon-theme:python');
+   await page.waitForFunction(()=>!document.getElementById('pagePeekIcon').disabled);
+   // A failed request cannot replace the last successfully saved icon.
+   await page.route(`**/api/entry/${encodeURIComponent(row)}/icon`,route=>route.fulfill({status:503,json:{error:'Prueba de fallo'}}));
+   await iconButton.click();await picker().locator('[data-icon="lucide:book-open"]').click();
+   await page.waitForFunction(()=>!document.getElementById('pagePeekIcon').disabled);
+   assert.equal(await iconButton.getAttribute('data-icon'),'material-icon-theme:python');
+   await page.unroute(`**/api/entry/${encodeURIComponent(row)}/icon`);
+   assert.equal((await (await context.request.get(base+`/api/entry/${row}`)).json()).meta.icon,'material-icon-theme:python');
    const word=text=>page.locator('#pagePeekEditor .atlas-spelling-target').filter({hasText:text});
    await word('abjeto').waitFor();await word('abjeto').hover();
    const popup=page.locator('.atlas-spelling-popover');await popup.waitFor();
@@ -78,7 +108,7 @@ const collection={prefix:icons.prefix,width:icons.width,height:icons.height,icon
    await page.evaluate(id=>_openPagePeek(id,{databasePreview:true,mode:'center'}),child);
    assert.equal(await page.locator('#pagePeekIcon').textContent(),'📚','Emoji remains an emoji');
    await page.getByRole('button',{name:'Cerrar Peek',exact:true}).click();
-   assert.deepEqual(errors,[]);console.log(`PASS ${viewport.width}px: real Python SVG, emoji, contextual/offline suggestions, click/undo, table/paragraph edits, persistence and source isolation`);
+   assert.deepEqual(errors,[]);console.log(`PASS ${viewport.width}px: real Python SVG, standard icon picker/search, icon save/reopen/failure, emoji, contextual/offline suggestions, click/undo, table/paragraph edits, persistence and source isolation`);
    await context.close();
   }
  }finally{await browser.close();}

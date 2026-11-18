@@ -10489,3 +10489,13 @@ html.is-touch-device .bn-side-menu { display: none !important; }
 /* Spelling suggestions owned by a Peek stay above the panel, without
    changing popup layers in full-page editors. */
 .atlas-spelling-popover[data-peek-owner] { z-index:12001; }
+
+/* The Peek uses Atlas' standard icon selector and icon persistence endpoint. */
+#pagePeekOverlay .page-peek-body #pagePeekIcon {
+  display:block;min-width:44px;min-height:44px;width:fit-content;padding:3px!important;
+  border:0!important;border-radius:5px;background:transparent!important;box-shadow:none!important;
+  color:var(--text);line-height:1;cursor:pointer;
+}
+#pagePeekOverlay .page-peek-body #pagePeekIcon:hover { outline:1px solid var(--border); }
+#pagePeekOverlay .page-peek-body #pagePeekIcon:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
+#pagePeekOverlay .page-peek-body #pagePeekIcon:disabled { cursor:default; }

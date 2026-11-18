@@ -75,3 +75,31 @@ LLM. Los tamaños son perfiles de Chromium, no hardware Samsung físico.
 La captura de comprobación se guarda en `/tmp/atlas-peek-icons-spelling.png`.
 La regresión de hover de página completa cubre cuatro temas y verifica que su
 comportamiento se conserva. También se ejecutan `npm test` y el build del editor.
+
+## Seguimiento: edición del icono con el sistema existente de Atlas
+
+La corrección inicial de este informe resolvía el dibujo del icono, pero su
+contenedor seguía siendo un `span` sin acción. Por tanto, no integraba la edición
+que ofrece el resto de Atlas. Se sustituye únicamente `pagePeekIcon` por un botón
+nativo con etiqueta accesible y se conecta directamente a `openIconPicker` y
+`setIconButtonValue`, sin otro catálogo, buscador ni selector alternativo.
+
+La selección se guarda mediante el endpoint existente `PATCH /api/entry/:id/icon`.
+El handler captura el ID de la página del Peek, espera la respuesta antes de
+actualizar el botón y conserva el icono anterior ante un error. La cola de cierre
+y navegación del Peek espera también el guardado del icono, evitando releer un
+valor anterior al cerrar inmediatamente. Las páginas bloqueadas deshabilitan el
+botón. Al abandonar la página se retira su selector abierto para que no actúe
+sobre una instancia distinta.
+
+El checker ahora pulsa el botón de cabecera y usa el selector estándar para
+escoger `lucide:book-open`. Retrasa la respuesta de guardado, pulsa cerrar y
+comprueba que el cierre espera; reabre y verifica el valor persistido. También
+usa el buscador estándar para elegir `material-icon-theme:python` y simula un 503
+para verificar que el último icono guardado se conserva. La búsqueda remota se
+controla en el navegador de prueba; el catálogo y el handler son los reales de
+Atlas. No se cambia el comportamiento de los selectores fuera del Peek.
+
+Resultado: pasaron los tres perfiles (1697, 1480 y 412 px), junto con las pruebas
+existentes del SVG, emoji, sugerencias ortográficas, revisión por párrafo,
+corrección en tabla, undo, persistencia y conservación del contenido de fondo.
