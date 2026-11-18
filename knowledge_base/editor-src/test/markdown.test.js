@@ -196,3 +196,5 @@ for (const metadata of ['%', encodeURIComponent('{invalid JSON'), encodeURICompo
   assert.strictEqual(literalText(blocks[0].content), broken, 'bad metadata must preserve visible source without throwing');
 }
 console.log('ok - image/video/audio/file URLs, names, captions, placeholders and preferences persist without fetching resources');
+
+check('array indices survive literal escaping and reload', 'Usa args\\[0\\] y valores\\[12\\].');

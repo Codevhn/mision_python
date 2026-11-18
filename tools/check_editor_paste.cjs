@@ -39,12 +39,12 @@ const mixed = '# Arquitectura de Python\n\nUn documento con **énfasis** y códi
         return route.fulfill({body,contentType:file.endsWith('.js')?'application/javascript':'text/css'});
       });
       await page.goto('http://atlas.test/');
-      const reset = async (markdown = '') => {
-        await page.evaluate(markdown => {
+      const reset = async (markdown = '', isPeek = false) => {
+        await page.evaluate(({markdown,isPeek}) => {
           window.editor?.destroy();
-          window.editor = BlockEditor.create({container:document.getElementById('entryBody')});
+          window.editor = BlockEditor.create({container:document.getElementById('entryBody'),isPeek});
           editor.load(markdown);
-        }, markdown);
+        }, {markdown,isPeek});
         await page.waitForSelector('.bn-editor .bn-inline-content');
         await page.locator('.bn-editor .bn-inline-content').first().click();
       };
@@ -111,6 +111,67 @@ const mixed = '# Arquitectura de Python\n\nUn documento con **énfasis** y códi
       assert.equal(prose.find(b=>b.type==='codeBlock').text,'def example():\n    return 42');
       assert.equal(await page.locator('.bn-editor [style*="220px"], .bn-editor [style*="Courier"], .bn-editor [style*="80px"]').count(),0,'Source layout discarded');
       assert.equal(await page.locator('.bn-editor .bn-inline-content').filter({hasText:'Verso breve'}).locator('br').count(),1,'Short intentional breaks preserved');
+      await page.evaluate(async()=>{
+        const {normalizePDFTextLayer}=await import('/editor-src/src/clipboardPDF.js');
+        const text='Una explicación suficientemente larga para tener muchas palabras y reconocer la prosa';
+        const span=(top,left,transform='')=>`<span style="position:absolute;top:${top}px;left:${left}px;font-size:12px;${transform}">${text}</span>`;
+        const reversed=[span(10,10),span(30,10),span(10,300),span(30,300)].join('');
+        const rotated=[10,30,50,70].map(top=>span(top,10,'transform:rotate(90deg)')).join('');
+        const normal=[10,25,40,55].map(top=>span(top,10)).join('');
+        for(const html of ['<div>'+reversed+'</div>','<div>'+rotated+'</div>','<table><tr><td><div>'+normal+'</div></td></tr></table>','<pre>'+normal+'</pre>','<ol><li><div>'+normal+'</div></li></ol>']){
+          const document=window.document.implementation.createHTMLDocument('');document.body.innerHTML=html;const before=document.body.innerHTML;
+          normalizePDFTextLayer(document);if(document.body.innerHTML!==before)throw Error('Ambiguous geometry or semantic content changed');
+        }
+      });
+      const fragments=[
+        'Argumentos de la línea de comandos. Un uso importante de las cadenas en Java',
+        'consiste en permitir que se pase información desde la línea de comandos al',
+        'programa. El mecanismo es sencillo. Cuando escribes la orden',
+        'java','seguida del','nombre de una biblioteca y de una secuencia de cadenas, el sistema Java invoca el',
+        'método','main()','de esa biblioteca y le pasa como argumento un arreglo con las',
+        'cadenas que escribiste después del nombre de la biblioteca. Por ejemplo,','args[0]',
+        ', como argumento de','In.readInts()','.'
+      ];
+      const expected=fragments.join(' ').replace('args[0] ,','args[0],').replace('In.readInts() .','In.readInts().');
+      for(const isPeek of [false,true]){
+        for(const format of ['plain','br','block-spans']){
+          await reset('',isPeek);
+          const rich=fragments.map((text,i)=>`<span style="${format==='block-spans'?'display:block;':''}${i===0?'font-weight:bold;':''}${text==='main()'?'font-family:Courier;':''}">${text}</span>`).join(format==='br'?'<br>':'');
+          await paste(format==='plain'?{'text/plain':fragments.join('\n')}:{'text/html':'<p>'+rich+'</p><p>Otro párrafo independiente.</p>'});
+          await waitText('In.readInts()');
+          const value=await blocks();assert.equal(value[0].text,expected,`${label}/${isPeek}/${format}: short inline PDF fragments reflow`);
+          assert.equal(await page.locator('.bn-editor .bn-inline-content').first().locator('br').count(),0);
+          if(format!=='plain'){
+            assert.ok(value.some(b=>b.text==='Otro párrafo independiente.'));
+            assert.equal(await page.locator('.bn-editor strong').filter({hasText:fragments[0]}).count(),1);
+            assert.equal(await page.locator('.bn-editor code').filter({hasText:'main()'}).count(),1);
+          }
+          const saved=await markdown();await reset(saved,isPeek);assert.equal((await blocks())[0].text,expected,'Save/reload keeps reconstructed paragraph');
+          await reset('',isPeek);await paste(format==='plain'?{'text/plain':fragments.join('\n')}:{'text/html':'<p>'+rich+'</p>'});
+          await page.keyboard.press('Control+z');assert.equal((await markdown()).trim(),'','PDF paste is one undo');
+          await page.keyboard.press('Control+Shift+z');assert.equal((await blocks())[0].text,expected);
+        }
+        await reset('',isPeek);await paste({'text/plain':'Necesitarás:\n• Primer elemento.\n• Segundo elemento.\n\nProcedimiento:\n1. '+fragments.join('\n')+'\n2. Segundo paso.'});
+        const lists=await blocks();assert.equal(lists.filter(b=>b.type==='bulletListItem').length,2);assert.equal(lists.filter(b=>b.type==='numberedListItem').length,2);assert.equal(lists.find(b=>b.type==='numberedListItem').text,expected);
+        const positioned=[
+          [10,20,18,'Título del documento'],
+          [40,20,12,'Este párrafo contiene una explicación técnica suficientemente extensa para reconocer su estructura'],
+          [55,20,12,'y continúa en la siguiente línea del libro con datos útiles para estudiar el contenido.'],
+          [85,20,12,'Este otro párrafo también tiene una explicación larga que debe conservar su propia separación'],
+          [100,20,12,'y otra línea para completar el ejemplo sin heredar los márgenes del documento original.'],
+          [130,20,12,'• Primer elemento de la lista.'],[145,20,12,'• Segundo elemento de la lista.'],
+        ].map(([top,left,size,text])=>`<span style="position:absolute;top:${top}px;left:${left}px;font-size:${size}px">${text}</span>`).join('');
+        await reset('',isPeek);await paste({'text/html':'<div>'+positioned+'</div>'});await waitText('Segundo elemento');
+        const recovered=await blocks();assert.ok(recovered.some(b=>b.type==='heading'&&b.text==='Título del documento'));
+        assert.equal(recovered.filter(b=>b.type==='bulletListItem').length,2,JSON.stringify(recovered));
+        assert.equal(recovered.filter(b=>b.type==='paragraph'&&b.text?.startsWith('Este')).length,2,JSON.stringify(recovered));
+        assert.equal(await page.locator('.bn-editor [style*="position: absolute"]').count(),0);
+        await reset('',isPeek);await paste({'text/html':'<p>Un párrafo separado.</p><p><code>main()</code></p><p>Otro párrafo separado.</p><p>Verso uno<br>Verso dos</p>'});
+        assert.deepEqual((await blocks()).slice(0,3).map(b=>b.text),['Un párrafo separado.','main()','Otro párrafo separado.']);
+        await reset('',isPeek);await paste({'text/html':'<h2>Título semántico</h2><table><tr><th>Tipo</th><th>Ejemplo</th></tr><tr><td>Entero</td><td><code>args[0]</code></td></tr></table>'});
+        assert.equal((await blocks()).filter(b=>b.type==='table').length,1);assert.equal(await page.locator('.bn-editor td').filter({hasText:'args[0]'}).count(),1);
+      }
+      console.log(`PASS ${label}: PDF font fragments, inline code/emphasis, punctuation, positioned headings/lists/paragraphs, persistence and undo in normal/Peek editors`);
       await reset();
       await paste({'text/markdown':pdfLines.split('\n')[0] + '  \nSalto Markdown deliberado.'});
       await waitText('Salto Markdown deliberado.');

@@ -1,6 +1,6 @@
 // Reflow only long prose lines. Short lines, Markdown structure, indented code
 // and blank-line paragraph boundaries are intentional until proven otherwise.
-const structure = /^(?:\s{4}|\t|\s*(?:#{1,6}\s|>|[-+*]\s|\d+[.)]\s|```|~~~|\||:::|[-*_]{3,}\s*$))/;
+const structure = /^(?:\s{4}|\t|\s*(?:#{1,6}\s|>|[-+*•●▪◦]\s|\d+[.)]\s|```|~~~|\||:::|[-*_]{3,}\s*$))/;
 function proseLine(line) {
   return !structure.test(line) && !/[{};]\s*$/.test(line)
     && line.trim().length >= 45 && line.trim().split(/\s+/).length >= 7;
@@ -11,18 +11,51 @@ export function isProseWrap(before, after) {
     && /[\p{L}\p{N},;:!?.”'»\)\]-]$/u.test(before.trim())
     && /^[\p{L}\p{N}“"'«¿¡(]/u.test(after.trim());
 }
-export function reflowClipboardText(text) {
-  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+// PDF producers split a sentence at font changes as well as at printed line
+// endings. Decide from the whole run, rather than requiring each fragment to
+// look like a long prose line ("main()" is still part of the sentence).
+export function proseRunBreaks(lines) {
+  const join = new Set();
+  let start = 0;
+  const listPrefix = /^(?: {0,3}[-+*•●▪◦]\s+| {0,3}\d+[.)]\s+)/u;
+  const flush = end => {
+    const run = lines.slice(start, end).map((line,i)=>i===0?line.replace(listPrefix,''):line);
+    const anchors = run.filter(proseLine).length;
+    // Two substantial prose fragments distinguish a fragmented paragraph from
+    // a heading followed by short verses, identifiers, or an unmarked program.
+    if (anchors >= 2) for (let i = start + run.findIndex(proseLine); i < end - 1; i++) join.add(i);
+    else for (let i = start; i < end - 1; i++) if (isProseWrap(run[i - start], run[i - start + 1])) join.add(i);
+  };
   let fence = null;
-  return lines.map((line, index) => {
-    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
-    const inFence = Boolean(fence);
+  for (let i = 0; i <= lines.length; i++) {
+    const line = lines[i];
+    const marker = line?.match(/^\s{0,3}(`{3,}|~{3,})/);
+    const boundary = line === undefined || !line.trim() || structure.test(line)
+      || (line.trim().length < 60 && /:$/.test(line.trim()))
+      || fence || /(?: {2,}|\\)$/.test(line)
+      || /^[{}]|[{};]\s*$/.test(line.trim());
+    if (boundary) { flush(i); start = !fence && line && listPrefix.test(line) ? i : i + 1; }
     if (marker) {
       if (!fence) fence = marker[1];
       else if (marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = null;
     }
-    const next = lines[index + 1];
-    return line + (!inFence && !fence && !marker && next && isProseWrap(line, next) ? ' ' : index < lines.length - 1 ? '\n' : '');
+  }
+  return join;
+}
+export function proseSeparator(before, after) {
+  return /^[,.;:!?%)\]}»]/u.test(after.trim()) || /[(\[«]$/.test(before.trim()) ? '' : ' ';
+}
+export function reflowClipboardText(text) {
+  let fence = null;
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').map(line=>{
+    const marker=line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if(marker){if(!fence)fence=marker[1];else if(marker[1][0]===fence[0]&&marker[1].length>=fence.length)fence=null;return line;}
+    return fence?line:line.replace(/^( {0,3})[•●▪◦]\s+/u,'$1- ');
+  });
+  const join = proseRunBreaks(lines);
+  return lines.map((line, i) => {
+    const value = (join.has(i - 1) ? line.trimStart() : line);
+    return (join.has(i) ? value.trimEnd() : value) + (i === lines.length - 1 ? '' : join.has(i) ? proseSeparator(line, lines[i + 1]) : '\n');
   }).join('');
 }
 
@@ -54,17 +87,15 @@ export function normalizeProseHTML(document, reflow = true) {
   for (const block of [document.body, ...document.body.querySelectorAll('p,li,div')]) {
     if (block.closest('pre,code') || block.querySelector('p,li,div,pre,table,ul,ol')) continue;
     const breaks = [...block.querySelectorAll('br')];
-    const replacements = [];
-    breaks.forEach((br, index) => {
-      const before = document.createRange();
-      before.selectNodeContents(block);
-      if (index) before.setStartAfter(breaks[index - 1]);
-      before.setEndBefore(br);
-      const after = document.createRange();
-      after.selectNodeContents(block); after.setStartAfter(br);
-      if (breaks[index + 1]) after.setEndBefore(breaks[index + 1]);
-      if (isProseWrap(before.toString(), after.toString())) replacements.push(br);
+    const lines = breaks.map((br, index) => {
+      const range = document.createRange();range.selectNodeContents(block);
+      if (index) range.setStartAfter(breaks[index - 1]);
+      range.setEndBefore(br);return range.toString();
     });
-    replacements.forEach(br => br.replaceWith(document.createTextNode(' ')));
+    if (breaks.length) {
+      const range = document.createRange();range.selectNodeContents(block);
+      range.setStartAfter(breaks[breaks.length - 1]);lines.push(range.toString());
+    }
+    for (const index of proseRunBreaks(lines)) breaks[index].replaceWith(document.createTextNode(proseSeparator(lines[index], lines[index + 1])));
   }
 }

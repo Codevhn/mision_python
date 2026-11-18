@@ -14,7 +14,9 @@ export function readableMath(markdown) {
     return /[\\_^{}]/.test(body)?raw:body.replace(/\s+/g,' ');
   };
   const result=[],prose=[];let fence=null;
-  const flush=()=>{result.push(prose.join('').replace(/`+[^`\n]*`+|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/g,convert));prose.length=0;};
+  // An escaped bracket following an identifier is an array index from Markdown,
+  // not a display-math delimiter (for example, persisted args\\[0\\]).
+  const flush=()=>{result.push(prose.join('').replace(/`+[^`\n]*`+|\\\([\s\S]*?\\\)|(?<![\p{L}\p{N}_\\])\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/gu,convert));prose.length=0;};
   for(const line of markdown.match(/[^\n]*\n|[^\n]+$/g)||[]) {
     const marker=line.match(/^ {0,3}(`{3,}|~{3,})/);
     if(marker){flush();if(!fence)fence=marker[1];else if(marker[1][0]===fence[0]&&marker[1].length>=fence.length)fence=null;result.push(line);}

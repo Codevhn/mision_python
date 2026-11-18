@@ -1,3 +1,4 @@
+import {normalizePDFTextLayer,normalizeInlineTextRuns} from './clipboardPDF.js';
 import { normalizeProseHTML } from './clipboardProse.js';
 import { getLanguageId } from './codeBlock.jsx';
 
@@ -33,6 +34,7 @@ export function normalizeClipboardHTML(html, { reflowProse = true } = {}) {
   // Detached, inert document: never attach source HTML or toolbar handlers.
   const document = globalThis.document.implementation.createHTMLDocument('');
   document.body.innerHTML = html;
+  if(reflowProse){normalizePDFTextLayer(document);normalizeInlineTextRuns(document);}
   for (const pre of document.querySelectorAll('pre')) {
     let code = pre.querySelector('code');
     if (!code) {
