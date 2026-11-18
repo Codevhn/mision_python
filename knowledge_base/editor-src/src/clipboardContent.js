@@ -1,4 +1,5 @@
-import {normalizePDFTextLayer,normalizeInlineTextRuns} from './clipboardPDF.js';
+import {cfHTMLFragment} from './clipboardEnvelope.js';
+import {normalizePDFTextLayer,normalizeInlineTextRuns,normalizeMonospaceBlocks} from './clipboardPDF.js';
 import { normalizeProseHTML } from './clipboardProse.js';
 import { getLanguageId } from './codeBlock.jsx';
 
@@ -33,8 +34,8 @@ function precedingLanguage(pre, root) {
 export function normalizeClipboardHTML(html, { reflowProse = true } = {}) {
   // Detached, inert document: never attach source HTML or toolbar handlers.
   const document = globalThis.document.implementation.createHTMLDocument('');
-  document.body.innerHTML = html;
-  if(reflowProse){normalizePDFTextLayer(document);normalizeInlineTextRuns(document);}
+  document.body.innerHTML = cfHTMLFragment(html) ?? html;
+  if(reflowProse){normalizePDFTextLayer(document);normalizeInlineTextRuns(document);normalizeMonospaceBlocks(document);}
   for (const pre of document.querySelectorAll('pre')) {
     let code = pre.querySelector('code');
     if (!code) {

@@ -123,6 +123,17 @@ const mixed = '# Arquitectura de Python\n\nUn documento con **énfasis** y códi
           normalizePDFTextLayer(document);if(document.body.innerHTML!==before)throw Error('Ambiguous geometry or semantic content changed');
         }
       });
+      const cfFragment='<p>Para usarlos, descarga<br><span style="font-family:Courier">StdOut.java</span><br>desde el sitio web del libro a tu directorio de trabajo y llámalos<br>con código como<br><span style="font-family:Courier">StdOut.println("Hola, mundo");</span><br>. A continuación se muestra un cliente de<br>ejemplo.</p>'
+        +'<p><span style="font-family:Courier">public class SecuenciaAleatoria</span></p><p><span style="font-family:Courier">{</span></p><p><span style="font-family:Courier">  int N = Integer.parseInt(args[0]);</span></p><p><span style="font-family:Courier">}</span></p>';
+      const cfHTML='Version:0.9\r\nStartHTML:0000000105\r\nEndHTML:9999999999\r\nStartFragment:0000000141\r\nEndFragment:9999999999\r\n<html><body><!--StartFragment-->'+cfFragment+'<!--EndFragment--></body></html>';
+      for(const isPeek of [false,true])for(const mime of ['text/html','text/plain']){
+        await reset('',isPeek);await paste({[mime]:cfHTML});await waitText('SecuenciaAleatoria');
+        const imported=await blocks();assert.ok(!imported.some(block=>block.text?.includes('StartHTML:')),'CF_HTML metadata is not document text');
+        assert.equal(imported[0].text,'Para usarlos, descarga StdOut.java desde el sitio web del libro a tu directorio de trabajo y llámalos con código como StdOut.println("Hola, mundo");. A continuación se muestra un cliente de ejemplo.');
+        const code=imported.find(block=>block.type==='codeBlock');assert.equal(code.text,'public class SecuenciaAleatoria\n{\n  int N = Integer.parseInt(args[0]);\n}');
+        const saved=await markdown();await reset(saved,isPeek);assert.ok((await blocks()).find(block=>block.type==='codeBlock').text.includes('args[0]'));
+      }
+      console.log(`PASS ${label}: CF_HTML envelope in both MIME paths, short mixed-font prose, displayed code lines and persistence in normal/Peek`);
       const fragments=[
         'Argumentos de la línea de comandos. Un uso importante de las cadenas en Java',
         'consiste en permitir que se pase información desde la línea de comandos al',

@@ -77,3 +77,22 @@ export function normalizeInlineTextRuns(document) {
     }
   }
 }
+
+// Some PDF exporters wrap every displayed code line in P/DIV instead of PRE.
+// Group only consecutive, wholly monospaced blocks. Mixed prose stays inline.
+export function normalizeMonospaceBlocks(document) {
+  const isLine=node=>node?.nodeType===1&&node.matches('p,div')&&!node.querySelector('p,div,pre,table,ul,ol,h1,h2,h3,h4,h5,h6')
+    &&node.textContent.trim()&&[...node.querySelectorAll('code')].map(code=>code.textContent).join('').trim()===node.textContent.trim();
+  for(const root of [document.body,...document.body.querySelectorAll('div')]){
+    if(root.closest('pre,table,li,code'))continue;
+    for(const first of [...root.children]){
+      if(first.parentNode!==root)continue;
+      if(!isLine(first))continue;
+      const group=[first];let next=first.nextElementSibling;
+      while(isLine(next)){group.push(next);next=next.nextElementSibling;}
+      if(group.length<2)continue;
+      const pre=document.createElement('pre'),code=document.createElement('code');
+      code.textContent=group.map(node=>{const copy=node.cloneNode(true);copy.querySelectorAll('br').forEach(br=>br.replaceWith(document.createTextNode('\n')));return copy.textContent;}).join('\n');pre.append(code);first.before(pre);group.forEach(node=>node.remove());
+    }
+  }
+}

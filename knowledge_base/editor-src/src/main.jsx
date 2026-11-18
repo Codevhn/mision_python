@@ -1,3 +1,4 @@
+import {pdfSelectionClipboard} from './pdfSelectionClipboard.js';
 import {courseTopics,linkedTopicTables,inlineText} from './courseTopicTables.js';
 import {pageCover} from './databaseCardModel.js';
 import React from "react";
@@ -389,6 +390,7 @@ updatePageBlock(blockId, title, pageId) {
 }
 
 window.BlockEditor = {
+  pdfSelectionClipboard,
   create: createInstance,
   init(opts) {
     // Modal "new entry" editor: same component, content synced into a

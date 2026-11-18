@@ -1092,6 +1092,26 @@
     return out;
   }
 
+  let pdfClipboardPage=null;
+  document.addEventListener('copy',event=>{
+    const source=pdfClipboardPage,selection=window.getSelection();
+    if(!event.clipboardData||!source?.layer.isConnected||selection?.rangeCount!==1||selection.isCollapsed
+      ||!source.layer.contains(selection.anchorNode)||!source.layer.contains(selection.focusNode)
+      ||!window.BlockEditor?.pdfSelectionClipboard||source.viewport.rotation%360!==0)return;
+    const selected=selection.getRangeAt(0),runs=[];
+    for(let index=0;index<source.divs.length;index++){
+      const span=source.divs[index],item=source.items[index];if(item&&(Math.abs(item.transform[1])>.01))return;if(!item||!span.isConnected||!selected.intersectsNode(span))continue;
+      const clipped=document.createRange();clipped.selectNodeContents(span);
+      if(selected.compareBoundaryPoints(Range.START_TO_START,clipped)>0)clipped.setStart(selected.startContainer,selected.startOffset);
+      if(selected.compareBoundaryPoints(Range.END_TO_END,clipped)<0)clipped.setEnd(selected.endContainer,selected.endOffset);
+      const text=clipped.toString();if(!text)continue;
+      const [x,y]=source.viewport.convertToViewportPoint(item.transform[4],item.transform[5]);
+      const style=source.styles[item.fontName]||{};
+      runs.push({text,x,y,size:Math.hypot(item.transform[2],item.transform[3])*source.viewport.scale,width:item.width*source.viewport.scale,family:style.fontFamily||''});
+    }
+    const result=window.BlockEditor.pdfSelectionClipboard(runs,{bodySize:source.bodySize});if(!result)return;
+    event.clipboardData.setData('text/html',result.html);event.clipboardData.setData('text/plain',result.text);event.preventDefault();
+  });
   let pdfRenderSequence=0;
   async function _renderPdfPage() {
     const sequence=++pdfRenderSequence;
@@ -1136,7 +1156,12 @@
       // actually select anything. One line fixes it.
       textLayerDiv.style.setProperty('--scale-factor', _reader.pdfScale);
       wrap.appendChild(textLayerDiv);
-      await window.pdfjsLib.renderTextLayer({ textContentSource: textContent, container: textLayerDiv, viewport }).promise;
+      const textDivs=[];
+      await window.pdfjsLib.renderTextLayer({ textContentSource: textContent, container: textLayerDiv, viewport, textDivs }).promise;
+      const items=textContent.items.filter(item=>typeof item.str==='string');
+      const sizes=new Map();for(const item of items){const size=Math.hypot(item.transform[2],item.transform[3])*viewport.scale;if(!/monospace|courier/i.test(textContent.styles[item.fontName]?.fontFamily||''))sizes.set(size,(sizes.get(size)||0)+item.str.length);}
+      // Publish only the page that wins the render race below.
+      textLayerDiv._atlasClipboard={layer:textLayerDiv,divs:textDivs,items,styles:textContent.styles,viewport,bodySize:[...sizes].sort((a,b)=>b[1]-a[1])[0]?.[0]};
     }
 
     if(pdf!==_reader.pdfDoc || sequence!==pdfRenderSequence || $('libraryReaderView').classList.contains('hidden'))return;
@@ -1148,6 +1173,7 @@
     scroller.dataset.pdfPage = String(_reader.pdfPage);
     scroller.appendChild(wrap);
     pageEl.appendChild(scroller);
+    pdfClipboardPage=wrap.querySelector('.pdf-text-layer')?._atlasClipboard||null;
     // Explicit page navigation starts at the new page's top-left; a zoom
     // render of the same page must not be treated as page navigation.
     if (!samePage) { pageEl.scrollTop = 0; pageEl.scrollLeft = 0; }

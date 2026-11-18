@@ -14,7 +14,7 @@ export function isProseWrap(before, after) {
 // PDF producers split a sentence at font changes as well as at printed line
 // endings. Decide from the whole run, rather than requiring each fragment to
 // look like a long prose line ("main()" is still part of the sentence).
-export function proseRunBreaks(lines) {
+export function proseRunBreaks(lines, {inlineCode = new Set()} = {}) {
   const join = new Set();
   let start = 0;
   const listPrefix = /^(?: {0,3}[-+*•●▪◦]\s+| {0,3}\d+[.)]\s+)/u;
@@ -23,7 +23,8 @@ export function proseRunBreaks(lines) {
     const anchors = run.filter(proseLine).length;
     // Two substantial prose fragments distinguish a fragmented paragraph from
     // a heading followed by short verses, identifiers, or an unmarked program.
-    if (anchors >= 2) for (let i = start + run.findIndex(proseLine); i < end - 1; i++) join.add(i);
+    const mixedInline = anchors >= 1 && run.join(' ').split(/\s+/).length >= 18 && run.some((_,i)=>inlineCode.has(start+i));
+    if (anchors >= 2 || mixedInline) for (let i = mixedInline ? start : start + run.findIndex(proseLine); i < end - 1; i++) join.add(i);
     else for (let i = start; i < end - 1; i++) if (isProseWrap(run[i - start], run[i - start + 1])) join.add(i);
   };
   let fence = null;
@@ -33,7 +34,8 @@ export function proseRunBreaks(lines) {
     const boundary = line === undefined || !line.trim() || structure.test(line)
       || (line.trim().length < 60 && /:$/.test(line.trim()))
       || fence || /(?: {2,}|\\)$/.test(line)
-      || /^[{}]|[{};]\s*$/.test(line.trim());
+      || (!inlineCode.has(i) && /^[{}]|[{};]\s*$/.test(line.trim()))
+      || (inlineCode.has(i) && (inlineCode.has(i-1)||inlineCode.has(i+1)));
     if (boundary) { flush(i); start = !fence && line && listPrefix.test(line) ? i : i + 1; }
     if (marker) {
       if (!fence) fence = marker[1];
@@ -87,15 +89,17 @@ export function normalizeProseHTML(document, reflow = true) {
   for (const block of [document.body, ...document.body.querySelectorAll('p,li,div')]) {
     if (block.closest('pre,code') || block.querySelector('p,li,div,pre,table,ul,ol')) continue;
     const breaks = [...block.querySelectorAll('br')];
+    const inlineCode = new Set();
+    const textOfRange=(range,index)=>{const fragment=range.cloneContents(),code=[...fragment.querySelectorAll('code')];if(code.length&&code.map(node=>node.textContent).join('').trim()===fragment.textContent.trim())inlineCode.add(index);return range.toString();};
     const lines = breaks.map((br, index) => {
       const range = document.createRange();range.selectNodeContents(block);
       if (index) range.setStartAfter(breaks[index - 1]);
-      range.setEndBefore(br);return range.toString();
+      range.setEndBefore(br);return textOfRange(range,index);
     });
     if (breaks.length) {
       const range = document.createRange();range.selectNodeContents(block);
-      range.setStartAfter(breaks[breaks.length - 1]);lines.push(range.toString());
+      range.setStartAfter(breaks[breaks.length - 1]);lines.push(textOfRange(range,breaks.length));
     }
-    for (const index of proseRunBreaks(lines)) breaks[index].replaceWith(document.createTextNode(proseSeparator(lines[index], lines[index + 1])));
+    for (const index of proseRunBreaks(lines,{inlineCode})) breaks[index].replaceWith(document.createTextNode(proseSeparator(lines[index], lines[index + 1])));
   }
 }
