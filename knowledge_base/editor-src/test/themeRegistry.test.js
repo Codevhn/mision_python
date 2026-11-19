@@ -84,3 +84,10 @@ assert.equal(data.themeId,'aero-night');
 vm.runInContext(`_courseThemeSpace('home')`,context);
 assert.equal(data.themeId,'aero-night');
 console.log('Theme registry: persistence, reversibility and course navigation scope passed');
+
+apply('paper');
+assert.equal(data.themeId,'paper');assert.equal(data.theme,'light');assert.equal(data.palette,'paper');
+assert.equal(storage.get('kb_theme'),'paper');assert.equal(data.recordFont,'serif');assert.equal(data.frame,'sentinel');
+apply(storage.get('kb_theme'),false);assert.equal(data.themeId,'paper');
+apply('aero-amber');assert.deepEqual(data,priorTheme,'Papel leaves existing preferences reversible');
+console.log('Papel: shared registry, light palette, persistence and restoration passed');

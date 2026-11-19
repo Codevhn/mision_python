@@ -1091,7 +1091,7 @@ def _build_id():
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
         'course-topic-links.js', 'navigation-hierarchy.css', 'editing-surface.css', 'peek-resize.css', 'peek-resize.js',
-        'login.css', 'login.js',
+        'login.css', 'login.js', 'paper.css',
         'reader.css', 'library.js',
         'weather-hero.css', 'weather-hero.js', 'horizon.css', 'horizon.js', 'theme-registry.js', 'course-themes.js',
     ))

@@ -1,0 +1,91 @@
+/* Papel: a matte reading palette on Atlas's existing flat component bridge.
+   Screen-only: exports and the physical PDF page keep their own rendering. */
+@media screen {
+  :root[data-style="notion"][data-palette="paper"] {
+    --native-canvas:#f6f4ec;
+    --native-sidebar:#eceae0;
+    --native-panel:#f6f4ec;
+    --native-menu:#faf8f1;
+    --native-field:#eeece3;
+    --native-hover:#e7e6dc;
+    --native-selected:#dde2d5;
+    --native-ink:#1d1e1b;
+    --native-muted:#5d6056;
+    --native-faint:#696d61;
+    --native-line:#d0cec1;
+    --native-line-soft:#dfddd2;
+    --native-link:#354e3b;
+    --native-primary:#303e32;
+    --native-primary-hover:#223025;
+    --native-danger:#9b342e;
+    --native-menu-shadow:0 3px 12px #302e2412;
+    --native-dialog-shadow:0 10px 40px #302e2420;
+    --native-font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --paper-reading-font:"Lora",Georgia,"Times New Roman",serif;
+    --font-body:var(--paper-reading-font);
+    --font-display:var(--native-font);
+    --native-page-size:18px;
+    --native-page-title:38px;
+    --atlas-reading-font-size:20px;
+    --success:#3d5b43;
+    --warning:#795c22;
+    color-scheme:light;
+  }
+  /* These preview/portal boundaries own local font tokens in the shared
+     bridge. Give them the same reading font as the ordinary document. */
+  :root[data-style="notion"][data-palette="paper"] :is(#pagePeekOverlay.db-preview-peek,.bn-db-notion-preview,.db-preview-popover) {
+    --font-body:var(--paper-reading-font);
+    --font-display:var(--native-font);
+  }
+  :root[data-style="notion"][data-palette="paper"] .adb-record-page:not(.adb-record-small) {
+    --adb-record-size:var(--atlas-reading-font-size);
+  }
+  :root[data-style="notion"][data-palette="paper"] .adb-record-page[data-record-font="default"] {
+    --adb-record-font:var(--paper-reading-font);
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#entryView,#pagePeekOverlay).adb-record-page[data-record-font="default"] :is(#inlineTitle,#pagePeekTitle) {
+    font-family:var(--native-font)!important;
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#inlineTitle,#pagePeekTitle) {
+    font-family:var(--adb-record-font,var(--native-font))!important;
+    letter-spacing:-.025em;
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) .bn-editor {
+    text-rendering:optimizeLegibility;
+    caret-color:var(--native-ink);
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) :is([data-content-type="paragraph"],[data-content-type="bulletListItem"],[data-content-type="numberedListItem"],[data-content-type="checkListItem"]) > .bn-inline-content {
+    line-height:1.8!important;
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) .tableWrapper :is(th,td) {
+    background-color:var(--native-canvas);
+    border-color:var(--native-line)!important;
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) .tableWrapper th {
+    background-color:var(--native-field);
+  }
+  :root[data-style="notion"][data-palette="paper"] :is(.adb-record-card,.book-card,.home-card) {box-shadow:none!important;}
+  /* The shared highlighter keeps dark token colors in other themes. Papel
+     uses monochrome ink rather than light tokens on a dark code rectangle. */
+  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) :is(.bn-block-content[data-content-type="codeBlock"],.code-block-native,.code-block-pre,.code-block-code,.code-block-pre .bn-inline-content) {
+    background:var(--native-field)!important;color:var(--native-ink)!important;
+    caret-color:var(--native-ink);box-shadow:none;color-scheme:light;
+  }
+  :root[data-style="notion"][data-palette="paper"] .code-block-pre :is(code,span) {
+    color:var(--native-ink)!important;background-color:transparent!important;
+  }
+  :root[data-style="notion"][data-palette="paper"] #ctxBar {background:var(--native-canvas)!important;border-color:var(--native-line);box-shadow:none;}
+  :root[data-style="notion"][data-palette="paper"] .assistant-launcher {box-shadow:none!important;}
+  :root[data-style="notion"][data-palette="paper"] ::selection {background:#d9dfce;color:#1d1e1b;}
+  :root[data-style="notion"][data-palette="paper"] :is(.entry-body a,.bn-editor a) {text-decoration-color:#89977e;text-underline-offset:3px;}
+}
+/* The selector swatch is deliberately flat too, in every active theme. */
+.theme-swatch-paper {background:#f6f4ec;border:1px solid #ccc9bb;box-shadow:none;}
+.theme-swatch-paper::before {
+  content:'Aa';inset:5px 10px auto;font:600 23px/1.3 "Lora",Georgia,serif;
+  color:#1d1e1b;background:none;border:0;box-shadow:none;
+}
+.theme-swatch-paper::after {
+  content:'';left:11px;right:13px;bottom:9px;height:1px;
+  background:#9c9f91;border:0;box-shadow:0 4px 0 #c7c7b9;
+}

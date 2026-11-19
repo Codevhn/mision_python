@@ -69,3 +69,8 @@ THEME_CATALOG.push(
 ATLAS_THEMES.hyprland={scheme:'dark',style:'hyprland',variant:'night',
   preview:'linear-gradient(135deg,#11131e 12%,#242337 50%,#8edee6 51%,#b6a0ef 54%,#151725 55%)'};
 THEME_CATALOG.unshift(['hyprland','Hyprland','Ventanas flotantes · Bordes cian y lavanda · Cristal oscuro','desktop','hyprland']);
+
+// Papel reuses the flat control/portal bridge with a dedicated ink palette.
+THEME_GROUPS.reading='Lectura';
+ATLAS_THEMES.paper={scheme:'light',style:'notion',variant:'light',palette:'paper',preview:'#f6f4ec'};
+THEME_CATALOG.push(['paper','Papel','Marfil mate · Tinta profunda · Lectura serena','reading','paper']);
