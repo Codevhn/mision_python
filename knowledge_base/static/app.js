@@ -3228,6 +3228,18 @@ function closeExportModal() {
 
 function openExportModal() {
   if (!currentEntryId) return;
+  if (AtlasDatabase.openDocumentExport) {
+    const id=currentEntryId,meta={...currentEntryMeta},markdown=_inlineEditor.getMarkdown();
+    AtlasDatabase.openDocumentExport({entryId:id,meta,anchor:document.activeElement,actions:{
+      markdown:()=>markdown,
+      flush:async()=>{
+        await AtlasDatabase.flush();await Properties.flush();
+        await _pageSaveQueues.get(id)?.flush();
+        if(currentEntryId===id){clearTimeout(_autoSaveTimer);_setAutosaveStatus('saved');}
+      }
+    }});
+    return;
+  }
   const overlay = $('exportModalOverlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');

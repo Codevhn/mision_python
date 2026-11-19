@@ -74,9 +74,9 @@ function PeekToolbar({entryId,meta,recordIds=[],mode='side',actions}) {
       {icon:'settings',label:'Personalizar diseño',panel:'layout'},
       {icon:'history',label:'Historial de versiones',panel:'history'},
       {icon:'files',label:'Importar Markdown',panel:'import',disabled:!!record.database_locked},
-      {icon:'download',label:'Exportar…',panel:'export'},
       ...(record.database_last_transfer?[{icon:'move',label:'Deshacer último traslado',action:async()=>{await actions.flush();await api(`${base}/rows/${entryId}/transfers/${record.database_last_transfer}/restore`,{},'POST');notifyDatabase(base);await actions.openRecord(entryId,[entryId]);}}]:[])
-    ]:[])
+    ]:[]),
+    {icon:'download',label:'Exportar…',panel:'export'}
   ];
   const filtered=items.filter(item=>item.label.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   const back=()=>setMenu({...menu,kind:'actions',focusLabel:menu.returnLabel});

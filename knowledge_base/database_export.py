@@ -1,4 +1,4 @@
-"""Read-only, bounded exports of one record and its explicitly included children.
+"""Read-only, bounded document exports, with optional properties and ZIP packaging.
 
 The parent database is never traversed. Public remote media are fetched only when included, within strict bounds. Every
 archive contains a manifest describing omissions and selected stored views.
@@ -6,6 +6,7 @@ archive contains a manifest describing omissions and selected stored views.
 from contextlib import closing
 from functools import cmp_to_key
 from html import escape
+from html.parser import HTMLParser
 from io import BytesIO, StringIO
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
@@ -19,6 +20,7 @@ import re
 import zipfile
 import time
 import math
+from document_layout import DEFAULT_FONT_SIZE, validate_layout, render_pdf_layout, layout_css, OnePageUnavailable
 from database_remote_assets import fetch_remote_asset, RemoteAssetError
 from flask import request, jsonify, send_file
 from database_identity import database_blocks
@@ -35,17 +37,58 @@ MAX_ASSET = 20 * 1024 * 1024
 def export_options(value):
     if not isinstance(value, dict):
         raise ValueError('Opciones de exportación no válidas')
-    defaults = dict(format='markdown_csv', database_view='current', include_content='all', include_subpages=False, folders=False)
+    defaults = dict(format='markdown_csv', database_view='current', include_content='all', include_subpages=False, folders=False, include_properties=False, archive=False, pdf_layout='normal', pdf_font_size=DEFAULT_FONT_SIZE)
     if set(value) - set(defaults):
         raise ValueError('Opción de exportación desconocida')
     result = dict(defaults, **value)
     if result['format'] not in ('markdown_csv', 'html', 'pdf', 'json') or result['database_view'] not in ('current', 'default') or result['include_content'] not in ('all', 'no_files'):
         raise ValueError('Formato, vista o contenido no válido')
-    if type(result['include_subpages']) is not bool or type(result['folders']) is not bool:
-        raise ValueError('Subpáginas y carpetas requieren valores booleanos')
+    if any(type(result[key]) is not bool for key in ('include_subpages','folders','include_properties','archive')):
+        raise ValueError('Propiedades, ZIP, subpáginas y carpetas requieren valores booleanos')
+    if result['include_subpages'] and not result['archive']:
+        raise ValueError('Activa Descargar como ZIP para incluir subpáginas')
     if result['folders'] and not result['include_subpages']:
         raise ValueError('Crear carpetas requiere incluir subpáginas')
+    validate_layout(result['pdf_layout'], result['pdf_font_size'], result['format'])
     return result
+
+
+def inline_export_assets(html, targets, attachments=False):
+    """Prepare only assets already fetched by this bounded export, after sanitizing.
+
+    Do not allow arbitrary data: URLs through the application's HTML sanitizer.
+    """
+    class Embed(HTMLParser):
+        def __init__(self): super().__init__(convert_charrefs=False); self.parts=[]
+        def start(self, tag, attrs, closed=False):
+            if attachments and tag == 'a' and any(key == 'href' and value in targets for key,value in attrs):
+                rel = dict(attrs).get('rel') or ''
+                attrs = [(key,value) for key,value in attrs if key != 'rel'] + [('rel',rel + ' attachment')]
+            attrs=[(key, targets.get(value,value) if key in ('href','src') else value) for key,value in attrs]
+            self.parts.append('<'+tag+''.join(' '+key+('="'+escape(value,quote=True)+'"' if value is not None else '') for key,value in attrs)+('/>' if closed else '>'))
+        def handle_starttag(self,tag,attrs): self.start(tag,attrs)
+        def handle_startendtag(self,tag,attrs): self.start(tag,attrs,True)
+        def handle_endtag(self,tag): self.parts.append('</'+tag+'>')
+        def handle_data(self,data): self.parts.append(data)
+        def handle_entityref(self,name): self.parts.append('&'+name+';')
+        def handle_charref(self,name): self.parts.append('&#'+name+';')
+        def handle_comment(self,data): self.parts.append('<!--'+data+'-->')
+    parser=Embed();parser.feed(html);parser.close();return ''.join(parser.parts)
+
+
+def export_body_without_title(body, title, strip_heading):
+    body=strip_heading(body,title)
+    # PDF imports sometimes split a leading title over two Markdown lines.
+    # Remove it only when the complete text exactly equals the page title.
+    lines=body.splitlines();first=next((i for i,line in enumerate(lines) if line.strip()),len(lines))
+    if first<len(lines) and re.match(r'^#{1,3}\s+',lines[first]):
+        clean=lambda value:' '.join(value.split()).casefold()
+        candidate=re.sub(r'^#{1,3}\s+','',lines[first])
+        for end in range(first+1,min(first+3,len(lines))):
+            if not lines[end].strip() or re.match(r'^\s*(?:#|[-*] |\d+[.)] |```|\|)',lines[end]):break
+            candidate+=' '+lines[end].strip()
+            if clean(candidate)==clean(title):return '\n'.join(lines[:first]+lines[end+1:]).lstrip('\n')
+    return body
 
 
 def display(value):
@@ -219,7 +262,7 @@ class RecordArchive:
         if self.gather_bytes > MAX_BYTES: raise ValueError('El contenido supera 50 MB')
         body = path.read_text()
         row = self.h['projected'](identifier, meta, schema, self.index) if schema else dict(meta, id=identifier)
-        self.note_properties(row)
+        if self.options['include_properties']: self.note_properties(row)
         name = safe_name(meta.get('title', 'Sin título'), identifier)
         base = str(PurePosixPath(folder) / name)
         page = dict(id=identifier, row=row, body=body, base=base, children=[], databases=[])
@@ -276,7 +319,7 @@ class RecordArchive:
             self.omitted(url,'remote_url_invalid');return None
         if parsed.scheme or parsed.netloc:
             key='remote:'+url
-            if key in self.assets:return self.relative(current,self.assets[key])
+            if key in self.assets:return self.asset_target(current,self.assets[key])
             if url in self.remote_failures:return None
             self.remote_failures.add(url)
             if self.remote_attempts>=20 or self.remote_budget<=0:
@@ -291,7 +334,7 @@ class RecordArchive:
             extension=re.sub(r'[^a-zA-Z0-9.]','',Path(filename).suffix)[:12] or mimetypes.guess_extension(mime) or '.bin'
             name='assets/'+safe_name(Path(filename).stem,hashlib.sha256(url.encode()).hexdigest())+extension
             self.add(name,content);self.assets[key]=name
-            return self.relative(current,name)
+            return self.asset_target(current,name)
         path_text = unquote(parsed.path)
         match = re.fullmatch(r'/api/databases/files/([a-f0-9]{32})', path_text)
         if match:
@@ -314,7 +357,16 @@ class RecordArchive:
             extension = re.sub(r'[^a-zA-Z0-9.]', '', Path(filename).suffix)[:12]
             name = 'assets/' + safe_name(Path(filename).stem, asset_id) + extension
             self.add(name, path.read_bytes()); self.assets[key] = name
-        return self.relative(current, self.assets[key])
+        return self.asset_target(current, self.assets[key])
+
+    def asset_target(self, current, name):
+        if not self.options['archive'] and self.options['format'] not in ('pdf','html'):
+            return self.data_uri(name)
+        return self.relative(current, name)
+
+    def data_uri(self, name):
+        mime = mimetypes.guess_type(name)[0] or 'application/octet-stream'
+        return 'data:' + mime + ';base64,' + base64.b64encode(self.members[name]).decode('ascii')
 
     def extension(self):
         return dict(markdown_csv='.md', html='.html', pdf='.pdf', json='.json')[self.options['format']]
@@ -405,10 +457,12 @@ class RecordArchive:
                 vals = [self.page_link(row['id'], current, row.get('title', row['id']))] + [self.prop_value(props[c['id']], current, True) for c in columns]
                 lines.append('| ' + ' | '.join(v.replace('|', '\\|').replace('\n', '<br>') for v in vals) + ' |')
             csv_target = self.relative(current, db['base'] + '.csv')
-            replacement = '\n\n## ' + db['schema'].get('name', 'Base de datos') + '\n\n[Datos CSV](' + csv_target + ')\n\n' + '\n'.join(lines) + '\n\n'
+            csv_link = '[Datos CSV](' + csv_target + ')\n\n' if self.options['archive'] else ''
+            replacement = '\n\n## ' + db['schema'].get('name', 'Base de datos') + '\n\n' + csv_link + '\n'.join(lines) + '\n\n'
             body = body[:left] + replacement + body[right:]
         body = self.rewritten(body, current)
-        props = self.properties(page['row'], current)
+        props = self.properties(page['row'], current) if self.options['include_properties'] else ''
+        body = export_body_without_title(body, page['row'].get('title', ''), self.g['_strip_duplicate_heading_md'])
         cover = page['row'].get('cover', '')
         cover_md = ''
         cover_url = re.search(r'url\(["\']?([^"\')]+)', cover) if isinstance(cover, str) else None
@@ -422,7 +476,7 @@ class RecordArchive:
         fmt = self.options['format']
         for page in self.pages.values():
             current = page['base'] + self.extension(); markdown = self.content(page, current)
-            for db in page['databases']:
+            for db in page['databases'] if self.options['archive'] else []:
                 csv_name = db['base'] + '.csv'; out = StringIO(newline=''); writer = csv.writer(out)
                 columns = view_columns(db['schema'],db['view'])
                 writer.writerow(['Nombre', 'Página'] + [c['name'] for c in columns])
@@ -436,15 +490,27 @@ class RecordArchive:
                 # Export canonical properties; file values carry portable targets,
                 # not live server URLs. Body follows the same media policy.
                 row = json.loads(json.dumps(page['row']))
+                if not self.options['include_properties']:
+                    for key in ('properties','database_properties','database_unmapped_properties','database_calculation_errors'):
+                        row.pop(key, None)
                 if self.options['include_content'] == 'no_files': row.pop('cover', None)
                 for prop in row.get('properties', []) + row.get('database_unmapped_properties', []):
                     if prop.get('type') == 'files':
                         prop['value'] = [dict(name=item.get('name', 'archivo'), path=target) for item in prop.get('value', []) if (target := self.asset('/api/databases/files/' + item.get('id', ''), current, item.get('name', 'archivo')))]
                 self.add(current, json.dumps(dict(row=row, markdown=markdown, databases=[dict(schema=d['schema'], view=d['view'], row_ids=[r['id'] for r in d['rows']]) for d in page['databases']]), ensure_ascii=False, indent=2))
             else:
-                rendered = self.g['render_markdown'](self.g['_print_markdown'](markdown), print_mode=True)
+                # The PDF/HTML document template already renders its own title.
+                printable = self.g['_strip_duplicate_heading_md'](markdown, page['row'].get('title', ''))
+                rendered = self.g['render_markdown'](self.g['_print_markdown'](printable), print_mode=True)
+                if fmt == 'html' and not self.options['archive']:
+                    rendered = inline_export_assets(rendered, {self.relative(current,name):self.data_uri(name) for name in self.assets.values()})
+                elif fmt == 'pdf' and not self.options['archive']:
+                    rendered = inline_export_assets(rendered, {self.relative(current,name):self.relative(current,name) for name in self.assets.values()}, attachments=True)
                 document = self.g['_build_pdf_html'](page['row'].get('title', 'Sin título'), '', rendered, include_toc=False)
-                if fmt == 'html': self.add(current, document)
+                if fmt == 'html':
+                    css = layout_css(self.options['pdf_font_size'])
+                    if css: document = document.replace('</head>', '<style>'+css+'</style></head>', 1)
+                    self.add(current, document)
                 else:
                     try: from weasyprint import HTML
                     except ImportError as error: raise RuntimeError('PDF requiere weasyprint instalado') from error
@@ -460,8 +526,12 @@ class RecordArchive:
                             candidate = Path(unquote(parsed.path)).resolve(); fonts = (Path(self.g['app'].root_path) / 'static' / 'fonts').resolve()
                             if candidate.is_relative_to(fonts) and candidate.is_file(): return dict(string=candidate.read_bytes(), mime_type='font/ttf')
                         raise ValueError('Recurso externo bloqueado durante la exportación PDF')
-                    self.add(current, HTML(string=document, base_url='https://atlas-export.invalid/' + current, url_fetcher=fetch).write_pdf())
+                    layout = render_pdf_layout(HTML(string=document, base_url='https://atlas-export.invalid/' + current, url_fetcher=fetch), self.options['pdf_layout'], self.options['pdf_font_size'])
+                    self.manifest.setdefault('pdf_layouts', []).append(dict(id=page['id'], pages=layout['pages'], font_size=layout['font_size'], compact=layout['compact']))
+                    self.add(current, layout['document'].write_pdf())
         self.manifest.update(entrypoint=self.pages[identifier]['base'] + self.extension(), assets=list(self.assets.values()), files=list(self.members))
+        if not self.options['archive']:
+            return BytesIO(self.members[self.manifest['entrypoint']])
         self.add('manifest.json', json.dumps(self.manifest, ensure_ascii=False, indent=2))
         out = BytesIO()
         with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
@@ -471,6 +541,37 @@ class RecordArchive:
 
 def register_record_export(app, g, h):
     from database_api import LOCK
+    def response_for(builder, identifier, meta):
+        output = builder.build(identifier)
+        extension = '.zip' if builder.options['archive'] else builder.extension()
+        mime = 'application/zip' if builder.options['archive'] else {'pdf':'application/pdf','html':'text/html','json':'application/json','markdown_csv':'text/markdown'}[builder.options['format']]
+        response = send_file(output, mimetype=mime, as_attachment=True, download_name=safe_name(meta.get('title', identifier), identifier) + extension)
+        if builder.options['format'] == 'pdf' and not builder.options['archive']:
+            layout = next(item for item in builder.manifest['pdf_layouts'] if item['id'] == identifier)
+            response.headers['X-Atlas-PDF-Pages'] = str(layout['pages'])
+            response.headers['X-Atlas-PDF-Font-Size'] = str(layout['font_size'])
+            response.headers['X-Atlas-PDF-Compact'] = '1' if layout['compact'] else '0'
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Atlas-Export-Omissions'] = str(len(builder.manifest['omitted']))
+        response.headers['X-Atlas-Export-Property-Issues'] = str(len(builder.manifest['property_issues']))
+        return response
+
+    @app.route('/api/export/<entry_id>/document', methods=['POST'])
+    def configured_document_export(entry_id):
+        try:
+            options = export_options(request.get_json(silent=True))
+            with LOCK, closing(h['connect']()) as conn:
+                index = h['read'](conn); meta = index.get(entry_id)
+                if not meta or meta.get('database_deleted'):
+                    return jsonify(error='Página no disponible'), 404
+                schema = h['source'](meta['parent_id'], meta['database_id'], index)[4] if meta.get('database_id') else None
+                builder = RecordArchive(dict(g, app=app), h, index, options)
+                builder.gather(entry_id, schema)
+            return response_for(builder, entry_id, meta)
+        except OnePageUnavailable as error: return jsonify(error=str(error), code='pdf_one_page_unavailable', page_count=error.page_count), 422
+        except RuntimeError as error: return jsonify(error=str(error)), 503
+        except (ValueError, TypeError, KeyError, OSError) as error: return jsonify(error=str(error)), 400
+
     @app.route('/api/databases/<parent>/<source_id>/rows/<row_id>/export', methods=['POST'])
     def configured_record_export(parent, source_id, row_id):
         try:
@@ -484,11 +585,7 @@ def register_record_export(app, g, h):
                 builder.gather(row_id, schema)
             # Snapshot Markdown/metadata under the source lock; network/PDF/ZIP
             # work must not hold it and block unrelated cell or schema saves.
-            output = builder.build(row_id)
-            response = send_file(output, mimetype='application/zip', as_attachment=True, download_name=safe_name(meta.get('title', row_id), row_id) + '.zip')
-            response.headers['Cache-Control'] = 'no-store'
-            response.headers['X-Atlas-Export-Omissions'] = str(len(builder.manifest['omitted']))
-            response.headers['X-Atlas-Export-Property-Issues'] = str(len(builder.manifest['property_issues']))
-            return response
+            return response_for(builder, row_id, meta)
+        except OnePageUnavailable as error: return jsonify(error=str(error), code='pdf_one_page_unavailable', page_count=error.page_count), 422
         except RuntimeError as error: return jsonify(error=str(error)), 503
         except (ValueError, TypeError, KeyError, OSError) as error: return jsonify(error=str(error)), 400

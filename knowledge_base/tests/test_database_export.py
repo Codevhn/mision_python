@@ -46,7 +46,7 @@ def test_export_keeps_broken_relation_and_computation_diagnostics(workspace,fmt)
     from test_database_relations import related_fixture
     client,base,parent,other,targets,rel,total,count,row=related_fixture(workspace)
     client.delete(other+'/rows/'+targets[0]['id'])
-    response=client.post(base+'/rows/'+row['id']+'/export',json={'format':fmt})
+    response=client.post(base+'/rows/'+row['id']+'/export',json={'format':fmt,'archive':True,'include_properties':True})
     assert response.status_code==200,response.json
     assert int(response.headers['X-Atlas-Export-Property-Issues'])==3
     archive=zipfile.ZipFile(io.BytesIO(response.data));manifest=json.loads(archive.read('manifest.json'))
@@ -69,7 +69,7 @@ def write_body(client, row, body):
 
 
 def exported(client, base, row, **options):
-    response = client.post(base + '/rows/' + row['id'] + '/export', json=options)
+    response = client.post(base + '/rows/' + row['id'] + '/export', json={'archive':True,'include_properties':True,**options})
     assert response.status_code == 200, response.json
     assert response.mimetype == 'application/zip' and 'attachment' in response.headers['Content-Disposition']
     archive = zipfile.ZipFile(io.BytesIO(response.data))

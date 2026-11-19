@@ -1,3 +1,4 @@
+import {openDocumentExport} from './databaseExport.jsx';
 import {pdfSelectionClipboard} from './pdfSelectionClipboard.js';
 import {courseTopics,linkedTopicTables,inlineText} from './courseTopicTables.js';
 import {pageCover} from './databaseCardModel.js';
@@ -13,7 +14,7 @@ import {mountPeekToolbar,unmountPeekToolbar} from './databasePeek.jsx';
 import {clearRecordPresentation} from './databasePeekModel.js';
 import "./database-workspace.css";
 import './database-peek.css';
-window.AtlasDatabase = {pageCover,notify:notifyDatabase,openImport:openDatabaseImport,SaveQueue, drafts:databaseDrafts, flush:flushDatabaseEditors, mountProperties:mountRecordProperties, unmountProperties:unmountRecordProperties, mountPeekToolbar,unmountPeekToolbar,clearRecordPresentation};
+window.AtlasDatabase = {openDocumentExport,pageCover,notify:notifyDatabase,openImport:openDatabaseImport,SaveQueue, drafts:databaseDrafts, flush:flushDatabaseEditors, mountProperties:mountRecordProperties, unmountProperties:unmountRecordProperties, mountPeekToolbar,unmountPeekToolbar,clearRecordPresentation};
 import { editorDatabaseContext, duplicateIdentityRepairs } from "./databaseIdentity.js";
 import { createRoot } from "react-dom/client";
 import { BlockNoteView } from "@blocknote/mantine";
