@@ -41,8 +41,11 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
       setNotice(issues?`Archivo preparado con ${issues}. ${archive?'El ZIP incluye los detalles en manifest.json.':'Puedes elegir ZIP para obtener el informe detallado.'}`:print?'Vista de impresión preparada.':archive?'ZIP preparado con los documentos, recursos y manifest.json.':ready);
     }catch(e){if(preview&&!preview.closed)preview.close();setError(e.message);}finally{setBusy(false);}
   };
-  return <DatabaseDialog title={title} owner={entryId} anchor={anchor} busy={busy} onClose={onClose}>
+  return <DatabaseDialog className="adb-export-dialog" title={title} owner={entryId} anchor={anchor} busy={busy} onClose={onClose}>
+    <div className="adb-export-body">
     <p className="adb-export-scope"><strong>{meta.title||'Sin título'}</strong><br/>Se exporta el contenido de esta página. La base padre y sus otros registros quedan fuera.</p>
+    <section className="adb-export-section" aria-label="Formato y presentación">
+    <h3>Formato y presentación</h3>
     <SelectField label="Formato de exportación" value={format} onChange={setFormat} disabled={busy} choices={[
       ['pdf','PDF'],['html','HTML'],['markdown_csv',archive?'Markdown & CSV':'Markdown'],['json','JSON · Atlas']
     ]}/>
@@ -53,6 +56,9 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
       <ToggleField label="Ajustar a una hoja" checked={pdfLayout==='one_page'} disabled={busy} onChange={value=>setPdfLayout(value?'one_page':'normal')}/>
       <p className="adb-help">{pdfLayout==='one_page'?'Ajusta espacios, márgenes y texto hasta 9 pt como mínimo, sin recortar contenido. Si no cabe, te avisará. Para imprimir el ajuste exacto, descarga e imprime el PDF.':'La paginación se calcula según el tamaño del texto elegido. El contenido de la nota no cambia.'}{archive&&pdfLayout==='one_page'?' Cada PDF del ZIP se ajusta por separado.':''}</p>
     </>}
+    </section>
+    <section className="adb-export-section" aria-label="Contenido y descarga">
+    <h3>Contenido y descarga</h3>
     <ToggleField label="Incluir propiedades de la página" checked={properties} onChange={setProperties} disabled={busy||!hasProperties}/>
     <p className="adb-help">{hasProperties?'Añade campos como Estado. Desactivado: se exporta el contenido sin la tabla de propiedades.':'Esta página no tiene propiedades para incluir.'}</p>
     <ToggleField label="Descargar como ZIP" checked={archive} disabled={busy} onChange={value=>{setArchive(value);if(!value)setSubpages(false);}}/>
@@ -65,7 +71,12 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
     <ToggleField label="Incluir subpáginas" checked={subpages} onChange={setSubpages} disabled={busy||!archive}/>
     {archive&&<ToggleField label="Crear carpetas para subpáginas" checked={folders} onChange={setFolders} disabled={busy||!subpages}/>}
     <p className="adb-help">{archive?'El ZIP permite incluir subpáginas, archivos separados y el informe de exportación.':'Se descarga un archivo individual. Para incluir subpáginas o descargar los recursos por separado, activa ZIP.'} Las tablas escritas dentro del contenido se conservan.</p>
-    {error&&<p role="alert" className="adb-error">{error}</p>}{notice&&<p role="status" className="adb-export-notice">{notice}</p>}
+    </section>
+    </div>
+    {(error||notice)&&<div className="adb-export-feedback">
+      {error&&<p role="alert" className="adb-error">{error}</p>}
+      {notice&&<p role="status" className="adb-export-notice">{notice}</p>}
+    </div>}
     <div className="adb-panel-footer"><button type="button" disabled={busy} onClick={onClose}>{notice?'Cerrar':'Cancelar'}</button><button type="button" disabled={busy||archive||(format==='pdf'&&pdfLayout==='one_page')} onClick={()=>perform(true)}>Imprimir página</button><button type="button" className="adb-primary" disabled={busy} onClick={()=>perform(false)}>{busy?'Exportando…':'Exportar'}</button></div>
   </DatabaseDialog>;
 }

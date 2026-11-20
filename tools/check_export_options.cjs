@@ -6,9 +6,9 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
 function pdfText(file){return execFileSync('/workspace/.venvs/atlas/bin/python',['-c','import sys,pymupdf; d=pymupdf.open(sys.argv[1]);print("\\n".join(p.get_text() for p in d))',file],{encoding:'utf8'});}
 (async()=>{
  const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
- try{for(const width of [1440,900,412]){
-  const context=await browser.newContext({viewport:{width,height:1100},acceptDownloads:true});
-  await context.addInitScript(()=>{window.print=()=>{window.didPrint=true;};});
+ try{for(const width of [1440,900,412,320]){
+  const context=await browser.newContext({viewport:{width,height:width<=412?740:900},acceptDownloads:true});
+  await context.addInitScript(theme=>{localStorage.setItem('kb_theme',theme);window.print=()=>{window.didPrint=true;};},width===900?'notion-native':'paper');
   const page=await context.newPage();page.setDefaultTimeout(12000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await context.route('**/*',route=>new URL(route.request().url()).origin===base||route.request().url()==='about:blank'?route.continue():route.abort());
   await context.request.post(base+'/login',{form:{password:'atlas-library-test-password'}});
@@ -24,16 +24,34 @@ function pdfText(file){return execFileSync('/workspace/.venvs/atlas/bin/python',
   await context.request.patch(base+`/api/entry/${ordinary}/properties`,{data:{properties:[{id:'s',name:'Estado',type:'text',value:'Pendiente'}]}});
   await page.goto(base);await page.waitForFunction(()=>typeof _openPagePeek==='function');await page.evaluate(id=>_loadEntryById(id),parent);
   const exportDialog=()=>page.getByRole('dialog',{name:/Exportar (registro|página)/});
-  const download=async()=>{const pending=page.waitForEvent('download');await exportDialog().getByRole('button',{name:'Exportar',exact:true}).click();const file=await pending;assert.equal(await file.failure(),null);return {name:file.suggestedFilename(),path:await file.path()};};
+  const download=async()=>{const pending=page.waitForEvent('download');await exportDialog().getByRole('button',{name:'Exportar',exact:true}).click();const file=await pending;assert.equal(await file.failure(),null);await exportDialog().getByRole('status').waitFor();assert.equal(await exportDialog().getByRole('status').evaluate(node=>{const rect=node.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;}),true);return {name:file.suggestedFilename(),path:await file.path()};};
   const close=async()=>{await exportDialog().getByRole('button',{name:/^(Cerrar|Cancelar)$/}).click();await exportDialog().waitFor({state:'detached'});};
   const inspectDefaults=async()=>{
+   const layout=await exportDialog().evaluate(dialog=>{
+    const body=dialog.querySelector('.adb-export-body'),footer=dialog.querySelector('.adb-panel-footer');
+    const size=selector=>parseFloat(getComputedStyle(dialog.querySelector(selector)).fontSize);
+    const rect=dialog.getBoundingClientRect(),footerRect=footer.getBoundingClientRect();
+    return {title:size('.adb-config-heading'),label:size('.adb-field'),help:size('.adb-help'),
+     control:dialog.querySelector('select').getBoundingClientRect().height,
+     buttons:[...footer.querySelectorAll('button')].map(button=>button.getBoundingClientRect().height),
+     inside:rect.left>=0&&rect.right<=innerWidth&&rect.top>=0&&rect.bottom<=innerHeight,
+     footerVisible:footerRect.bottom<=innerHeight&&footerRect.top>=rect.top,
+     fits:body.scrollWidth<=body.clientWidth&&footer.scrollWidth<=footer.clientWidth};
+   });
+   assert.ok(layout.title>=22&&layout.label>=16&&layout.help>=14,JSON.stringify(layout));
+   assert.ok(layout.control>=44&&layout.buttons.every(height=>height>=44),JSON.stringify(layout));
+   assert.ok(layout.inside&&layout.footerVisible&&layout.fits,JSON.stringify(layout));
+   // The footer remains reachable while the options scroll on short screens.
+   await exportDialog().getByRole('button',{name:'Exportar',exact:true}).focus();
+   await page.keyboard.press('Tab');
+   assert.equal(await exportDialog().getByRole('button',{name:'Cerrar exportación'}).evaluate(button=>button===document.activeElement),true);
    assert.equal(await exportDialog().getByLabel('Formato de exportación').inputValue(),'pdf');
    assert.equal(await exportDialog().getByLabel('Incluir propiedades de la página').isChecked(),false);
    assert.equal(await exportDialog().getByLabel('Descargar como ZIP').isChecked(),false);
    assert.equal(await exportDialog().getByLabel('Incluir subpáginas').isDisabled(),true);
   };
   await page.evaluate(id=>_openPagePeek(id,{databasePreview:true,mode:'side'}),row);
-  await page.getByRole('button',{name:'Acciones del registro',exact:true}).click();await page.getByRole('button',{name:'Exportar…',exact:true}).click();await inspectDefaults();
+  await page.getByRole('button',{name:'Acciones del registro',exact:true}).click();await page.getByRole('button',{name:'Exportar…',exact:true}).click();await inspectDefaults();await page.screenshot({path:`/tmp/atlas-export-dialog-${width}.png`});
   const first=await download();assert.ok(first.name.endsWith('.pdf'));assert.ok(fs.readFileSync(first.path).subarray(0,4).equals(Buffer.from('%PDF')));const clean=pdfText(first.path);assert.ok(clean.includes('Contenido para exportar')&&clean.includes('Papel'));assert.ok(!clean.includes('Estado'));assert.equal(clean.split('Documento exportable').length-1,1);
   await exportDialog().getByLabel('Incluir propiedades de la página').check();const withProps=await download();assert.ok(pdfText(withProps.path).includes('Estado'));
   await exportDialog().getByLabel('Incluir propiedades de la página').uncheck();await exportDialog().getByLabel('Descargar como ZIP').check();await exportDialog().getByLabel('Incluir subpáginas').check();const packed=await download();assert.ok(packed.name.endsWith('.zip'));

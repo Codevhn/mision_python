@@ -295,3 +295,51 @@
 .adb-filter-group{border:1px solid var(--adb-border);border-radius:4px;padding:6px;margin:8px 0;min-width:0}.adb-filter-group legend{color:var(--adb-muted);font-size:12px}.adb-filter-add{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.adb-filter-add button{color:var(--adb-muted);border:0;background:transparent;padding:5px;border-radius:4px}.adb-filter-add button:hover{background:var(--adb-hover)}.adb-filter-add button:disabled{opacity:.4}
 
 .adb-cover-unavailable{display:flex;align-items:center;justify-content:center;height:100%;color:var(--adb-muted);font-size:12px}
+
+/* Export-specific layout: shared by Peek and ordinary entries. Keep other
+   database dialogs and the document/PDF typography independent. */
+.adb-modal-panel.adb-export-dialog {
+  width:min(600px,100%)!important;
+  padding:0!important;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  font-size:16px;
+  line-height:1.5;
+}
+.adb-export-dialog .adb-config-heading {
+  flex-shrink:0;
+  padding:20px 24px;
+  border-bottom:1px solid var(--adb-border);
+  font-size:22px;
+  line-height:1.3;
+  gap:16px;
+  color:var(--adb-text);
+}
+.adb-export-dialog .adb-config-heading strong {font-weight:600;}
+.adb-export-dialog .adb-config-heading .adb-icon-button {width:44px;height:44px;}
+.adb-export-body {min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px;}
+.adb-export-dialog .adb-export-scope {font-size:14px;line-height:1.6;margin:0 0 24px;padding:0;border:0;overflow-wrap:anywhere;}
+.adb-export-dialog .adb-export-scope strong {display:inline-block;margin-bottom:4px;font-size:16px;font-weight:600;}
+.adb-export-section + .adb-export-section {border-top:1px solid var(--adb-border);margin-top:24px;padding-top:24px;}
+.adb-export-section h3 {font-size:16px;font-weight:600;line-height:1.5;color:var(--adb-text);margin:0 0 16px;}
+.adb-export-dialog .adb-field {gap:8px;margin:0 0 20px;padding:0;font-size:16px;color:var(--adb-text);}
+.adb-export-dialog .adb-field select {min-height:44px;font-size:16px;padding:9px 12px;border-radius:6px;}
+.adb-export-dialog .adb-toggle {font-size:16px;min-height:44px;margin:12px 0 4px;padding:0;color:var(--adb-text);cursor:pointer;}
+.adb-export-dialog .adb-toggle span {overflow:visible;}
+.adb-export-dialog input[type="checkbox"] {width:20px;height:20px;flex-shrink:0;}
+.adb-export-dialog .adb-help {font-size:14px;line-height:1.6;margin:0 0 16px;padding:0;color:var(--adb-muted);}
+.adb-export-dialog .adb-export-notice,.adb-export-dialog .adb-error {font-size:14px;line-height:1.6;padding:12px 14px;margin:0;border-radius:6px;overflow-wrap:anywhere;}
+.adb-export-dialog .adb-export-feedback {flex-shrink:0;max-height:25dvh;overflow-y:auto;padding:12px 24px;}
+.adb-export-dialog .adb-panel-footer {flex-shrink:0;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin:0;padding:16px 24px;border-top:1px solid var(--adb-border);}
+.adb-export-dialog .adb-panel-footer button {font-size:16px;min-height:44px;padding:10px 16px!important;text-align:center;border:1px solid var(--adb-border);border-radius:6px;}
+.adb-export-dialog .adb-panel-footer button:first-child {margin-right:auto;}
+@media(max-width:480px) {
+  .adb-modal-panel.adb-export-dialog {max-height:calc(100dvh - 24px)!important;}
+  .adb-export-dialog .adb-config-heading {padding:12px 16px;}
+  .adb-export-body {padding:16px;}
+  .adb-export-dialog .adb-export-feedback {padding:12px 16px;}
+  .adb-export-dialog .adb-panel-footer {display:grid;grid-template-columns:1fr 1fr;padding:12px 16px;gap:8px;}
+  .adb-export-dialog .adb-panel-footer button {width:100%;padding:10px 12px!important;}
+  .adb-export-dialog .adb-panel-footer .adb-primary {grid-column:1 / -1;}
+}

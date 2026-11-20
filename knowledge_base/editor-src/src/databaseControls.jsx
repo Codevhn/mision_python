@@ -8,14 +8,14 @@ export function SelectField({label,value,onChange,choices,empty,disabled=false,h
 export function ToggleField({label,checked,onChange,disabled=false}){
   return <label className="adb-toggle"><span>{label}</span><input aria-label={label} type="checkbox" checked={!!checked} disabled={disabled} onChange={e=>onChange(e.target.checked)}/></label>;
 }
-export function DatabaseDialog({title,owner,anchor,busy,onClose,children}){
+export function DatabaseDialog({title,owner,anchor,busy,onClose,children,className=''}){
   const ref=useRef(null);
   useEffect(()=>{
     (ref.current?.querySelector('select,input,button:not(:disabled)')||ref.current)?.focus();
     return ()=>{if(anchor?.isConnected)anchor.focus();};
   },[]);
   return createPortal(<div className="adb-modal-backdrop" data-peek-owner={owner} onPointerDown={e=>{e.stopPropagation();if(e.target===e.currentTarget&&!busy)onClose();}}>
-    <div ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className="adb-popover adb-modal-panel" onKeyDown={e=>{
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className={`adb-popover adb-modal-panel ${className}`} onKeyDown={e=>{
       e.stopPropagation();
       if(e.key==='Escape'){e.preventDefault();if(!busy)onClose();}
       if(e.key==='Tab'){
