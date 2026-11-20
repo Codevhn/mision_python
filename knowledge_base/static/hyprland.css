@@ -196,7 +196,6 @@
 :root[data-theme-id="hyprland"] :is(.adb-workspace,.adb-popover,.adb-view-config,.adb-record-properties,.adb-dialog) {
   --adb-bg:var(--cyber-reading);--adb-text:var(--text);--adb-muted:var(--text-muted);--adb-border:var(--border);--adb-hover:var(--cyber-hover);--adb-selected:var(--cyber-selected);--adb-accent:var(--cyber-cyan);color-scheme:dark;
 }
-:root[data-theme-id="hyprland"] .adb-workspace {background-color:var(--cyber-reading)!important}
 :root[data-theme-id="hyprland"] :is(.adb-primary,.adb-toolbar-actions .adb-new-button) {background:#25545d!important;color:#eefcfb!important}
 :root[data-theme-id="hyprland"] .adb-tabs button.active:after {background:var(--cyber-cyan)}
 :root[data-theme-id="hyprland"] .adb-table-row.selected {background:var(--cyber-selected)}

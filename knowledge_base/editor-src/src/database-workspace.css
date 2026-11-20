@@ -2,8 +2,22 @@
    remain outside this namespace. Reference: saved Notion table/Peek evidence. */
 .adb-workspace,.adb-popover,.adb-view-config,.adb-record-properties {--adb-bg:#202020;--adb-text:#e3e3e0;--adb-muted:#9b9b98;--adb-border:#ffffff14;--adb-hover:#ffffff09;--adb-selected:#2383e224;--adb-accent:#529cca;font-family:var(--font-ui,Inter,ui-sans-serif,system-ui,sans-serif);font-size:14px;line-height:1.5;color:var(--adb-text);color-scheme:dark;box-sizing:border-box;text-align:left;font-weight:400;letter-spacing:normal}
 [data-theme="light"] :is(.adb-workspace,.adb-popover,.adb-view-config,.adb-record-properties){--adb-bg:#fff;--adb-text:#37352f;--adb-muted:#787774;--adb-border:#37352f17;--adb-hover:#37352f08;--adb-selected:#2383e216;color-scheme:light}
+/* A database is part of its document canvas. Resolve tokens locally so a
+   nested database follows the Peek surface too; menus keep their own layer. */
+[data-theme] .adb-workspace {
+  --adb-bg:var(--bg-elevated,var(--bg,#202020));
+  --adb-text:var(--text,#e3e3e0);
+  --adb-muted:var(--text-muted,#9b9b98);
+  --adb-border:var(--border,#ffffff14);
+  --adb-hover:var(--bg-hover,#ffffff09);
+  --adb-selected:var(--accent-light,#2383e224);
+  --adb-accent:var(--accent,#529cca);
+  color-scheme:inherit;
+}
+[data-style="aero"][data-theme="light"] .adb-workspace {--adb-bg:var(--aero-content,var(--bg));}
+#pagePeekOverlay.db-preview-peek .adb-workspace {--adb-bg:var(--bg-surface,var(--bg));}
 .adb-workspace *, .adb-popover *,.adb-record-properties *{box-sizing:border-box}
-.adb-workspace{background:var(--adb-bg);width:100%;min-width:0;margin:12px 0 24px;border-radius:0;container:atlas-database / inline-size}
+.adb-workspace{background:transparent;width:100%;min-width:0;margin:12px 0 24px;border-radius:0;container:atlas-database / inline-size}
 :is(.adb-workspace,.adb-popover,.adb-record-properties) button {font:inherit;letter-spacing:normal;text-transform:none;cursor:pointer;color:inherit;background:transparent;border:0;box-shadow:none;border-radius:4px;margin:0;min-height:0;text-align:left;line-height:1.5}
 :is(.adb-workspace,.adb-popover,.adb-record-properties) button:hover{background:var(--adb-hover)}
 :is(.adb-workspace,.adb-popover,.adb-record-properties) button:disabled{opacity:.4;cursor:default}
@@ -36,7 +50,7 @@
 .adb-header-cell:hover .adb-header-chevron{opacity:1}
 .adb-column-resizer{position:absolute;width:6px;top:0;right:-3px;height:100%;cursor:col-resize;z-index:5}
 .adb-column-resizer:hover{background:#2383e2}
-.adb-table-row{min-height:var(--adb-row-height,36px);border-bottom:1px solid var(--adb-border);background:var(--adb-bg)}
+.adb-table-row{min-height:var(--adb-row-height,36px);border-bottom:1px solid var(--adb-border);background:transparent}
 .adb-table-row:hover{background:color-mix(in srgb,var(--adb-bg),var(--adb-text) 3%)}
 .adb-table-row.selected{background:color-mix(in srgb,var(--adb-bg),#2383e2 15%)}
 .adb-title-cell,.adb-data-cell{border-right:1px solid var(--adb-border);display:flex;align-items:center;min-width:0;background:inherit;position:relative}
