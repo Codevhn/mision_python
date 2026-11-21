@@ -79,6 +79,10 @@
   border-radius: 7px 7px 0 0;
 }
 
+/* The menu is inside the header's stacking context. Raise the owning header
+   while open so the following code block cannot paint over its options. */
+.code-block-header-menu-open { z-index: 6; }
+
 .code-block-lang { position: relative; }
 
 .code-block-lang-btn {

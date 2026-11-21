@@ -288,7 +288,7 @@ function CodeBlockComponent({ block, editor, contentRef }) {
   return (
     <div className="code-block-native">
       <div
-        className="code-block-header"
+        className={"code-block-header" + (menuOpen ? " code-block-header-menu-open" : "")}
         contentEditable={false}
         onMouseDown={(e) => e.stopPropagation()}
       >

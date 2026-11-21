@@ -65,15 +65,8 @@
     background-color:var(--native-field);
   }
   :root[data-style="notion"][data-palette="paper"] :is(.adb-record-card,.book-card,.home-card) {box-shadow:none!important;}
-  /* The shared highlighter keeps dark token colors in other themes. Papel
-     uses monochrome ink rather than light tokens on a dark code rectangle. */
-  :root[data-style="notion"][data-palette="paper"] :is(#entryBody,#pagePeekEditor) :is(.bn-block-content[data-content-type="codeBlock"],.code-block-native,.code-block-pre,.code-block-code,.code-block-pre .bn-inline-content) {
-    background:var(--native-field)!important;color:var(--native-ink)!important;
-    caret-color:var(--native-ink);box-shadow:none;color-scheme:light;
-  }
-  :root[data-style="notion"][data-palette="paper"] .code-block-pre :is(code,span) {
-    color:var(--native-ink)!important;background-color:transparent!important;
-  }
+  /* Code blocks keep the shared graphite canvas and Shiki syntax colors.
+     Papel's reading typography and ink apply to prose, not source code. */
   :root[data-style="notion"][data-palette="paper"] #ctxBar {background:var(--native-canvas)!important;border-color:var(--native-line);box-shadow:none;}
   :root[data-style="notion"][data-palette="paper"] .assistant-launcher {box-shadow:none!important;}
   :root[data-style="notion"][data-palette="paper"] ::selection {background:#d9dfce;color:#1d1e1b;}
