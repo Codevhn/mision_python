@@ -2125,9 +2125,11 @@ async function loadEntry(id, opts = {}) {
   if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
   const data = await res.json();
 
-  // A lesson/page that finishes opening supersedes pending course overviews.
+  // A successful entry load supersedes both the course overview and its
+  // no-selection placeholder (Home resume can show it on a fresh session).
   _courseViewRequest++;
   $('courseView')?.classList.add('hidden');
+  $('courseEmptyState')?.classList.add('hidden');
 
   // CRITICAL: cancel any pending auto-save from the previous entry before switching
   clearTimeout(_autoSaveTimer);
