@@ -1,3 +1,4 @@
+import {studyTopics,nextStudyTopic} from './studyTopics.js';
 import {openDocumentExport} from './databaseExport.jsx';
 import {pdfSelectionClipboard} from './pdfSelectionClipboard.js';
 import {courseTopics,linkedTopicTables,inlineText} from './courseTopicTables.js';
@@ -314,6 +315,9 @@ updatePageBlock(blockId, title, pageId) {
       if (!ed || !blockId) return;
       const target = instanceRef.context.isPeek ? ed.getBlock(blockId) : ed.document.find((b) => b.id === blockId);
       if (target) ed.removeBlocks([target]);
+    },
+    getNextStudyTopic(selection) {
+      return nextStudyTopic(studyTopics(instanceRef.editor?.document),selection);
     },
     getInsertionTargets() {
       const rows=[];

@@ -105,3 +105,18 @@ body.focus-mode #entryView { max-width:none; }
   #entryView #inlineTitleWrap { padding:0!important; }
   body:has(#pagePeekOverlay.db-preview-peek:not(.hidden)) #contentArea { margin-right:0; }
 }
+
+/* Course navigation occupies only the unobscured reading column. Its geometry
+   is measured by course-navigation.js, including Peek/assistant resizing. */
+#courseNavBar {position:fixed;z-index:900;box-sizing:border-box;margin:0;padding:10px 12px max(10px,env(safe-area-inset-bottom));gap:10px;background:var(--bg-elevated,var(--bg));border-top:1px solid var(--border);}
+#courseNavBar[hidden] {display:none!important;}
+#courseNavBar .course-nav-btn {min-width:0;min-height:48px;max-width:calc(50% - 5px);padding:10px 12px;}
+:root.atlas-course-navigation #entryView {padding-bottom:calc(var(--atlas-course-nav-height,90px) + 24px);}
+:root.atlas-course-navigation #assistantLauncher {bottom:calc(var(--atlas-course-nav-height,90px) + 16px);}
+@media(max-width:480px){
+  #courseNavBar {gap:6px;padding-inline:8px;}
+  #courseNavBar .course-nav-btn {gap:5px;padding:9px 8px;}
+  #courseNavBar .cnb-overlabel {font-size:10px;letter-spacing:0;}
+  #courseNavBar .cnb-label {font-size:13px;}
+}
+@media print {#courseNavBar {display:none!important;}}

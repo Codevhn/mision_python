@@ -8,6 +8,7 @@
   let forceNewConversation = false;
   let selectedFragment = null, fragmentSent = false;
   let modelReady = Promise.resolve();
+  const dismissedStudyTopics=new Set();
   let modelNames = new Map();
   let resizeAnimation = null;
   let useVisibleContext = true;
@@ -89,6 +90,7 @@
     el('assistantSend').disabled = value;
     el('assistantStop').classList.toggle('hidden', !value);
     el('assistantNew').disabled = value;
+    area.querySelectorAll('.assistant-study-next button').forEach(button=>button.disabled=value);
     area.querySelectorAll('.assistant-history button').forEach(button => button.disabled = value);
     el('assistantModel').inert = value;
     el('assistantUseAtlas').disabled = value;
@@ -264,7 +266,7 @@
         insert.textContent='Insertar debajo del concepto';
         insert.addEventListener('click',async()=>{
           insert.disabled=true;
-          try{if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');}}
+          try{if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');renderStudyContinuation(true);}}
           catch(error){status(error.message,true);}finally{insert.disabled=false;}
         });article.append(insert);
       }
@@ -326,6 +328,37 @@
     el('assistantInput').value=revisionLabels[action];
     await send(null,{revision:{action,source_index:sourceIndex,mode,instruction,...(referenceUrls!==undefined?{reference_urls:referenceUrls}:{})}});
   }
+  function renderStudyContinuation(reveal=false){
+    area.querySelector('.assistant-study-next')?.remove();
+    const messages=record?.messages||[],answer=messages.at(-1),question=messages.at(-2);
+    if(answer?.role!=='assistant'||answer.pending||!answer.content||answer.roadmap_draft||
+       question?.selection_action!=='explain'||question.revision_request)return;
+    const selection=question.selection_context;
+    const topic=window._getAssistantNextTopic?.(selection);
+    if(!topic)return;
+    const key=`${record.id}:${messages.length}:${topic.entry_id}:${topic.block_id}`;
+    if(dismissedStudyTopics.has(key))return;
+    const card=document.createElement('section');card.className='assistant-study-next';card.setAttribute('aria-label','Siguiente subtema pendiente');
+    const heading=document.createElement('p');heading.className='assistant-study-next-heading';heading.textContent=`¿Definimos ahora «${topic.text}»?`;
+    const note=document.createElement('p');note.textContent='Es el siguiente encabezado del mismo nivel que aún no tiene contenido en esta página.';
+    const actions=document.createElement('div'),develop=document.createElement('button'),later=document.createElement('button');
+    actions.className='assistant-suggestions';develop.type=later.type='button';develop.textContent='Desarrollar siguiente tema';later.textContent='Ahora no';
+    develop.disabled=later.disabled=busy;
+    develop.addEventListener('click',async()=>{
+      if(busy)return;
+      if(el('assistantInput').value.trim()){status('Envía o guarda tu borrador antes de continuar con otro tema.',true);return;}
+      const fresh=window._getAssistantNextTopic?.(selection);
+      if(!fresh||fresh.entry_id!==topic.entry_id||fresh.block_id!==topic.block_id||fresh.text!==topic.text){
+        renderStudyContinuation();status('La página o los temas cambiaron. Actualicé la propuesta.');return;
+      }
+      card.remove();
+      try{await askSelection(fresh.text,'explain',window._getAssistantVisibleContext?.(fresh.text),{...fresh,sourceSelection:selection});}
+      catch(error){status(error.message,true);renderStudyContinuation();}
+    });
+    later.addEventListener('click',()=>{dismissedStudyTopics.add(key);card.remove();});
+    actions.append(develop,later);card.append(heading,note,actions);el('assistantTranscript').append(card);
+    if(reveal)scrollBottom();
+  }
   function renderConversation() {
     el('assistantTitle').textContent = record?.messages.length ? record.title : 'Conversación nueva';
     el('assistantTitle').parentElement.title = el('assistantTitle').textContent;
@@ -339,6 +372,7 @@
       }
       area.querySelectorAll('.assistant-suggestions button').forEach(button => button.addEventListener('click', () => { el('assistantInput').value = button.textContent; el('assistantInput').dispatchEvent(new Event('input')); el('assistantInput').focus(); }));
     } else record.messages.forEach(bubble);
+    renderStudyContinuation();
     scrollBottom();
     if(record?.messages.at(-1)?.roadmap_draft){
       const transcript=el('assistantTranscript'), proposal=transcript.querySelector('.assistant-message-assistant:last-child');
@@ -575,6 +609,9 @@
   }
   function captureContext() {
     visibleContext = window._getAssistantVisibleContext?.(selectedFragment?.text) || null;
+    const peek=document.getElementById('pagePeekOverlay');
+    if(peek&&!peek.classList.contains('hidden')&&peek.dataset.peekOwner===visibleContext?.id)area.dataset.peekOwner=visibleContext.id;
+    else delete area.dataset.peekOwner;
     el('assistantUseCurrent').checked = useVisibleContext && !!visibleContext;
     el('assistantUseCurrent').disabled = !visibleContext;
     el('assistantCurrentLabel').textContent = visibleContext ? `Seguir la vista abierta: ${visibleContext.title}` : 'Seguir automáticamente la vista abierta';
@@ -584,12 +621,18 @@
     selectedFragment = null; fragmentSent = false;
     el('assistantSelection')?.remove();
   }
-  async function askSelection(text, action = null, source = null) {
+  async function askSelection(text, action = null, source = null, studyTarget = null) {
     if (busy) { status('Espera a que termine la respuesta o detenla antes de cambiar la selección.', true); return; }
     const visible = source || window._getAssistantVisibleContext?.();
-    const insertionTarget=window._getAssistantInsertionTarget?.(text);
+    const insertionTarget=studyTarget?{entry_id:studyTarget.entry_id,block_id:studyTarget.block_id}:window._getAssistantInsertionTarget?.(text);
+    const studyStillCurrent=()=>{
+      if(!studyTarget)return true;
+      const current=window._getAssistantNextTopic?.(studyTarget.sourceSelection);
+      return current?.entry_id===studyTarget.entry_id&&current.block_id===studyTarget.block_id&&current.text===studyTarget.text;
+    };
     await open({focusInput:!action});
     if (busy) return;
+    if(!studyStillCurrent()){status('La página o los temas cambiaron. Vuelve a elegir el siguiente subtema.',true);return;}
     if (text && text.length > 10000) { status('Selecciona contenido de hasta 10.000 caracteres.', true); return; }
     document.getElementById('aiPanel')?.classList.add('hidden');
     // Keep concepts from the same page together, but never append them to
@@ -631,6 +674,7 @@
     const input = el('assistantInput');
     if (action && prompts[action]) {
       await modelReady;
+      if(!studyStillCurrent()){clearSelection();renderStudyContinuation();status('La página o los temas cambiaron. Actualicé la propuesta.');return;}
       if (!choice && !input.value.trim()) { input.value=prompts[action];input.dispatchEvent(new Event('input')); }
       await send(null,{selectionAction:action,prompt:prompts[action],preserveDraft:true,focusInput:false,currentContext:visible});
     } else {

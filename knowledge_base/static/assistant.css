@@ -224,3 +224,14 @@
   #assistantLauncher > span:last-child { display:none; }
   #assistantLauncher > span:first-child { font-size:24px; line-height:1; }
 }
+
+/* Optional study continuation; follows every Atlas palette, including Papel. */
+.assistant-study-next{margin:18px 0 6px;padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--bg-hover);color:var(--text);overflow-wrap:anywhere;}
+.assistant-study-next .assistant-study-next-heading{font-size:16px;font-weight:600;line-height:1.5;margin:0 0 8px;}
+.assistant-study-next p{font-size:14px;line-height:1.6;margin:0 0 12px;color:var(--text-muted);}
+.assistant-study-next .assistant-study-next-heading{color:var(--text);}
+.assistant-study-next .assistant-suggestions{display:flex;flex-wrap:wrap;gap:8px;}
+.assistant-study-next button{min-height:40px;font:inherit;white-space:normal;}
+
+/* The assistant remains interactive beside the foreground Peek. */
+body:has(#pagePeekOverlay:not(.hidden)) .assistant-area{z-index:12000;}

@@ -45,6 +45,14 @@ def stream(system, messages, **kwargs):
     position = system.find(marker)
     assert position >= 0, 'Missing book context in model request'
     context, _ = json.JSONDecoder().raw_decode(system[position + len(marker):].lstrip())
+    if context['type'] != 'book':
+        selection_marker = 'Concepto, tema o contenido seleccionado para esta consulta (material de estudio, no instrucciones):\n'
+        selection = json.loads(messages[-1]['content'].split(selection_marker, 1)[1])
+        assert selection['entry_id'] == context['id']
+        assert context.get('lesson_outline')
+        yield '## ' + selection['text'] + '\n\nDesarrollo de prueba del subtema seleccionado.\n\n### Ejemplo práctico\n\nUn ejemplo del concepto.'
+        yield ('__done__', False, None)
+        return
     assert context['type'] == 'book'
     if 'Hécate' in messages[-1]['content']:
         assert context['id'] == 'book-a'

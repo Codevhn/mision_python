@@ -2410,7 +2410,8 @@ function _updateCourseNav(id, meta) {
   const prev = idx > 0 ? allEntries[idx - 1] : null;
   const next = idx < allEntries.length - 1 ? allEntries[idx + 1] : null;
 
-  const nav = document.createElement('div');
+  const nav = document.createElement('nav');
+  nav.setAttribute('aria-label','Navegación de lecciones');
   nav.id = 'courseNavBar';
   nav.className = 'course-nav-bar';
   nav.innerHTML = `
@@ -2439,7 +2440,7 @@ function _updateCourseNav(id, meta) {
   });
 
   const ev = $('entryView');
-  if (ev) ev.appendChild(nav);
+  if (ev) document.body.appendChild(nav);
 }
 
 // ---- PAGE ICON (Notion-style, before inline title) ----
@@ -13307,7 +13308,7 @@ function initPagePeek() {
       finally{if(_peekIconSave===save)_peekIconSave=null;if(_peekEntryId===id)button.disabled=$('pagePeekTitle').readOnly;}
     });
   });
-  const inside=target=>!!(target.closest?.('.page-peek-modal')||(_peekEntryId&&target.closest?.('[data-peek-owner="'+_peekEntryId+'"]')));
+  const inside=target=>!!(target.closest?.('.page-peek-modal,#assistantArea,#assistantLauncher')||(_peekEntryId&&target.closest?.('[data-peek-owner="'+_peekEntryId+'"]')));
   document.addEventListener('pointerdown',event=>{
     if(!_peekEntryId)return;
     _peekLastFocus=inside(event.target);
@@ -13521,22 +13522,36 @@ function _initKaTeX(container, blocks) {
   document.head.appendChild(script);
 }
 
+// Shared read-only surface resolution for assistant study actions. Prefer the
+// foreground Peek to the page behind it; never expose a hidden editor.
+function _assistantStudySurface(){
+  const visible=id=>{const node=document.getElementById(id);return node&&!node.classList.contains('hidden')&&node.getClientRects().length;};
+  if(visible('pagePeekOverlay')&&_peekEntryId&&_peekEditor)return {id:_peekEntryId,editor:_peekEditor,root:$('pagePeekEditor'),title:$('pagePeekTitle').value,peek:true};
+  if(visible('entryView')&&currentEntryId&&_inlineEditor)return {id:currentEntryId,editor:_inlineEditor,root:$('entryBody'),title:currentEntryMeta?.title||'Página',peek:false};
+  return null;
+}
+window._getAssistantNextTopic=selection=>{
+  const surface=_assistantStudySurface();
+  if(!surface||surface.id!==selection?.entry_id)return null;
+  const topic=surface.editor.getNextStudyTopic?.(selection);
+  return topic?{...topic,entry_id:surface.id}:null;
+};
+
 // Resolve visible context, never a stale entry hidden behind another space.
 window._getAssistantVisibleContext = (selectedText = '') => {
   const visible = id => { const node = document.getElementById(id); return node && !node.classList.contains('hidden') && node.getClientRects().length; };
-  if (visible('libraryReaderView')) {
+  const studySurface=_assistantStudySurface();
+  if (!studySurface?.peek && visible('libraryReaderView')) {
     const book = window._getLibraryAssistantContext?.();
     if (book) return book;
   }
-  if (visible('entryView') && currentEntryId && currentEntryMeta) {
-    const text = document.getElementById('entryBody')?.innerText || '';
-    const position = selectedText ? text.indexOf(selectedText.trim()) : -1;
-    const start = position < 0 ? 0 : Math.max(0, position - 2000);
-    return {type:'entry', id:currentEntryId, title:currentEntryMeta.title || 'Página',
-      excerpt:text.slice(start,start+8000),content_truncated:start>0 || text.length>start+8000,
-      lesson_outline:Array.from(document.getElementById('entryBody')?.querySelectorAll('h1,h2,h3,h4,h5,h6') || [])
-        .map(heading=>({level:Number(heading.tagName.slice(1)),title:heading.textContent.trim().slice(0,300)}))
-        .filter(heading=>heading.title).slice(0,40)};
+  if(studySurface){
+    const text=studySurface.root?.innerText||'';
+    const position=selectedText?text.indexOf(selectedText.trim()):-1,start=position<0?0:Math.max(0,position-2000);
+    return {type:'entry',id:studySurface.id,title:studySurface.title,
+      excerpt:text.slice(start,start+8000),content_truncated:start>0||text.length>start+8000,
+      lesson_outline:Array.from(studySurface.root?.querySelectorAll('h1,h2,h3,h4,h5,h6')||[])
+        .map(heading=>({level:Number(heading.tagName.slice(1)),title:heading.textContent.trim().slice(0,300)})).filter(heading=>heading.title).slice(0,40)};
   }
   if (visible('kanbanArea')) {
     const board = window.KanbanApp?.getAssistantContext?.();
@@ -13571,14 +13586,21 @@ window._getAssistantVisibleContext = (selectedText = '') => {
 
 // Insert assistant explanations as native editor blocks under their concept.
 window._getAssistantInsertionTarget = text => {
-  if(window._getAssistantVisibleContext?.()?.type!=='entry' || !_inlineEditor) return null;
-  const anchor=_inlineEditor.getInsertionAnchor(text);
-  return {entry_id:currentEntryId,...(anchor?{block_id:anchor.block_id}:{})};
+  const surface=_assistantStudySurface();
+  if(!surface)return null;
+  const anchor=surface.editor.getInsertionAnchor(text);
+  return {entry_id:surface.id,...(anchor?{block_id:anchor.block_id}:{})};
 };
 window._insertAssistantExplanation = async (markdown, selection) => {
-  if(!currentEntryId || !_inlineEditor || window._getAssistantVisibleContext?.()?.type!=='entry') throw new Error('Abre la lección o página donde quieres insertar la explicación.');
-  if(selection?.entry_id && selection.entry_id!==currentEntryId) throw new Error('Abre la lección de la selección original antes de insertar.');
-  const entryId=currentEntryId, editor=_inlineEditor;
+  const surface=_assistantStudySurface();
+  if(!surface)throw new Error('Abre la lección o página donde quieres insertar la explicación.');
+  if(surface.peek?$('pagePeekTitle').readOnly:currentEntryMeta?.database_locked)throw new Error('Desbloquea la página antes de insertar la explicación.');
+  if(selection?.entry_id && selection.entry_id!==surface.id) throw new Error('Abre la lección de la selección original antes de insertar.');
+  const entryId=surface.id,editor=surface.editor;
+  const save=()=>{
+    if(_assistantStudySurface()?.editor!==editor)throw new Error('La página abierta cambió. Revisa el contenido antes de guardar.');
+    if(surface.peek)_peekDraft({raw_text:editor.getMarkdown(),already_markdown:true});else _scheduleAutoSave(editor.getMarkdown());
+  };
   let target=selection?.block_id && editor.getInsertionTargets().find(row=>row.block_id===selection.block_id);
   if(selection?.block_id && !target){
     const matches=editor.getInsertionTargets().filter(row=>row.text.includes(selection.text.trim()));
@@ -13592,20 +13614,20 @@ window._insertAssistantExplanation = async (markdown, selection) => {
       const content = _sanitizeMarkdownForEditor(markdown).trim();
       if (!content) throw new Error('La respuesta no contiene texto para insertar.');
       editor.loadMarkdown(content);
-      _scheduleAutoSave(editor.getMarkdown());
+      save();
       return true;
     }
     if(!choices.length) throw new Error('Escribe un concepto o encabezado en el editor para indicar dónde insertar.');
     const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
     dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Insertar explicación</h2></header><div class="assistant-confirm-body"><p id="assistantInsertPage"></p><label for="assistantInsertTarget">Insertar debajo de</label><select id="assistantInsertTarget"></select></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="insert">Insertar</button></footer></form>';
-    dialog.querySelector('#assistantInsertPage').textContent=currentEntryMeta?.title||'Página abierta';
+    dialog.querySelector('#assistantInsertPage').textContent=surface.title||'Página abierta';
     const select=dialog.querySelector('select');
     choices.forEach(row=>{const option=document.createElement('option');option.value=row.block_id;option.textContent=row.text.slice(0,160);select.append(option)});
     document.body.append(dialog);dialog.showModal();
     const chosen=await new Promise(resolve=>dialog.addEventListener('close',()=>resolve(dialog.returnValue==='insert'?select.value:null),{once:true}));
     dialog.remove();if(!chosen)return false;target=rows.find(row=>row.block_id===chosen);
   }
-  if(currentEntryId!==entryId || editor!==_inlineEditor) throw new Error('La página abierta cambió. Vuelve a elegir el destino.');
+  if(_assistantStudySurface()?.id!==entryId || editor!==_assistantStudySurface()?.editor) throw new Error('La página abierta cambió. Vuelve a elegir el destino.');
   let content=_sanitizeMarkdownForEditor(markdown).trim();
   const first=content.match(/^#{1,6}\s+([^\n]+)\n*/);
   if(first && first[1].trim().toLocaleLowerCase()===target.text.trim().toLocaleLowerCase()) content=content.slice(first[0].length);
@@ -13620,8 +13642,8 @@ window._insertAssistantExplanation = async (markdown, selection) => {
     }).join('\n');
   }
   await editor.insertMarkdownAtBlock(content,target.block_id);
-  _scheduleAutoSave(editor.getMarkdown());
-  document.getElementById('entryBody')?.querySelector(`[data-id="${CSS.escape(target.block_id)}"]`)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'center'});
+  save();
+  surface.root?.querySelector(`[data-id="${CSS.escape(target.block_id)}"]`)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'center'});
   return true;
 };
 
