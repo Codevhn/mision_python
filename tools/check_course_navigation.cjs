@@ -39,7 +39,7 @@ fs.mkdirSync(output,{recursive:true});
       {name:'phone',viewport:{width:412,height:915},hasTouch:true,isMobile:true},
     ]){
       const {name,...options}=profile;
-      const context=await browser.newContext(options);
+      const context=await browser.newContext({...options,serviceWorkers:'block'});
       await context.request.post(base+'/login',{form:{password}});
       await context.route('**/*',route=>{
         const url=new URL(route.request().url());
@@ -66,7 +66,33 @@ fs.mkdirSync(output,{recursive:true});
         await page.evaluate(({theme,id})=>{setAtlasTheme(theme,true);return window._loadEntryById(id);},{theme,id:python.lessons[0]});
         // Home is reconstructed from persisted study activity on a fresh load.
         await page.reload();await ready();
+        if(theme==='hyprland'){
+          // A stale Home card must leave Home usable, with no course picker.
+          await page.route(url=>decodeURIComponent(url.pathname)===`/api/entry/${python.lessons[0]}`,route=>route.fulfill({status:404,json:{error:'Not found'}}),{times:1});
+          const missing=page.waitForResponse(response=>decodeURIComponent(new URL(response.url()).pathname)===`/api/entry/${python.lessons[0]}`&&response.status()===404,{timeout:10000});
+          await page.locator(`.home-study-featured[data-id="${python.lessons[0]}"]`).click();await missing.catch(async error=>{console.error('Resume errors:',errors);console.error(await page.locator('#welcome').evaluate(node=>({busy:node.getAttribute('aria-busy'),text:node.innerText.slice(0,200)})));throw error;});
+          await page.waitForFunction(()=>!document.getElementById('welcome').hasAttribute('aria-busy'));
+          assert.equal(await page.locator('#welcome').isVisible(),true);
+          assert.equal(await page.locator('#courseEmptyState').isVisible(),false);
+          assert.equal(await page.locator('#entryView').isVisible(),false);
+        }
+        // Hold the lesson request: the no-course screen must never be used
+        // as a loading state, including on the very first click after reload.
+        let releaseLesson,lessonRequests=0;
+        const countLesson=request=>{if(decodeURIComponent(new URL(request.url()).pathname)===`/api/entry/${python.lessons[0]}`)lessonRequests++;};
+        page.on('request',countLesson);
+        const lessonPending=page.waitForRequest(request=>decodeURIComponent(new URL(request.url()).pathname)===`/api/entry/${python.lessons[0]}`,{timeout:10000});
+        const lessonGate=new Promise(resolve=>{releaseLesson=resolve;});
+        await page.route(url=>decodeURIComponent(url.pathname)===`/api/entry/${python.lessons[0]}`,async route=>{await lessonGate;await route.continue();},{times:1});
         await page.locator(`.home-study-featured[data-id="${python.lessons[0]}"]`).click();
+        await lessonPending;
+        await page.locator(`.home-study-featured[data-id="${python.lessons[0]}"]`).click();
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        const loadingState={empty:await page.locator('#courseEmptyState').isVisible(),home:await page.locator('#welcome').isVisible(),overview:await page.locator('#courseView').isVisible()};
+        releaseLesson();
+        page.off('request',countLesson);
+        assert.equal(lessonRequests,1,'Repeated clicks must not start competing lesson loads');
+        assert.deepEqual(loadingState,{empty:false,home:true,overview:false},'Resume must preserve Home while the lesson is loading');
         await page.waitForFunction(id=>window._currentEntryId===id,python.lessons[0]);
         assert.equal(await page.locator('#courseEmptyState').isVisible(),false,'Home resume after reload must hide the no-course placeholder');
         assert.equal(await page.locator('#courseView').isVisible(),false,'Only the restored lesson is visible');

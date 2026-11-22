@@ -1873,10 +1873,19 @@ function renderHome() {
 
   // Study cards → restore course context + open lesson
   welcome.querySelectorAll(".home-study-featured, .home-study-compact").forEach(card => {
-    card.addEventListener("click", () => {
-      const entryId = card.dataset.id;
-      if (window.switchSpace) window.switchSpace('courses');
-      openCourseLesson(entryId);
+    card.addEventListener("click", async () => {
+      if (welcome.getAttribute('aria-busy') === 'true') return;
+      const entryId = card.dataset.id, label = card.querySelector('.hsf-cta')?.firstChild;
+      const previousLabel = label?.textContent;
+      welcome.setAttribute('aria-busy', 'true');
+      card.setAttribute('aria-busy', 'true');
+      if (label) label.textContent = 'Abriendo…';
+      try { await openCourseLesson(entryId, { enterCourses: true }); }
+      catch { showToast('No se pudo abrir la lección. Inténtalo de nuevo.', 'error'); }
+      finally {
+        welcome.removeAttribute('aria-busy'); card.removeAttribute('aria-busy');
+        if (label) label.textContent = previousLabel;
+      }
     });
   });
 
@@ -2124,6 +2133,13 @@ async function loadEntry(id, opts = {}) {
   const res = await fetch(entryUrl, opts.force ? { cache: "no-store" } : undefined);
   if (!res.ok) { showToast("Error al cargar la entrada", "error"); return; }
   const data = await res.json();
+
+  // Home resume is a direct lesson navigation, not a visit to the course
+  // picker. Keep Home intact while fetching (and on failure), then change
+  // space without starting an intermediate empty state or course overview.
+  if (opts.enterCourses && data.meta?.type === 'course') {
+    window.switchSpace?.('courses', null, { openingLesson: true });
+  }
 
   // A successful entry load supersedes both the course overview and its
   // no-selection placeholder (Home resume can show it on a fresh session).
@@ -6412,7 +6428,7 @@ function setSidebarVisible(visible) {
   }
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
-  function switchSpace(space, targetMapId = null) {
+  function switchSpace(space, targetMapId = null, { openingLesson = false } = {}) {
     if (space !== 'courses') _courseViewRequest++;
     _courseThemeSpace(space);
     if (space === 'assistant') space = 'home'; // migrate the previous dedicated view
@@ -6515,6 +6531,9 @@ function setSidebarVisible(visible) {
     } else if (space === 'radar') {
       if (radarView) radarView.classList.remove('hidden');
       if (typeof loadRadarFeed === 'function') loadRadarFeed();
+    } else if (space === 'courses' && openingLesson) {
+      // loadEntry already resolved the requested lesson and will reveal it
+      // synchronously. Never render the picker or fetch an overview here.
     } else if (space === 'courses' && _activeCourseSlug) {
       // A lesson can select a course before its overview has ever been loaded.
       // The static courseView element alone is not an initialized course view.
@@ -8302,11 +8321,11 @@ function handleNewEntryTopbar() {
 }
 
 // ── Open a course lesson: hide roadmap, show entry, keep Courses context ─
-function openCourseLesson(entryId) {
+function openCourseLesson(entryId, { enterCourses = false } = {}) {
   _courseViewRequest++;
   const cv = $('courseView');
   if (cv) cv.classList.add('hidden');
-  return loadEntry(entryId);
+  return loadEntry(entryId, { enterCourses });
 }
 
 // Jump to a specific heading inside the lesson just opened — same lookup +
