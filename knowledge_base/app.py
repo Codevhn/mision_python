@@ -900,13 +900,13 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   @page {{
     size: A4;
     margin: 20mm 22mm 21mm;
-    @bottom-right {{
-      content: counter(page) " / " counter(pages);
-      font-family: "Inter", sans-serif;
-      font-size: 7.5pt;
-      color: #70675e;
+    @bottom-center {{
+      content: counter(page);
+      font-family: "Lora", Georgia, serif;
+      font-size: 10pt;
+      color: #49382b;
     }}
-    @bottom-left {{
+    @top-center {{
       content: {footer_title};
       font-family: "Inter", sans-serif;
       font-size: 7.5pt;
@@ -914,7 +914,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     }}
   }}
   @page :first {{
-    @bottom-left {{ content: "Atlas · Cuaderno de estudio"; }}
+    @top-center {{ content: ""; }}
   }}
   body {{
     font-family: "Lora", Georgia, serif;

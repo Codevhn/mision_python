@@ -16,6 +16,8 @@ def test_editorial_export_embeds_serif_and_preserves_code_and_pagination(auth_cl
         assert any('JetBrains' in font for font in fonts), fonts
         text = '\n'.join(page.get_text() for page in pdf)
         assert 'FIN-LECCIÓN' in text and 'print("área")' in text
-        assert f'1 / {len(pdf)}' in pdf[0].get_text()
-        assert 'Atlas · Cuaderno de estudio' in pdf[0].get_text()
+        for number, page in enumerate(pdf, 1):
+            footer = [word for word in page.get_text('words') if word[1] > page.rect.height - 55]
+            assert len(footer) == 1 and footer[0][4] == str(number)
+            assert abs((footer[0][0] + footer[0][2]) / 2 - page.rect.width / 2) < 1
         assert 'Lección de impresión' in pdf[-1].get_text()

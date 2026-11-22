@@ -9,8 +9,8 @@ El documento mantiene A4, papel blanco, márgenes de 22 mm a los lados, tinta os
 y acentos cálidos discretos. Los párrafos se justifican con separación silábica
 automática en español; títulos y código mantienen su alineación propia. Los títulos evitan separarse del párrafo siguiente;
 se conservan las reglas de viudas, huérfanas, tablas y bloques de código extensos.
-Todas las páginas incluyen su número; las siguientes a la primera llevan también
-el título del documento. No se añade una portada vacía ni se modifica el Markdown.
+Todas las páginas incluyen un número sencillo centrado en el pie. Las siguientes
+a la primera llevan también el título del documento en la cabecera. No se añade una portada vacía ni se modifica el Markdown.
 
 El tamaño elegido en el diálogo sigue determinando la prosa. La jerarquía de títulos
 escala con ese tamaño; «Ajustar a una hoja» conserva su cálculo real de paginación
