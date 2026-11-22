@@ -2866,6 +2866,37 @@ def patch_content(entry_id):
     return jsonify(ok=True)
 
 
+@app.route("/api/entry/<entry_id>/learning-guide", methods=["PATCH"])
+def patch_learning_guide(entry_id):
+    """Update lesson guidance without replacing Markdown or other metadata."""
+    from contextlib import closing
+    from database_api import LOCK
+    data = request.get_json(silent=True)
+    fields = {"lesson_objective", "lesson_guidance"}
+    if not isinstance(data, dict) or not data or set(data) - fields:
+        return jsonify(error="Campos de guía no válidos"), 400
+    if any(not isinstance(value, str) or len(value) > 4000 for value in data.values()):
+        return jsonify(error="Cada campo admite hasta 4000 caracteres de texto"), 400
+    with LOCK, closing(_index_db_connect()) as conn:
+        _migrate_index_json_to_sqlite_if_needed(conn)
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT meta FROM entries WHERE entry_id=?", (entry_id,)).fetchone()
+        if not row:
+            return jsonify(error="Not found"), 404
+        meta = json.loads(row[0])
+        if meta.get("type") != "course":
+            return jsonify(error="La guía solo está disponible en lecciones"), 400
+        if meta.get("database_deleted"):
+            return jsonify(error="Restaura la lección antes de editarla"), 410
+        if meta.get("database_locked"):
+            return jsonify(error="Desbloquea la lección para editarla"), 423
+        meta.update({key: value.strip() for key, value in data.items()})
+        meta.update(updated_at=datetime.now().isoformat(timespec="microseconds"), edited_by="owner")
+        conn.execute("UPDATE entries SET meta=? WHERE entry_id=?", (json.dumps(meta, ensure_ascii=False), entry_id))
+        conn.commit()
+    return jsonify(ok=True, **{key: meta.get(key, "") for key in fields})
+
+
 # ── FEATURE: Version History ────────────────────────────────────────────────
 @app.route("/api/entry/<entry_id>/history")
 def get_entry_history(entry_id):

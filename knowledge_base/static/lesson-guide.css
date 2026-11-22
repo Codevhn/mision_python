@@ -1,0 +1,21 @@
+/* Authoring guidance is separate from the editable lesson document. */
+#entryView #lessonGuide {
+  box-sizing:border-box;width:100%;max-width:calc(var(--atlas-reading-width) + var(--atlas-page-gutter-start) + var(--atlas-page-gutter-end));
+  margin:8px auto 28px;padding-inline:var(--atlas-page-gutter-start) var(--atlas-page-gutter-end);
+  font-family:var(--font-ui,system-ui,sans-serif);font-size:14px;line-height:1.5;color:var(--text);
+}
+#lessonGuide .lesson-guide-panel {border:1px solid var(--border);border-inline-start:3px solid var(--accent);border-radius:10px;background:var(--bg-surface);overflow:hidden;}
+#lessonGuide summary {padding:14px 18px;cursor:pointer;}
+#lessonGuide summary strong {font-size:15px;font-weight:650;margin-inline-start:6px;}
+#lessonGuide summary span {display:block;margin:3px 0 0 20px;font-size:13px;color:var(--text-muted);}
+#lessonGuide form {padding:0 18px 18px;display:grid;gap:16px;}
+#lessonGuide .lesson-guide-help {margin:0;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);}
+#lessonGuide label {display:grid;gap:6px;font-size:14px;font-weight:600;color:var(--text);}
+#lessonGuide textarea {box-sizing:border-box;display:block;width:100%;min-height:86px;resize:vertical;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:400 15px/1.5 var(--font-ui,system-ui,sans-serif);}
+#lessonGuide textarea::placeholder {color:var(--text-muted);opacity:1;}
+#lessonGuide :is(textarea,summary,button):focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+#lessonGuide .lesson-guide-actions {display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
+#lessonGuide button {font-size:14px;min-height:36px;padding:7px 14px;}
+#lessonGuide [role="status"] {font-size:13px;color:var(--text-muted);}
+@media(max-width:600px) {#lessonGuide textarea {font-size:16px;}#lessonGuide summary {padding:12px;}#lessonGuide form {padding:0 12px 14px;}}
+@media print {#lessonGuide {display:none!important;}}

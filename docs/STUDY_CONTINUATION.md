@@ -14,6 +14,10 @@ Las preguntas generales, resúmenes, ejemplos, respuestas parciales, Biblioteca 
 
 ## Calidad del desarrollo
 
+Cada lección muestra una **Guía de la lección** entre el título y los apuntes, con dos campos editables: **Objetivo de la lección** y **Orientación del desarrollo**. El panel usa una superficie diferenciada y puede contraerse; al volver a abrir una lección con guía guardada aparece contraído. **Guardar guía** persiste ambos campos como metadatos propios de la lección (`lesson_objective` y `lesson_guidance`, hasta 4000 caracteres cada uno). Se pueden dejar vacíos o borrar. No se insertan en Markdown, copias del contenido ni exportaciones.
+
+La próxima consulta del asistente recupera la guía guardada del servidor, incluso desde Peek. No se confía en objetivos enviados por el navegador. El texto aún sin guardar se identifica como tal y se conserva durante la navegación de la sesión; se debe guardar antes de recargar o pedir al asistente que lo use. Los bloqueos y la papelera impiden editar la guía. El endpoint específico actualiza solo esos metadatos en una transacción, sin reemplazar el documento ni otros campos.
+
 Las instrucciones pedagógicas compartidas por todos los proveedores distinguen el contexto curricular del texto técnico potencialmente erróneo. Una respuesta anterior, un resumen de conversación o un extracto del editor no se convierten en fuentes verificadas. Cada entidad debe conservar sus propios atributos (organización, licencia, ediciones, funciones y requisitos), sin copiar los de herramientas vecinas.
 
 En cursos, el servidor añade `learning_task` al contexto de cada petición: acción actual, selección cuando corresponde y campos que describen el currículo frente al contenido no verificado. Las preguntas libres no heredan un tema seleccionado anterior. El nivel ausente sigue sin especificar y el año del título no determina versiones de software. Página y Peek usan el mismo contrato del servidor.
@@ -30,5 +34,7 @@ Anterior/siguiente mantiene el orden y los manejadores existentes de las leccion
 - `tools/check_study_continuation.cjs`: página/Peek y escritorio/móvil, API real con modelo simulado, selección correcta, borrador, inserción y cambio de página.
 - `tools/check_course_navigation_dock.cjs`: barra fija, temas, asistente normal/ampliado, límites del curso y navegación real.
 - `tools/check_library_assistant.cjs`: regresión de consultas, selecciones y fuentes de Biblioteca.
+- `knowledge_base/tests/test_learning_guide.py`: validación, persistencia, permisos, conservación del documento y recuperación de la guía por el asistente.
+- `tools/check_lesson_guide.cjs`: formulario real, recarga, separación del editor, temas claro/oscuro, móvil, borradores y recuperación tras errores de guardado.
 
 Los scripts de navegador usan únicamente un servidor local desechable; no generan respuestas mediante proveedores externos ni usan cursos personales.

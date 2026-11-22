@@ -2180,6 +2180,7 @@ async function loadEntry(id, opts = {}) {
 
   const m = data.meta;
   currentEntryMeta = m;
+  window.renderLessonGuide?.(id, m);
   if (m.type === 'course' && m.course) {
     const item = document.querySelector(`.course-list-item[data-course-id="${CSS.escape(m.course)}"]`);
     const needsRefresh = _activeCourseSlug !== m.course || !expandedCourses[m.course] || !item?.classList.contains('active');
