@@ -4360,14 +4360,9 @@ def generate_course_roadmap(course_id):
 
 @app.route("/api/courses/<course_id>/export/md")
 def export_course_roadmap_md(course_id):
-    """Whole-course export as a single Markdown document — same canonical
-    '## Módulo' / '### Lección' shape this whole feature is built around,
-    so it round-trips straight back in through '↓ Importar roadmap' if
-    needed. Each lesson's own saved content (subtopics, and whatever real
-    content the user has since written) is included underneath its
-    heading, unlike the roadmap-generation preview which is titles-only —
-    this is a full backup/portable copy of the course as it stands today,
-    not just its outline."""
+    """Export the roadmap; an explicit option retains the full course backup."""
+    from course_outline import lesson_topics
+    include_content = request.args.get('include_content') == '1'
     courses_data = _sync_courses_from_index()
     if course_id not in courses_data["courses"]:
         return jsonify({"error": "Not found"}), 404
@@ -4394,7 +4389,10 @@ def export_course_roadmap_md(course_id):
             path = _entry_path(entry_id, meta)
             content = path.read_text(encoding="utf-8").strip() if path.exists() else ""
             if content:
-                lines.append(content)
+                if include_content:
+                    lines.append(content)
+                else:
+                    lines.extend('- ' + topic for topic in lesson_topics(content, meta.get('title', '')))
                 lines.append("")
     md_text = "\n".join(lines).strip() + "\n"
 

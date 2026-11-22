@@ -7349,9 +7349,12 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
   menu.innerHTML = `
     <button data-action="share"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir roadmap</button>
     <button data-action="export">⬇ Exportar roadmap (.md)</button>
+    <button data-action="export-full">⬇ Exportar curso completo (.md)</button>
     <button data-action="wipe" class="danger"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#trash"></use></svg> Eliminar todas las lecciones</button>`;
   const rect = anchor.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left - 130}px;width:210px;z-index:9999`;
+  const width = Math.min(260, window.innerWidth - 16);
+  const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${left}px;width:${width}px;z-index:9999`;
   document.body.appendChild(menu);
   _roadmapMenuEl = menu;
   menu.querySelectorAll('button[data-action]').forEach(btn => {
@@ -7363,8 +7366,8 @@ function _openRoadmapActionsMenu(anchor, courseSlug, courseEntity) {
         openCourseShareModal(courseSlug, courseEntity);
         return;
       }
-      if (action === 'export') {
-        window.open(`/api/courses/${courseSlug}/export/md`, '_blank');
+      if (action === 'export' || action === 'export-full') {
+        window.open(`/api/courses/${courseSlug}/export/md${action === 'export-full' ? '?include_content=1' : ''}`, '_blank');
         return;
       }
       if (action === 'wipe') {
