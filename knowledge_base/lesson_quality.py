@@ -102,7 +102,7 @@ def review_lesson(call_ai, system, draft, context, request, provider, model, *, 
     revised, error = call_ai(system, prompt, max_tokens=8000, temperature=0,
                              fail_on_truncation=True, provider=provider, model=model)
     if error or not isinstance(revised, str) or not revised.strip():
-        raise ValueError('No se pudo completar la revisión de continuidad. No se guardó un borrador sin revisar; puedes reintentar.')
+        raise ValueError('No se pudo completar la revisión de continuidad.')
     if _sections(revised) != expected or len(set(expected)) != len(expected):
-        raise ValueError('La revisión cambió u omitió temas. No se guardó este borrador; puedes reintentar.')
+        raise ValueError('La revisión cambió u omitió temas.')
     return revised.strip()

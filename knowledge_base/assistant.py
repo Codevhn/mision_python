@@ -1110,22 +1110,54 @@ def register_assistant(app, namespace):
                         if not text.strip():
                             yield event("error", {"error": "El proveedor devolvió una respuesta vacía."})
                             return
+                        if lesson_action:
+                            lesson_review = {'status': 'skipped_incomplete' if truncated else 'completed',
+                                             'kind': 'didactic_continuity', 'warnings': [], 'stages': {}}
                         if lesson_action and not truncated:
                             yield event('status', {'message': 'Consultando documentación de referencia para contrastar la lección…'})
-                            try:
-                                lesson_context = json.loads(context).get('current_context') or {}
-                                lesson_evidence = lesson_documents(consult_documents, lesson_context, text, meta)
-                                yield event('status', {'message': 'Contrastando afirmaciones con los extractos disponibles…'})
-                                lesson_claims = audit_claims(namespace['_call_ai'], text, lesson_evidence['sources'], provider, model)
-                                yield event('status', {'message': 'Revisando ejemplos, resultados y casos límite…'})
-                                lesson_examples = review_examples(namespace['_call_ai'], text, provider, model)
-                                yield event('status', {'message': 'Integrando el contraste y la revisión de continuidad…'})
-                                text = review_lesson(namespace['_call_ai'], system, text,
+                            # Auxiliary reviews are advisory. Keep the generated draft
+                            # if a provider cannot return their structured format; never
+                            # relax citation validation or claim a failed stage succeeded.
+                            def advisory(stage, operation, fallback, warning):
+                                try:
+                                    result = operation()
+                                except Exception:
+                                    app.logger.warning('Revisión auxiliar de lección fallida: %s', stage, exc_info=True)
+                                    lesson_review['warnings'].append({'stage': stage, 'message': warning})
+                                    lesson_review['stages'][stage] = 'unavailable'
+                                    return fallback
+                                lesson_review['stages'][stage] = 'completed'
+                                return result
+
+                            lesson_context = json.loads(context).get('current_context') or {}
+                            lesson_evidence = advisory('documentation',
+                                lambda: lesson_documents(consult_documents, lesson_context, text, meta),
+                                {'status': 'unavailable', 'sources': [], 'failures': []},
+                                'No se pudo consultar la documentación de referencia.')
+                            lesson_review['stages']['documentation'] = lesson_evidence['status']
+                            if not lesson_evidence['sources'] and not lesson_review['warnings']:
+                                lesson_review['warnings'].append({'stage': 'documentation',
+                                    'message': 'No hubo fuentes disponibles para contrastar este borrador.'})
+                            yield event('status', {'message': 'Contrastando afirmaciones con los extractos disponibles…'})
+                            lesson_claims = advisory('claims',
+                                lambda: audit_claims(namespace['_call_ai'], text, lesson_evidence['sources'], provider, model),
+                                {'status': 'unavailable', 'claims': []},
+                                'No se pudo completar el contraste de afirmaciones; no se consideran verificadas.')
+                            lesson_review['stages']['claims'] = lesson_claims['status']
+                            yield event('status', {'message': 'Revisando ejemplos, resultados y casos límite…'})
+                            lesson_examples = advisory('examples',
+                                lambda: review_examples(namespace['_call_ai'], text, provider, model),
+                                {'status': 'unavailable', 'examples': []},
+                                'No se pudo completar la revisión de ejemplos; revísalos antes de aplicarlos.')
+                            lesson_review['stages']['examples'] = lesson_examples['status']
+                            yield event('status', {'message': 'Integrando el contraste y la revisión de continuidad…'})
+                            text = advisory('editorial',
+                                lambda: review_lesson(namespace['_call_ai'], system, text,
                                     lesson_context, prompt, provider, model, evidence=lesson_evidence,
-                                    claim_audit=lesson_claims, example_audit=lesson_examples)
-                            except ValueError as error:
-                                yield event('error', {'error': str(error)})
-                                return
+                                    claim_audit=lesson_claims, example_audit=lesson_examples),
+                                text, 'No se pudo completar la corrección final. Se conserva el borrador original para que lo revises.')
+                            if lesson_review['warnings']:
+                                lesson_review['status'] = 'partial'
                             text = readable_math(text)
                             documentation = {**lesson_evidence, 'phase': 'lesson', 'audit': lesson_claims,
                                 'sources': [{key: value for key, value in source.items() if key != 'excerpt'} for source in lesson_evidence['sources']]}
@@ -1151,8 +1183,13 @@ def register_assistant(app, namespace):
                         if documentation is not None:
                             issues = output_issues(text, review_term or (revision_source or {}).get('content',''))
                             if issues:
-                                yield event('error', {'error': issues[0] + ' No se guardó esta revisión. Reintenta con otro modelo.'})
-                                return
+                                if lesson_action:
+                                    lesson_review['status'] = 'partial'
+                                    lesson_review['stages']['output_checks'] = 'unavailable'
+                                    lesson_review['warnings'].extend({'stage': 'output_checks', 'message': issue} for issue in issues)
+                                else:
+                                    yield event('error', {'error': issues[0] + ' No se guardó esta revisión. Reintenta con otro modelo.'})
+                                    return
                         if re.fullmatch(r"\s*User\s+Safety\s*:\s*safe\s+Response\s+Safety\s*:\s*safe\s*", text, re.I):
                             yield event("error", {"error": "El modelo devolvió solo etiquetas de seguridad, sin responder. Reintenta o elige otro modelo."})
                             return
@@ -1161,7 +1198,7 @@ def register_assistant(app, namespace):
                                                    "model": "Atlas" if location_only else model})
                         if lesson_action:
                             record["messages"][-1]["lesson_draft"] = {"entry_id": current_context["id"], "truncated": bool(truncated)}
-                            record["messages"][-1]['lesson_review'] = {'status': 'skipped_incomplete' if truncated else 'completed', 'kind': 'didactic_continuity'}
+                            record["messages"][-1]['lesson_review'] = lesson_review
                             if not truncated:
                                 record['messages'][-1]['example_review'] = lesson_examples
                         if revision:
@@ -1172,7 +1209,8 @@ def register_assistant(app, namespace):
                         if not update(record, version + 1):
                             yield event("error", {"error": "La conversación cambió durante la respuesta. No se sobrescribió el historial."})
                             return
-                        yield event("done", {"full": text, "html": namespace["render_markdown"](text), "truncated": truncated, "context_summarized": bool(memory), "sources": sources})
+                        yield event("done", {"full": text, "html": namespace["render_markdown"](text), "truncated": truncated, "context_summarized": bool(memory), "sources": sources,
+                                             "review_partial": bool(lesson_action and lesson_review['status'] == 'partial')})
                         return
                     parts.append(part)
                     if documentation is None and not lesson_action:

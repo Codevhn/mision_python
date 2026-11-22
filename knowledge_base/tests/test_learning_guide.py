@@ -118,7 +118,7 @@ def test_full_lesson_is_a_scoped_reviewable_draft(auth_client, monkeypatch, less
     assert record['messages'][-2]['lesson_action'] == 'develop'
     assert record['messages'][-1]['content'] == answer
     assert record['messages'][-1]['lesson_draft'] == {'entry_id': lesson, 'truncated': truncated}
-    assert record['messages'][-1]['lesson_review']['status'] == ('skipped_incomplete' if truncated else 'completed')
+    assert record['messages'][-1]['lesson_review']['status'] == ('skipped_incomplete' if truncated else 'partial')
     assert len(reviews) == (0 if truncated else 1)
     if reviews:
         assert reviews[0]['provider'] == options['provider']
@@ -156,15 +156,16 @@ def test_full_lesson_review_precedes_delivery_and_never_changes_document(auth_cl
         'current_context': {'type': 'entry', 'id': lesson, 'lesson_outline': [{'level': 2, 'title': 'Eclipse IDE'}]},
     })
     body = response.get_data(as_text=True)
-    assert 'BORRADOR SIN REVISAR' not in body
     record = auth_client.get(f'/api/assistant/conversations/{conversation}').json
+    assert 'event: done' in body
+    assert 'event: error' not in body
     if review_result == 'corrected':
-        assert 'event: done' in body
+        assert 'BORRADOR SIN REVISAR' not in body
         assert record['messages'][-1]['content'] == corrected
     else:
-        assert 'event: error' in body
-        assert 'event: done' not in body
-        assert record['messages'][-1]['role'] == 'user'
+        assert record['messages'][-1]['content'] == original
+        assert record['messages'][-1]['lesson_review']['status'] == 'partial'
+        assert record['messages'][-1]['lesson_review']['stages']['editorial'] == 'unavailable'
     assert auth_client.get(f'/api/entry/{lesson}').json['markdown'] == before
 
 
@@ -225,3 +226,53 @@ def test_documented_claims_and_calculated_cases_reach_final_correction(auth_clie
     assert answer['documentation']['status'] == 'consulted'
     assert 'excerpt' not in answer['documentation']['sources'][0]
     assert answer['example_review']['examples'][0]['cases'][0]['actual_error'] == 'ZeroDivisionError'
+
+
+@pytest.mark.parametrize('provider', list(atlas.PROVIDERS))
+@pytest.mark.parametrize('failure,stage', [('invalid_json', 'claims'), ('wrong_quote', 'claims'), ('invalid_examples', 'examples'), ('editorial_error', 'editorial'), ('documentation_error', 'documentation'), ('provider_exception', 'claims'), ('all', 'editorial')])
+def test_auxiliary_review_failure_keeps_lesson_for_every_provider(auth_client, monkeypatch, lesson, provider, failure, stage):
+    import assistant as assistant_module
+    setup_model(monkeypatch, [])
+    monkeypatch.setattr(atlas, '_provider_enabled', lambda *args: True)
+    original = '## Eclipse IDE\n\nPEP 8 es de tipo Process.'
+    source_url = 'https://peps.python.org/pep-0008/'
+    quote = 'PEP: 8 Title: Style Guide for Python Code Type: Process'
+    def consult(urls, **kwargs):
+        if failure == 'documentation_error': raise OSError('Simulated network error')
+        return {'status': 'consulted', 'sources': [{'url': source_url, 'excerpt': quote, 'truncated': False}] if source_url in urls else [], 'failures': []}
+    monkeypatch.setattr(assistant_module, 'consult_documents', consult)
+    def stream(*args, **kwargs):
+        assert kwargs['provider'] == provider
+        yield original
+        yield ('__done__', False, None)
+    def call(system, prompt, **kwargs):
+        assert kwargs['provider'] == provider
+        if system.startswith('Eres un revisor factual'):
+            if failure == 'provider_exception': raise RuntimeError('Simulated provider exception')
+            if failure in ('invalid_json', 'all'): return 'Aquí está mi revisión sin JSON.', None
+            claim = 'Cita que nunca aparece en el original.' if failure == 'wrong_quote' else 'PEP 8 es de tipo Process.'
+            return json.dumps({'claims': [{'claim': claim, 'status': 'supported', 'source_url': source_url, 'quote': quote, 'correction': ''}]}), None
+        if system.startswith('Revisa los ejemplos del borrador'):
+            return ('Formato inesperado' if failure in ('invalid_examples', 'all') else '{"examples": []}'), None
+        if failure in ('editorial_error', 'all'): return None, 'Provider unavailable'
+        return original, None
+    monkeypatch.setattr(atlas, '_stream_call_ai', stream)
+    monkeypatch.setattr(atlas, '_call_ai', call)
+    before = auth_client.get(f'/api/entry/{lesson}').json['markdown']
+    conversation = create(auth_client)
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Desarrolla toda la lección.', 'lesson_action': 'develop', 'provider': provider, 'model': 'fixture',
+        'current_context': {'type': 'entry', 'id': lesson, 'lesson_outline': [{'level': 2, 'title': 'Eclipse IDE'}]},
+    })
+    body = response.get_data(as_text=True)
+    assert 'event: done' in body and 'event: error' not in body
+    assert '"review_partial": true' in body
+    answer = auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'][-1]
+    assert answer['content'] == original
+    assert answer['lesson_review']['status'] == 'partial'
+    assert answer['lesson_review']['stages'][stage] == 'unavailable'
+    assert any(warning['stage'] == stage for warning in answer['lesson_review']['warnings'])
+    if stage == 'claims': assert answer['documentation']['audit']['claims'] == []
+    if failure == 'all':
+        assert {warning['stage'] for warning in answer['lesson_review']['warnings']} == {'claims', 'examples', 'editorial'}
+    assert auth_client.get(f'/api/entry/{lesson}').json['markdown'] == before

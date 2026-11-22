@@ -108,5 +108,5 @@ def review_examples(call_ai, draft, provider, model):
                 results.append(result)
             checked.append({'quote': quote, 'assessment': assessment, 'cases': results})
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
-        raise ValueError('No se pudo completar la revisión estructurada de ejemplos. No se guardó este borrador; puedes reintentar.')
+        raise ValueError('No se pudo completar la revisión estructurada de ejemplos.')
     return {'status': 'reviewed', 'examples': checked, 'scope': 'Análisis del modelo y cálculo de expresiones propuestas; no ejecución del programa completo.'}

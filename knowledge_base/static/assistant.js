@@ -194,6 +194,14 @@
       table.before(scroll); scroll.appendChild(table);
     });
     article.append(label, content);
+    if(message.lesson_review?.status==='partial'){
+      const notice=document.createElement('aside');notice.className='assistant-review-notice';notice.setAttribute('role','note');
+      const title=document.createElement('strong');title.textContent='Borrador con revisión parcial';
+      const note=document.createElement('p');note.textContent='El contenido está disponible. Revisa las comprobaciones pendientes antes de aplicarlo.';
+      const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Ver comprobaciones pendientes';details.append(summary);
+      for(const warning of message.lesson_review.warnings||[]){const row=document.createElement('p');row.textContent=warning.message;details.append(row);}
+      notice.append(title,note,details);article.insertBefore(notice,content);
+    }
     if(message.revision){
       const original=document.createElement('button');original.type='button';original.className='assistant-revision-origin';
       original.textContent=`${revisionLabels[message.revision.action]} · Ver respuesta anterior`;
@@ -211,6 +219,9 @@
       summary.textContent=message.documentation.status==='consulted'?`${phase} con documentación consultada`:`${phase} sin contraste documental`;
       report.append(summary);
       const note=document.createElement('p');note.textContent='Consultar fuentes no garantiza que todas las afirmaciones estén verificadas. Se contrastan extractos de hasta 12.000 caracteres por página.';report.append(note);
+      if(message.documentation.phase==='lesson'&&message.documentation.audit?.status!=='reviewed'){
+        const pending=document.createElement('p');pending.textContent='El contraste de afirmaciones no se completó; las fuentes consultadas no certifican este borrador.';report.append(pending);
+      }
       if(message.documentation.audit?.claims?.length){
         const audit=document.createElement('details');audit.className='assistant-claim-audit';
         const heading=document.createElement('summary');heading.textContent=['initial','lesson'].includes(message.documentation.phase)?'Contraste del borrador por afirmaciones':'Contraste por afirmaciones';audit.append(heading);
@@ -237,7 +248,7 @@
       const title=document.createElement('summary');title.textContent='Revisión de ejemplos';
       const note=document.createElement('p');note.textContent='Análisis del borrador por el modelo. El evaluador solo calcula expresiones numéricas propuestas; no ejecuta ni certifica el programa completo.';
       report.append(title,note);
-      if(!message.example_review.examples?.length){const empty=document.createElement('p');empty.textContent='No se identificaron ejemplos para comprobar en el borrador.';report.append(empty);}
+      if(!message.example_review.examples?.length){const empty=document.createElement('p');empty.textContent=message.example_review.status==='unavailable'?'La revisión de ejemplos no se completó. Los ejemplos de este borrador no se han comprobado.':'No se identificaron ejemplos para comprobar en el borrador.';report.append(empty);}
       const names={passed:'Coincide en la expresión',failed:'Discrepancia en la expresión',not_checked:'Sin calcular'};
       for(const example of message.example_review.examples||[]){
         const quote=document.createElement('blockquote');quote.textContent=example.quote;
@@ -591,7 +602,7 @@
           if (payload.delta) { partial += payload.delta; content.textContent = partial; scrollBottom(); }
           if (kind === 'done') {
             completed = true;
-            status(payload.truncated ? 'La respuesta alcanzó el límite. Puedes pedir que continúe.' : payload.context_summarized ? 'Guardado · Contexto antiguo resumido' : '');
+            status(payload.truncated ? 'La respuesta alcanzó el límite. Puedes pedir que continúe.' : payload.review_partial ? 'Borrador disponible · Revisión parcial' : payload.context_summarized ? 'Guardado · Contexto antiguo resumido' : '');
           }
         }
       }

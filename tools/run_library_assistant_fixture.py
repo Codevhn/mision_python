@@ -79,6 +79,8 @@ def stream(system, messages, **kwargs):
 
 
 def call_ai(system, prompt, **kwargs):
+    if system.startswith('Eres un revisor factual') and os.environ.get('ATLAS_FIXTURE_BAD_REVIEW') == '1':
+        return 'Esta revisión no es JSON válido.', None
     if system.startswith('Revisa los ejemplos del borrador'):
         return '{"examples": []}', None
     if prompt.startswith('Revisa editorialmente el borrador de lección completa'):
@@ -88,6 +90,10 @@ def call_ai(system, prompt, **kwargs):
 
 atlas._call_ai = call_ai
 import assistant
-assistant.consult_documents = lambda urls, **kwargs: {'status': 'unavailable', 'sources': [], 'failures': [{'url': url, 'reason': 'Disposable fixture: no external requests'} for url in urls]}
+def fixture_documents(urls, **kwargs):
+    if urls and os.environ.get('ATLAS_FIXTURE_BAD_REVIEW') == '1':
+        return {'status': 'consulted', 'sources': [{'url': urls[0], 'excerpt': 'Documentación simulada para probar auditorías con formato inválido.', 'truncated': False}], 'failures': []}
+    return {'status': 'unavailable', 'sources': [], 'failures': [{'url': url, 'reason': 'Disposable fixture: no external requests'} for url in urls]}
+assistant.consult_documents = fixture_documents
 atlas._stream_call_ai = stream
 atlas.app.run(host='127.0.0.1', port=8132, use_reloader=False)

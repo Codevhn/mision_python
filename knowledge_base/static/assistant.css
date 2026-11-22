@@ -235,3 +235,8 @@
 
 /* The assistant remains interactive beside the foreground Peek. */
 body:has(#pagePeekOverlay:not(.hidden)) .assistant-area{z-index:12000;}
+/* A failed auxiliary check never hides the generated lesson. */
+#assistantArea .assistant-review-notice {margin:8px 0 14px;padding:10px 12px;border-inline-start:2px solid var(--accent);background:var(--bg-hover);border-radius:4px;font-size:12px;line-height:1.5;color:var(--text-muted);}
+#assistantArea .assistant-review-notice strong {color:var(--text);font-weight:600;}
+#assistantArea .assistant-review-notice p {margin:5px 0;}
+#assistantArea .assistant-review-notice summary {cursor:pointer;}

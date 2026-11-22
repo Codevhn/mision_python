@@ -1,6 +1,7 @@
 // Disposable local fixture only; no real courses or model calls.
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const base='http://127.0.0.1:8132';
+const badReview=process.env.ATLAS_TEST_BAD_REVIEW==='1';
 (async()=>{
  const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
  try {for(const [width,theme] of [[1440,'terracotta-dark'],[1440,'paper'],[412,'terracotta-light']]){
@@ -51,10 +52,12 @@ const base='http://127.0.0.1:8132';
   await panel.getByRole('button',{name:'Desarrollar lección completa',exact:true}).click();
   const apply=page.getByRole('button',{name:'Aplicar borrador a la lección',exact:true});await apply.waitFor();
   const reviewed=await (await context.request.get(generationUrl.replace(/\/messages$/,''))).json();
-  assert.equal(reviewed.messages.at(-1).lesson_review.status,'completed');
-  assert.equal(reviewed.messages.at(-1).documentation.status,'unavailable');
+  assert.equal(reviewed.messages.at(-1).lesson_review.status,'partial');
+  await page.getByText('Borrador con revisión parcial',{exact:true}).waitFor();
+  assert.equal(reviewed.messages.at(-1).documentation.status,badReview?'consulted':'unavailable');
+  if(badReview)assert.equal(reviewed.messages.at(-1).lesson_review.stages.claims,'unavailable');
   assert.equal(await page.locator('.assistant-example-review').count(),1);
-  await page.getByText('Desarrollo sin contraste documental',{exact:true}).waitFor();
+  await page.getByText(badReview?'Desarrollo con documentación consultada':'Desarrollo sin contraste documental',{exact:true}).waitFor();
   assert.equal(requests.length,1);assert.equal(requests[0].lesson_action,'develop');assert.equal(requests[0].selection_context,null);
   assert.equal(requests[0].current_context.lesson_outline.length,3);
   assert.equal(await page.locator('#assistantInput').inputValue(),'Pregunta pendiente que no se debe enviar.');
