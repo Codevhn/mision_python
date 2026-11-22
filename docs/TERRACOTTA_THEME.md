@@ -12,7 +12,7 @@ La cabecera, búsqueda de lenguajes y controles siguen la paleta de Atlas. El te
 
 ## Encabezados
 
-En el contenido de página y Peek, H2 tiene una barra vertical de 3 px y H3 un pequeño cuadrado de 5 px. Las marcas usan el acento del tema con transparencia, sin cambiar los colores explícitos de los títulos. Son pseudo-elementos decorativos: no forman parte del texto seleccionado, del contexto del asistente ni del Markdown. Se limitan a pantalla, sin cambiar la exportación.
+En el contenido de página y Peek, H2 tiene una barra vertical de 3 px y H3 un pequeño cuadrado de 5 px. H2 usa un tamaño de 1,5 veces el texto base, más espacio y un separador fino; H3 usa 1,2 veces el tamaño base. Ambos tienen peso 700. Esta jerarquía se comparte entre los temas y respeta el tamaño de lectura del Peek. Las marcas usan el acento del tema con transparencia, sin cambiar los colores explícitos de los títulos. Son pseudo-elementos decorativos: no forman parte del texto seleccionado, del contexto del asistente ni del Markdown. Se limitan a pantalla, sin cambiar la exportación.
 
 ## Verificación
 

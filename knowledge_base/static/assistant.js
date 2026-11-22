@@ -709,7 +709,7 @@
       el('assistantExpand').setAttribute('aria-label', expanded ? 'Reducir asistente' : 'Ampliar asistente');
       el('assistantExpand').title = expanded ? 'Reducir' : 'Ampliar';
       el('assistantExpand').innerHTML = expanded ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2h6v6M2 4h6v6H2z"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8"/><path d="M2 4h8"/></svg>';
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && area.animate) {
+      if (!document.documentElement.classList.contains('atlas-assistant-docked') && !document.documentElement.classList.contains('atlas-assistant-stacked') && !matchMedia('(prefers-reduced-motion: reduce)').matches && area.animate) {
         const after = area.getBoundingClientRect(), radius = getComputedStyle(area).borderRadius;
         const frame = (rect, borderRadius) => ({left:`${rect.x}px`,top:`${rect.y}px`,right:'auto',bottom:'auto',width:`${rect.width}px`,height:`${rect.height}px`,borderRadius});
         resizeAnimation = area.animate([frame(before,previousRadius),frame(after,radius)], {duration:280,easing:'cubic-bezier(.22,.75,.25,1)'});

@@ -42,6 +42,13 @@ const base='http://127.0.0.1:8132';
 
       const selectTerm=async()=>{
         if(await page.locator('#assistantArea').isVisible())await page.locator('#assistantClose').click();
+        // Closing the dock restores the reader width. Select from the new
+        // text layer once PDF fit-to-width has finished replacing the old one.
+        await page.waitForFunction(()=>{
+          if(document.documentElement.classList.contains('atlas-assistant-docked')||document.documentElement.classList.contains('atlas-assistant-stacked'))return false;
+          const reader=document.getElementById('readerPage'),layer=reader.querySelector('.pdf-text-layer');
+          return layer&&Math.abs(layer.getBoundingClientRect().width-(reader.clientWidth-40))<2;
+        });
         await page.locator('.pdf-text-layer span').filter({hasText:'Hécate'}).first().evaluate(element=>{
           const node=element.firstChild,start=node.textContent.indexOf('Hécate');
           const range=document.createRange();range.setStart(node,start);range.setEnd(node,start+'Hécate'.length);

@@ -14,7 +14,7 @@ Las preguntas generales, resúmenes, ejemplos, respuestas parciales, Biblioteca 
 
 ## Navegación de cursos
 
-Anterior/siguiente mantiene el orden y los manejadores existentes de las lecciones. La barra se fija al pie de la columna de lectura y limita su ancho para respetar el asistente y el Peek. Si los paneles cubren casi toda la columna (por ejemplo, el asistente abierto en móvil), se oculta hasta recuperar espacio. El botón para abrir el asistente queda por encima de la barra y el contenido final conserva espacio para leerse.
+Anterior/siguiente mantiene el orden y los manejadores existentes de las lecciones. La barra se fija al pie de la columna de lectura y limita su ancho para respetar el asistente y el Peek. En móvil queda sobre la zona del asistente, al pie del espacio de lectura disponible. Si otros paneles no dejan ancho suficiente, se oculta hasta recuperar espacio. El botón para abrir el asistente queda por encima de la barra y el contenido final conserva espacio para leerse.
 
 ## Verificación
 

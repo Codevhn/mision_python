@@ -24,7 +24,7 @@ const base=process.env.ATLAS_TEST_URL||'http://127.0.0.1:8132';assert.ok(['local
   }
   await page.evaluate(()=>AssistantApp.open());await page.locator('#assistantArea:not(.hidden)').waitFor();
   const verifyPanels=async()=>{await page.waitForTimeout(150);if(await nav.isVisible()){
-   const n=await nav.boundingBox(),a=await page.locator('#assistantArea').boundingBox();assert.ok(n.x+n.width<=a.x+1,'Dock stops before the assistant');
+   const n=await nav.boundingBox(),a=await page.locator('#assistantArea').boundingBox();assert.ok(n.x+n.width<=a.x+1||n.y+n.height<=a.y+1,'Course dock stays outside the assistant column/row');
    assert.equal(await nav.locator('button').first().evaluate(node=>{const r=node.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.course-nav-btn')===node;}),true);
   }};
   await verifyPanels();if(await page.locator('#assistantExpand').isVisible()){await page.locator('#assistantExpand').click();await verifyPanels();}await page.locator('#assistantMinimize').click();await nav.waitFor();

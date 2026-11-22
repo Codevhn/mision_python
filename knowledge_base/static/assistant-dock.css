@@ -1,0 +1,27 @@
+/* Assistant geometry is shared by every theme. Keep the body-level portal so
+   Peek menus/dialogs retain their existing stacking and ownership contracts. */
+:root.atlas-assistant-docked .layout {box-sizing:border-box;padding-right:var(--atlas-assistant-space,0px)!important;}
+:root.atlas-assistant-docked #assistantArea {
+  box-sizing:border-box;top:var(--atlas-assistant-top)!important;right:0!important;left:auto!important;bottom:auto!important;
+  width:min(520px,var(--atlas-assistant-max-width))!important;max-width:none!important;
+  height:var(--atlas-assistant-height)!important;border-radius:0!important;box-shadow:none!important;
+}
+:root.atlas-assistant-docked #assistantArea.assistant-expanded {width:min(920px,var(--atlas-assistant-max-width))!important;}
+:root.atlas-assistant-docked #pagePeekOverlay {right:var(--atlas-assistant-space)!important;}
+:root.atlas-assistant-docked #pagePeekOverlay .page-peek-modal {max-width:100%!important;}
+:root.atlas-assistant-docked #pagePeekOverlay[data-peek-mode="center"] .page-peek-modal {max-width:calc(100% - 24px)!important;}
+/* Narrow screens give reading and chat separate rows instead of two columns. */
+:root.atlas-assistant-stacked .layout {box-sizing:border-box;height:var(--atlas-assistant-height)!important;padding-bottom:var(--atlas-assistant-stack-height)!important;}
+:root.atlas-assistant-stacked #assistantArea {
+  box-sizing:border-box;top:calc(var(--atlas-assistant-top) + var(--atlas-assistant-height) - var(--atlas-assistant-stack-height))!important;
+  right:0!important;left:auto!important;bottom:auto!important;width:100%!important;max-width:none!important;
+  height:var(--atlas-assistant-stack-height)!important;border-radius:0!important;box-shadow:none!important;
+}
+:root.atlas-assistant-stacked #assistantArea .assistant-header {padding:8px 12px;}
+:root.atlas-assistant-stacked #assistantArea .assistant-composer textarea {min-height:48px;max-height:100px;}
+:root.atlas-assistant-stacked #pagePeekOverlay {bottom:var(--atlas-assistant-stack-height)!important;}
+:root.atlas-assistant-stacked #pagePeekOverlay .page-peek-modal {height:100%!important;max-height:100%!important;}
+@media print {
+  :root.atlas-assistant-docked .layout {padding-right:0!important;}
+  :root.atlas-assistant-stacked .layout {padding-bottom:0!important;height:auto!important;}
+}

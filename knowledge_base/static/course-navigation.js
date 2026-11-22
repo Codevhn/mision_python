@@ -10,12 +10,12 @@
       frame=0;
       const nav=document.getElementById('courseNavBar');
       if(!nav){root.classList.remove('atlas-course-navigation');return;}
-      const rect=area.getBoundingClientRect(),left=Math.max(0,rect.left),bottom=window.visualViewport?innerHeight-window.visualViewport.height-window.visualViewport.offsetTop:0;
+      const rect=area.getBoundingClientRect(),left=Math.max(0,rect.left),bottom=Math.max(0,innerHeight-Math.min(rect.bottom,window.visualViewport?window.visualViewport.height+window.visualViewport.offsetTop:innerHeight));
       let right=Math.min(root.clientWidth,rect.right);
       for(const panel of [document.getElementById('assistantArea'),document.querySelector('#pagePeekOverlay:not(.hidden) .page-peek-modal')]){
         if(!visible(panel))continue;
         const bounds=panel.getBoundingClientRect();
-        if(bounds.right>left&&bounds.left<right)right=Math.min(right,bounds.left);
+        if(bounds.bottom>rect.top&&bounds.top<rect.bottom-1&&bounds.right>left&&bounds.left<right)right=Math.min(right,bounds.left);
       }
       nav.hidden=!visible(entry)||right-left<240;
       root.classList.toggle('atlas-course-navigation',!nav.hidden);
