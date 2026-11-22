@@ -6,7 +6,7 @@ El escritorio combina una cuadrícula de 40 px y un degradado de cobre a carbón
 
 ## Código
 
-Todos los temas claros usan el lienzo `#f6f8fa`, texto `#24292e` y tokens **GitHub Light High Contrast**. Los oscuros conservan el lienzo `#1e232b` y la paleta **GitHub Dark**. El analizador de Shiki genera ambas variantes de una vez; CSS selecciona los colores según `data-theme`. No es necesario recrear el editor, cambiar el lenguaje ni reescribir el Markdown al alternar temas.
+Todos los temas claros usan el lienzo `#f6f8fa`, texto `#24292e` y tokens **GitHub Light High Contrast**. Los oscuros usan por defecto el lienzo `#1e232b` y la paleta **GitHub Dark**; Óxido y Ámbar nocturno adaptan el fondo a carbón cálido. El analizador de Shiki genera ambas variantes de una vez; CSS selecciona los colores según `data-theme`. No es necesario recrear el editor, cambiar el lenguaje ni reescribir el Markdown al alternar temas.
 
 La cabecera, búsqueda de lenguajes y controles siguen la paleta de Atlas. El terminal mantiene su superficie propia. Las reglas compartidas de la página y el componente consumen los mismos tokens de fondo y texto para evitar rectángulos de otro color dentro del código. No se aplican filtros de inversión.
 
@@ -25,7 +25,7 @@ Los scripts de navegador usan el servidor local desechable; no modifican conteni
 
 ## Más atmósferas oscuras
 
-El mismo grupo incluye siete opciones adicionales:
+El mismo grupo incluye nueve opciones adicionales:
 
 | Tema | Identificador | Paleta |
 | --- | --- | --- |
@@ -36,10 +36,12 @@ El mismo grupo incluye siete opciones adicionales:
 | Gris | `atmosphere-gray` | Gris mineral y plata |
 | Gris oscuro | `atmosphere-charcoal` | Carbón neutro |
 | Negro | `atmosphere-black` | Negro profundo y grafito |
+| Óxido | `atmosphere-rust` | Negro cálido y naranja óxido |
+| Ámbar nocturno | `atmosphere-amber` | Carbón tostado y ámbar |
 
 Comparten la base de `terracotta.css`, con variables `--atmosphere-*` para el
 lienzo y las tarjetas y `--native-*` para los controles y portales. Las tarjetas
-de las siete variantes son oscuras; las tarjetas marfil de Terracota se conservan.
+de las nueve variantes son oscuras; las tarjetas marfil de Terracota se conservan.
 La selección es global, persiste al recargar y se restaura también en acceso.
 No cambia el contenido, las portadas, las preferencias tipográficas ni el PDF.
 El hash de recursos incluye la hoja de atmósferas para renovar la caché al editarla.
@@ -56,3 +58,17 @@ acentos y degradados. La prueba visual verifica esta neutralidad, el contraste d
 texto y botones, y la persistencia de Negro en la pantalla de acceso. Para probar
 solo estas opciones: `ATLAS_TEST_PALETTES=gray,charcoal,black` con el script de
 atmósferas. Las tres mantienen la cuadrícula y la sintaxis del editor.
+
+## Referencia de lectura Rust
+
+Óxido y Ámbar nocturno se inspiran en la captura facilitada de
+`https://aprenderust.dev/ownership#ejercicios`: negro cálido, tinta marfil, acentos
+naranja/ámbar y separadores finos. La consulta HTTP del sitio recibió 403 en este
+entorno; no se extrajeron sus fuentes, estilos ni recursos. La adaptación conserva
+la cuadrícula, degradados, estructura de Atlas y preferencias tipográficas.
+
+Estas dos paletas cambian también `--atlas-code-background` a un carbón cálido,
+conservando los tokens de sintaxis oscuros. Las demás paletas mantienen el lienzo
+anterior. La comprobación visual `ATLAS_TEST_PALETTES=rust,amber` verifica ambos
+fondos en página y Peek, contraste de los controles, cuadrícula en cursos e Inicio,
+selección persistente, regreso a Papel y acceso con Óxido.

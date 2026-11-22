@@ -100,7 +100,7 @@ for(const [id,scheme] of [['terracotta-dark','dark'],['terracotta-light','light'
 apply('aero-amber');assert.deepEqual(data,priorTheme,'Terracota restores existing themes without leaking palette attributes');
 console.log('Terracota: both schemes, shared registry, persistence and restoration passed');
 
-for(const palette of ['ocean','forest','plum','graphite','gray','charcoal','black']){
+for(const palette of ['ocean','forest','plum','graphite','gray','charcoal','black','rust','amber']){
   const id='atmosphere-'+palette;
   assert.ok(catalog.includes(id));apply(id);
   assert.equal(data.theme,'dark');assert.equal(data.style,'notion');assert.equal(data.palette,id);

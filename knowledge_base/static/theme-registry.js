@@ -101,3 +101,9 @@ ATLAS_THEMES['atmosphere-charcoal']={scheme:'dark',style:'notion',variant:'night
 THEME_CATALOG.push(['atmosphere-charcoal','Gris oscuro','Carbón neutro y sombras suaves · Cuadrícula sutil','atmosphere','atmosphere-charcoal']);
 ATLAS_THEMES['atmosphere-black']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-black',preview:'linear-gradient(145deg,#191919,#303030 65%,#080808)'};
 THEME_CATALOG.push(['atmosphere-black','Negro','Negro profundo y luz de grafito · Cuadrícula sutil','atmosphere','atmosphere-black']);
+
+// Warm near-black atmospheres inspired by the user’s Rust reading reference.
+ATLAS_THEMES['atmosphere-rust']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-rust',preview:'linear-gradient(145deg,#1b130d,#623015 65%,#0b0a09)'};
+THEME_CATALOG.push(['atmosphere-rust','Óxido','Negro cálido y naranja óxido · Cuadrícula sutil','atmosphere','atmosphere-rust']);
+ATLAS_THEMES['atmosphere-amber']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-amber',preview:'linear-gradient(145deg,#2a1d10,#75502a 65%,#100e0b)'};
+THEME_CATALOG.push(['atmosphere-amber','Ámbar nocturno','Carbón tostado y luz de ámbar · Cuadrícula sutil','atmosphere','atmosphere-amber']);

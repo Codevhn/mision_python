@@ -26,7 +26,7 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
    }
   }
 
-  for(const [theme,scheme] of (process.env.ATLAS_TEST_PALETTES||'ocean,forest,plum,graphite,gray,charcoal,black').split(',').map(palette=>['atmosphere-'+palette,'dark'])){
+  for(const [theme,scheme] of (process.env.ATLAS_TEST_PALETTES||'ocean,forest,plum,graphite,gray,charcoal,black,rust,amber').split(',').map(palette=>['atmosphere-'+palette,'dark'])){
    await page.evaluate(()=>switchSpace('home'));await page.evaluate(()=>toggleTheme());await page.locator(`[data-theme-choice="${theme}"]`).click();
    await page.mouse.move(0,0);
    await page.evaluate(()=>Promise.all(document.getAnimations().filter(animation=>animation instanceof CSSTransition).map(animation=>animation.finished.catch(()=>{}))));
@@ -52,7 +52,7 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
     const surface=mode==='peek'?'#pagePeekEditor':'#entryBody';await page.locator(surface+' .shiki').first().waitFor();
     await readingGrid(mode==='peek'?'#pagePeekOverlay .page-peek-modal':'#entryView',mode==='peek'?['#pagePeekEditor .bn-container','#pagePeekEditor .bn-editor']:['#entryView .entry-main','#entryBody','#entryBody .bn-container','#entryBody .bn-editor']);
     const code=await page.locator(surface+' .code-block-pre').evaluate(node=>({bg:getComputedStyle(node).backgroundColor,colors:[...new Set([...node.querySelectorAll('.shiki')].map(span=>getComputedStyle(span).color))]}));
-    assert.equal(code.bg,scheme==='light'?'rgb(246, 248, 250)':'rgb(30, 35, 43)');assert.ok(code.colors.length>=3);
+    assert.equal(code.bg,theme==='atmosphere-rust'?'rgb(21, 18, 15)':theme==='atmosphere-amber'?'rgb(27, 22, 15)':'rgb(30, 35, 43)');assert.ok(code.colors.length>=3);
     if(scheme==='light')for(const color of code.colors)assert.ok(contrast(color,code.bg)>=4.5,`${color} light code contrast`);
     assert.equal(await page.locator(surface+' .code-block-pre .shiki').evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).backgroundColor==='rgba(0, 0, 0, 0)')),true,'Tokens do not paint white boxes over the code canvas');
     for(const [tag,widthPx] of [['h2','3px'],['h3','5px']]){
@@ -80,6 +80,6 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
   const after=(await (await context.request.get(base+`/api/entry/${id}`)).json()).markdown;assert.equal(after,before);assert.deepEqual(errors,[]);
   console.log(`PASS ${width}px: actual theme selector, selected dark palettes/cards, real course/page/Peek grid, syntax and contrast, subtle H2/H3, preserved source and restoration.`);await context.close();
  }
- const context=await browser.newContext();await context.addInitScript(()=>localStorage.setItem('kb_theme','atmosphere-black'));const login=await context.newPage();await login.goto(base+'/login');assert.equal(await login.locator('html').getAttribute('data-theme-id'),'atmosphere-black');assert.ok((await login.locator('body').evaluate(node=>getComputedStyle(node).backgroundImage)).includes('radial-gradient'));await context.close();
+ const context=await browser.newContext();await context.addInitScript(()=>localStorage.setItem('kb_theme','atmosphere-rust'));const login=await context.newPage();await login.goto(base+'/login');assert.equal(await login.locator('html').getAttribute('data-theme-id'),'atmosphere-rust');assert.ok((await login.locator('body').evaluate(node=>getComputedStyle(node).backgroundImage)).includes('radial-gradient'));await context.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
