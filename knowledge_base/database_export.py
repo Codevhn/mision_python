@@ -520,8 +520,8 @@ class RecordArchive:
                         if parsed.scheme == 'https' and parsed.netloc == 'atlas-export.invalid' and path in self.members:
                             return dict(string=self.members[path], mime_type=mimetypes.guess_type(path)[0] or 'application/octet-stream')
                         # Existing print renderer embeds bundled local font URLs.
-                        if url in self.g.get('_pdf_font_data_uri_cache', {}).values() and url.startswith('data:font/ttf;base64,'):
-                            return dict(string=base64.b64decode(url.split(',', 1)[1]), mime_type='font/ttf')
+                        if url in self.g.get('_pdf_font_data_uri_cache', {}).values() and url.startswith(('data:font/ttf;base64,', 'data:font/woff2;base64,')):
+                            return dict(string=base64.b64decode(url.split(',', 1)[1]), mime_type=url[5:].split(';', 1)[0])
                         if parsed.scheme == 'file':
                             candidate = Path(unquote(parsed.path)).resolve(); fonts = (Path(self.g['app'].root_path) / 'static' / 'fonts').resolve()
                             if candidate.is_relative_to(fonts) and candidate.is_file(): return dict(string=candidate.read_bytes(), mime_type='font/ttf')

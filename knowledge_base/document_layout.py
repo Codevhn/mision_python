@@ -26,14 +26,14 @@ def layout_css(font_size=DEFAULT_FONT_SIZE, compact=False):
     if font_size == DEFAULT_FONT_SIZE and not compact:
         return ''  # Preserve the normal template's existing typography.
     scale = font_size / DEFAULT_FONT_SIZE
-    title = max(17, 24 * scale) if compact else 24 * scale
+    title = max(17, 26 * scale) if compact else 26 * scale
     css = f'''
 body {{ font-size:{font_size:g}pt; }}
 .pdf-cover-title {{ font-size:{title:g}pt; }}
-h1 {{ font-size:{18*scale:g}pt; }}
-h2 {{ font-size:{13*scale:g}pt; }}
-h3 {{ font-size:{11.4*scale:g}pt; }}
-h4 {{ font-size:{10.8*scale:g}pt; }}
+h1 {{ font-size:{20*scale:g}pt; }}
+h2 {{ font-size:{15*scale:g}pt; }}
+h3 {{ font-size:{12.5*scale:g}pt; }}
+h4 {{ font-size:{11*scale:g}pt; }}
 h5 {{ font-size:{9.5*scale:g}pt; }}
 table {{ font-size:{max(8,9.2*scale):g}pt; }}
 th {{ font-size:{max(8,9*scale):g}pt; }}

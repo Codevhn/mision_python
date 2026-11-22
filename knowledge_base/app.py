@@ -825,16 +825,18 @@ def _pdf_font_data_uri(filename):
     if cached is not None:
         return cached
     data = (_PDF_FONTS_DIR / filename).read_bytes()
-    uri = "data:font/ttf;base64," + base64.b64encode(data).decode("ascii")
+    mime = "font/woff2" if filename.endswith(".woff2") else "font/ttf"
+    uri = "data:" + mime + ";base64," + base64.b64encode(data).decode("ascii")
     _pdf_font_data_uri_cache[filename] = uri
     return uri
 
 
 def _pdf_font_face(family, filename, weight=400, style="normal"):
     uri = _pdf_font_data_uri(filename)
+    font_format = "woff2" if filename.endswith(".woff2") else "truetype"
     return f"""@font-face {{
     font-family: "{family}";
-    src: url("{uri}") format("truetype");
+    src: url("{uri}") format("{font_format}");
     font-weight: {weight};
     font-style: {style};
   }}"""
@@ -875,6 +877,10 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     body_html = _pdf_emoji_html(body_html)
     toc_html = _pdf_emoji_html(toc_html)
     font_faces = "\n  ".join([
+        _pdf_font_face("Lora", "Lora-Regular.woff2", 400),
+        _pdf_font_face("Lora", "Lora-SemiBold.woff2", 600),
+        _pdf_font_face("Lora", "Lora-Bold.woff2", 700),
+        _pdf_font_face("Lora", "Lora-Italic.woff2", 400, "italic"),
         _pdf_font_face("Noto Emoji", "NotoEmoji-Regular.ttf", 400),
         _pdf_font_face("Inter", "Inter-Regular.ttf", 400),
         _pdf_font_face("Inter", "Inter-Medium.ttf", 500),
@@ -893,30 +899,29 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   {font_faces}
   @page {{
     size: A4;
-    margin: 1.8cm 1.9cm 2cm;
+    margin: 20mm 22mm 21mm;
     @bottom-right {{
       content: counter(page) " / " counter(pages);
       font-family: "Inter", sans-serif;
       font-size: 7.5pt;
-      color: #a9afb8;
+      color: #70675e;
     }}
     @bottom-left {{
       content: {footer_title};
       font-family: "Inter", sans-serif;
       font-size: 7.5pt;
-      color: #a9afb8;
+      color: #70675e;
     }}
   }}
   @page :first {{
-    @bottom-left {{ content: ""; }}
-    @bottom-right {{ content: ""; }}
+    @bottom-left {{ content: "Atlas · Cuaderno de estudio"; }}
   }}
   body {{
-    font-family: "Inter", sans-serif;
+    font-family: "Lora", Georgia, serif;
     font-weight: 400;
     font-size: 10.5pt;
-    color: #26323b;
-    line-height: 1.62;
+    color: #302b26;
+    line-height: 1.65;
     margin: 0;
   }}
   /* This file is also served standalone (the "export to HTML" download) and
@@ -937,30 +942,33 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   .pdf-emoji {{ font-family:"Noto Emoji"; font-weight:400; font-style:normal; }}
   /* ── Cover ── */
   .pdf-cover {{
-    border-bottom: 2px solid #246473;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
+    border-top: 3px solid #8a6046;
+    border-bottom: 1px solid #d8cec1;
+    padding-top: 18px;
+    padding-bottom: 20px;
+    margin-bottom: 26px;
   }}
   .pdf-cover-meta {{
     font-size: 8.5pt;
     font-weight: 600;
-    color: #246473;
+    color: #805b43;
     text-transform: uppercase;
     letter-spacing: 0.09em;
     margin-bottom: 10px;
   }}
   .pdf-cover-title {{
-    font-size: 24pt;
+    font-family: "Lora", Georgia, serif;
+    font-size: 26pt;
     font-weight: 700;
-    color: #16181c;
+    color: #28231f;
     line-height: 1.25;
     margin: 0;
     letter-spacing: -0.01em;
   }}
   /* ── TOC ── */
   .pdf-toc {{
-    background: #f6f9fc;
-    border: 1px solid #e2e9f1;
+    background: #faf8f4;
+    border: 1px solid #ded6cb;
     border-radius: 6px;
     padding: 16px 20px 14px;
     margin-bottom: 34px;
@@ -971,7 +979,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #246473;
+    color: #805b43;
     margin-bottom: 11px;
   }}
   .toc-row {{ margin: 3px 0; font-size: 9.3pt; }}
@@ -980,20 +988,21 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   .toc-row.toc-h3 {{ padding-left: 16px; font-size: 8.8pt; color: #565c66; font-weight: 400; }}
   .toc-row.toc-h4 {{ padding-left: 30px; font-size: 8.3pt; color: #838993; font-weight: 400; }}
   /* ── Headings ── */
-  h1 {{ font-size:18pt; color:#173f4a; line-height:1.3; margin:1.05em 0 .55em; page-break-after:avoid; }}
-  h2 {{ font-size: 13pt; font-weight: 700; color: #173f4a; border-bottom: 1px solid #e2e6ec; padding-bottom: 6px; margin: 1.4em 0 0.55em; page-break-after: avoid; letter-spacing: -0.01em; }}
-  h3 {{ font-size: 11.4pt; font-weight: 600; color: #173f4a; margin: 1.3em 0 0.45em; page-break-after: avoid; }}
-  h4 {{ font-size: 10.8pt; color: #2b2f36; font-weight: 600; margin: 1.2em 0 0.4em; page-break-after: avoid; }}
+  h1 {{ font-size:20pt; color:#49382b; line-height:1.3; margin:1.05em 0 .55em; page-break-after:avoid; }}
+  h2 {{ font-size: 15pt; font-weight: 700; color: #49382b; border-bottom: 1px solid #ded7cd; padding-bottom: 6px; margin: 1.4em 0 0.55em; page-break-after: avoid; letter-spacing: -0.01em; }}
+  h3 {{ font-size: 12.5pt; font-weight: 600; color: #49382b; margin: 1.3em 0 0.45em; page-break-after: avoid; }}
+  h4 {{ font-size: 11pt; color: #38312b; font-weight: 600; margin: 1.2em 0 0.4em; page-break-after: avoid; }}
   h5 {{ font-size: 9.5pt;  color: #565c66; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 1em 0 0.3em; }}
   /* ── Body ── */
-  p  {{ margin: 0 0 0.75em; orphans:3; widows:3; }}
+  h1,h2,h3,h4,h5 {{ break-inside:avoid; }}
+  p  {{ hyphens:auto; margin: 0 0 0.75em; orphans:3; widows:3; }}
   img {{ max-width:100%; height:auto; }}
   .toc-row {{ break-inside:avoid; }}
   @media print {{ .print-actions {{ display:none !important; }} }}
-  strong {{ color: #16181c; font-weight: 600; }}
-  em     {{ color: #2b2f36; }}
-  a {{ color: #246473; text-decoration: none; }}
-  hr {{ border: none; border-top: 1px solid #e2e6ec; margin: 1.8em 0; }}
+  strong {{ color: #28231f; font-weight: 600; }}
+  em     {{ color: #38312b; }}
+  a {{ color: #805b43; text-decoration: none; }}
+  hr {{ border: none; border-top: 1px solid #ded7cd; margin: 1.8em 0; }}
   /* ── Lists ── */
   ul, ol {{ margin: 0.35em 0 1em 1.5em; padding: 0; }}
   li {{ margin: 4px 0; line-height: 1.65; }}
@@ -1002,18 +1011,18 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   code {{
     font-family: "JetBrains Mono", monospace;
     font-size: 0.82em;
-    background: #f0f2f5;
+    background: #f4f1eb;
     padding: 1.5px 5px;
-    border: 1px solid #e2e6ec;
+    border: 1px solid #ded7cd;
     border-radius: 3px;
   }}
   /* ── Code blocks ── */
   pre {{
     font-family: "JetBrains Mono", monospace;
     font-size: 8.3pt;
-    background: #f7f8fa;
-    border: 1px solid #e2e6ec;
-    border-left: 3px solid #1793d1;
+    background: #f7f5f1;
+    border: 1px solid #ded7cd;
+    border-left: 2px solid #a18369;
     padding: 12px 15px;
     margin: 1em 0;
     white-space: pre-wrap;
@@ -1026,21 +1035,21 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   pre code {{ background: none; border: none; padding: 0; font-size: inherit; }}
   /* ── Blockquote ── */
   blockquote {{
-    border-left: 3px solid #1793d1;
+    border-left: 2px solid #a18369;
     padding: 7px 15px;
-    color: #2b2f36;
-    background: #f3f8fc;
+    color: #38312b;
+    background: #f7f4ee;
     margin: 1.1em 0;
     border-radius: 0 5px 5px 0;
     font-style: italic;
   }}
   /* ── Tables ── */
   table {{ border-collapse: collapse; width: 100%; margin: 1.1em 0; font-size: 9.2pt; table-layout:fixed; page-break-inside:auto; }}
-  th {{ background: #1793d1; color: #fff; padding: 7px 11px; text-align: left; font-size: 9pt; font-weight: 600; }}
-  td {{ padding: 6px 11px; border: 1px solid #e2e6ec; vertical-align: top; word-break: break-word; }}
+  th {{ background: #eee8df; color: #302b26; padding: 7px 11px; text-align: left; font-size: 9pt; font-weight: 600; }}
+  td {{ padding: 6px 11px; border: 1px solid #ded7cd; vertical-align: top; word-break: break-word; }}
   tr {{ break-inside:avoid; }}
   thead {{ display:table-header-group; }}
-  tr:nth-child(even) td {{ background: #f8fafb; }}
+  tr:nth-child(even) td {{ background: #faf8f4; }}
   /* ── Callout / alert boxes ── */
   .alert, .note {{
     padding: 10px 15px;
@@ -1049,12 +1058,13 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     font-size: 9.8pt;
     page-break-inside: avoid;
   }}
-  .alert-info,  .note {{ background: #eef6fc; border-left: 3px solid #1793d1; }}
+  .alert-info,  .note {{ background: #eef6fc; border-left: 2px solid #a18369; }}
   .alert-warn        {{ background: #fdf6e3; border-left: 3px solid #e6a817; }}
   .alert-danger      {{ background: #fdf0f0; border-left: 3px solid #e05252; }}
   .alert-success     {{ background: #eefaf2; border-left: 3px solid #27ae60; }}
   .chat-bubble {{ border-left:2px solid #c9d7df; padding:8px 14px; margin-bottom:14px; }}
-  .chat-bubble--user {{ border-left-color:#246473; background:#f4f8f9; }}
+  .chat-bubble--user {{ border-left-color:#805b43; background:#f4f8f9; }}
+  .pdf-cover-meta, .pdf-toc, th {{ font-family:"Inter", sans-serif; }}
   /* ── Task lists ── */
   input[type="checkbox"] {{ margin-right: 6px; }}
 </style>
