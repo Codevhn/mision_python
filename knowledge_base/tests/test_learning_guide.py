@@ -79,3 +79,53 @@ def test_assistant_uses_saved_guide_and_updates_after_edit(auth_client, monkeypa
         assert current['lesson_objective'] == goal
         assert current['lesson_guidance'] == 'Evitar comparativas repetidas.'
         assert 'no inventes un objetivo confirmado' in system
+
+
+@pytest.mark.parametrize('truncated', [False, True])
+def test_full_lesson_is_a_scoped_reviewable_draft(auth_client, monkeypatch, lesson, truncated):
+    captured = [];setup_model(monkeypatch, captured)
+    answer = '## IntelliJ IDEA\n\nPrimera sección.\n\n## Eclipse IDE\n\nSegunda sección.'
+    def stream(system, messages, **kwargs):
+        captured.append((system, messages, kwargs))
+        yield answer
+        yield ('__done__', truncated, None)
+    monkeypatch.setattr(atlas, '_stream_call_ai', stream)
+    auth_client.patch(f'/api/entry/{lesson}/learning-guide', json={'lesson_objective': 'Distinguir alternativas.', 'lesson_guidance': 'Una explicación continua.'})
+    before = auth_client.get(f'/api/entry/{lesson}').json['markdown']
+    conversation = create(auth_client)
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Desarrolla toda la lección.', 'lesson_action': 'develop',
+        'current_context': {'type': 'entry', 'id': lesson, 'lesson_outline': [
+            {'level': 2, 'title': 'IntelliJ IDEA'}, {'level': 2, 'title': 'Eclipse IDE'}]},
+        'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    system, messages, options = captured[-1]
+    assert 'LECCIÓN COMPLETA' in system
+    current = json.loads(system.split('\n')[-1])['current_context']
+    assert current['learning_task']['action'] == 'develop_lesson'
+    assert current['lesson_objective'] == 'Distinguir alternativas.'
+    assert len(current['lesson_outline']) == 2
+    assert options['max_tokens'] == 8000
+    record = auth_client.get(f'/api/assistant/conversations/{conversation}').json
+    assert record['messages'][-2]['lesson_action'] == 'develop'
+    assert record['messages'][-1]['content'] == answer
+    assert record['messages'][-1]['lesson_draft'] == {'entry_id': lesson, 'truncated': truncated}
+    assert auth_client.get(f'/api/entry/{lesson}').json['markdown'] == before
+
+
+@pytest.mark.parametrize('extra', [
+    {'current_context': None},
+    {'lesson_action': 'unknown'},
+    {'selection_context': {'text': 'Eclipse IDE', 'title': 'Tema'}},
+])
+def test_invalid_full_lesson_action_does_not_store_a_message(auth_client, monkeypatch, lesson, extra):
+    captured = [];setup_model(monkeypatch, captured)
+    conversation = create(auth_client)
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Desarrolla toda la lección.', 'lesson_action': 'develop',
+        'current_context': {'type': 'entry', 'id': lesson}, **extra,
+    })
+    assert response.status_code == 400
+    assert not captured
+    assert auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'] == []

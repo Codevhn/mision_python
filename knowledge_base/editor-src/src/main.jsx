@@ -1,4 +1,5 @@
 import {studyTopics,nextStudyTopic} from './studyTopics.js';
+import {lessonDraftBlocks} from './lessonDraft.js';
 import {openDocumentExport} from './databaseExport.jsx';
 import {pdfSelectionClipboard} from './pdfSelectionClipboard.js';
 import {courseTopics,linkedTopicTables,inlineText} from './courseTopicTables.js';
@@ -328,6 +329,16 @@ updatePageBlock(blockId, title, pageId) {
         visit(block.children);
       });
       visit(instanceRef.editor?.document);return rows;
+    },
+    validateLessonDraft(markdown) {
+      lessonDraftBlocks(instanceRef.editor.document,mdToBlocks(markdown));
+    },
+    applyLessonDraft(markdown) {
+      const editor=instanceRef.editor;
+      if(!editor?.isEditable)throw Error('Desbloquea la lección antes de aplicar el borrador.');
+      const blocks=lessonDraftBlocks(editor.document,mdToBlocks(markdown));
+      editor.replaceBlocks(editor.document,blocks);
+      return true;
     },
     getInsertionAnchor(query) {
       if(!query?.trim() || !instanceRef.editor) return null;

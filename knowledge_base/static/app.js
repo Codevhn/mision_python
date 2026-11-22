@@ -13069,7 +13069,7 @@ async function _resumePracticeFromHistory(challengeId) {
 // "new entry" editor + the main inline editor coexisting), so the page's
 // properties AND body content are genuinely editable without leaving the
 // table, not just a read-only preview.
-let _peekEntryId=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
+let _peekEntryId=null, _peekEntryType=null, _peekEditor=null, _peekOnClose=null, _peekAutoSaveTimer=null;
 let _peekQueue=null, _peekClosing=null, _peekLastFocus=false, _peekRequest=0, _peekIconSave=null, _peekCoverSave=null, _peekCoverState=null;
 let _peekMode='side', _peekPath=[], _peekRootOptions=null, _peekRevision=0;
 function _renderPeekPath() {
@@ -13206,6 +13206,7 @@ window._openPagePeek=async function(id,opts={}) {
     // This navigator restores reading positions; browser anchoring must not compete.
     peekBody.style.overflowAnchor='none';
     _peekEntryId=id;_peekRootOptions=rootOptions;_peekOnClose=rootOptions.onClose||null;
+    _peekEntryType=data.meta?.type;
     _peekPath=internal?opts._peekPath:[{id,title:data.meta?.title||'',scrollTop:0}];
     _peekPath[_peekPath.length-1].title=data.meta?.title||'Sin título';
     const overlay=$('pagePeekOverlay');overlay.dataset.peekOwner=id;
@@ -13571,6 +13572,7 @@ window._getAssistantVisibleContext = (selectedText = '') => {
     const text=studySurface.root?.innerText||'';
     const position=selectedText?text.indexOf(selectedText.trim()):-1,start=position<0?0:Math.max(0,position-2000);
     return {type:'entry',id:studySurface.id,title:studySurface.title,
+      entry_type:studySurface.peek?_peekEntryType:currentEntryMeta?.type,
       excerpt:text.slice(start,start+8000),content_truncated:start>0||text.length>start+8000,
       lesson_outline:Array.from(studySurface.root?.querySelectorAll('h1,h2,h3,h4,h5,h6')||[])
         .map(heading=>({level:Number(heading.tagName.slice(1)),title:heading.textContent.trim().slice(0,300)})).filter(heading=>heading.title).slice(0,40)};
@@ -13612,6 +13614,28 @@ window._getAssistantInsertionTarget = text => {
   if(!surface)return null;
   const anchor=surface.editor.getInsertionAnchor(text);
   return {entry_id:surface.id,...(anchor?{block_id:anchor.block_id}:{})};
+};
+window._applyAssistantLesson = async (markdown, entryId) => {
+  const surface=_assistantStudySurface();
+  if(!surface||surface.id!==entryId||window._getAssistantVisibleContext?.()?.entry_type!=='course')throw new Error('Abre la lección original antes de aplicar el borrador.');
+  const locked=()=>surface.peek?$('pagePeekTitle').readOnly:currentEntryMeta?.database_locked;
+  if(locked())throw new Error('Desbloquea la lección antes de aplicar el borrador.');
+  const editor=surface.editor,before=editor.getMarkdown();
+  const content=_sanitizeMarkdownForEditor(_stripDuplicateHeading(markdown,surface.title)).trim();
+  if(!content)throw new Error('El borrador no contiene texto.');
+  editor.validateLessonDraft(content);
+  const dialog=document.createElement('dialog');dialog.className='assistant-confirm-dialog';
+  if(surface.peek)dialog.dataset.peekOwner=surface.id;
+  dialog.innerHTML='<form method="dialog"><header class="assistant-confirm-header"><h2>Aplicar borrador de lección</h2></header><div class="assistant-confirm-body"><p class="lesson-target"></p><p>Cada explicación se colocará debajo de su encabezado original. Se sustituirán los desarrollos actuales de esos temas. El título, el objetivo y la orientación se conservan.</p></div><footer class="assistant-confirm-actions"><button value="cancel">Cancelar</button><button value="apply">Aplicar a los temas</button></footer></form>';
+  dialog.querySelector('.lesson-target').textContent=surface.title;
+  document.body.append(dialog);dialog.showModal();
+  await new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+  const apply=dialog.returnValue==='apply';dialog.remove();if(!apply)return false;
+  if(_assistantStudySurface()?.editor!==editor||editor.getMarkdown()!==before||locked())throw new Error('La lección cambió. Revisa el contenido antes de aplicar el borrador.');
+  editor.applyLessonDraft(content);
+  if(surface.peek){_peekDraft({raw_text:editor.getMarkdown(),already_markdown:true});await _flushPeekPendingSaves();}
+  else {_scheduleAutoSave(editor.getMarkdown());await _flushInlineDatabase();}
+  return true;
 };
 window._insertAssistantExplanation = async (markdown, selection) => {
   const surface=_assistantStudySurface();

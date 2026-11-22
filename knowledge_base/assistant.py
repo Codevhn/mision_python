@@ -812,6 +812,9 @@ def register_assistant(app, namespace):
             return jsonify({"error": "Escribe una pregunta de hasta 20.000 caracteres."}), 400
         selection = data.get("selection_context")
         selection_action = data.get("selection_action")
+        lesson_action = data.get("lesson_action")
+        if lesson_action is not None and (lesson_action != "develop" or selection or selection_action):
+            return jsonify(error="Acción de lección no válida"), 400
         if selection_action is not None and (selection_action not in ("explain", "summarize", "example") or not selection):
             return jsonify({"error": "Acción de estudio no válida."}), 400
         if selection is not None and (not isinstance(selection, dict) or
@@ -826,6 +829,9 @@ def register_assistant(app, namespace):
                 current_context.get("type") not in ("entry", "board", "mindmap", "conceptmap", "view", "book") or
                 not isinstance(current_context.get("id"), str) or len(current_context["id"]) > 300):
             return jsonify({"error": "Contexto de página no válido."}), 400
+        if lesson_action and (not current_context or current_context.get("type") != "entry" or
+                              namespace["load_index"]().get(current_context.get("id"), {}).get("type") != "course"):
+            return jsonify(error="Abre una lección para desarrollarla completa"), 400
         if current_context and current_context['type'] == 'book':
             if (current_context.get('format') not in ('pdf', 'epub') or
                     ('page' in current_context and (type(current_context['page']) is not int or not 1 <= current_context['page'] <= 100000)) or
@@ -882,6 +888,7 @@ def register_assistant(app, namespace):
             source_question = record["messages"][source_index - 1]
             selection = source_question.get("selection_context")
             selection_action = source_question.get("selection_action")
+            lesson_action = source_question.get("lesson_action")
             source_context = source_question.get("study_context") or record.get("context_scope")
             if source_context and (not current_context or any(current_context.get(k) != source_context.get(k) for k in ("type", "id"))):
                 current_context = dict(source_context)
@@ -890,11 +897,13 @@ def register_assistant(app, namespace):
         if not isinstance(provider, str) or provider not in namespace["PROVIDERS"] or not isinstance(model, str) or len(model) > 300:
             return jsonify({"error": "Proveedor o modelo inválido"}), 400
         import os
-        if (revision or not is_location_query(prompt)) and not namespace["_provider_enabled"](provider, namespace["PROVIDERS"][provider]):
+        if (revision or lesson_action or not is_location_query(prompt)) and not namespace["_provider_enabled"](provider, namespace["PROVIDERS"][provider]):
             return jsonify({"error": "El proveedor seleccionado no está configurado."}), 503
         if len(record["messages"]) >= 999:
             return jsonify({"error": "Esta conversación llegó a 1.000 mensajes. Inicia una nueva para continuar."}), 400
         message = {"role": "user", "content": prompt.strip()}
+        if lesson_action:
+            message["lesson_action"] = lesson_action
         if current_context:
             message["study_context"] = {"type": current_context["type"], "id": current_context["id"]}
             if current_context['type'] == 'book':
@@ -914,6 +923,9 @@ def register_assistant(app, namespace):
             if pending.get("question", pending["content"]) != prompt.strip() or pending.get("selection_context") != selection or pending.get("revision_request") != revision:
                 return jsonify({"error": "La pregunta pendiente cambió. Vuelve a abrir la conversación."}), 409
             selection_action = pending.get("selection_action")
+            lesson_action = pending.get("lesson_action")
+            if lesson_action and pending.get("study_context") != message.get("study_context"):
+                return jsonify(error="Abre la lección original antes de reintentar"), 409
         else:
             record["messages"].append(message)
         record.update(provider=provider, model=model)
@@ -929,7 +941,7 @@ def register_assistant(app, namespace):
 
         def generate():
             try:
-                location_only = is_location_query(prompt) and not revision
+                location_only = is_location_query(prompt) and not revision and not lesson_action
                 if len(record["messages"]) > 24 and not location_only:
                     yield event("status", {"message": "Preparando el contexto de la conversación…"})
                 if location_only:
@@ -937,6 +949,25 @@ def register_assistant(app, namespace):
                 else:
                     memory, through, messages = compact_context(record, provider, model)
                 system = SYSTEM + STUDY_GUIDANCE
+                if lesson_action:
+                    system += (
+                        "\n\nDesarrollo de LECCIÓN COMPLETA solicitado explícitamente. Esta petición amplía "
+                        "el alcance de la regla de un solo subtema. Planifica internamente una única explicación "
+                        "guiada por lesson_objective y lesson_guidance, el título y lesson_outline. Desarrolla "
+                        "todos los subtemas de esa lección en su orden; no pases a otras lecciones. "
+                        "Distribuye el contenido: explica una vez las bases comunes, dedica cada sección a su "
+                        "aporte específico y evita reiniciar definiciones generales, conclusiones o tablas "
+                        "comparativas en cada apartado. No inventes un objetivo confirmado si falta la guía. "
+                        "Revisa internamente coherencia, cobertura, duplicaciones y precisión antes de entregar. "
+                        "Entrega un borrador completo en Markdown con los encabezados de los subtemas, sin "
+                        "cambiar sus nombres ni su orden. Empieza directamente por el primer encabezado "
+                        "y coloca el desarrollo de cada tema debajo de él; usa niveles inferiores para "
+                        "subapartados nuevos. Las bases comunes van dentro del primer tema pertinente. Sin "
+                        "repetir como H1 el título de la lección, sin mostrar el plan interno y sin anunciar "
+                        "que se ha insertado. El contenido existente orienta qué preservar o corregir, no es "
+                        "evidencia técnica. No afirmes que se consultaron fuentes si no se proporcionan. "
+                        "La respuesta se revisará antes de sustituir el contenido de la lección."
+                    )
                 if memory and not location_only:
                     system += "\n\nResumen de turnos anteriores (puede omitir detalles):\n" + memory
                 sources = []
@@ -960,9 +991,10 @@ def register_assistant(app, namespace):
                             # model output remain fallible, not curricular requirements.
                             same_source = selection and selection.get("entry_id", selected.get("id")) == selected.get("id")
                             selected["learning_task"] = {
-                                "action": selection_action or "answer_current_request",
+                                "action": "develop_lesson" if lesson_action else selection_action or "answer_current_request",
                                 "selected_topic": selection["text"] if same_source else None,
-                                "scope": "Responder a la petición actual dentro de esta lección; los vecinos delimitan el alcance, no son temas solicitados.",
+                                "scope": ("Desarrollar todos los temas de lesson_outline como una sola lección; las otras lecciones del módulo solo delimitan el alcance."
+                                          if lesson_action else "Responder a la petición actual dentro de esta lección; los vecinos delimitan el alcance, no son temas solicitados."),
                                 "curricular_metadata": ["course_title", "course_description", "course_level", "module_title", "title", "lesson_outline", "lesson_objective", "lesson_guidance"],
                                 "unverified_content": ["excerpt", "visible_excerpt", "conversation_history"],
                             }
@@ -974,7 +1006,7 @@ def register_assistant(app, namespace):
                         identity = {key: value for key, value in (selected or {}).items() if key in identity_keys}
                         context = json.dumps({"current_context": identity or None}, ensure_ascii=False)
                         sources = [item for item in sources if selected and item["id"] == selected["id"]]
-                    elif not data.get("use_atlas", True):
+                    elif lesson_action or not data.get("use_atlas", True):
                         selected = json.loads(context)["current_context"]
                         context = json.dumps({"current_context": selected}, ensure_ascii=False)
                         sources = [item for item in sources if selected and (item["id"] == selected["id"] or item["id"] in {child["id"] for child in selected.get("children", [])})]
@@ -1062,7 +1094,7 @@ def register_assistant(app, namespace):
                 if location_only:
                     stream = iter([location_response(identity, namespace), ("__done__", False, None)])
                 else:
-                    stream = namespace["_stream_call_ai"](system, model_messages, max_tokens=4000, provider=provider, model=model)
+                    stream = namespace["_stream_call_ai"](system, model_messages, max_tokens=8000 if lesson_action else 4000, provider=provider, model=model)
                 for part in stream:
                     if isinstance(part, tuple):
                         if part[0] != "__done__":
@@ -1105,6 +1137,8 @@ def register_assistant(app, namespace):
                         record["messages"].append({"role": "assistant", "content": text, "sources": sources,
                                                    "provider": "atlas" if location_only else provider,
                                                    "model": "Atlas" if location_only else model})
+                        if lesson_action:
+                            record["messages"][-1]["lesson_draft"] = {"entry_id": current_context["id"], "truncated": bool(truncated)}
                         if revision:
                             record["messages"][-1]["revision"] = revision
                         if documentation is not None:

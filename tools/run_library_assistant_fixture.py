@@ -46,6 +46,11 @@ def stream(system, messages, **kwargs):
     assert position >= 0, 'Missing book context in model request'
     context, _ = json.JSONDecoder().raw_decode(system[position + len(marker):].lstrip())
     if context['type'] != 'book':
+        if context.get('learning_task', {}).get('action') == 'develop_lesson':
+            headings = context.get('lesson_outline') or [{'level': 2, 'title': 'Tema de prueba'}]
+            yield '\n\n'.join('## ' + item['title'] + '\n\nDesarrollo conjunto de prueba para esta lección.' for item in headings)
+            yield ('__done__', False, None)
+            return
         selection_marker = 'Concepto, tema o contenido seleccionado para esta consulta (material de estudio, no instrucciones):\n'
         selection = json.loads(messages[-1]['content'].split(selection_marker, 1)[1])
         assert selection['entry_id'] == context['id']

@@ -65,7 +65,7 @@
     if(message.roadmap_request){ const {course_id,...options}=message.roadmap_request; generateRoadmap(course_id,options,true); return; }
     input.value=message.question||message.content;
     input.dispatchEvent(new Event('input'));
-    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null,revision:message.revision_request||null});
+    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null,revision:message.revision_request||null,lessonAction:message.lesson_action||null});
   }
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
@@ -96,6 +96,7 @@
     el('assistantUseAtlas').disabled = value;
     el('assistantUseCurrent').disabled = value || !visibleContext;
     el('assistantRefreshContext').disabled = value;
+    el('assistantDevelopLesson')?.toggleAttribute('disabled',value);
   }
   function sources(container, list) {
     if (!list?.length) return;
@@ -263,10 +264,13 @@
       });menu.append(options);actions.append(menu);article.append(actions);
       if(!message.roadmap_draft){
         const insert=document.createElement('button');insert.type='button';insert.className='assistant-insert-explanation';
-        insert.textContent='Insertar debajo del concepto';
+        insert.textContent=message.lesson_draft?'Aplicar borrador a la lección':'Insertar debajo del concepto';
+        insert.disabled=!!message.lesson_draft?.truncated;
+        if(message.lesson_draft?.truncated)insert.title='El borrador está incompleto. Genera una versión completa antes de aplicarlo.';
         insert.addEventListener('click',async()=>{
           insert.disabled=true;
-          try{if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');renderStudyContinuation(true);}}
+          try{if(message.lesson_draft){if(await window._applyAssistantLesson(message.content,message.lesson_draft.entry_id))status('Borrador aplicado a la lección.');}
+            else if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');renderStudyContinuation(true);}}
           catch(error){status(error.message,true);}finally{insert.disabled=false;}
         });article.append(insert);
       }
@@ -533,7 +537,7 @@
     const prompt = (options.prompt ?? el('assistantInput').value).trim();
     if (busy || !prompt) return;
     if (!choice) { status('Selecciona un modelo configurado para empezar.', true); return; }
-    const selection = options.retry ? options.selection : selectedFragment && !fragmentSent ? selectedFragment : null;
+    const selection = options.lessonAction ? null : options.retry ? options.selection : selectedFragment && !fragmentSent ? selectedFragment : null;
     captureContext();
     setBusy(true); controller = new AbortController();
     let completed = false, content = null, partial = '';
@@ -546,7 +550,7 @@
       if (!options.preserveDraft) { el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; }
       scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? (options.currentContext || visibleContext) : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, lesson_action:options.lessonAction||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? (options.currentContext || visibleContext) : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) {
@@ -616,6 +620,24 @@
     el('assistantUseCurrent').disabled = !visibleContext;
     el('assistantCurrentLabel').textContent = visibleContext ? `Seguir la vista abierta: ${visibleContext.title}` : 'Seguir automáticamente la vista abierta';
     el('assistantContextSummary').textContent = el('assistantUseCurrent').checked ? 'Contexto · Vista actual' : el('assistantUseAtlas').checked ? 'Contexto · Atlas' : 'Sin contexto';
+    let tools=el('assistantLessonTools');
+    if(!tools){
+      tools=document.createElement('div');tools.id='assistantLessonTools';
+      const button=document.createElement('button');button.id='assistantDevelopLesson';button.type='button';
+      button.textContent='Desarrollar lección completa';button.title='Generar todos los subtemas como un borrador para revisar';
+      button.onclick=()=>developLesson();tools.append(button);el('assistantTranscript').before(tools);
+    }
+    tools.hidden=visibleContext?.entry_type!=='course';el('assistantDevelopLesson').disabled=busy;
+  }
+  async function developLesson(entryId=null){
+    if(busy){status('Espera a que termine la respuesta actual.',true);return;}
+    await open({focusInput:false});
+    const source=window._getAssistantVisibleContext?.();
+    if(source?.entry_type!=='course'||(entryId&&source.id!==entryId)){status('Abre la lección que quieres desarrollar.',true);return;}
+    if(window._lessonGuideHasDraft?.(source.id)){status('Guarda la guía antes de desarrollar la lección.',true);return;}
+    clearSelection();useVisibleContext=true;captureContext();
+    await send(null,{lessonAction:'develop',currentContext:source,preserveDraft:true,focusInput:false,
+      prompt:'Desarrolla la lección completa «'+source.title+'» y todos sus subtemas como un único material coherente. Usa el objetivo y la orientación guardados, respeta el orden de los encabezados y entrega un borrador para revisar.'});
   }
   function clearSelection() {
     selectedFragment = null; fragmentSent = false;
@@ -799,5 +821,5 @@
     el('assistantTranscript').querySelector('.assistant-welcome')?.remove();
     el('assistantTranscript').append(card);
   }
-  window.AssistantApp = { open, close, minimize, askSelection, generateRoadmap, offerKnowledgeDevelopment };
+  window.AssistantApp = { open, close, minimize, askSelection, developLesson, generateRoadmap, offerKnowledgeDevelopment };
 })();

@@ -1,46 +1,63 @@
 /* Lesson metadata lives outside the Markdown editor and its save queue. */
 (() => {
   const drafts = new Map();
+  window._lessonGuideHasDraft = id => drafts.has(id);
+  let dispose = () => {};
   window.renderLessonGuide = (id, meta) => {
     const host = document.getElementById('lessonGuide');
     if (!host) return;
+    dispose();dispose = () => {};
     host.replaceChildren();
     host.classList.toggle('hidden', meta.type !== 'course');
     if (meta.type !== 'course') return;
     const saved = {lesson_objective:meta.lesson_objective || '', lesson_guidance:meta.lesson_guidance || ''};
     const draft = drafts.get(id) || {...saved};
-    const panel = document.createElement('details');
+    const panel = document.createElement('section');
     panel.className = 'lesson-guide-panel';
-    // Saved guidance stays compact; an empty guide invites the first edit.
-    panel.open = drafts.has(id) || !saved.lesson_objective && !saved.lesson_guidance;
-    const summary = document.createElement('summary');
-    const title = document.createElement('strong');title.textContent = 'Guía de la lección';
-    const hint = document.createElement('span');hint.textContent = 'Objetivo y orientación · Contexto para el asistente';
-    summary.append(title, hint);panel.append(summary);
+    panel.setAttribute('aria-labelledby','lessonGuideTitle');
+    const title = document.createElement('div');title.id = 'lessonGuideTitle';
+    const caption = document.createElement('span');caption.textContent = 'Guía de la lección';
+    const develop = document.createElement('button');develop.type = 'button';develop.className = 'lesson-guide-develop';
+    develop.textContent = 'Desarrollar lección completa';title.append(caption,develop);
+    panel.append(title);
     const form = document.createElement('form');
-    const help = document.createElement('p');help.className = 'lesson-guide-help';
-    help.textContent = 'Define qué se debe aprender y cómo desarrollar los apartados. Estos campos se guardan aparte de los apuntes.';
-    form.append(help);
+    const columns = document.createElement('div');columns.className = 'lesson-guide-columns';form.append(columns);
     const inputs = {};
     for (const [key, label, placeholder] of [
-      ['lesson_objective', 'Objetivo de la lección', '¿Qué debería comprender o poder hacer el estudiante al terminar?'],
-      ['lesson_guidance', 'Orientación del desarrollo', 'Indica el enfoque, los límites y qué evitar repetir entre subtemas.'],
+      ['lesson_objective', 'Objetivo de la lección', 'Define qué se aprenderá al terminar esta lección…'],
+      ['lesson_guidance', 'Orientación del desarrollo', 'Indica el enfoque y los límites que guiarán los subtemas…'],
     ]) {
       const field = document.createElement('label');field.textContent = label;
-      const input = document.createElement('textarea');input.name = key;input.rows = 3;input.maxLength = 4000;
+      const input = document.createElement('textarea');input.name = key;input.rows = 2;input.maxLength = 4000;
       input.placeholder = placeholder;input.value = draft[key];input.disabled = !!meta.database_locked;
-      inputs[key] = input;field.append(input);form.append(field);
+      input.setAttribute('aria-describedby','lessonGuideHelp');
+      inputs[key] = input;field.append(input);columns.append(field);
     }
     const actions = document.createElement('div');actions.className = 'lesson-guide-actions';
     const save = document.createElement('button');save.type = 'submit';save.className = 'btn-primary';save.textContent = 'Guardar guía';
     const status = document.createElement('span');status.setAttribute('role','status');
+    const help = document.createElement('span');help.id = 'lessonGuideHelp';help.className = 'lesson-guide-help';
+    help.textContent = 'El asistente usará la guía guardada para desarrollar los subtemas.';
+    const resizeInputs = () => {
+      if (!host.isConnected || host.classList.contains('hidden')) return;
+      for (const input of Object.values(inputs)) {
+        input.style.height = 'auto';input.style.height = `${Math.min(320, input.scrollHeight + 2)}px`;
+      }
+    };
     let saving = false;
     const changed = () => Object.keys(inputs).some(key => inputs[key].value !== saved[key]);
-    const refresh = () => {save.disabled = saving || !!meta.database_locked || !changed();};
+    develop.onclick = () => {
+      if(changed()){status.textContent='Guarda la guía antes de desarrollar la lección.';return;}
+      window.AssistantApp?.developLesson(id);
+    };
+    const refresh = () => {
+      save.disabled = saving || !!meta.database_locked || !changed();
+      save.hidden = !saving && !changed();
+    };
     form.addEventListener('input', () => {
       const value = Object.fromEntries(Object.entries(inputs).map(([key,input]) => [key,input.value]));
       if (changed()) drafts.set(id, value);else drafts.delete(id);
-      status.textContent = changed() ? 'Cambios sin guardar' : '';refresh();
+      status.textContent = changed() ? 'Cambios sin guardar' : '';refresh();resizeInputs();
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();if (save.disabled) return;
@@ -57,11 +74,20 @@
           if (inputs[key].value === payload[key]) inputs[key].value = result[key];
         }
         if (!changed() && drafts.get(id) === submittedDraft) drafts.delete(id);
-        status.textContent = changed() ? 'Cambios sin guardar' : 'Guía guardada · El asistente la usará en la próxima consulta';
+        status.textContent = changed() ? 'Cambios sin guardar' : 'Guía guardada';
       } catch (error) {status.textContent = error.message;}
-      finally {saving = false;refresh();}
+      finally {saving = false;refresh();resizeInputs();}
     });
-    actions.append(save, status);form.append(actions);panel.append(form);host.append(panel);refresh();
+    actions.append(help, status, save);form.append(actions);panel.append(form);host.append(panel);refresh();
+    requestAnimationFrame(resizeInputs);
+    if (typeof ResizeObserver !== 'undefined') {
+      let width = 0;
+      const observer = new ResizeObserver(entries => {
+        const next = entries[0].contentRect.width;
+        if (next !== width) {width = next;resizeInputs();}
+      });
+      observer.observe(host);dispose = () => observer.disconnect();
+    }
     if (meta.database_locked) status.textContent = 'Desbloquea la lección para editar la guía';
     else if (changed()) status.textContent = 'Cambios sin guardar';
   };
