@@ -207,13 +207,13 @@
     if(message.documentation){
       const report=document.createElement('details');report.className='assistant-sources assistant-documentation';
       const summary=document.createElement('summary');
-      const phase=message.documentation.phase==='initial'?'Desarrollo':'Revisión';
+      const phase=['initial','lesson'].includes(message.documentation.phase)?'Desarrollo':'Revisión';
       summary.textContent=message.documentation.status==='consulted'?`${phase} con documentación consultada`:`${phase} sin contraste documental`;
       report.append(summary);
       const note=document.createElement('p');note.textContent='Consultar fuentes no garantiza que todas las afirmaciones estén verificadas. Se contrastan extractos de hasta 12.000 caracteres por página.';report.append(note);
       if(message.documentation.audit?.claims?.length){
         const audit=document.createElement('details');audit.className='assistant-claim-audit';
-        const heading=document.createElement('summary');heading.textContent=message.documentation.phase==='initial'?'Contraste del borrador por afirmaciones':'Contraste por afirmaciones';audit.append(heading);
+        const heading=document.createElement('summary');heading.textContent=['initial','lesson'].includes(message.documentation.phase)?'Contraste del borrador por afirmaciones':'Contraste por afirmaciones';audit.append(heading);
         const explanation=document.createElement('p');explanation.textContent='Evaluación del modelo con citas comprobadas contra los extractos. Puede contener errores de interpretación y no cubre necesariamente todas las afirmaciones.';audit.append(explanation);
         const names={supported:'Respaldada en los extractos',contradicted:'Contradicha en los extractos',unconfirmed:'No confirmada'};
         message.documentation.audit.claims.forEach(item=>{
@@ -231,6 +231,25 @@
       (message.documentation.failures||[]).forEach(source=>{
         const row=document.createElement('p');row.textContent=`No consultada: ${source.url}`;report.append(row);
       });article.append(report);
+    }
+    if(message.example_review){
+      const report=document.createElement('details');report.className='assistant-sources assistant-example-review';
+      const title=document.createElement('summary');title.textContent='Revisión de ejemplos';
+      const note=document.createElement('p');note.textContent='Análisis del borrador por el modelo. El evaluador solo calcula expresiones numéricas propuestas; no ejecuta ni certifica el programa completo.';
+      report.append(title,note);
+      if(!message.example_review.examples?.length){const empty=document.createElement('p');empty.textContent='No se identificaron ejemplos para comprobar en el borrador.';report.append(empty);}
+      const names={passed:'Coincide en la expresión',failed:'Discrepancia en la expresión',not_checked:'Sin calcular'};
+      for(const example of message.example_review.examples||[]){
+        const quote=document.createElement('blockquote');quote.textContent=example.quote;
+        const assessment=document.createElement('p');assessment.textContent=example.assessment;report.append(quote,assessment);
+        for(const test of example.cases||[]){
+          const row=document.createElement('p');row.textContent=`${names[test.status]||'Sin calcular'} · ${test.expression} · Entradas: ${JSON.stringify(test.inputs)} · Esperado: ${test.expected_error||JSON.stringify(test.expected)}`;
+          if(test.actual_error)row.textContent+=` · Error observado: ${test.actual_error}`;
+          else if(test.actual!==undefined)row.textContent+=` · Resultado calculado: ${test.actual}`;
+          report.append(row);
+        }
+      }
+      article.append(report);
     }
     const savedIndex=record?.messages.indexOf(message);
     if(savedIndex>=0){article.dataset.messageIndex=savedIndex;article.tabIndex=-1;}

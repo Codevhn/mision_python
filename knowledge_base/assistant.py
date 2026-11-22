@@ -15,6 +15,8 @@ from technical_review import audit_claims, review_constraints, output_issues
 from source_routing import route_sources, scope_guidance
 from library_context import book_context
 from lesson_quality import CONTINUITY_GUIDANCE, review_lesson
+from lesson_evidence import lesson_documents
+from lesson_examples import review_examples
 
 VIEW_NAMES = {
     "home": "Inicio", "knowledge": "Conocimiento", "courses": "Cursos", "teamspace": "Team", "pages": "Páginas",
@@ -1109,14 +1111,24 @@ def register_assistant(app, namespace):
                             yield event("error", {"error": "El proveedor devolvió una respuesta vacía."})
                             return
                         if lesson_action and not truncated:
-                            yield event('status', {'message': 'Revisando continuidad, ejemplos y coherencia de la lección…'})
+                            yield event('status', {'message': 'Consultando documentación de referencia para contrastar la lección…'})
                             try:
+                                lesson_context = json.loads(context).get('current_context') or {}
+                                lesson_evidence = lesson_documents(consult_documents, lesson_context, text, meta)
+                                yield event('status', {'message': 'Contrastando afirmaciones con los extractos disponibles…'})
+                                lesson_claims = audit_claims(namespace['_call_ai'], text, lesson_evidence['sources'], provider, model)
+                                yield event('status', {'message': 'Revisando ejemplos, resultados y casos límite…'})
+                                lesson_examples = review_examples(namespace['_call_ai'], text, provider, model)
+                                yield event('status', {'message': 'Integrando el contraste y la revisión de continuidad…'})
                                 text = review_lesson(namespace['_call_ai'], system, text,
-                                    json.loads(context).get('current_context') or {}, prompt, provider, model)
+                                    lesson_context, prompt, provider, model, evidence=lesson_evidence,
+                                    claim_audit=lesson_claims, example_audit=lesson_examples)
                             except ValueError as error:
                                 yield event('error', {'error': str(error)})
                                 return
                             text = readable_math(text)
+                            documentation = {**lesson_evidence, 'phase': 'lesson', 'audit': lesson_claims,
+                                'sources': [{key: value for key, value in source.items() if key != 'excerpt'} for source in lesson_evidence['sources']]}
                         if initial_knowledge:
                             yield event('status', {'message': 'Contrastando las afirmaciones del borrador…'})
                             audit = audit_claims(namespace['_call_ai'], text, evidence['sources'], provider, model)
@@ -1150,6 +1162,8 @@ def register_assistant(app, namespace):
                         if lesson_action:
                             record["messages"][-1]["lesson_draft"] = {"entry_id": current_context["id"], "truncated": bool(truncated)}
                             record["messages"][-1]['lesson_review'] = {'status': 'skipped_incomplete' if truncated else 'completed', 'kind': 'didactic_continuity'}
+                            if not truncated:
+                                record['messages'][-1]['example_review'] = lesson_examples
                         if revision:
                             record["messages"][-1]["revision"] = revision
                         if documentation is not None:

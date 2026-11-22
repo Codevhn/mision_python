@@ -92,6 +92,8 @@ def test_full_lesson_is_a_scoped_reviewable_draft(auth_client, monkeypatch, less
     monkeypatch.setattr(atlas, '_stream_call_ai', stream)
     reviews = []
     def reviewer(system, prompt, **kwargs):
+        if system.startswith('Revisa los ejemplos del borrador'):
+            return '{"examples": []}', None
         reviews.append(kwargs)
         return json.loads(prompt.split('\n')[-1])['draft'], None
     monkeypatch.setattr(atlas, '_call_ai', reviewer)
@@ -134,6 +136,8 @@ def test_full_lesson_review_precedes_delivery_and_never_changes_document(auth_cl
         yield original
         yield ('__done__', False, None)
     def reviewer(system, prompt, **kwargs):
+        if system.startswith('Revisa los ejemplos del borrador'):
+            return '{"examples": []}', None
         payload = json.loads(prompt.split('\n')[-1])
         assert payload['draft'] == original
         assert 'Continuidad didáctica' in system
@@ -179,3 +183,45 @@ def test_invalid_full_lesson_action_does_not_store_a_message(auth_client, monkey
     assert response.status_code == 400
     assert not captured
     assert auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'] == []
+
+
+def test_documented_claims_and_calculated_cases_reach_final_correction(auth_client, monkeypatch, lesson):
+    import assistant as assistant_module
+    setup_model(monkeypatch, [])
+    original = '## Eclipse IDE\n\nPEP 8 es de tipo estándar. Calcular promedio con una nota.'
+    corrected = '## Eclipse IDE\n\nPEP 8 es de tipo Process. El promedio descartando una nota exige al menos dos notas.'
+    url = 'https://peps.python.org/pep-0008/'
+    quote = 'PEP: 8\nTitle: Style Guide for Python Code\nType: Process'
+    def consult(urls, **kwargs):
+        return {'status': 'consulted' if url in urls else 'unavailable',
+                'sources': [{'url': url, 'excerpt': quote, 'truncated': False}] if url in urls else [], 'failures': []}
+    monkeypatch.setattr(assistant_module, 'consult_documents', consult)
+    def stream(*args, **kwargs):
+        yield original
+        yield ('__done__', False, None)
+    def call(system, prompt, **kwargs):
+        if system.startswith('Eres un revisor factual'):
+            return json.dumps({'claims': [{'claim': 'PEP 8 es de tipo estándar.', 'status': 'contradicted',
+                'source_url': url, 'quote': quote, 'correction': 'Es Process.'}]}), None
+        if system.startswith('Revisa los ejemplos del borrador'):
+            return json.dumps({'examples': [{'quote': 'Calcular promedio con una nota.',
+                'assessment': 'No se puede dividir entre cero; faltan precondiciones.', 'cases': [
+                    {'expression': '(sum(values)-min(values))/(len(values)-1)', 'inputs': {'values': [6]}, 'expected': 9}]}]}), None
+        payload = json.loads(prompt.split('\n')[-1])
+        assert payload['claim_audit']['claims'][0]['status'] == 'contradicted'
+        assert payload['documents'][0]['excerpt'] == quote
+        assert payload['example_audit']['examples'][0]['cases'][0]['status'] == 'failed'
+        return corrected, None
+    monkeypatch.setattr(atlas, '_stream_call_ai', stream)
+    monkeypatch.setattr(atlas, '_call_ai', call)
+    conversation = create(auth_client)
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Desarrolla toda la lección.', 'lesson_action': 'develop',
+        'current_context': {'type': 'entry', 'id': lesson, 'lesson_outline': [{'level': 2, 'title': 'Eclipse IDE'}]},
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    answer = auth_client.get(f'/api/assistant/conversations/{conversation}').json['messages'][-1]
+    assert answer['content'] == corrected
+    assert answer['documentation']['status'] == 'consulted'
+    assert 'excerpt' not in answer['documentation']['sources'][0]
+    assert answer['example_review']['examples'][0]['cases'][0]['actual_error'] == 'ZeroDivisionError'

@@ -30,13 +30,23 @@ La continuidad didáctica se define en el prompt global de todos los proveedores
 
 **Desarrollar lección completa** aparece junto a la guía y en el asistente cuando la vista abierta es una lección, también desde Peek. Es una acción explícita distinta de Explicar: envía `lesson_action: develop`, el esquema actual y la guía guardada. Usa el modelo seleccionado y conserva el borrador de la pregunta. Si la guía tiene cambios pendientes, pide guardarlos primero.
 
-El servidor limita el contexto a esa lección y solicita una planificación interna del conjunto, cobertura de los temas en su orden y bases comunes sin repeticiones. Un borrador completo pasa por una segunda llamada al mismo proveedor y modelo: revisa continuidad, ejemplos, transiciones, repeticiones, nivel y condiciones de validez; devuelve el texto conservado o corregido. No se transmiten fragmentos del borrador sin revisar al navegador. Cada etapa tiene un presupuesto de hasta 8000 tokens; la revisión añade una llamada y tiempo de espera. Si falla, devuelve una estructura incompleta o altera los temas, se informa del error y no se guarda una respuesta del asistente; la petición queda disponible para reintentar.
+El servidor limita el contexto a esa lección y solicita una planificación interna del conjunto, cobertura de los temas en su orden y bases comunes sin repeticiones. Un borrador completo pasa por contraste documental y revisión de ejemplos antes de la corrección final con el mismo proveedor y modelo. No se transmiten fragmentos del borrador sin revisar al navegador. La redacción y corrección tienen un presupuesto de hasta 8000 tokens cada una; los análisis intermedios tienen límites menores. Estas etapas añaden consultas y tiempo de espera. Si una revisión falla, devuelve una estructura incompleta o altera los temas, se informa del error y no se guarda una respuesta del asistente; la petición queda disponible para reintentar.
 
 Solo se entrega y guarda la versión revisada, sin modificar el documento. Si la generación inicial está truncada se conserva como borrador incompleto, sin revisión ni posibilidad de aplicarlo. La revisión editorial no equivale a contraste documental ni garantiza obediencia o exactitud factual de todos los modelos.
 
 **Aplicar borrador a la lección** valida todos los encabezados y su orden antes de editar. Tras una confirmación, coloca cada desarrollo debajo de su encabezado original, conservando sus identificadores y el texto previo al primer tema. Reemplaza las explicaciones existentes de esos apartados; el título y la guía se conservan. Si faltan temas, hay encabezados ambiguos o nuevos temas del mismo nivel, se rechaza la aplicación completa para evitar una distribución incorrecta. Los encabezados con contenido anidado no admiten esta aplicación. Un cambio de documento o destino durante la confirmación invalida la operación. Se guarda mediante las colas existentes del editor. Las explicaciones de un solo tema siguen usando su inserción individual.
 
-Las pruebas de integración usan respuestas simuladas: verifican el alcance, la distribución y el guardado, no certifican la calidad factual de cada modelo. No se añade consulta documental automática a esta acción.
+### Contraste y ejemplos
+
+`lesson_evidence.py` selecciona hasta seis páginas de un catálogo de documentación oficial según el curso, los temas y el borrador (Python, PEP, RFC, algoritmos, IDE y otras tecnologías catalogadas). No acepta destinos inventados por el modelo. Las referencias guardadas de la entrada tienen prioridad; una lista guardada vacía desactiva la consulta. No se adivinan fuentes para dominios sin catálogo. La descarga usa los límites y controles existentes en lotes de hasta tres páginas; un candidato solo cuenta como evidencia si pudo leerse.
+
+El contraste reutiliza `audit_claims`: hasta veinte afirmaciones del borrador, con citas literales contrastadas contra los extractos. Los juicios sin trazabilidad se degradan a no confirmados. Se distinguen contradicción y falta de evidencia. La corrección final recibe los documentos, este contraste y la revisión de ejemplos; debe corregir errores, conservar condiciones y omitir detalles inciertos accesorios. Los informes corresponden al borrador anterior a la corrección, no certifican exhaustivamente el texto final.
+
+`lesson_examples.py` solicita un análisis estructurado de hasta cuatro ejemplos, anclados con citas del borrador. Revisa enunciado, precondiciones, resultados, duplicados, vacíos, casos unitarios y mutación cuando correspondan. Puede proponer hasta seis casos numéricos por ejemplo. Un intérprete de AST restringido calcula aritmética básica y `sum`, `min`, `max`, `len`, `abs` sobre números y listas acotados: sin `eval`, `exec`, imports, atributos, comprensiones, archivos ni red. Tiene límites de tamaño y magnitud. Distingue coincidencia, discrepancia y expresión no admitida.
+
+Los casos calculados verifican únicamente expresiones propuestas por el modelo, no la fidelidad de su traducción ni el programa completo. Los demás ejemplos reciben análisis del modelo, no ejecución. La interfaz separa fuentes y revisión de ejemplos del texto didáctico e indica cuando no hubo contraste documental o no se identificaron casos. Si hay evidencia, se añade una llamada de contraste de afirmaciones; siempre hay una llamada de análisis de ejemplos y una de corrección final para lecciones completas. Las explicaciones individuales reciben las reglas globales, sin iniciar este flujo completo.
+
+Las pruebas de integración usan respuestas y documentos simulados: verifican el alcance, la distribución, las correcciones y el guardado, no certifican la calidad factual de cada modelo ni la disponibilidad de fuentes en producción.
 
 ## Navegación de cursos
 
@@ -50,6 +60,7 @@ Anterior/siguiente mantiene el orden y los manejadores existentes de las leccion
 - `tools/check_library_assistant.cjs`: regresión de consultas, selecciones y fuentes de Biblioteca.
 - `knowledge_base/tests/test_learning_guide.py`: validación, persistencia, permisos, conservación del documento y recuperación de la guía por el asistente.
 - `knowledge_base/tests/test_lesson_quality.py`: contexto de la revisión, modelo elegido, encabezados, orden, secciones vacías y bloques de código.
+- `knowledge_base/tests/test_lesson_evidence.py` y `test_lesson_examples.py`: selección y límites de fuentes, ausencia de evidencia y cálculos acotados sin ejecutar código generado.
 - `tools/check_lesson_guide.cjs`: formulario real, recarga, separación del editor, temas claro/oscuro, móvil, borradores y recuperación tras errores de guardado.
 
 Los scripts de navegador usan únicamente un servidor local desechable; no generan respuestas mediante proveedores externos ni usan cursos personales.
