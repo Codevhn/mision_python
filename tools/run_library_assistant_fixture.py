@@ -78,5 +78,12 @@ def stream(system, messages, **kwargs):
     yield ('__done__', False, None)
 
 
+def call_ai(system, prompt, **kwargs):
+    if prompt.startswith('Revisa editorialmente el borrador de lección completa'):
+        return json.loads(prompt.split('\n')[-1])['draft'], None
+    raise AssertionError('Unexpected non-stream model call in disposable fixture')
+
+
+atlas._call_ai = call_ai
 atlas._stream_call_ai = stream
 atlas.app.run(host='127.0.0.1', port=8132, use_reloader=False)

@@ -22,13 +22,17 @@ Las instrucciones pedagógicas compartidas por todos los proveedores distinguen 
 
 En cursos, el servidor añade `learning_task` al contexto de cada petición: acción actual, selección cuando corresponde y campos que describen el currículo frente al contenido no verificado. Las preguntas libres no heredan un tema seleccionado anterior. El nivel ausente sigue sin especificar y el año del título no determina versiones de software. Página y Peek usan el mismo contrato del servidor.
 
-El desarrollo debe evitar comparativas globales repetidas, etiquetas de instrucciones expuestas como títulos y recomendaciones falsamente atribuidas al curso. Los datos variables necesitan respaldo; los detalles inciertos accesorios se omiten y los esenciales se matizan. Estas reglas no certifican la veracidad de la salida: no añaden búsquedas externas ni llamadas de auditoría a cada explicación. La revisión documental existente conserva su flujo.
+El desarrollo debe evitar comparativas globales repetidas, etiquetas de instrucciones expuestas como títulos y recomendaciones falsamente atribuidas al curso. Los datos variables necesitan respaldo; los detalles inciertos accesorios se omiten y los esenciales se matizan. Estas reglas no certifican la veracidad de la salida ni añaden búsquedas externas. La revisión documental existente conserva su flujo.
+
+La continuidad didáctica se define en el prompt global de todos los proveedores: un caso sencillo compartido cuando ayude a los apartados prácticos; una pregunta o criterios comunes para temas conceptuales, históricos o comparativos. No obliga a reutilizar un ejemplo inadecuado. La orientación editable concreta o ajusta la regla; al desarrollar una sola sección se aprovecha el contexto disponible sin reescribir las otras. El nombre de la regla y su lista de comprobación no deben aparecer en el material de estudio.
 
 ## Lección completa
 
 **Desarrollar lección completa** aparece junto a la guía y en el asistente cuando la vista abierta es una lección, también desde Peek. Es una acción explícita distinta de Explicar: envía `lesson_action: develop`, el esquema actual y la guía guardada. Usa el modelo seleccionado y conserva el borrador de la pregunta. Si la guía tiene cambios pendientes, pide guardarlos primero.
 
-El servidor limita el contexto a esa lección y solicita una planificación interna del conjunto, cobertura de los temas en su orden, bases comunes sin repeticiones y revisión de coherencia. El presupuesto de salida es de hasta 8000 tokens; el proveedor puede imponer otros límites. El borrador queda en la conversación, sin modificar el documento. Si la salida está truncada, la aplicación del borrador se deshabilita.
+El servidor limita el contexto a esa lección y solicita una planificación interna del conjunto, cobertura de los temas en su orden y bases comunes sin repeticiones. Un borrador completo pasa por una segunda llamada al mismo proveedor y modelo: revisa continuidad, ejemplos, transiciones, repeticiones, nivel y condiciones de validez; devuelve el texto conservado o corregido. No se transmiten fragmentos del borrador sin revisar al navegador. Cada etapa tiene un presupuesto de hasta 8000 tokens; la revisión añade una llamada y tiempo de espera. Si falla, devuelve una estructura incompleta o altera los temas, se informa del error y no se guarda una respuesta del asistente; la petición queda disponible para reintentar.
+
+Solo se entrega y guarda la versión revisada, sin modificar el documento. Si la generación inicial está truncada se conserva como borrador incompleto, sin revisión ni posibilidad de aplicarlo. La revisión editorial no equivale a contraste documental ni garantiza obediencia o exactitud factual de todos los modelos.
 
 **Aplicar borrador a la lección** valida todos los encabezados y su orden antes de editar. Tras una confirmación, coloca cada desarrollo debajo de su encabezado original, conservando sus identificadores y el texto previo al primer tema. Reemplaza las explicaciones existentes de esos apartados; el título y la guía se conservan. Si faltan temas, hay encabezados ambiguos o nuevos temas del mismo nivel, se rechaza la aplicación completa para evitar una distribución incorrecta. Los encabezados con contenido anidado no admiten esta aplicación. Un cambio de documento o destino durante la confirmación invalida la operación. Se guarda mediante las colas existentes del editor. Las explicaciones de un solo tema siguen usando su inserción individual.
 
@@ -45,6 +49,7 @@ Anterior/siguiente mantiene el orden y los manejadores existentes de las leccion
 - `tools/check_course_navigation_dock.cjs`: barra fija, temas, asistente normal/ampliado, límites del curso y navegación real.
 - `tools/check_library_assistant.cjs`: regresión de consultas, selecciones y fuentes de Biblioteca.
 - `knowledge_base/tests/test_learning_guide.py`: validación, persistencia, permisos, conservación del documento y recuperación de la guía por el asistente.
+- `knowledge_base/tests/test_lesson_quality.py`: contexto de la revisión, modelo elegido, encabezados, orden, secciones vacías y bloques de código.
 - `tools/check_lesson_guide.cjs`: formulario real, recarga, separación del editor, temas claro/oscuro, móvil, borradores y recuperación tras errores de guardado.
 
 Los scripts de navegador usan únicamente un servidor local desechable; no generan respuestas mediante proveedores externos ni usan cursos personales.

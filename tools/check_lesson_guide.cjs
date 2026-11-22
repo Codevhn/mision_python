@@ -45,11 +45,13 @@ const base='http://127.0.0.1:8132';
   await page.evaluate(()=>AssistantApp.open({focusInput:false}));
   const originalAnchors=await page.evaluate(()=>_assistantStudySurface().editor.getInsertionTargets().filter(row=>row.type==='heading').map(row=>row.block_id));
   await page.locator('#assistantInput').fill('Pregunta pendiente que no se debe enviar.');
-  const requests=[];page.on('request',request=>{
-    if(request.method()==='POST'&&/\/api\/assistant\/conversations\/[^/]+\/messages$/.test(new URL(request.url()).pathname))requests.push(request.postDataJSON());
+  const requests=[];let generationUrl;page.on('request',request=>{
+    if(request.method()==='POST'&&/\/api\/assistant\/conversations\/[^/]+\/messages$/.test(new URL(request.url()).pathname)){requests.push(request.postDataJSON());generationUrl=request.url();}
   });
   await panel.getByRole('button',{name:'Desarrollar lección completa',exact:true}).click();
   const apply=page.getByRole('button',{name:'Aplicar borrador a la lección',exact:true});await apply.waitFor();
+  const reviewed=await (await context.request.get(generationUrl.replace(/\/messages$/,''))).json();
+  assert.equal(reviewed.messages.at(-1).lesson_review.status,'completed');
   assert.equal(requests.length,1);assert.equal(requests[0].lesson_action,'develop');assert.equal(requests[0].selection_context,null);
   assert.equal(requests[0].current_context.lesson_outline.length,3);
   assert.equal(await page.locator('#assistantInput').inputValue(),'Pregunta pendiente que no se debe enviar.');

@@ -90,6 +90,11 @@ def test_full_lesson_is_a_scoped_reviewable_draft(auth_client, monkeypatch, less
         yield answer
         yield ('__done__', truncated, None)
     monkeypatch.setattr(atlas, '_stream_call_ai', stream)
+    reviews = []
+    def reviewer(system, prompt, **kwargs):
+        reviews.append(kwargs)
+        return json.loads(prompt.split('\n')[-1])['draft'], None
+    monkeypatch.setattr(atlas, '_call_ai', reviewer)
     auth_client.patch(f'/api/entry/{lesson}/learning-guide', json={'lesson_objective': 'Distinguir alternativas.', 'lesson_guidance': 'Una explicación continua.'})
     before = auth_client.get(f'/api/entry/{lesson}').json['markdown']
     conversation = create(auth_client)
@@ -111,6 +116,51 @@ def test_full_lesson_is_a_scoped_reviewable_draft(auth_client, monkeypatch, less
     assert record['messages'][-2]['lesson_action'] == 'develop'
     assert record['messages'][-1]['content'] == answer
     assert record['messages'][-1]['lesson_draft'] == {'entry_id': lesson, 'truncated': truncated}
+    assert record['messages'][-1]['lesson_review']['status'] == ('skipped_incomplete' if truncated else 'completed')
+    assert len(reviews) == (0 if truncated else 1)
+    if reviews:
+        assert reviews[0]['provider'] == options['provider']
+        assert reviews[0]['model'] == options['model']
+        assert reviews[0]['fail_on_truncation'] is True
+    assert auth_client.get(f'/api/entry/{lesson}').json['markdown'] == before
+
+
+@pytest.mark.parametrize('review_result', ['corrected', 'error', 'missing_section'])
+def test_full_lesson_review_precedes_delivery_and_never_changes_document(auth_client, monkeypatch, lesson, review_result):
+    setup_model(monkeypatch, [])
+    original = '## Eclipse IDE\n\nBORRADOR SIN REVISAR.'
+    corrected = '## Eclipse IDE\n\nExplicación coordinada con el objetivo.'
+    def stream(*args, **kwargs):
+        yield original
+        yield ('__done__', False, None)
+    def reviewer(system, prompt, **kwargs):
+        payload = json.loads(prompt.split('\n')[-1])
+        assert payload['draft'] == original
+        assert 'Continuidad didáctica' in system
+        assert 'No fuerces un mismo ejemplo' in system
+        if review_result == 'error':
+            return None, 'Simulated provider failure'
+        if review_result == 'missing_section':
+            return '## Otro tema\n\nTema incorrecto.', None
+        return corrected, None
+    monkeypatch.setattr(atlas, '_stream_call_ai', stream)
+    monkeypatch.setattr(atlas, '_call_ai', reviewer)
+    before = auth_client.get(f'/api/entry/{lesson}').json['markdown']
+    conversation = create(auth_client)
+    response = auth_client.post(f'/api/assistant/conversations/{conversation}/messages', json={
+        'prompt': 'Desarrolla toda la lección.', 'lesson_action': 'develop',
+        'current_context': {'type': 'entry', 'id': lesson, 'lesson_outline': [{'level': 2, 'title': 'Eclipse IDE'}]},
+    })
+    body = response.get_data(as_text=True)
+    assert 'BORRADOR SIN REVISAR' not in body
+    record = auth_client.get(f'/api/assistant/conversations/{conversation}').json
+    if review_result == 'corrected':
+        assert 'event: done' in body
+        assert record['messages'][-1]['content'] == corrected
+    else:
+        assert 'event: error' in body
+        assert 'event: done' not in body
+        assert record['messages'][-1]['role'] == 'user'
     assert auth_client.get(f'/api/entry/{lesson}').json['markdown'] == before
 
 

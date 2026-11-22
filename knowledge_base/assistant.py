@@ -14,6 +14,7 @@ from documentation import validate_urls, suggested_urls, consult_documents
 from technical_review import audit_claims, review_constraints, output_issues
 from source_routing import route_sources, scope_guidance
 from library_context import book_context
+from lesson_quality import CONTINUITY_GUIDANCE, review_lesson
 
 VIEW_NAMES = {
     "home": "Inicio", "knowledge": "Conocimiento", "courses": "Cursos", "teamspace": "Team", "pages": "Páginas",
@@ -948,7 +949,7 @@ def register_assistant(app, namespace):
                     memory, through, messages = record.get("memory", ""), record.get("memory_through", 0), []
                 else:
                     memory, through, messages = compact_context(record, provider, model)
-                system = SYSTEM + STUDY_GUIDANCE
+                system = SYSTEM + STUDY_GUIDANCE + CONTINUITY_GUIDANCE
                 if lesson_action:
                     system += (
                         "\n\nDesarrollo de LECCIÓN COMPLETA solicitado explícitamente. Esta petición amplía "
@@ -1107,6 +1108,15 @@ def register_assistant(app, namespace):
                         if not text.strip():
                             yield event("error", {"error": "El proveedor devolvió una respuesta vacía."})
                             return
+                        if lesson_action and not truncated:
+                            yield event('status', {'message': 'Revisando continuidad, ejemplos y coherencia de la lección…'})
+                            try:
+                                text = review_lesson(namespace['_call_ai'], system, text,
+                                    json.loads(context).get('current_context') or {}, prompt, provider, model)
+                            except ValueError as error:
+                                yield event('error', {'error': str(error)})
+                                return
+                            text = readable_math(text)
                         if initial_knowledge:
                             yield event('status', {'message': 'Contrastando las afirmaciones del borrador…'})
                             audit = audit_claims(namespace['_call_ai'], text, evidence['sources'], provider, model)
@@ -1139,6 +1149,7 @@ def register_assistant(app, namespace):
                                                    "model": "Atlas" if location_only else model})
                         if lesson_action:
                             record["messages"][-1]["lesson_draft"] = {"entry_id": current_context["id"], "truncated": bool(truncated)}
+                            record["messages"][-1]['lesson_review'] = {'status': 'skipped_incomplete' if truncated else 'completed', 'kind': 'didactic_continuity'}
                         if revision:
                             record["messages"][-1]["revision"] = revision
                         if documentation is not None:
@@ -1150,7 +1161,7 @@ def register_assistant(app, namespace):
                         yield event("done", {"full": text, "html": namespace["render_markdown"](text), "truncated": truncated, "context_summarized": bool(memory), "sources": sources})
                         return
                     parts.append(part)
-                    if documentation is None:
+                    if documentation is None and not lesson_action:
                         yield event("message", {"delta": part})
                 yield event("error", {"error": "El proveedor cerró la respuesta antes de completarla."})
             except Exception:
