@@ -26,7 +26,7 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
    }
   }
 
-  for(const [theme,scheme] of ['ocean','forest','plum','graphite'].map(palette=>['atmosphere-'+palette,'dark'])){
+  for(const [theme,scheme] of (process.env.ATLAS_TEST_PALETTES||'ocean,forest,plum,graphite,gray,charcoal,black').split(',').map(palette=>['atmosphere-'+palette,'dark'])){
    await page.evaluate(()=>switchSpace('home'));await page.evaluate(()=>toggleTheme());await page.locator(`[data-theme-choice="${theme}"]`).click();
    await page.mouse.move(0,0);
    await page.evaluate(()=>Promise.all(document.getAnimations().filter(animation=>animation instanceof CSSTransition).map(animation=>animation.finished.catch(()=>{}))));
@@ -36,6 +36,11 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
    const card=page.locator('#welcome .home-card').first();await card.waitFor();const cardPaint=await card.evaluate(node=>({background:getComputedStyle(node).backgroundColor,color:getComputedStyle(node.querySelector('.home-card-title')).color}));
    assert.ok(contrast(cardPaint.color,cardPaint.background)>7);
    const palette=await page.locator('html').evaluate(node=>{const css=getComputedStyle(node);return Object.fromEntries(['--native-panel','--native-muted','--native-faint','--native-primary','--native-link','--native-canvas'].map(key=>[key,css.getPropertyValue(key).trim()]));});
+   if(['atmosphere-gray','atmosphere-charcoal','atmosphere-black'].includes(theme)){
+    for(const key of ['--native-panel','--native-canvas','--native-link','--native-primary']){
+     const channels=palette[key].slice(1).match(/../g);assert.ok(channels.every(value=>value===channels[0]),key+' must remain neutral gray');
+    }
+   }
    const rgb=hex=>'rgb('+hex.slice(1).match(/../g).map(value=>parseInt(value,16)).join(', ')+')';
    assert.equal(cardPaint.background,rgb(palette['--native-panel']),'Home cards remain dark');
    for(const key of ['--native-muted','--native-faint','--native-link'])assert.ok(contrast(rgb(palette[key]),rgb(palette['--native-panel']))>=4.5,key+' must be readable');
@@ -73,8 +78,8 @@ const contrast=(a,b)=>{const x=[luminance(a),luminance(b)].sort((a,b)=>b-a);retu
   await page.evaluate(()=>setAtlasTheme('paper',true));assert.equal(await page.locator('html').getAttribute('data-palette'),'paper');
   assert.ok(!(await page.locator('body').evaluate(node=>getComputedStyle(node).backgroundImage)).includes('radial-gradient'));
   const after=(await (await context.request.get(base+`/api/entry/${id}`)).json()).markdown;assert.equal(after,before);assert.deepEqual(errors,[]);
-  console.log(`PASS ${width}px: actual theme selector, four distinct dark palettes/cards, real course/page/Peek grid, syntax and contrast, subtle H2/H3, preserved source and restoration.`);await context.close();
+  console.log(`PASS ${width}px: actual theme selector, selected dark palettes/cards, real course/page/Peek grid, syntax and contrast, subtle H2/H3, preserved source and restoration.`);await context.close();
  }
- const context=await browser.newContext();await context.addInitScript(()=>localStorage.setItem('kb_theme','atmosphere-plum'));const login=await context.newPage();await login.goto(base+'/login');assert.equal(await login.locator('html').getAttribute('data-theme-id'),'atmosphere-plum');assert.ok((await login.locator('body').evaluate(node=>getComputedStyle(node).backgroundImage)).includes('radial-gradient'));await context.close();
+ const context=await browser.newContext();await context.addInitScript(()=>localStorage.setItem('kb_theme','atmosphere-black'));const login=await context.newPage();await login.goto(base+'/login');assert.equal(await login.locator('html').getAttribute('data-theme-id'),'atmosphere-black');assert.ok((await login.locator('body').evaluate(node=>getComputedStyle(node).backgroundImage)).includes('radial-gradient'));await context.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

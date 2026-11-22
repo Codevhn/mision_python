@@ -79,6 +79,46 @@
     --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
     --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
   }
+  /* Fully neutral palettes: no warm, blue or purple tint in the chrome. */
+  :root[data-style="notion"][data-palette="atmosphere-gray"] {
+    --native-canvas:#323232;--native-sidebar:#2b2b2b;--native-panel:#383838;
+    --native-menu:#414141;--native-selected:#d0d0d02b;
+    --native-ink:#f5f5f5;--native-muted:#d0d0d0;--native-faint:#bfbfbf;
+    --native-line:#a0a0a066;--native-line-soft:#a0a0a033;--native-link:#ededed;
+    --native-primary:#505050;--native-primary-hover:#444444;
+    --native-menu-shadow:0 8px 28px #0005;--native-dialog-shadow:0 16px 60px #0008;
+    --atmosphere-grid:#eeeeee14;--atmosphere-glow:#68686866;
+    --atmosphere-start:#3a3a3a;--atmosphere-end:#292929;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
+  :root[data-style="notion"][data-palette="atmosphere-charcoal"] {
+    --native-canvas:#202020;--native-sidebar:#191919;--native-panel:#282828;
+    --native-menu:#323232;--native-selected:#c0c0c026;
+    --native-ink:#eeeeee;--native-muted:#c4c4c4;--native-faint:#b0b0b0;
+    --native-line:#88888866;--native-line-soft:#88888833;--native-link:#dedede;
+    --native-primary:#4a4a4a;--native-primary-hover:#3d3d3d;
+    --native-menu-shadow:0 8px 28px #0005;--native-dialog-shadow:0 16px 60px #0008;
+    --atmosphere-grid:#eeeeee12;--atmosphere-glow:#46464688;
+    --atmosphere-start:#2c2c2c;--atmosphere-end:#181818;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
+  :root[data-style="notion"][data-palette="atmosphere-black"] {
+    --native-canvas:#101010;--native-sidebar:#0c0c0c;--native-panel:#181818;
+    --native-menu:#222222;--native-selected:#b0b0b024;
+    --native-ink:#ededed;--native-muted:#bdbdbd;--native-faint:#aaaaaa;
+    --native-line:#77777766;--native-line-soft:#77777733;--native-link:#d9d9d9;
+    --native-primary:#424242;--native-primary-hover:#363636;
+    --native-menu-shadow:0 8px 28px #0005;--native-dialog-shadow:0 16px 60px #0008;
+    --atmosphere-grid:#eeeeee0e;--atmosphere-glow:#30303088;
+    --atmosphere-start:#191919;--atmosphere-end:#080808;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
   /* Paint the reading canvases too: the flat bridge otherwise hides the
      desktop behind opaque entry/Peek panels. Fixed layers align the grid. */
   :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) body,
@@ -111,6 +151,6 @@
   :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #entryView {border-top:1px solid var(--border)!important;}
   :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) .login-panel {background:var(--bg-surface);border-color:var(--border);}
 }
-.theme-swatch-terracotta-dark::after,.theme-swatch-terracotta-light::after,.theme-swatch-atmosphere-ocean::after,.theme-swatch-atmosphere-forest::after,.theme-swatch-atmosphere-plum::after,.theme-swatch-atmosphere-graphite::after {
+.theme-swatch-terracotta-dark::after,.theme-swatch-terracotta-light::after,.theme-swatch-atmosphere-ocean::after,.theme-swatch-atmosphere-forest::after,.theme-swatch-atmosphere-plum::after,.theme-swatch-atmosphere-graphite::after,.theme-swatch-atmosphere-gray::after,.theme-swatch-atmosphere-charcoal::after,.theme-swatch-atmosphere-black::after {
   content:'';position:absolute;inset:0;background:linear-gradient(#fff2 1px,transparent 1px),linear-gradient(90deg,#fff2 1px,transparent 1px);background-size:12px 12px;
 }

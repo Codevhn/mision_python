@@ -93,3 +93,11 @@ ATLAS_THEMES['atmosphere-plum']={scheme:'dark',style:'notion',variant:'night',pa
 THEME_CATALOG.push(['atmosphere-plum','Ciruela · Oscuro','Berenjena y resplandor malva · Cuadrícula sutil','atmosphere','atmosphere-plum']);
 ATLAS_THEMES['atmosphere-graphite']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-graphite',preview:'linear-gradient(145deg,#373a37,#77715a 65%,#202326)'};
 THEME_CATALOG.push(['atmosphere-graphite','Grafito · Oscuro','Carbón suave y luz de champán · Cuadrícula sutil','atmosphere','atmosphere-graphite']);
+
+// Neutral atmospheres: mineral gray, charcoal and deep black.
+ATLAS_THEMES['atmosphere-gray']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-gray',preview:'linear-gradient(145deg,#3a3a3a,#686868 65%,#292929)'};
+THEME_CATALOG.push(['atmosphere-gray','Gris','Gris mineral y reflejos de plata · Cuadrícula sutil','atmosphere','atmosphere-gray']);
+ATLAS_THEMES['atmosphere-charcoal']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-charcoal',preview:'linear-gradient(145deg,#2c2c2c,#464646 65%,#181818)'};
+THEME_CATALOG.push(['atmosphere-charcoal','Gris oscuro','Carbón neutro y sombras suaves · Cuadrícula sutil','atmosphere','atmosphere-charcoal']);
+ATLAS_THEMES['atmosphere-black']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-black',preview:'linear-gradient(145deg,#191919,#303030 65%,#080808)'};
+THEME_CATALOG.push(['atmosphere-black','Negro','Negro profundo y luz de grafito · Cuadrícula sutil','atmosphere','atmosphere-black']);

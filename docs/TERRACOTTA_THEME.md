@@ -25,7 +25,7 @@ Los scripts de navegador usan el servidor local desechable; no modifican conteni
 
 ## Más atmósferas oscuras
 
-El mismo grupo incluye cuatro opciones adicionales:
+El mismo grupo incluye siete opciones adicionales:
 
 | Tema | Identificador | Paleta |
 | --- | --- | --- |
@@ -33,10 +33,13 @@ El mismo grupo incluye cuatro opciones adicionales:
 | Bosque · Oscuro | `atmosphere-forest` | Pino y jade |
 | Ciruela · Oscuro | `atmosphere-plum` | Berenjena y malva |
 | Grafito · Oscuro | `atmosphere-graphite` | Carbón y champán |
+| Gris | `atmosphere-gray` | Gris mineral y plata |
+| Gris oscuro | `atmosphere-charcoal` | Carbón neutro |
+| Negro | `atmosphere-black` | Negro profundo y grafito |
 
 Comparten la base de `terracotta.css`, con variables `--atmosphere-*` para el
 lienzo y las tarjetas y `--native-*` para los controles y portales. Las tarjetas
-de las cuatro variantes son oscuras; las tarjetas marfil de Terracota se conservan.
+de las siete variantes son oscuras; las tarjetas marfil de Terracota se conservan.
 La selección es global, persiste al recargar y se restaura también en acceso.
 No cambia el contenido, las portadas, las preferencias tipográficas ni el PDF.
 El hash de recursos incluye la hoja de atmósferas para renovar la caché al editarla.
@@ -47,3 +50,9 @@ selector real, tarjetas oscuras y su contraste, cuadrícula bajo las capas de
 lectura, sintaxis, H2/H3, portadas y contenido conservados, acceso y restauración a
 Papel, a 1440 y 412 px. `tools/check_terracotta_theme.cjs` verifica que las dos
 opciones previas mantienen su comportamiento.
+
+Las variantes Gris, Gris oscuro y Negro usan canales RGB iguales en las superficies,
+acentos y degradados. La prueba visual verifica esta neutralidad, el contraste de
+texto y botones, y la persistencia de Negro en la pantalla de acceso. Para probar
+solo estas opciones: `ATLAS_TEST_PALETTES=gray,charcoal,black` con el script de
+atmósferas. Las tres mantienen la cuadrícula y la sintaxis del editor.
