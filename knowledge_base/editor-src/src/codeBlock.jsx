@@ -295,7 +295,12 @@ function CodeBlockComponent({ block, editor, contentRef }) {
         contentEditable={false}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="code-block-lang" ref={menuRef}>
+        <div className="code-block-lang" ref={menuRef} onKeyDown={(e) => {
+          if (e.key !== "Escape" || !menuOpen || e.nativeEvent.isComposing) return;
+          e.preventDefault(); e.stopPropagation();
+          setMenuOpen(false);
+          menuRef.current?.querySelector('.code-block-lang-btn')?.focus({ preventScroll: true });
+        }}>
           <button
             type="button"
             className="code-block-lang-btn"

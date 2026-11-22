@@ -84,8 +84,6 @@
   #entryView :is(#inlineTitleWrap,#propContainer) { padding-inline:20px!important; }
   #entryView :is(.entry-tags-bar,.relations-panel,.backlinks-panel,.backlinks-section,.entry-children,.entry-content-actions) { margin-inline:20px; }
 }
-body.focus-mode #contentArea { padding-inline:0; }
-body.focus-mode #entryView { max-width:none; }
 /* Reading text grows independently of browser zoom and editor controls.
    Record-specific typography, when explicitly set, keeps its own size. */
 @media screen {

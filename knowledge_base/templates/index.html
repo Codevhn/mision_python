@@ -61,6 +61,7 @@
   <link rel="stylesheet" href="/static/peek-resize.css?v={{ v }}">
   <link rel="stylesheet" href="/static/assistant-dock.css?v={{ v }}">
   <link rel="stylesheet" href="/static/lesson-guide.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/focus-mode.css?v={{ v }}">
 </head>
 <body>
 
@@ -350,6 +351,11 @@
 
     <!-- MAIN CONTENT -->
     <main class="content-area" id="contentArea">
+      <div class="focus-toolbar" id="focusToolbar" hidden role="region" aria-label="Modo focus">
+        <span class="focus-label">Modo focus</span>
+        <span class="focus-title" id="focusTitle"></span>
+        <button type="button" class="focus-exit" id="focusExit" title="Salir del modo focus (Esc)">Salir de focus <kbd>Esc</kbd></button>
+      </div>
 
       <!-- BREADCRUMB + CONTEXT TOOLBAR -->
       <div class="ctx-bar hidden" id="ctxBar">
@@ -372,7 +378,7 @@
               <button class="ctx-more-item" id="cmSpelling">Abc✓ Corregir párrafo…</button>
               <button class="ctx-more-item" id="cmPasteMd">↓ Pegar Markdown</button>
               <button class="ctx-more-item" id="cmToc">¶ Tabla de contenidos</button>
-              <button class="ctx-more-item" id="cmFocus">⊙ Modo focus</button>
+              <button class="ctx-more-item" id="cmFocus" aria-pressed="false">⊙ Modo focus</button>
               <div class="ctx-menu-sep"></div>
               <button class="ctx-more-item" id="cmShare"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#link"></use></svg> Compartir…</button>
               <button class="ctx-more-item" id="cmExport">Exportar…</button>
@@ -632,7 +638,7 @@
             <button class="btn-ghost secondary-action" id="dupBtn">⎘ dup</button>
             <button class="btn-ghost secondary-action" id="moveBtn">⇄ move</button>
             <button class="btn-ghost secondary-action" id="srsBtn"><svg class="atlas-system-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/aero-icons.svg#refresh"></use></svg> repaso</button>
-            <button class="btn-ghost secondary-action" id="focusBtn">⊙ focus</button>
+            <button class="btn-ghost secondary-action" id="focusBtn" aria-pressed="false">⊙ focus</button>
             <button class="btn-ghost ai-entry-btn" id="aiBtn">✦ Asistente</button>
             <button class="btn-ghost secondary-action" id="pasteMarkdownBtn" title="Pegar Markdown">↓ md</button>
             <button class="btn-ghost secondary-action" id="fmtBtn" title="Agregar espaciado lógico entre elementos">⬚ fmt</button>
@@ -853,9 +859,6 @@
       </div>
     </div>
   </aside>
-
-  <!-- FOCUS MODE EXIT BUTTON -->
-  <button class="focus-exit hidden" id="focusExit">× exit</button>
 
   <!-- SCRATCHPAD -->
   <button class="scratchpad-trigger" id="scratchpadTrigger">+ note</button>

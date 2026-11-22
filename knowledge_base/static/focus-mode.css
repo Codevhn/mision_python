@@ -1,0 +1,31 @@
+/* Reading mode uses the existing editor and scroll container. No duplicated
+   documents, fixed-height covers or alternate save paths. */
+.focus-toolbar[hidden] {display:none!important;}
+.focus-toolbar {display:none;}
+@media screen {
+  body.focus-mode :is(#topbar,#activityBar,#sidebar,#sidebarOverlay,#ctxBar,#entryHeader,#entryCover,#entryAddCover,#navBackBar,.toc-panel,.history-panel,#scratchpadTrigger) {display:none!important;}
+  /* Keep assistant space owned by assistant-dock.css on the right/bottom. */
+  body.focus-mode .layout {margin:0!important;padding-left:0!important;padding-top:0!important;padding-right:0!important;padding-bottom:0!important;height:100dvh;transition:none;}
+  :root[data-theme-id="hyprland"] body.focus-mode .layout {padding-left:0!important;}
+  body.focus-mode #contentArea {display:block!important;min-width:0;min-height:0;margin:0!important;padding:0!important;overflow-y:auto;overflow-x:hidden;scroll-behavior:auto;overflow-anchor:none;}
+  body.focus-mode #entryView {--atlas-reading-width:880px!important;--atlas-page-gutter-start:48px;--atlas-page-gutter-end:32px;width:100%;max-width:none;}
+  body.focus-mode #entryView #entryBody .bn-editor > .bn-block-group > .bn-block-outer {max-width:var(--atlas-reading-width)!important;}
+  body.focus-mode #entryView :is(#lessonGuide,#propContainer,.entry-tags-bar,.relations-panel,.backlinks-panel,.backlinks-section,.entry-children,.entry-content-actions) {display:none!important;}
+  body.focus-mode #entryView #inlineTitleWrap {padding-top:32px!important;padding-bottom:16px;padding-inline:var(--atlas-page-gutter-start) var(--atlas-page-gutter-end)!important;}
+  body.focus-mode #entryPageIconBtn {display:none!important;}
+  body.focus-mode .focus-toolbar {box-sizing:border-box;position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:16px;min-height:60px;padding:8px 20px;background:var(--bg-surface,var(--bg));color:var(--text);border-bottom:1px solid var(--border);font-family:var(--font-ui);}
+  .focus-label {font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;}
+  .focus-title {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--text-muted);}
+  .focus-exit {flex-shrink:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated,var(--bg));color:var(--text);font:500 13px var(--font-ui);cursor:pointer;}
+  .focus-exit:hover {background:var(--bg-hover);border-color:var(--accent);}
+  .focus-exit:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+  .focus-exit kbd {font:11px var(--font-mono);color:var(--text-muted);}
+  @media(max-width:600px) {
+    body.focus-mode .focus-toolbar {gap:8px;padding-inline:12px;}
+    .focus-label {display:none;}
+    body.focus-mode #entryBody [data-content-type="paragraph"] > .bn-inline-content {text-align:start!important;}
+    .focus-exit kbd {display:none;}
+    body.focus-mode #entryView {--atlas-page-gutter-start:40px;--atlas-page-gutter-end:16px;}
+  }
+}
+@media print {.focus-toolbar {display:none!important;}}

@@ -4160,22 +4160,81 @@ function initPageFind() {
 // ============================================================
 // FEATURE 1 — FOCUS / READING MODE
 // ============================================================
+let _focusReturnTarget = null;
+let _focusReflow = 0;
+
+function _focusReadingPosition() {
+  const area = $("contentArea");
+  const inset = $("focusToolbar").hidden ? 12 : $("focusToolbar").offsetHeight + 12;
+  const top = area.getBoundingClientRect().top + inset;
+  const anchor = area.scrollTop > 10 && [...document.querySelectorAll(
+    '#inlineTitleWrap,#entryBody .bn-editor > .bn-block-group > .bn-block-outer'
+  )].find(node => {
+    const rect = node.getBoundingClientRect();
+    return rect.bottom > top && rect.top < area.getBoundingClientRect().bottom;
+  });
+  return { anchor, offset: anchor ? anchor.getBoundingClientRect().top - top : 0, scroll: area.scrollTop, id: currentEntryId };
+}
+
+function _restoreFocusReadingPosition(position) {
+  const version = ++_focusReflow;
+  window.dispatchEvent(new Event('resize'));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (version !== _focusReflow || position.id !== currentEntryId) return;
+    const area = $("contentArea"), anchor = position.anchor;
+    if (anchor?.isConnected) {
+      const inset = $("focusToolbar").hidden ? 12 : $("focusToolbar").offsetHeight + 12;
+      area.scrollTop += anchor.getBoundingClientRect().top - area.getBoundingClientRect().top - inset - position.offset;
+    } else area.scrollTop = position.scroll;
+  }));
+}
+
 function initFocusMode() {
   $("focusBtn").addEventListener("click", enterFocusMode);
-  $("focusExit").addEventListener("click", exitFocusMode);
+  $("focusExit").addEventListener("click", () => exitFocusMode());
+  window.addEventListener('atlas:entry-opened', () => {
+    ++_focusReflow;
+    $("focusTitle").textContent = $("inlineTitle").textContent || 'Lectura';
+  });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && document.body.classList.contains("focus-mode")) exitFocusMode();
+    if (e.key !== "Escape" || e.isComposing || !document.body.classList.contains("focus-mode")) return;
+    // Let the active dialog, code language picker, Peek or assistant own Escape.
+    const overlay = [...document.querySelectorAll('[role="dialog"],[role="listbox"],[role="menu"],.modal:not(.hidden),#pagePeekOverlay:not(.hidden),.cmd-overlay:not(.hidden)')]
+      .some(node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+    if (overlay || e.target.closest?.('#assistantArea')) return;
+    queueMicrotask(() => { if (!e.defaultPrevented) exitFocusMode(); });
   });
 }
 
-function enterFocusMode() {
+async function enterFocusMode() {
+  if (!currentEntryId || $("entryView").classList.contains('hidden') || document.body.classList.contains('focus-mode')) return;
+  if (_peekEntryId && !(await _closePagePeek())) return;
+  _focusReturnTarget = document.activeElement;
+  const position = _focusReadingPosition();
+  _closeCtxMenu(); closeTOC(); closeHistoryPanel(); closeSidebarMobile();
+  $("focusTitle").textContent = $("inlineTitle").textContent || 'Lectura';
   document.body.classList.add("focus-mode");
-  $("focusExit").classList.remove("hidden");
+  $("focusToolbar").hidden = false;
+  $("focusBtn").setAttribute('aria-pressed', 'true');
+  $("cmFocus").setAttribute('aria-pressed', 'true');
+  $("focusExit").focus({preventScroll:true});
+  _restoreFocusReadingPosition(position);
 }
 
-function exitFocusMode() {
+function exitFocusMode({restoreFocus=true, preservePosition=true}={}) {
+  if (!document.body.classList.contains('focus-mode')) return;
+  const position = _focusReadingPosition();
   document.body.classList.remove("focus-mode");
-  $("focusExit").classList.add("hidden");
+  $("focusToolbar").hidden = true;
+  $("focusBtn").setAttribute('aria-pressed', 'false');
+  $("cmFocus").setAttribute('aria-pressed', 'false');
+  if (preservePosition) _restoreFocusReadingPosition(position);
+  else ++_focusReflow;
+  if (restoreFocus) {
+    const target = _focusReturnTarget?.isConnected && _focusReturnTarget.getClientRects().length ? _focusReturnTarget : $("ctxMore");
+    target?.focus({preventScroll:true});
+  }
+  _focusReturnTarget = null;
 }
 
 // ============================================================
@@ -6430,6 +6489,7 @@ function setSidebarVisible(visible) {
   window._setMobileDrawerMode = _setMobileDrawerMode;
 
   function switchSpace(space, targetMapId = null, { openingLesson = false } = {}) {
+    exitFocusMode({restoreFocus:false, preservePosition:false});
     if (space !== 'courses') _courseViewRequest++;
     _courseThemeSpace(space);
     if (space === 'assistant') space = 'home'; // migrate the previous dedicated view

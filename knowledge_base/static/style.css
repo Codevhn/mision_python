@@ -2419,35 +2419,7 @@ button.link-btn:hover { opacity: 0.75; }
   .review-controls { gap: 8px; }
 }
 
-/* ============================================================
-   FEATURE 1 — FOCUS / READING MODE
-   ============================================================ */
-body.focus-mode #topbar,
-body.focus-mode #sidebar,
-body.focus-mode #entryHeader,
-body.focus-mode .toc-panel { display: none !important; }
-
-body.focus-mode .layout { margin-top: 0; height: 100dvh; }
-body.focus-mode .content-area { display: flex; justify-content: center; padding: 60px 20px 80px; }
-body.focus-mode #entryView { max-width: 800px; width: 100%; }
-body.focus-mode #entryBody { font-size: 1.1rem; line-height: 2; }
-
-.focus-exit {
-  position: fixed;
-  top: 14px;
-  right: 20px;
-  z-index: 500;
-  background: var(--panel-bg-2, var(--layer-3));
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  font-family: var(--font-ui);
-  font-size: 0.76rem;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.focus-exit:hover { color: var(--danger); border-color: var(--danger); }
-
+/* Focus / reading mode is maintained in focus-mode.css. */
 /* ============================================================
    FEATURE 2 — STARRED / FAVORITES
    ============================================================ */
@@ -7737,7 +7709,7 @@ body.home-ambient .home-hero { overflow: visible; }
 body { height: 100dvh; }
 .layout { height: calc(100dvh - var(--topbar-h)); }
 .sidebar { height: calc(100dvh - var(--topbar-h)); }
-body.focus-mode .layout { height: 100dvh; }
+
 
 /* Topbar: pad for notch/status bar on top (iPhone landscape left) */
 .topbar {
