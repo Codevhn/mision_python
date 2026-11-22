@@ -21,12 +21,14 @@ const body='Lectura antes del código.\n\n```python\n'+firstCode+'\n```\n\nEl re
    const surface=mode==='peek'?'#pagePeekEditor':'#entryBody';
    const blocks=page.locator(surface+' .code-block-native');await blocks.nth(1).waitFor();const first=blocks.nth(0),second=blocks.nth(1);
    let reference;
-   for(const theme of ['notion-native','paper','aero-amethyst']){
+   for(const theme of ['notion-native','paper','aero-amethyst','terracotta-light','terracotta-dark']){
     await page.evaluate(id=>setAtlasTheme(id,true),theme);
     await page.waitForFunction(selector=>document.querySelector(selector+' .code-block-pre span[style*="color"]'),surface);
     const syntax=await first.locator('.code-block-pre').evaluate(node=>({background:getComputedStyle(node).backgroundColor,colors:[...new Set([...node.querySelectorAll('span[style*="color"]')].map(span=>getComputedStyle(span).color))].sort()}));
-    assert.equal(syntax.background,'rgb(30, 35, 43)');assert.ok(syntax.colors.length>=3,JSON.stringify(syntax));
-    if(reference)assert.deepEqual(syntax,reference,'Themes preserve the same syntax palette');else reference=syntax;
+    const light=['paper','terracotta-light'].includes(theme);
+    assert.equal(syntax.background,light?'rgb(246, 248, 250)':'rgb(30, 35, 43)');assert.ok(syntax.colors.length>=3,JSON.stringify(syntax));
+    if(!light){if(reference)assert.deepEqual(syntax,reference,'Dark themes preserve their existing syntax palette');else reference=syntax;}
+    else assert.notDeepEqual(syntax.colors,reference.colors,'Light syntax uses its own token palette');
     await first.locator('.code-block-lang-btn').click();await first.getByRole('listbox').waitFor();
     const lower=await second.locator('.code-block-header').boundingBox(),menu=await first.getByRole('listbox').boundingBox();
     const y=Math.max(lower.y,menu.y)+Math.min(lower.height,menu.height)/2,x=menu.x+30;

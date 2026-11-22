@@ -27,21 +27,29 @@
 .bn-container .bn-side-menu { height:auto!important; min-height:0!important; align-items:center; }
 
 .bn-block-content[data-content-type="codeBlock"] {
-  background-color: #1e232b !important;
+  background-color: var(--atlas-code-background) !important;
   /* The native component owns its frame; BlockNote's default vertical
      padding otherwise exposes a dark strip above and below the header. */
   padding: 0 !important;
 }
 
-/* Code keeps a neutral graphite canvas in every application theme.
-   Shiki uses github-dark; preserve those token colors even in light themes.
+/* Dark themes keep the existing neutral graphite canvas and github-dark
+   colors. Light themes opt into their matching palette below.
    The surrounding header and controls still follow the application palette. */
 .bn-block-content[data-content-type="codeBlock"] .code-block-pre {
-  background: #1e232b;
-  color: #e1e4e8;
-  caret-color: #e1e4e8;
+  background: var(--atlas-code-background);
+  color: var(--atlas-code-foreground);
+  caret-color: var(--atlas-code-foreground);
   border-radius: 0 0 7px 7px;
-  color-scheme: dark;
+  color-scheme:var(--atlas-code-scheme);
+}
+
+/* Both syntax palettes are tokenized once. Changing the Atlas theme only
+   selects CSS variables; it never recreates the editor or edits the document. */
+:root {--atlas-code-background:#1e232b;--atlas-code-foreground:#e1e4e8;--atlas-code-scheme:dark;}
+:root[data-theme="light"] {--atlas-code-background:#f6f8fa;--atlas-code-foreground:#24292e;--atlas-code-scheme:light;}
+[data-theme="light"] .code-block-pre .shiki {
+  color:var(--shiki-light, #24292e)!important;
 }
 
 /* ── Native codeBlock chrome (see codeBlock.jsx) ────────────────────────
@@ -58,7 +66,7 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background: #1e232b;
+  background: var(--atlas-code-background);
   border: 1px solid var(--border-color, var(--border, rgba(255, 255, 255, 0.12)));
   border-radius: 8px;
 }

@@ -100,7 +100,7 @@ function createHighlighter() {
   return createHighlighterCore({
     themes: [
       import("shiki/themes/github-dark.mjs"),
-      import("shiki/themes/github-light.mjs"),
+      import("shiki/themes/github-light-high-contrast.mjs"),
     ],
     langs: [
       import("shiki/langs/python.mjs"),
@@ -137,7 +137,7 @@ function createHighlighter() {
   });
 }
 
-const shikiParserSymbol = Symbol.for("blocknote.shikiParser");
+const shikiParserSymbol = Symbol.for("atlas.shikiDualThemeParser");
 const shikiHighlighterPromiseSymbol = Symbol.for(
   "blocknote.shikiHighlighterPromise",
 );
@@ -173,7 +173,10 @@ function lazyShikiPlugin() {
 
     if (!parser) {
       parser =
-        globalThisForShiki[shikiParserSymbol] || createParser(highlighter);
+        globalThisForShiki[shikiParserSymbol] || createParser(highlighter, {
+          themes: { dark: 'github-dark', light: 'github-light-high-contrast' },
+          defaultColor: 'dark',
+        });
       globalThisForShiki[shikiParserSymbol] = parser;
     }
 

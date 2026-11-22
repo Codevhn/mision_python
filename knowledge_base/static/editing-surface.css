@@ -120,3 +120,12 @@ body.focus-mode #entryView { max-width:none; }
   #courseNavBar .cnb-label {font-size:13px;}
 }
 @media print {#courseNavBar {display:none!important;}}
+
+/* Decorative heading hierarchy belongs to document content, not UI headings.
+   Pseudo-elements do not enter selections, assistant prompts or saved text. */
+@media screen {
+  :is(#entryBody,#pagePeekEditor) .bn-editor :is(h2,h3) {position:relative;padding-inline-start:16px!important;}
+  :is(#entryBody,#pagePeekEditor) .bn-editor :is(h2,h3)::before {content:"";position:absolute;inset-inline-start:0;pointer-events:none;background:color-mix(in srgb,var(--accent) 65%,transparent);}
+  :is(#entryBody,#pagePeekEditor) .bn-editor h2::before {top:.17em;width:3px;height:1em;border-radius:2px;}
+  :is(#entryBody,#pagePeekEditor) .bn-editor h3::before {top:.5em;width:5px;height:5px;border-radius:1px;background:color-mix(in srgb,var(--accent) 48%,transparent);}
+}

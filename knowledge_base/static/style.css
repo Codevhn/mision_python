@@ -1715,14 +1715,14 @@ button.link-btn:hover { opacity: 0.75; }
   min-width: 0;
   flex: 1 1 auto;
 }
-/* Keep the editable code canvas and its content on the same surface. The
-   editor's generic light-theme code rules must not paint a white inner box.
+/* Keep the editable code canvas and its content on the same theme surface.
+   Token colors and the shared light/dark canvas change together.
    Long lines scroll here, rather than widening the document on touch screens. */
 #entryBody .code-block-pre,
 #entryBody .code-block-pre .code-block-code,
 #entryBody .code-block-pre .bn-inline-content {
-  background: #1e232b !important;
-  color: #e1e4e8;
+  background: var(--atlas-code-background,#1e232b) !important;
+  color: var(--atlas-code-foreground,#e1e4e8);
   border: 0;
   border-radius: 0;
   text-align: start;

@@ -7,7 +7,7 @@ Disponible en **Apariencia → Lectura → Papel**, con identificador persistent
 - Hoja marfil mate `#f6f4ec`, navegación ligeramente más apagada, menús `#faf8f1`.
 - Tinta carbón `#1d1e1b`, texto secundario `#5d6056`, enlaces en verde tinta sobrio.
 - Prosa Lora local, controles y títulos Inter, código monoespaciado. El tamaño de lectura predeterminado es 20 px, con interlineado 1.8, igual en Peek y página normal. Los ajustes explícitos Serif/Mono y texto pequeño del registro conservan prioridad.
-- Los bloques de código conservan el fondo grafito y el resaltado de sintaxis compartidos por los demás temas. Papel se aplica al texto de lectura y a los controles; no cambia el lenguaje, el código ni el mecanismo de ejecución.
+- Los bloques de código usan el fondo claro y la sintaxis GitHub Light compartidos por los temas claros. Los temas oscuros conservan su fondo grafito y GitHub Dark. Papel se aplica al texto de lectura y a los controles; no cambia el lenguaje, el código ni el mecanismo de ejecución.
 - Separadores suaves, controles planos y vista previa sin degradado ni textura artificial. No aplica filtros sobre imágenes ni modifica el PDF original del lector.
 
 ## Integración

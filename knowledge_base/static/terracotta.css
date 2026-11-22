@@ -1,0 +1,54 @@
+/* Terracota extends the existing flat bridge. Only this palette receives the
+   warm grid desktop; uploaded covers and document content remain untouched. */
+@media screen {
+  :root[data-style="notion"][data-palette="terracotta"] {
+    --native-canvas:#2c2622;--native-sidebar:#28231f;--native-panel:#342c27;
+    --native-menu:#3c302a;--native-field:#ffffff08;--native-hover:#ffffff0c;
+    --native-selected:#bf654d38;--native-ink:#faf3e9;--native-muted:#c6b5a6;
+    --native-faint:#c0ac9c;--native-line:#94766666;--native-line-soft:#94766633;
+    --native-link:#efb39b;--native-primary:#b44831;--native-primary-hover:#9b3825;
+    --native-danger:#ffb29e;--native-font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --native-control-radius:7px;--native-menu-radius:12px;
+    --native-menu-shadow:0 8px 28px #160e0833;--native-dialog-shadow:0 16px 60px #160e0855;
+    --terracotta-grid:#fff2df0b;
+    --terracotta-glow:#a2553ca6;
+    --terracotta-start:#392c26;--terracotta-end:#272724;
+    --terracotta-card:#fffaf3;--terracotta-card-ink:#302722;--terracotta-card-muted:#75675c;
+  }
+  :root[data-style="notion"][data-palette="terracotta"][data-theme="light"] {
+    --native-canvas:#fcf7ef;--native-sidebar:#f3eade;--native-panel:#fffaf4;
+    --native-menu:#fffcf7;--native-field:#a74a2d08;--native-hover:#9b3d2510;
+    --native-selected:#b4483120;--native-ink:#302722;--native-muted:#756256;
+    --native-faint:#7a675b;--native-line:#c5a18d80;--native-line-soft:#c5a18d40;
+    --native-link:#9b3825;--native-danger:#a02e20;
+    --terracotta-grid:#85452f10;--terracotta-glow:#d59576a6;
+    --terracotta-start:#f5eadc;--terracotta-end:#fff9ef;
+  }
+  :root[data-palette="terracotta"] body,
+  :root[data-palette="terracotta"] body.home-ambient {
+    background:linear-gradient(var(--terracotta-grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--terracotta-grid) 1px,transparent 1px),
+      radial-gradient(ellipse at 95% 0%,var(--terracotta-glow),transparent 75%),
+      linear-gradient(150deg,var(--terracotta-start),var(--terracotta-end))!important;
+    background-size:40px 40px,40px 40px,100% 100%,100% 100%!important;
+    background-attachment:fixed!important;
+  }
+  :root[data-palette="terracotta"] :is(.layout,.content-area,#welcome) {background:transparent!important;}
+  /* Cream cards on the copper desktop reproduce the reference's contrast. */
+  :root[data-palette="terracotta"] #welcome :is(.home-card,.home-stat,.home-study-featured,.home-study-compact,.home-resume-banner) {
+    --text:var(--terracotta-card-ink);--text-muted:var(--terracotta-card-muted);--text-faint:#75675c;
+    --bg-surface:var(--terracotta-card);--bg-elevated:#f2e8dd;--bg-hover:#f5ece2;
+    --border:#dfd0c3;--accent:#a53726;--accent-light:#b448311a;
+    border-radius:16px!important;box-shadow:0 8px 24px #24160e12!important;
+  }
+  :root[data-palette="terracotta"] #welcome :is(.home-card-title,.home-stat-num,.hsf-title,.hsc-title) {color:var(--terracotta-card-ink)!important;}
+  :root[data-palette="terracotta"] #welcome :is(.hsf-course,.hsf-cta,.hcm-type,.home-stat-icon) {color:#9b3825!important;}
+  :root[data-palette="terracotta"] #welcome .hcm-time {color:var(--terracotta-card-muted)!important;}
+  :root[data-palette="terracotta"] #welcome .home-stats-strip {gap:10px;}
+  :root[data-palette="terracotta"] .home-greeting {letter-spacing:-.035em;}
+  :root[data-palette="terracotta"] #entryView {border-top:1px solid var(--border)!important;}
+  :root[data-palette="terracotta"] .login-panel {background:var(--bg-surface);border-color:var(--border);}
+}
+.theme-swatch-terracotta-dark::after,.theme-swatch-terracotta-light::after {
+  content:'';position:absolute;inset:0;background:linear-gradient(#fff2 1px,transparent 1px),linear-gradient(90deg,#fff2 1px,transparent 1px);background-size:12px 12px;
+}
