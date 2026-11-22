@@ -2,7 +2,7 @@
 
 **Apariencia → Atmósferas** incluye **Terracota · Oscuro** (`terracotta-dark`) y **Terracota · Claro** (`terracotta-light`). Son opciones del catálogo compartido; no reemplazan ni activan automáticamente la preferencia actual.
 
-El escritorio combina una cuadrícula de 40 px y un degradado de cobre a carbón (oscuro) o arena (claro). Las tarjetas de Inicio son marfil con texto oscuro. Las páginas y el Peek mantienen una superficie de lectura sólida, menús y controles del mismo tema. Las portadas existentes conservan sus imágenes. El catálogo y las hojas se cargan también en acceso y finanzas mediante sus mecanismos actuales.
+El escritorio combina una cuadrícula de 40 px y un degradado de cobre a carbón (oscuro) o arena (claro). Las tarjetas de Inicio son marfil con texto oscuro. La cuadrícula y el degradado continúan bajo el contenido de páginas, lecciones y Peek; sus capas internas son transparentes para no ocultarlos. La versión clara usa arena y cobre visibles, con menús y controles del mismo tema. Las portadas existentes conservan sus imágenes. El catálogo y las hojas se cargan también en acceso y finanzas mediante sus mecanismos actuales.
 
 ## Código
 
@@ -17,7 +17,7 @@ En el contenido de página y Peek, H2 tiene una barra vertical de 3 px y H3 un p
 ## Verificación
 
 - `npm test` y `npm run build` en `knowledge_base/editor-src`.
-- `tools/check_terracotta_theme.cjs`: selector real, persistencia, ambas paletas, degradado/cuadrícula, tarjetas, lectura, H2/H3 y sintaxis en página/Peek, escritorio/móvil y acceso. Comprueba contraste de los tokens claros y que el contenido no cambia.
+- `tools/check_terracotta_theme.cjs`: selector real, persistencia, ambas paletas, degradado/cuadrícula, tarjetas, lectura, H2/H3 y sintaxis en páginas, lecciones reales y Peek, escritorio/móvil y acceso. Comprueba contraste de los tokens claros y que el contenido no cambia.
 - `tools/check_code_block_surfaces.cjs`: cambios de lenguaje, búsqueda, copia, ejecución simulada, superposición del menú y alternancia claro/oscuro.
 - `tools/check_paper_theme.cjs`: lectura de Papel y código claro, persistencia y restauración de otros temas.
 

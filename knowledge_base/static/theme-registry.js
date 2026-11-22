@@ -78,7 +78,7 @@ THEME_CATALOG.push(['paper','Papel','Marfil mate · Tinta profunda · Lectura se
 // Warm grid-and-gradient desktop, with independent light/dark preferences.
 THEME_GROUPS.atmosphere='Atmósferas';
 ATLAS_THEMES['terracotta-dark']={scheme:'dark',style:'notion',variant:'night',palette:'terracotta',preview:'linear-gradient(145deg,#302824,#6b3b2e 65%,#272724)'};
-ATLAS_THEMES['terracotta-light']={scheme:'light',style:'notion',variant:'light',palette:'terracotta',preview:'linear-gradient(145deg,#f7eee2,#e5b29a 65%,#fff9ef)'};
+ATLAS_THEMES['terracotta-light']={scheme:'light',style:'notion',variant:'light',palette:'terracotta',preview:'linear-gradient(145deg,#edd1ad,#c98b63 65%,#f1d9bc)'};
 THEME_CATALOG.push(
   ['terracotta-dark','Terracota · Oscuro','Degradado cobre y carbón · Cuadrícula tenue · Tarjetas marfil','atmosphere','terracotta-dark'],
   ['terracotta-light','Terracota · Claro','Arena y cobre suave · Lectura cálida · Código claro','atmosphere','terracotta-light']

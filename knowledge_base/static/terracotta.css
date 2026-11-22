@@ -10,22 +10,27 @@
     --native-danger:#ffb29e;--native-font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
     --native-control-radius:7px;--native-menu-radius:12px;
     --native-menu-shadow:0 8px 28px #160e0833;--native-dialog-shadow:0 16px 60px #160e0855;
-    --terracotta-grid:#fff2df0b;
+    --terracotta-grid:#fff2df12;
     --terracotta-glow:#a2553ca6;
     --terracotta-start:#392c26;--terracotta-end:#272724;
     --terracotta-card:#fffaf3;--terracotta-card-ink:#302722;--terracotta-card-muted:#75675c;
   }
   :root[data-style="notion"][data-palette="terracotta"][data-theme="light"] {
-    --native-canvas:#fcf7ef;--native-sidebar:#f3eade;--native-panel:#fffaf4;
-    --native-menu:#fffcf7;--native-field:#a74a2d08;--native-hover:#9b3d2510;
-    --native-selected:#b4483120;--native-ink:#302722;--native-muted:#756256;
-    --native-faint:#7a675b;--native-line:#c5a18d80;--native-line-soft:#c5a18d40;
+    --native-canvas:#ecd5bd;--native-sidebar:#e5c9af;--native-panel:#f4e2cf;
+    --native-menu:#fff0df;--native-field:#a74a2d12;--native-hover:#9b3d2516;
+    --native-selected:#b4483128;--native-ink:#302722;--native-muted:#624b3e;
+    --native-faint:#6f5343;--native-line:#a67c6190;--native-line-soft:#a67c6148;
     --native-link:#9b3825;--native-danger:#a02e20;
-    --terracotta-grid:#85452f10;--terracotta-glow:#d59576a6;
-    --terracotta-start:#f5eadc;--terracotta-end:#fff9ef;
+    --terracotta-grid:#82442d1f;--terracotta-glow:#bd704899;
+    --terracotta-start:#edd1ad;--terracotta-end:#f1d9bc;
   }
-  :root[data-palette="terracotta"] body,
-  :root[data-palette="terracotta"] body.home-ambient {
+  /* Paint the reading canvases too: the flat bridge otherwise hides the
+     desktop behind opaque entry/Peek panels. Fixed layers align the grid. */
+  :root[data-style="notion"][data-palette="terracotta"] body,
+  :root[data-style="notion"][data-palette="terracotta"] body.home-ambient,
+  :root[data-style="notion"][data-palette="terracotta"] #entryView,
+  :root[data-style="notion"][data-palette="terracotta"] #pagePeekOverlay .page-peek-modal,
+  :root[data-style="notion"][data-palette="terracotta"] #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal {
     background:linear-gradient(var(--terracotta-grid) 1px,transparent 1px),
       linear-gradient(90deg,var(--terracotta-grid) 1px,transparent 1px),
       radial-gradient(ellipse at 95% 0%,var(--terracotta-glow),transparent 75%),
@@ -34,6 +39,8 @@
     background-attachment:fixed!important;
   }
   :root[data-palette="terracotta"] :is(.layout,.content-area,#welcome) {background:transparent!important;}
+  :root[data-style="notion"][data-palette="terracotta"] :is(.entry-main,.entry-body,#inlineTitleWrap,#propContainer),
+  :root[data-style="notion"][data-palette="terracotta"] :is(#entryBody,#pagePeekEditor) :is(.bn-container,.bn-editor) {background:transparent!important;}
   /* Cream cards on the copper desktop reproduce the reference's contrast. */
   :root[data-palette="terracotta"] #welcome :is(.home-card,.home-stat,.home-study-featured,.home-study-compact,.home-resume-banner) {
     --text:var(--terracotta-card-ink);--text-muted:var(--terracotta-card-muted);--text-faint:#75675c;
