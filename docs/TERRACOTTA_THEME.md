@@ -22,3 +22,28 @@ En el contenido de página y Peek, H2 tiene una barra vertical de 3 px y H3 un p
 - `tools/check_paper_theme.cjs`: lectura de Papel y código claro, persistencia y restauración de otros temas.
 
 Los scripts de navegador usan el servidor local desechable; no modifican contenido personal ni invocan proveedores externos.
+
+## Más atmósferas oscuras
+
+El mismo grupo incluye cuatro opciones adicionales:
+
+| Tema | Identificador | Paleta |
+| --- | --- | --- |
+| Océano · Oscuro | `atmosphere-ocean` | Azul profundo y turquesa |
+| Bosque · Oscuro | `atmosphere-forest` | Pino y jade |
+| Ciruela · Oscuro | `atmosphere-plum` | Berenjena y malva |
+| Grafito · Oscuro | `atmosphere-graphite` | Carbón y champán |
+
+Comparten la base de `terracotta.css`, con variables `--atmosphere-*` para el
+lienzo y las tarjetas y `--native-*` para los controles y portales. Las tarjetas
+de las cuatro variantes son oscuras; las tarjetas marfil de Terracota se conservan.
+La selección es global, persiste al recargar y se restaura también en acceso.
+No cambia el contenido, las portadas, las preferencias tipográficas ni el PDF.
+El hash de recursos incluye la hoja de atmósferas para renovar la caché al editarla.
+
+`node knowledge_base/editor-src/test/themeRegistry.test.js` comprueba registro,
+persistencia y reversibilidad. `tools/check_dark_atmospheres.cjs` comprueba el
+selector real, tarjetas oscuras y su contraste, cuadrícula bajo las capas de
+lectura, sintaxis, H2/H3, portadas y contenido conservados, acceso y restauración a
+Papel, a 1440 y 412 px. `tools/check_terracotta_theme.cjs` verifica que las dos
+opciones previas mantienen su comportamiento.

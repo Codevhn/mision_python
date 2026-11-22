@@ -83,3 +83,13 @@ THEME_CATALOG.push(
   ['terracotta-dark','Terracota · Oscuro','Degradado cobre y carbón · Cuadrícula tenue · Tarjetas marfil','atmosphere','terracotta-dark'],
   ['terracotta-light','Terracota · Claro','Arena y cobre suave · Lectura cálida · Código claro','atmosphere','terracotta-light']
 );
+
+// Dark atmospheres use the same flat component bridge and reading canvas.
+ATLAS_THEMES['atmosphere-ocean']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-ocean',preview:'linear-gradient(145deg,#173647,#28627b 65%,#111b28)'};
+THEME_CATALOG.push(['atmosphere-ocean','Océano · Oscuro','Azul profundo y bruma turquesa · Cuadrícula sutil','atmosphere','atmosphere-ocean']);
+ATLAS_THEMES['atmosphere-forest']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-forest',preview:'linear-gradient(145deg,#244634,#467854 65%,#13231f)'};
+THEME_CATALOG.push(['atmosphere-forest','Bosque · Oscuro','Verde pino y reflejos de jade · Cuadrícula sutil','atmosphere','atmosphere-forest']);
+ATLAS_THEMES['atmosphere-plum']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-plum',preview:'linear-gradient(145deg,#492d48,#83456b 65%,#211c2b)'};
+THEME_CATALOG.push(['atmosphere-plum','Ciruela · Oscuro','Berenjena y resplandor malva · Cuadrícula sutil','atmosphere','atmosphere-plum']);
+ATLAS_THEMES['atmosphere-graphite']={scheme:'dark',style:'notion',variant:'night',palette:'atmosphere-graphite',preview:'linear-gradient(145deg,#373a37,#77715a 65%,#202326)'};
+THEME_CATALOG.push(['atmosphere-graphite','Grafito · Oscuro','Carbón suave y luz de champán · Cuadrícula sutil','atmosphere','atmosphere-graphite']);

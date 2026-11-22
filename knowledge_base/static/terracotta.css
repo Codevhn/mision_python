@@ -1,7 +1,7 @@
-/* Terracota extends the existing flat bridge. Only this palette receives the
-   warm grid desktop; uploaded covers and document content remain untouched. */
+/* Atmospheres share a grid-and-gradient reading canvas and the flat component
+   bridge. Uploaded covers and document content remain independent. */
 @media screen {
-  :root[data-style="notion"][data-palette="terracotta"] {
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) {
     --native-canvas:#2c2622;--native-sidebar:#28231f;--native-panel:#342c27;
     --native-menu:#3c302a;--native-field:#ffffff08;--native-hover:#ffffff0c;
     --native-selected:#bf654d38;--native-ink:#faf3e9;--native-muted:#c6b5a6;
@@ -10,52 +10,107 @@
     --native-danger:#ffb29e;--native-font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
     --native-control-radius:7px;--native-menu-radius:12px;
     --native-menu-shadow:0 8px 28px #160e0833;--native-dialog-shadow:0 16px 60px #160e0855;
-    --terracotta-grid:#fff2df12;
-    --terracotta-glow:#a2553ca6;
-    --terracotta-start:#392c26;--terracotta-end:#272724;
-    --terracotta-card:#fffaf3;--terracotta-card-ink:#302722;--terracotta-card-muted:#75675c;
+    --atmosphere-grid:#fff2df12;
+    --atmosphere-glow:#a2553ca6;
+    --atmosphere-start:#392c26;--atmosphere-end:#272724;
+    --atmosphere-card-elevated:#f2e8dd;--atmosphere-card-hover:#f5ece2;
+    --atmosphere-card-border:#dfd0c3;--atmosphere-card-accent:#9b3825;--atmosphere-card-selected:#b448311a;
+    --atmosphere-card:#fffaf3;--atmosphere-card-ink:#302722;--atmosphere-card-muted:#75675c;
   }
-  :root[data-style="notion"][data-palette="terracotta"][data-theme="light"] {
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"])[data-theme="light"] {
     --native-canvas:#ecd5bd;--native-sidebar:#e5c9af;--native-panel:#f4e2cf;
     --native-menu:#fff0df;--native-field:#a74a2d12;--native-hover:#9b3d2516;
     --native-selected:#b4483128;--native-ink:#302722;--native-muted:#624b3e;
     --native-faint:#6f5343;--native-line:#a67c6190;--native-line-soft:#a67c6148;
     --native-link:#9b3825;--native-danger:#a02e20;
-    --terracotta-grid:#82442d1f;--terracotta-glow:#bd704899;
-    --terracotta-start:#edd1ad;--terracotta-end:#f1d9bc;
+    --atmosphere-grid:#82442d1f;--atmosphere-glow:#bd704899;
+    --atmosphere-start:#edd1ad;--atmosphere-end:#f1d9bc;
+  }
+  /* Each new dark palette owns its controls, typography colors and cards. */
+  :root[data-style="notion"][data-palette="atmosphere-ocean"] {
+    --native-canvas:#14232e;--native-sidebar:#101c26;--native-panel:#1b2d3b;
+    --native-menu:#233847;--native-selected:#65bde52b;
+    --native-ink:#edf4f8;--native-muted:#b4c9d7;--native-faint:#9eb9ca;
+    --native-line:#7295ae66;--native-line-soft:#7295ae33;--native-link:#94d7ef;
+    --native-primary:#266681;--native-primary-hover:#1d526b;
+    --native-menu-shadow:0 8px 28px #0004;--native-dialog-shadow:0 16px 60px #0006;
+    --atmosphere-grid:#b7e4f914;--atmosphere-glow:#28627b99;
+    --atmosphere-start:#173647;--atmosphere-end:#111b28;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
+  :root[data-style="notion"][data-palette="atmosphere-forest"] {
+    --native-canvas:#172822;--native-sidebar:#13211c;--native-panel:#20332b;
+    --native-menu:#294236;--native-selected:#8bcf9a2b;
+    --native-ink:#eff5e9;--native-muted:#bbd0bd;--native-faint:#a8c3ad;
+    --native-line:#839e8166;--native-line-soft:#839e8133;--native-link:#b3dfb2;
+    --native-primary:#326c50;--native-primary-hover:#25533d;
+    --native-menu-shadow:0 8px 28px #0004;--native-dialog-shadow:0 16px 60px #0006;
+    --atmosphere-grid:#d7efc914;--atmosphere-glow:#46785488;
+    --atmosphere-start:#244634;--atmosphere-end:#13231f;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
+  :root[data-style="notion"][data-palette="atmosphere-plum"] {
+    --native-canvas:#281e2c;--native-sidebar:#211925;--native-panel:#332638;
+    --native-menu:#413049;--native-selected:#d79dce2b;
+    --native-ink:#f6edf5;--native-muted:#d2bbd3;--native-faint:#c1a8c5;
+    --native-line:#a584ad66;--native-line-soft:#a584ad33;--native-link:#e6b7e3;
+    --native-primary:#7c466f;--native-primary-hover:#623657;
+    --native-menu-shadow:0 8px 28px #0004;--native-dialog-shadow:0 16px 60px #0006;
+    --atmosphere-grid:#f0d4ef14;--atmosphere-glow:#83456b88;
+    --atmosphere-start:#492d48;--atmosphere-end:#211c2b;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
+  }
+  :root[data-style="notion"][data-palette="atmosphere-graphite"] {
+    --native-canvas:#242526;--native-sidebar:#1e2021;--native-panel:#2e3031;
+    --native-menu:#383b3c;--native-selected:#dcc18a29;
+    --native-ink:#f4f0e7;--native-muted:#cec8bc;--native-faint:#b9b4a9;
+    --native-line:#9a948466;--native-line-soft:#9a948433;--native-link:#e7cf9c;
+    --native-primary:#705d38;--native-primary-hover:#58492c;
+    --native-menu-shadow:0 8px 28px #0004;--native-dialog-shadow:0 16px 60px #0006;
+    --atmosphere-grid:#f3e4c714;--atmosphere-glow:#77715a77;
+    --atmosphere-start:#373a37;--atmosphere-end:#202326;
+    --atmosphere-card:var(--native-panel);--atmosphere-card-ink:var(--native-ink);--atmosphere-card-muted:var(--native-muted);
+    --atmosphere-card-elevated:var(--native-menu);--atmosphere-card-hover:var(--native-hover);
+    --atmosphere-card-border:var(--native-line);--atmosphere-card-accent:var(--native-link);--atmosphere-card-selected:var(--native-selected);
   }
   /* Paint the reading canvases too: the flat bridge otherwise hides the
      desktop behind opaque entry/Peek panels. Fixed layers align the grid. */
-  :root[data-style="notion"][data-palette="terracotta"] body,
-  :root[data-style="notion"][data-palette="terracotta"] body.home-ambient,
-  :root[data-style="notion"][data-palette="terracotta"] #entryView,
-  :root[data-style="notion"][data-palette="terracotta"] #pagePeekOverlay .page-peek-modal,
-  :root[data-style="notion"][data-palette="terracotta"] #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal {
-    background:linear-gradient(var(--terracotta-grid) 1px,transparent 1px),
-      linear-gradient(90deg,var(--terracotta-grid) 1px,transparent 1px),
-      radial-gradient(ellipse at 95% 0%,var(--terracotta-glow),transparent 75%),
-      linear-gradient(150deg,var(--terracotta-start),var(--terracotta-end))!important;
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) body,
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) body.home-ambient,
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #entryView,
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #pagePeekOverlay .page-peek-modal,
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #pagePeekOverlay.db-preview-peek.adb-record-page .page-peek-modal {
+    background:linear-gradient(var(--atmosphere-grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--atmosphere-grid) 1px,transparent 1px),
+      radial-gradient(ellipse at 95% 0%,var(--atmosphere-glow),transparent 75%),
+      linear-gradient(150deg,var(--atmosphere-start),var(--atmosphere-end))!important;
     background-size:40px 40px,40px 40px,100% 100%,100% 100%!important;
     background-attachment:fixed!important;
   }
-  :root[data-palette="terracotta"] :is(.layout,.content-area,#welcome) {background:transparent!important;}
-  :root[data-style="notion"][data-palette="terracotta"] :is(.entry-main,.entry-body,#inlineTitleWrap,#propContainer),
-  :root[data-style="notion"][data-palette="terracotta"] :is(#entryBody,#pagePeekEditor) :is(.bn-container,.bn-editor) {background:transparent!important;}
-  /* Cream cards on the copper desktop reproduce the reference's contrast. */
-  :root[data-palette="terracotta"] #welcome :is(.home-card,.home-stat,.home-study-featured,.home-study-compact,.home-resume-banner) {
-    --text:var(--terracotta-card-ink);--text-muted:var(--terracotta-card-muted);--text-faint:#75675c;
-    --bg-surface:var(--terracotta-card);--bg-elevated:#f2e8dd;--bg-hover:#f5ece2;
-    --border:#dfd0c3;--accent:#a53726;--accent-light:#b448311a;
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) :is(.layout,.content-area,#welcome) {background:transparent!important;}
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) :is(.entry-main,.entry-body,#inlineTitleWrap,#propContainer),
+  :root[data-style="notion"]:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) :is(#entryBody,#pagePeekEditor) :is(.bn-container,.bn-editor) {background:transparent!important;}
+  /* Terracotta keeps cream cards; the other atmospheres use dark cards. */
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #welcome :is(.home-card,.home-stat,.home-study-featured,.home-study-compact,.home-resume-banner) {
+    --text:var(--atmosphere-card-ink);--text-muted:var(--atmosphere-card-muted);--text-faint:var(--atmosphere-card-muted);
+    --bg-surface:var(--atmosphere-card);--bg-elevated:var(--atmosphere-card-elevated);--bg-hover:var(--atmosphere-card-hover);
+    --border:var(--atmosphere-card-border);--accent:var(--atmosphere-card-accent);--accent-light:var(--atmosphere-card-selected);
     border-radius:16px!important;box-shadow:0 8px 24px #24160e12!important;
   }
-  :root[data-palette="terracotta"] #welcome :is(.home-card-title,.home-stat-num,.hsf-title,.hsc-title) {color:var(--terracotta-card-ink)!important;}
-  :root[data-palette="terracotta"] #welcome :is(.hsf-course,.hsf-cta,.hcm-type,.home-stat-icon) {color:#9b3825!important;}
-  :root[data-palette="terracotta"] #welcome .hcm-time {color:var(--terracotta-card-muted)!important;}
-  :root[data-palette="terracotta"] #welcome .home-stats-strip {gap:10px;}
-  :root[data-palette="terracotta"] .home-greeting {letter-spacing:-.035em;}
-  :root[data-palette="terracotta"] #entryView {border-top:1px solid var(--border)!important;}
-  :root[data-palette="terracotta"] .login-panel {background:var(--bg-surface);border-color:var(--border);}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #welcome :is(.home-card-title,.home-stat-num,.hsf-title,.hsc-title) {color:var(--atmosphere-card-ink)!important;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #welcome :is(.hsf-course,.hsf-cta,.hcm-type,.home-stat-icon) {color:var(--atmosphere-card-accent)!important;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #welcome .hcm-time {color:var(--atmosphere-card-muted)!important;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #welcome .home-stats-strip {gap:10px;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) .home-greeting {letter-spacing:-.035em;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) #entryView {border-top:1px solid var(--border)!important;}
+  :root:is([data-palette="terracotta"],[data-palette^="atmosphere-"]) .login-panel {background:var(--bg-surface);border-color:var(--border);}
 }
-.theme-swatch-terracotta-dark::after,.theme-swatch-terracotta-light::after {
+.theme-swatch-terracotta-dark::after,.theme-swatch-terracotta-light::after,.theme-swatch-atmosphere-ocean::after,.theme-swatch-atmosphere-forest::after,.theme-swatch-atmosphere-plum::after,.theme-swatch-atmosphere-graphite::after {
   content:'';position:absolute;inset:0;background:linear-gradient(#fff2 1px,transparent 1px),linear-gradient(90deg,#fff2 1px,transparent 1px);background-size:12px 12px;
 }

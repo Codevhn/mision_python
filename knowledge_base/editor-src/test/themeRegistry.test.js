@@ -99,3 +99,13 @@ for(const [id,scheme] of [['terracotta-dark','dark'],['terracotta-light','light'
 }
 apply('aero-amber');assert.deepEqual(data,priorTheme,'Terracota restores existing themes without leaking palette attributes');
 console.log('Terracota: both schemes, shared registry, persistence and restoration passed');
+
+for(const palette of ['ocean','forest','plum','graphite']){
+  const id='atmosphere-'+palette;
+  assert.ok(catalog.includes(id));apply(id);
+  assert.equal(data.theme,'dark');assert.equal(data.style,'notion');assert.equal(data.palette,id);
+  assert.equal(storage.get('kb_theme'),id);apply(storage.get('kb_theme'),false);assert.equal(data.themeId,id);
+  assert.equal(data.recordFont,'serif');assert.equal(data.frame,'sentinel');
+}
+apply('aero-amber');assert.deepEqual(data,priorTheme,'Dark atmospheres leave preferences reversible');
+console.log('Dark atmospheres: registry, dark scheme, distinct palettes, persistence and restoration passed');
