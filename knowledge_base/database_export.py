@@ -3,6 +3,7 @@
 The parent database is never traversed. Public remote media are fetched only when included, within strict bounds. Every
 archive contains a manifest describing omissions and selected stored views.
 """
+from course_pagination import preceding_lessons, count_key, cached_count, remember_count
 from contextlib import closing
 from functools import cmp_to_key
 from html import escape
@@ -234,6 +235,9 @@ class RecordArchive:
     def __init__(self, g, h, index, options):
         self.g, self.h, self.index, self.options = g, h, index, options
         self.pages, self.assets, self.members, self.total = {}, {}, {}, 0
+        self.count_only = False
+        self.predecessors = []
+        self.start_page = 1
         self.gather_bytes = 0
         self.omitted_keys = set()
         self.remote_failures = set()
@@ -244,6 +248,24 @@ class RecordArchive:
         self.manifest = dict(filter_evaluated_at=self.filter_now.isoformat(),format='atlas.record-export.v1', options=options, scope='opened_record', pages=[], databases=[], omitted=[], property_issues=[], warnings=[])
         if options['database_view'] == 'default':
             self.manifest['warnings'].append('Atlas default view means the first saved view; equivalence with Notion is not confirmed.')
+
+    def prepare_course_pagination(self, identifier):
+        """Snapshot preceding lessons under the same source lock as this lesson."""
+        if self.options['format'] != 'pdf':
+            return
+        total = self.gather_bytes
+        predecessors = preceding_lessons(self.index, identifier)
+        if len(predecessors) > MAX_PAGES:
+            raise ValueError('Máximo 200 lecciones anteriores para calcular la paginación')
+        for key in predecessors:
+            options = dict(self.options, archive=False, include_subpages=False, folders=False)
+            previous = RecordArchive(self.g, self.h, self.index, options)
+            previous.count_only = True
+            previous.gather(key)
+            total += previous.gather_bytes
+            if total > MAX_BYTES:
+                raise ValueError('Las lecciones anteriores superan 50 MB para calcular la paginación')
+            self.predecessors.append((key, previous))
 
     def add(self, name, content):
         content = content.encode('utf-8') if isinstance(content, str) else content
@@ -474,6 +496,15 @@ class RecordArchive:
 
     def build(self, identifier):
         fmt = self.options['format']
+        for key, previous in self.predecessors:
+            try:
+                previous.build(key)
+            except OnePageUnavailable as error:
+                title = self.index[key].get('title', key)
+                error.args = (f'No se pudo calcular la lección anterior «{title}». {error}',)
+                raise
+            self.start_page += previous.manifest['pdf_layouts'][0]['pages']
+        self.predecessors = []
         for page in self.pages.values():
             current = page['base'] + self.extension(); markdown = self.content(page, current)
             for db in page['databases'] if self.options['archive'] else []:
@@ -506,7 +537,8 @@ class RecordArchive:
                     rendered = inline_export_assets(rendered, {self.relative(current,name):self.data_uri(name) for name in self.assets.values()})
                 elif fmt == 'pdf' and not self.options['archive']:
                     rendered = inline_export_assets(rendered, {self.relative(current,name):self.relative(current,name) for name in self.assets.values()}, attachments=True)
-                document = self.g['_build_pdf_html'](page['row'].get('title', 'Sin título'), '', rendered, include_toc=False)
+                start_page = self.start_page if page['id'] == identifier else 1
+                document = self.g['_build_pdf_html'](page['row'].get('title', 'Sin título'), '', rendered, include_toc=False, start_page=start_page)
                 if fmt == 'html':
                     css = layout_css(self.options['pdf_font_size'])
                     if css: document = document.replace('</head>', '<style>'+css+'</style></head>', 1)
@@ -526,9 +558,16 @@ class RecordArchive:
                             candidate = Path(unquote(parsed.path)).resolve(); fonts = (Path(self.g['app'].root_path) / 'static' / 'fonts').resolve()
                             if candidate.is_relative_to(fonts) and candidate.is_file(): return dict(string=candidate.read_bytes(), mime_type='font/ttf')
                         raise ValueError('Recurso externo bloqueado durante la exportación PDF')
-                    layout = render_pdf_layout(HTML(string=document, base_url='https://atlas-export.invalid/' + current, url_fetcher=fetch), self.options['pdf_layout'], self.options['pdf_font_size'])
-                    self.manifest.setdefault('pdf_layouts', []).append(dict(id=page['id'], pages=layout['pages'], font_size=layout['font_size'], compact=layout['compact']))
-                    self.add(current, layout['document'].write_pdf())
+                    cache_key = count_key(document, self.members, self.options)
+                    count = cached_count(cache_key) if self.count_only else None
+                    if count is not None:
+                        layout = dict(pages=count, font_size=self.options['pdf_font_size'], compact=False)
+                    else:
+                        layout = render_pdf_layout(HTML(string=document, base_url='https://atlas-export.invalid/' + current, url_fetcher=fetch), self.options['pdf_layout'], self.options['pdf_font_size'])
+                        remember_count(cache_key, layout['pages'])
+                    end_page = start_page + layout['pages'] - 1
+                    self.manifest.setdefault('pdf_layouts', []).append(dict(id=page['id'], pages=layout['pages'], font_size=layout['font_size'], compact=layout['compact'], start_page=start_page, end_page=end_page))
+                    self.add(current, b'' if self.count_only else layout['document'].write_pdf())
         self.manifest.update(entrypoint=self.pages[identifier]['base'] + self.extension(), assets=list(self.assets.values()), files=list(self.members))
         if not self.options['archive']:
             return BytesIO(self.members[self.manifest['entrypoint']])
@@ -549,6 +588,8 @@ def register_record_export(app, g, h):
         if builder.options['format'] == 'pdf' and not builder.options['archive']:
             layout = next(item for item in builder.manifest['pdf_layouts'] if item['id'] == identifier)
             response.headers['X-Atlas-PDF-Pages'] = str(layout['pages'])
+            response.headers['X-Atlas-PDF-Start-Page'] = str(layout['start_page'])
+            response.headers['X-Atlas-PDF-End-Page'] = str(layout['end_page'])
             response.headers['X-Atlas-PDF-Font-Size'] = str(layout['font_size'])
             response.headers['X-Atlas-PDF-Compact'] = '1' if layout['compact'] else '0'
         response.headers['Cache-Control'] = 'no-store'
@@ -559,7 +600,7 @@ def register_record_export(app, g, h):
     @app.route('/api/export/<entry_id>/document', methods=['POST'])
     def configured_document_export(entry_id):
         try:
-            options = export_options(request.get_json(silent=True))
+            options = export_options({'format':'pdf'} if request.method == 'GET' else request.get_json(silent=True))
             with LOCK, closing(h['connect']()) as conn:
                 index = h['read'](conn); meta = index.get(entry_id)
                 if not meta or meta.get('database_deleted'):
@@ -567,6 +608,7 @@ def register_record_export(app, g, h):
                 schema = h['source'](meta['parent_id'], meta['database_id'], index)[4] if meta.get('database_id') else None
                 builder = RecordArchive(dict(g, app=app), h, index, options)
                 builder.gather(entry_id, schema)
+                builder.prepare_course_pagination(entry_id)
             return response_for(builder, entry_id, meta)
         except OnePageUnavailable as error: return jsonify(error=str(error), code='pdf_one_page_unavailable', page_count=error.page_count), 422
         except RuntimeError as error: return jsonify(error=str(error)), 503

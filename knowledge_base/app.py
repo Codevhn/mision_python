@@ -861,7 +861,7 @@ def _pdf_emoji_html(source):
     return ''.join(parser.parts)
 
 
-def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
+def _build_pdf_html(title, date, body_html, meta=None, include_toc=True, start_page=1):
     from html import escape
     footer_title = json.dumps(title, ensure_ascii=False).replace("<", "\\3c ").replace(">", "\\3e ")
     title = escape(title)
@@ -914,6 +914,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
     }}
   }}
   @page :first {{
+    counter-reset: page {int(start_page)};
     @top-center {{ content: ""; }}
   }}
   body {{
@@ -2157,26 +2158,8 @@ def export_md(entry_id):
 
 @app.route("/api/export/<entry_id>/pdf")
 def export_pdf(entry_id):
-    index = load_index()
-    if entry_id not in index:
-        return jsonify({"error": "Not found"}), 404
-    meta = index[entry_id]
-    try:
-        from weasyprint import HTML as WeasyprintHTML
-    except ImportError:
-        return jsonify({"error": "weasyprint no instalado en el servidor"}), 503
-    from io import BytesIO
-    md_content = _entry_path(entry_id, meta).read_text()
-    md_content = _strip_duplicate_heading_md(_print_markdown(md_content), meta.get("title", ""))
-    body_html  = render_markdown(md_content, print_mode=True)
-    date       = meta.get("created_at", "")[:10]
-    full_html  = _build_pdf_html(meta["title"], date, body_html, meta=meta)
-    buf = BytesIO()
-    WeasyprintHTML(string=full_html).write_pdf(buf)
-    buf.seek(0)
-    safe_name  = entry_id.replace("/", "_")
-    return send_file(buf, mimetype="application/pdf",
-                     as_attachment=True, download_name=f"{safe_name}.pdf")
+    # Share the dialog renderer and its course-wide page numbering.
+    return app.view_functions['configured_document_export'](entry_id)
 
 
 @app.route("/api/export/<entry_id>/html")

@@ -15,7 +15,7 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
     const preview=print?window.open('about:blank','_blank'):null;
     if(print&&!preview){setError('Permite abrir la ventana de impresión e inténtalo de nuevo.');return;}
     if(preview)preview.opener=null;
-    setBusy(true);setError('');setNotice('');
+    setBusy(true);setError('');setNotice(!print&&format==='pdf'&&meta.type==='course'?'Calculando la paginación del curso con el tamaño elegido…':'');
     try{
       await actions.flush();
       const endpoint=base?`${base}/rows/${entryId}/export`:`/api/export/${encodeURIComponent(entryId)}/document`;
@@ -37,7 +37,9 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
       const propertyIssues=Number(response.headers.get('X-Atlas-Export-Property-Issues')||0);
       const issues=[omitted?`${omitted} recursos no incluidos`:'',propertyIssues?`${propertyIssues} propiedades con diagnóstico pendiente`:''].filter(Boolean).join(' y ');
       const pages=Number(response.headers.get('X-Atlas-PDF-Pages')||0),actualFont=response.headers.get('X-Atlas-PDF-Font-Size');
-      const ready=pages?`PDF preparado: ${pages} ${pages===1?'página':'páginas'} · texto ${Number(actualFont).toLocaleString('es')} pt.`:'Archivo preparado para descargar.';
+      const start=Number(response.headers.get('X-Atlas-PDF-Start-Page')||1),end=Number(response.headers.get('X-Atlas-PDF-End-Page')||pages);
+      const range=meta.type==='course'?` · numeración ${start}–${end}`:'';
+      const ready=pages?`PDF preparado: ${pages} ${pages===1?'página':'páginas'} · texto ${Number(actualFont).toLocaleString('es')} pt${range}.`:'Archivo preparado para descargar.';
       setNotice(issues?`Archivo preparado con ${issues}. ${archive?'El ZIP incluye los detalles en manifest.json.':'Puedes elegir ZIP para obtener el informe detallado.'}`:print?'Vista de impresión preparada.':archive?'ZIP preparado con los documentos, recursos y manifest.json.':ready);
     }catch(e){if(preview&&!preview.closed)preview.close();setError(e.message);}finally{setBusy(false);}
   };
@@ -50,6 +52,7 @@ export function RecordExportDialog({base,entryId,meta,actions,anchor,onClose}){
       ['pdf','PDF'],['html','HTML'],['markdown_csv',archive?'Markdown & CSV':'Markdown'],['json','JSON · Atlas']
     ]}/>
     {format==='pdf'&&<>
+      {meta.type==='course'&&<p className="adb-help">Numeración continua según el orden del roadmap y el tamaño elegido. Si cambias lecciones anteriores, sus páginas se recalculan. Para conservar la secuencia al imprimir, usa los mismos ajustes.</p>}
       <SelectField label="Tamaño del texto del PDF" value={fontSize} onChange={setFontSize} disabled={busy} choices={[
         ['9','9 pt · Pequeño'],['10','10 pt · Compacto'],['10.5','10,5 pt · Normal'],['12','12 pt · Grande'],['14','14 pt · Muy grande']
       ]}/>
