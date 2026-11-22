@@ -995,7 +995,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True):
   h5 {{ font-size: 9.5pt;  color: #565c66; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 1em 0 0.3em; }}
   /* ── Body ── */
   h1,h2,h3,h4,h5 {{ break-inside:avoid; }}
-  p  {{ hyphens:auto; margin: 0 0 0.75em; orphans:3; widows:3; }}
+  p  {{ text-align:justify; hyphens:auto; margin: 0 0 0.75em; orphans:3; widows:3; }}
   img {{ max-width:100%; height:auto; }}
   .toc-row {{ break-inside:avoid; }}
   @media print {{ .print-actions {{ display:none !important; }} }}

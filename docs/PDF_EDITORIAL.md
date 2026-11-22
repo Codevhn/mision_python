@@ -6,7 +6,8 @@ como datos: la exportación no necesita descargarlas de Internet. El lector de
 recursos de la exportación admite únicamente los TTF y WOFF2 registrados por Atlas.
 
 El documento mantiene A4, papel blanco, márgenes de 22 mm a los lados, tinta oscura
-y acentos cálidos discretos. Los títulos evitan separarse del párrafo siguiente;
+y acentos cálidos discretos. Los párrafos se justifican con separación silábica
+automática en español; títulos y código mantienen su alineación propia. Los títulos evitan separarse del párrafo siguiente;
 se conservan las reglas de viudas, huérfanas, tablas y bloques de código extensos.
 Todas las páginas incluyen su número; las siguientes a la primera llevan también
 el título del documento. No se añade una portada vacía ni se modifica el Markdown.
