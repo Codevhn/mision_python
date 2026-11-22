@@ -921,6 +921,9 @@ def test_course_teaching_context_reaches_model_and_updates_each_turn(
         assert current['course_title'] == course_title
         assert current['course_description'] == 'Objetivos del curso'
         assert current['course_level'] == 'avanzado'
+        assert current['learning_task']['action'] == 'answer_current_request'
+        assert current['learning_task']['selected_topic'] is None
+        assert 'visible_excerpt' in current['learning_task']['unverified_content']
         assert current['module_lessons_total'] == 3
         assert 'No pertenece' not in current['module_lessons']
         assert 'no equivale al nivel del concepto actual' in system
@@ -934,6 +937,53 @@ def test_course_teaching_context_reaches_model_and_updates_each_turn(
             assert current['lesson_position_in_module'] == 3
             assert current['previous_module_lessons'] == ['Antes', concept]
             assert current['next_module_lessons'] == []
+
+
+@pytest.mark.parametrize('provider', list(app_module.PROVIDERS))
+def test_lesson_development_separates_selected_topic_from_fallible_context(auth_client, monkeypatch, provider):
+    captured = []
+    setup_model(monkeypatch, captured)
+    monkeypatch.setattr(app_module, '_provider_enabled', lambda *args: True)
+    monkeypatch.setattr(app_module, 'load_courses', lambda: {'courses': {
+        'java': {'label': 'Curso Java 2027', 'description': 'Entornos de desarrollo'}}})
+    monkeypatch.setattr(app_module, 'load_index', lambda: {
+        'ides': {'type': 'course', 'course': 'java', 'module': 'one', 'title': 'Entornos de desarrollo', 'order': 0},
+        'python': {'type': 'course', 'course': 'python', 'module': 'one', 'title': 'Herramientas Python', 'order': 0},
+    })
+    route = '/api/assistant/conversations/' + create(auth_client) + '/messages'
+    outline = [{'level': 2, 'title': title} for title in ['IntelliJ IDEA', 'Eclipse IDE', 'Visual Studio Code']]
+    # Existing prose is intentionally wrong. It must remain source material,
+    # not become server metadata or a requirement for the next explanation.
+    draft = 'Eclipse tiene Community y Ultimate Edition y licencia Apache 2.0.'
+    response = auth_client.post(route, json={
+        'prompt': 'Explica el tema seleccionado.', 'selection_action': 'explain',
+        'selection_context': {'text': 'Eclipse IDE', 'title': 'Entornos de desarrollo', 'entry_id': 'ides'},
+        'current_context': {'type': 'entry', 'id': 'ides', 'excerpt': draft, 'lesson_outline': outline},
+        'use_atlas': False, 'provider': provider, 'model': 'fixture-model',
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    assert captured[-1][2]['provider'] == provider
+    system = captured[-1][0]
+    current = json.loads(system.split('\n')[-1])['current_context']
+    assert current['learning_task']['selected_topic'] == 'Eclipse IDE'
+    assert current['learning_task']['action'] == 'explain'
+    assert current['course_level'] == ''  # An unspecified level stays unspecified.
+    assert current['visible_excerpt'] == draft
+    assert current['lesson_outline'] == outline
+    assert 'No transfieras la clasificación comercial' in system
+    assert 'no son fuentes técnicas verificadas' in system
+    assert 'No afirmes haber consultado fuentes' in system
+    # Navigation and a typed question replace the scope; do not carry Eclipse
+    # over to another course or invent a selected topic for a free question.
+    response = auth_client.post(route, json={
+        'prompt': 'Cómo organizo los atajos?',
+        'current_context': {'type': 'entry', 'id': 'python'}, 'use_atlas': False,
+    })
+    assert 'event: done' in response.get_data(as_text=True)
+    current = json.loads(captured[-1][0].split('\n')[-1])['current_context']
+    assert current['id'] == 'python'
+    assert current['learning_task']['selected_topic'] is None
+    assert current['learning_task']['action'] == 'answer_current_request'
 
 
 def test_documentation_references_persist_in_knowledge_entry(auth_client, client):

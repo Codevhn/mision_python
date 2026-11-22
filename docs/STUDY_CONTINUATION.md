@@ -12,6 +12,14 @@ Después de usar **Explicar** sobre un encabezado de una página o lección, el 
 
 Las preguntas generales, resúmenes, ejemplos, respuestas parciales, Biblioteca y los borradores de roadmap conservan sus flujos existentes; no reciben una propuesta de este tipo.
 
+## Calidad del desarrollo
+
+Las instrucciones pedagógicas compartidas por todos los proveedores distinguen el contexto curricular del texto técnico potencialmente erróneo. Una respuesta anterior, un resumen de conversación o un extracto del editor no se convierten en fuentes verificadas. Cada entidad debe conservar sus propios atributos (organización, licencia, ediciones, funciones y requisitos), sin copiar los de herramientas vecinas.
+
+En cursos, el servidor añade `learning_task` al contexto de cada petición: acción actual, selección cuando corresponde y campos que describen el currículo frente al contenido no verificado. Las preguntas libres no heredan un tema seleccionado anterior. El nivel ausente sigue sin especificar y el año del título no determina versiones de software. Página y Peek usan el mismo contrato del servidor.
+
+El desarrollo debe evitar comparativas globales repetidas, etiquetas de instrucciones expuestas como títulos y recomendaciones falsamente atribuidas al curso. Los datos variables necesitan respaldo; los detalles inciertos accesorios se omiten y los esenciales se matizan. Estas reglas no certifican la veracidad de la salida: no añaden búsquedas externas ni llamadas de auditoría a cada explicación. La revisión documental existente conserva su flujo.
+
 ## Navegación de cursos
 
 Anterior/siguiente mantiene el orden y los manejadores existentes de las lecciones. La barra se fija al pie de la columna de lectura y limita su ancho para respetar el asistente y el Peek. En móvil queda sobre la zona del asistente, al pie del espacio de lectura disponible. Si otros paneles no dejan ancho suficiente, se oculta hasta recuperar espacio. El botón para abrir el asistente queda por encima de la barra y el contenido final conserva espacio para leerse.
