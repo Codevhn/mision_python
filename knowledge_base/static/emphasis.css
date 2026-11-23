@@ -1,0 +1,16 @@
+/* One semantic emphasis scale across Atlas. Colors, sizes, record font choices
+   and syntax highlighting remain owned by their respective surfaces. */
+:root {--atlas-weight-regular:400;--atlas-weight-bold:700;}
+body {font-weight:var(--atlas-weight-regular);}
+/* A regular prose block must not inherit the weight of surrounding chrome.
+   Marks inside it keep their own semantics; headings/table headers are separate. */
+:is(.entry-body,.assistant-message-content) {font-weight:var(--atlas-weight-regular);}
+:is(#entryBody,#pagePeekEditor) .bn-editor :is(
+  [data-content-type="paragraph"],
+  [data-content-type="bulletListItem"],
+  [data-content-type="numberedListItem"],
+  [data-content-type="checkListItem"]
+) {font-weight:var(--atlas-weight-regular)!important;}
+/* Avoid theme-specific 600 / bolder rules narrowing the difference again.
+   Fixed 700 also prevents nested strong/b elements escalating unpredictably. */
+:root body :is(strong,b) {font-weight:var(--atlas-weight-bold)!important;}

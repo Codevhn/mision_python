@@ -1898,7 +1898,7 @@ button.link-btn:hover { opacity: 0.75; }
 :is(.entry-body,.page-peek-editor) td:last-child { border-right: 0; }
 :is(.entry-body,.page-peek-editor) tr:last-child td { border-bottom: 0; }
 :is(.entry-body,.page-peek-editor) tr:nth-child(even) td { background: color-mix(in srgb, var(--atlas-table-elevated) 28%, transparent); }
-.entry-body strong { color: var(--text); font-weight: 600; }
+.entry-body strong { color: var(--text); font-weight: 700; }
 .entry-body em { color: var(--text-muted); }
 .entry-body hr {
   border: none;

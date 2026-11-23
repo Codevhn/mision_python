@@ -51,7 +51,7 @@ def stream(system, messages, **kwargs):
         if title:
             yield '## ' + title[1] + '\n\nAMPLIACIÓN-UV: Este apartado amplía el contenido original con un ejemplo concreto del proyecto y sus dependencias. El contenido anterior se conserva para seguir profundizando con contexto.'
         else:
-            yield 'uv permite gestionar proyectos y dependencias de Python. Esta explicación inicial distingue los requisitos del proyecto y su entorno, y sirve como punto de partida para profundizar en un ejemplo práctico.'
+            yield '**uv** permite gestionar proyectos y dependencias de Python. Esta explicación inicial distingue los requisitos del proyecto y su entorno, y sirve como punto de partida para profundizar en un ejemplo práctico.'
         yield ('__done__', False, None)
         return
     if context['type'] != 'book':

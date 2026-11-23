@@ -1000,7 +1000,7 @@ def _build_pdf_html(title, date, body_html, meta=None, include_toc=True, start_p
   img {{ max-width:100%; height:auto; }}
   .toc-row {{ break-inside:avoid; }}
   @media print {{ .print-actions {{ display:none !important; }} }}
-  strong {{ color: #28231f; font-weight: 600; }}
+  strong, b {{ color: #28231f; font-weight: 700; }}
   em     {{ color: #38312b; }}
   a {{ color: #805b43; text-decoration: none; }}
   hr {{ border: none; border-top: 1px solid #ded7cd; margin: 1.8em 0; }}
@@ -1101,7 +1101,7 @@ def _build_id():
         'blocknote/editor.bundle.js', 'pygments.css',
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
-        'terracotta.css', 'focus-mode.css', 'assistant.css', 'assistant.js',
+        'terracotta.css', 'focus-mode.css', 'emphasis.css', 'assistant.css', 'assistant.js',
         'course-topic-links.js', 'navigation-hierarchy.css', 'editing-surface.css', 'peek-resize.css', 'peek-resize.js',
         'login.css', 'login.js', 'paper.css',
         'reader.css', 'library.js',

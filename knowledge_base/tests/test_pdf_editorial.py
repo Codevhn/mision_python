@@ -14,6 +14,11 @@ def test_editorial_export_embeds_serif_and_preserves_code_and_pagination(auth_cl
         assert any('Lora' in font for font in fonts), fonts
         assert any('Lora-Italic' in font for font in fonts), fonts
         assert any('JetBrains' in font for font in fonts), fonts
+        spans=[span for page in pdf for block in page.get_text('dict')['blocks'] if 'lines' in block for line in block['lines'] for span in line['spans']]
+        bold=[span for span in spans if 'importante' in span['text']]
+        regular=[span for span in spans if 'Un texto' in span['text']]
+        assert bold and all('Bold' in span['font'] for span in bold), bold
+        assert regular and all('Bold' not in span['font'] for span in regular), regular
         text = '\n'.join(page.get_text() for page in pdf)
         assert 'FIN-LECCIÓN' in text and 'print("área")' in text
         for number, page in enumerate(pdf, 1):
