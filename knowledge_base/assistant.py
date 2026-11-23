@@ -859,6 +859,30 @@ def register_assistant(app, namespace):
         record, version = read(conversation_id)
         if record is None:
             return jsonify({"error": "Conversación no encontrada"}), 404
+        knowledge_followup = data.get('knowledge_followup')
+        if knowledge_followup is not None:
+            if not isinstance(knowledge_followup, dict) or data.get('revision') or lesson_action:
+                return jsonify(error='Sugerencia no válida'), 400
+            source_index, suggestion_index = knowledge_followup.get('source_index'), knowledge_followup.get('suggestion_index')
+            if (type(source_index) is not int or not 0 <= source_index < len(record['messages']) or
+                    type(suggestion_index) is not int or not 0 <= suggestion_index < 3):
+                return jsonify(error='Sugerencia no válida'), 400
+            source = record['messages'][source_index]
+            suggestions = source.get('followups', [])
+            entry_id = source.get('followup_entry_id')
+            meta = namespace['load_index']().get(entry_id, {})
+            if (source.get('role') != 'assistant' or suggestion_index >= len(suggestions) or
+                    not meta or meta.get('type', 'knowledge') not in ('knowledge', 'note') or meta.get('database_deleted') or
+                    not current_context or current_context.get('type') != 'entry' or current_context.get('id') != entry_id):
+                return jsonify(error='Abre la entrada original para desarrollar esta sugerencia'), 400
+            if meta.get('database_locked'):
+                return jsonify(error='Desbloquea la entrada antes de desarrollar aquí'), 423
+            suggestion = suggestions[suggestion_index]
+            knowledge_followup = dict(source_index=source_index, suggestion_index=suggestion_index, entry_id=entry_id, title=suggestion['title'])
+            prompt = (suggestion['prompt'] + '\nDesarrolla solo este apartado como continuación de la entrada, sin repetir lo ya explicado. '
+                      'Comienza con el encabezado Markdown ## ' + suggestion['title'] + '. No crees otra entrada ni anuncies una inserción.')
+            selection = None
+            selection_action = None
         revision = data.get("revision")
         revision_source = None
         if revision is not None:
@@ -905,6 +929,8 @@ def register_assistant(app, namespace):
         if len(record["messages"]) >= 999:
             return jsonify({"error": "Esta conversación llegó a 1.000 mensajes. Inicia una nueva para continuar."}), 400
         message = {"role": "user", "content": prompt.strip()}
+        if knowledge_followup:
+            message["knowledge_followup"] = knowledge_followup
         if lesson_action:
             message["lesson_action"] = lesson_action
         if current_context:
@@ -1047,7 +1073,7 @@ def register_assistant(app, namespace):
                 initial_knowledge = (not revision and not location_only and bool(meta) and data.get('use_atlas',True) and meta.get('type','note') in ('note','knowledge') and not meta.get('teamspace')
                                      and selection_action in (None, 'explain', 'example'))
                 if initial_knowledge:
-                    review_term = (selection or {}).get('text') or meta.get('title', '')
+                    review_term = (knowledge_followup or {}).get('title') or (selection or {}).get('text') or meta.get('title', '')
                     yield event('status', {'message': 'Seleccionando documentación para esta entrada…'})
                     plan = route_sources(namespace['_call_ai'], review_term, meta, provider, model)
                     yield event('status', {'message': 'Consultando fuentes para el desarrollo inicial…'})
@@ -1062,7 +1088,7 @@ def register_assistant(app, namespace):
                         'contraste documental.\n'+json.dumps(evidence,ensure_ascii=False))
                 if revision and revision['action'] == 'accuracy':
                     meta = namespace['load_index']().get((current_context or {}).get('id'), {})
-                    review_term = (selection or {}).get('text') or meta.get('title', '')
+                    review_term = (knowledge_followup or {}).get('title') or (selection or {}).get('text') or meta.get('title', '')
                     urls = revision.get('reference_urls')
                     if urls is None:
                         urls = meta.get('reference_urls', suggested_urls(review_term))
@@ -1193,9 +1219,26 @@ def register_assistant(app, namespace):
                         if re.fullmatch(r"\s*User\s+Safety\s*:\s*safe\s+Response\s+Safety\s*:\s*safe\s*", text, re.I):
                             yield event("error", {"error": "El modelo devolvió solo etiquetas de seguridad, sin responder. Reintenta o elige otro modelo."})
                             return
+                        followups = []
+                        followup_entry = namespace['load_index']().get((current_context or {}).get('id'), {}) if (current_context or {}).get('type') == 'entry' else {}
+                        if (followup_entry and followup_entry.get('type', 'knowledge') in ('knowledge', 'note')
+                                and not location_only and not truncated and not revision and not lesson_action
+                                and not is_smalltalk(prompt) and len(text) >= 80):
+                            try:
+                                from assistant_followups import suggest
+                                yield event('status', {'message': 'Preparando sugerencias para profundizar…'})
+                                followups = suggest(namespace['_call_ai'], title=followup_entry.get('title',''), question=prompt, answer=text,
+                                    provider=provider, model=model, previous=[item['title'] for msg in record['messages'] for item in msg.get('followups',[])])
+                            except Exception:
+                                app.logger.warning('No se pudieron preparar sugerencias de profundización', exc_info=True)
                         record["messages"].append({"role": "assistant", "content": text, "sources": sources,
                                                    "provider": "atlas" if location_only else provider,
                                                    "model": "Atlas" if location_only else model})
+                        if knowledge_followup:
+                            record['messages'][-1]['truncated'] = bool(truncated)
+                        if followups:
+                            record['messages'][-1]['followups'] = followups
+                            record['messages'][-1]['followup_entry_id'] = current_context['id']
                         if lesson_action:
                             record["messages"][-1]["lesson_draft"] = {"entry_id": current_context["id"], "truncated": bool(truncated)}
                             record["messages"][-1]['lesson_review'] = lesson_review

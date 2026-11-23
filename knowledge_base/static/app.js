@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
         _patchContent({ title: newTitle });
         if (currentEntryMeta) currentEntryMeta.title = newTitle;
         // Update sidebar label
-        document.querySelectorAll(`.tree-entry[data-id="${currentEntryId}"] .tree-entry-title`).forEach(el => el.textContent = newTitle);
+        document.querySelectorAll(`.tree-entry[data-id="${currentEntryId}"] .tree-entry-title`).forEach(el => el.textContent = currentEntryMeta?.sidebar_label || newTitle);
       }
     });
     inlineTitle.addEventListener("keydown", e => {
@@ -930,7 +930,7 @@ function renderTree(tree) {
         entryEl.appendChild(dot);
         const label = document.createElement("span");
         label.className = "tree-entry-label";
-        label.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.knowledge);
+        label.innerHTML = renderTreeEntryLabel(entry.icon, entry.sidebar_label || entry.title, ENTRY_ICON_DEFAULTS.knowledge);
         entryEl.appendChild(label);
 
         const kMenuBtn = document.createElement("button");
@@ -1070,7 +1070,7 @@ function renderCoursesTree(tree, filterSlug, _container = null) {
         dot.className = `status-dot status-${entry.status || "pendiente"}`;
         const nameSpan = document.createElement("span");
         nameSpan.className = "tree-entry-label";
-        nameSpan.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.course);
+        nameSpan.innerHTML = renderTreeEntryLabel(entry.icon, entry.sidebar_label || entry.title, ENTRY_ICON_DEFAULTS.course);
         entryEl.appendChild(dot);
         entryEl.appendChild(nameSpan);
         if (entry.id === currentEntryId) entryEl.classList.add("active");
@@ -1196,7 +1196,7 @@ function renderTeamspaceTree(tree) {
       const item = document.createElement("div");
       item.className = "tree-entry ts-item";
       item.dataset.id = entry.id;
-      item.innerHTML = renderTreeEntryLabel(entry.icon, entry.title, ENTRY_ICON_DEFAULTS.page);
+      item.innerHTML = renderTreeEntryLabel(entry.icon, entry.sidebar_label || entry.title, ENTRY_ICON_DEFAULTS.page);
       item.addEventListener("click", () => loadEntry(entry.id));
 
       const tsMenuBtn = document.createElement("button");
@@ -1259,7 +1259,7 @@ function renderPagesTree(tree) {
 
     const label = document.createElement("span");
     label.className = "tree-entry-label";
-    label.innerHTML = renderTreeEntryLabel(node.icon, node.title, ENTRY_ICON_DEFAULTS.page);
+    label.innerHTML = renderTreeEntryLabel(node.icon, node.sidebar_label || node.title, ENTRY_ICON_DEFAULTS.page);
     row.appendChild(label);
 
     const menuBtn = document.createElement("button");
@@ -1401,22 +1401,38 @@ function _openMindmapActionsMenu(anchor, map) {
   });
 }
 
-// ── "⋯" menu with just "Mover a…" — used by the Teamspace and Conocimiento
-// trees, which already have their own delete flows elsewhere.
+// Sidebar actions for Teamspace and Conocimiento. A display alias is stored
+// separately from the canonical title; delete flows remain in their own menus.
 let _simpleMoveMenuEl = null;
 function _openSimpleMoveMenu(anchor, entryId, entryTitle) {
   _simpleMoveMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `<button data-action="move">⇄ Mover a…</button>`;
+  menu.innerHTML = `<button data-action="rename">Renombrar en el sidebar…</button><button data-action="move">⇄ Mover a…</button>`;
   const rect = anchor.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.right - 168}px;width:168px;z-index:9999`;
+  menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${Math.max(8,Math.min(innerWidth-248,rect.right-240))}px;width:240px;z-index:9999`;
   document.body.appendChild(menu);
   _simpleMoveMenuEl = menu;
   menu.querySelector('[data-action="move"]').addEventListener('click', e => {
     e.stopPropagation();
     menu.remove(); _simpleMoveMenuEl = null;
     openMoveToModal(entryId, entryTitle || "Sin título");
+  });
+  menu.querySelector('[data-action="rename"]').addEventListener('click', async e => {
+    e.stopPropagation(); menu.remove(); _simpleMoveMenuEl = null;
+    try {
+      const response = await fetch(`/api/entry/${encodeURIComponent(entryId)}`);
+      if (!response.ok) throw new Error('No se pudo leer la entrada');
+      const data = await response.json();
+      const label = await showPrompt('Nombre visible en el sidebar', 'Vacío para usar el título de la página', data.meta.sidebar_label || data.meta.title || '');
+      if (label === null) return;
+      const saved = await fetch(`/api/entry/${encodeURIComponent(entryId)}/sidebar-label`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({sidebar_label:label})});
+      const result = await saved.json();
+      if (!saved.ok) throw new Error(result.error || 'No se pudo guardar el nombre');
+      document.querySelectorAll(`[data-id="${CSS.escape(entryId)}"] .tree-entry-title`).forEach(node => {node.textContent=result.sidebar_label || data.meta.title;});
+      if (currentEntryId === entryId && currentEntryMeta) currentEntryMeta.sidebar_label=result.sidebar_label;
+      showToast('Nombre del sidebar guardado');
+    } catch(error) { showToast(error.message, 'error'); }
   });
   const onOutside = e => {
     if (!menu.contains(e.target)) { menu.remove(); _simpleMoveMenuEl = null; document.removeEventListener('mousedown', onOutside); }
@@ -13700,6 +13716,26 @@ window._applyAssistantLesson = async (markdown, entryId) => {
   else {_scheduleAutoSave(editor.getMarkdown());await _flushInlineDatabase();}
   return true;
 };
+window._appendAssistantExploration = async (markdown, entryId, title) => {
+  const surface = _assistantStudySurface();
+  if (!surface || surface.id !== entryId) throw new Error('Abre la entrada original para añadir este desarrollo. La respuesta sigue disponible en el chat.');
+  if (surface.peek ? $('pagePeekTitle').readOnly : currentEntryMeta?.database_locked) throw new Error('Desbloquea la entrada antes de añadir contenido.');
+  let content = _sanitizeMarkdownForEditor(markdown).trim();
+  if (!content) throw new Error('La respuesta está vacía.');
+  const first=content.match(/^#{1,6}\s+([^\n]+)\n*/);
+  if (first && first[1].trim().replace(/\.$/,'').toLocaleLowerCase()===title.trim().toLocaleLowerCase()) content=content.slice(first[0].length);
+  const section='## '+title+'\n\n'+content;
+  const normalized=value=>value.replace(/\s+/g,' ').trim();
+  if (!normalized(surface.editor.getMarkdown()).includes(normalized(section))) {
+    if (surface.editor.getInsertionTargets().some(row => row.type==='heading' && row.text.trim().toLocaleLowerCase()===title.trim().toLocaleLowerCase())) throw new Error('Este apartado ya existe con otro contenido. Revísalo antes de volver a añadirlo.');
+    await surface.editor.appendMarkdown(section);
+  }
+  if (_assistantStudySurface()?.editor !== surface.editor) throw new Error('La página abierta cambió. Revisa el borrador antes de guardarlo.');
+  if (surface.peek) { _peekDraft({raw_text:surface.editor.getMarkdown(),already_markdown:true}); await _flushPeekPendingSaves(); }
+  else { _scheduleAutoSave(surface.editor.getMarkdown()); clearTimeout(_autoSaveTimer); await _pageQueue(entryId).flush(); _setAutosaveStatus('saved'); }
+  return true;
+};
+
 window._insertAssistantExplanation = async (markdown, selection) => {
   const surface=_assistantStudySurface();
   if(!surface)throw new Error('Abre la lección o página donde quieres insertar la explicación.');

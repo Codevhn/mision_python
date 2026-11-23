@@ -65,7 +65,7 @@
     if(message.roadmap_request){ const {course_id,...options}=message.roadmap_request; generateRoadmap(course_id,options,true); return; }
     input.value=message.question||message.content;
     input.dispatchEvent(new Event('input'));
-    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null,revision:message.revision_request||null,lessonAction:message.lesson_action||null});
+    send(null,{retry:true,selection:message.selection_context||null,selectionAction:message.selection_action||null,revision:message.revision_request||null,lessonAction:message.lesson_action||null,knowledgeFollowup:message.knowledge_followup?{source_index:message.knowledge_followup.source_index,suggestion_index:message.knowledge_followup.suggestion_index}:null,currentContext:message.knowledge_followup?{type:"entry",id:message.knowledge_followup.entry_id}:undefined});
   }
   document.body.appendChild(area);
   const el = id => document.getElementById(id);
@@ -294,12 +294,13 @@
       });menu.append(options);actions.append(menu);article.append(actions);
       if(!message.roadmap_draft){
         const insert=document.createElement('button');insert.type='button';insert.className='assistant-insert-explanation';
-        insert.textContent=message.lesson_draft?'Aplicar borrador a la lección':'Insertar debajo del concepto';
-        insert.disabled=!!message.lesson_draft?.truncated;
-        if(message.lesson_draft?.truncated)insert.title='El borrador está incompleto. Genera una versión completa antes de aplicarlo.';
+        insert.textContent=message.lesson_draft?'Aplicar borrador a la lección':question?.knowledge_followup?'Añadir a esta entrada':'Insertar debajo del concepto';
+        insert.disabled=!!(message.lesson_draft?.truncated || message.truncated);
+        if(message.lesson_draft?.truncated || message.truncated)insert.title='El borrador está incompleto. Genera una versión completa antes de aplicarlo.';
         insert.addEventListener('click',async()=>{
           insert.disabled=true;
           try{if(message.lesson_draft){if(await window._applyAssistantLesson(message.content,message.lesson_draft.entry_id))status('Borrador aplicado a la lección.');}
+            else if(question?.knowledge_followup){await window._appendAssistantExploration(message.content,question.knowledge_followup.entry_id,question.knowledge_followup.title);status('Apartado añadido a la entrada.');}
             else if(await window._insertAssistantExplanation(message.content,question?.selection_context)){status('Explicación insertada en el editor.');renderStudyContinuation(true);}}
           catch(error){status(error.message,true);}finally{insert.disabled=false;}
         });article.append(insert);
@@ -312,6 +313,23 @@
         const expand=document.createElement('button');expand.type='button';expand.className='assistant-roadmap-expand';expand.textContent='Ampliar roadmap';expand.addEventListener('click',()=>expandRoadmap(message));
         tools.append(apply,expand);article.append(tools);
         if(message.roadmap_draft.added_modules){const note=document.createElement('p');note.className='assistant-roadmap-expansion-note';note.textContent=`${message.roadmap_draft.added_modules} módulos añadidos · ${message.roadmap_draft.modules.length} en total. Los anteriores se conservan.`;article.append(note);}
+      }
+      if(message.followups?.length && message.followup_entry_id){
+        const followups=document.createElement('section');followups.className='assistant-followups';followups.setAttribute('aria-label','Seguir profundizando');
+        const heading=document.createElement('p');heading.className='assistant-followups-title';heading.textContent='Seguir profundizando';
+        const note=document.createElement('p');note.className='assistant-followups-note';note.textContent='Elige un tema para desarrollarlo y añadirlo al final de esta entrada.';
+        followups.append(heading,note);
+        message.followups.forEach((suggestion,suggestionIndex)=>{
+          const button=document.createElement('button');button.type='button';button.textContent=suggestion.title;button.title='Desarrollar y añadir a esta entrada';
+          button.addEventListener('click',async()=>{
+            if(busy)return;
+            const current=window._getAssistantVisibleContext?.();
+            if(current?.type!=='entry'||current.id!==message.followup_entry_id){status('Abre la entrada original para desarrollar esta sugerencia.',true);return;}
+            if(el('assistantInput').value.trim()){status('Envía o guarda el texto que tienes escrito antes de continuar.',true);return;}
+            clearSelection();
+            await send(null,{prompt:'Profundizar: '+suggestion.title,knowledgeFollowup:{source_index:index,suggestion_index:suggestionIndex},currentContext:current,focusInput:false});
+          });followups.append(button);
+        });article.append(followups);
       }
       sources(article, message.sources);
     } else if(message.role==='user' && record?.messages.at(-1)===message) {
@@ -580,7 +598,7 @@
       if (!options.preserveDraft) { el('assistantInput').value = ''; el('assistantInput').style.height = 'auto'; }
       scrollBottom(); status('Preparando respuesta…');
       const response = await fetch(`/api/assistant/conversations/${record.id}/messages`, {
-        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, lesson_action:options.lessonAction||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: el('assistantUseCurrent').checked ? (options.currentContext || visibleContext) : null }), signal: controller.signal,
+        ...post({ prompt, retry:!!options.retry, revision:options.revision||null, lesson_action:options.lessonAction||null, knowledge_followup:options.knowledgeFollowup||null, selection_context: selection, selection_action:options.selectionAction||null, provider: choice.provider, model: choice.model, use_atlas: el('assistantUseAtlas').checked, current_context: options.knowledgeFollowup ? options.currentContext : el('assistantUseCurrent').checked ? (options.currentContext || visibleContext) : null }), signal: controller.signal,
       });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error || `HTTP ${response.status}`); }
       if (selection && !options.retry) {
@@ -613,7 +631,14 @@
     } finally {
       controller = null;
       try {
-        if (record) { record = await api(`/api/assistant/conversations/${record.id}`); renderConversation(); }
+        if (record) {
+          record = await api(`/api/assistant/conversations/${record.id}`); renderConversation();
+          const answer=record.messages.at(-1),question=record.messages.at(-2);
+          if(completed && options.knowledgeFollowup && !answer?.truncated && answer?.role==='assistant' && question?.knowledge_followup){
+            try{await window._appendAssistantExploration(answer.content,question.knowledge_followup.entry_id,question.knowledge_followup.title);status('Apartado añadido y guardado en la misma entrada.');}
+            catch(error){status(error.message,true);}
+          }
+        }
         await refreshHistory();
       } catch (error) { status(`No se pudo recuperar el historial: ${error.message}`, true); }
       setBusy(false);

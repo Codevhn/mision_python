@@ -240,3 +240,9 @@ body:has(#pagePeekOverlay:not(.hidden)) .assistant-area{z-index:12000;}
 #assistantArea .assistant-review-notice strong {color:var(--text);font-weight:600;}
 #assistantArea .assistant-review-notice p {margin:5px 0;}
 #assistantArea .assistant-review-notice summary {cursor:pointer;}
+
+.assistant-followups {margin:18px 0 4px;padding-top:14px;border-top:1px solid var(--border);}
+.assistant-followups-title {font-weight:600;color:var(--text);margin:0 0 5px;}
+.assistant-followups-note {font-size:.75rem;line-height:1.5;color:var(--text-muted);margin:0 0 10px;}
+.assistant-followups > button {display:block;width:100%;margin:6px 0;padding:10px 12px;text-align:start;white-space:normal;overflow-wrap:anywhere;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);border-radius:9px;font:inherit;font-size:.8rem;cursor:pointer;}
+.assistant-followups > button:hover {background:var(--bg-hover);border-color:var(--accent);}

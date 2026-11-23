@@ -1101,7 +1101,7 @@ def _build_id():
         'blocknote/editor.bundle.js', 'pygments.css',
         'conceptmap.css', 'conceptmap.js', 'conceptmap-explorer.css', 'conceptmap-explorer.js',
         'atlas-frames.css', 'atlas-frames.js', 'sentinel-sheen.css',
-        'terracotta.css', 'focus-mode.css',
+        'terracotta.css', 'focus-mode.css', 'assistant.css', 'assistant.js',
         'course-topic-links.js', 'navigation-hierarchy.css', 'editing-surface.css', 'peek-resize.css', 'peek-resize.js',
         'login.css', 'login.js', 'paper.css',
         'reader.css', 'library.js',
@@ -1202,6 +1202,7 @@ def get_teamspace_tree():
         tree[space]["_entries"].append({
             "id": entry_id,
             "title": meta["title"],
+            "sidebar_label": meta.get("sidebar_label", ""),
             "icon": meta.get("icon", ""),
             "created_at": meta.get("created_at", ""),
             "status": meta.get("status", "pendiente"),
@@ -1221,6 +1222,7 @@ def get_all_entries():
         entries.append({
             "id":       entry_id,
             "uid":      meta.get("uid", entry_id),
+            "sidebar_label":meta.get("sidebar_label", ""),
             "title":    meta.get("title", ""),
             "type":     meta.get("type") or "page",
             "category": meta.get("category_label", meta.get("category", "")),
@@ -1252,6 +1254,7 @@ def get_tree():
         tree.setdefault(cat, {}).setdefault(topic, []).append({
             "id": entry_id,
             "title": meta["title"],
+            "sidebar_label": meta.get("sidebar_label", ""),
             "icon": meta.get("icon", ""),
             "created_at": meta.get("created_at", ""),
             "status": meta.get("status", "pendiente"),
@@ -1288,6 +1291,7 @@ def get_pages_tree():
         nodes[entry_id] = {
             "id": entry_id,
             "title": meta.get("title", ""),
+            "sidebar_label": meta.get("sidebar_label", ""),
             "icon": meta.get("icon", ""),
             "created_at": meta.get("created_at", ""),
             "order": meta.get("order", 0),
@@ -2884,6 +2888,35 @@ def patch_learning_guide(entry_id):
             return jsonify(error="Restaura la lección antes de editarla"), 410
         if meta.get("database_locked"):
             return jsonify(error="Desbloquea la lección para editarla"), 423
+        meta.update({key: value.strip() for key, value in data.items()})
+        meta.update(updated_at=datetime.now().isoformat(timespec="microseconds"), edited_by="owner")
+        conn.execute("UPDATE entries SET meta=? WHERE entry_id=?", (json.dumps(meta, ensure_ascii=False), entry_id))
+        conn.commit()
+    return jsonify(ok=True, **{key: meta.get(key, "") for key in fields})
+
+
+@app.route("/api/entry/<entry_id>/sidebar-label", methods=["PATCH"])
+def patch_sidebar_label(entry_id):
+    """Update a display-only alias without touching title, path or Markdown."""
+    from contextlib import closing
+    from database_api import LOCK
+    data = request.get_json(silent=True)
+    fields = {"sidebar_label"}
+    if not isinstance(data, dict) or not data or set(data) - fields:
+        return jsonify(error="Nombre del sidebar no válido"), 400
+    if any(not isinstance(value, str) or len(value) > 160 for value in data.values()):
+        return jsonify(error="El nombre admite hasta 160 caracteres de texto"), 400
+    with LOCK, closing(_index_db_connect()) as conn:
+        _migrate_index_json_to_sqlite_if_needed(conn)
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT meta FROM entries WHERE entry_id=?", (entry_id,)).fetchone()
+        if not row:
+            return jsonify(error="Not found"), 404
+        meta = json.loads(row[0])
+        if meta.get("database_deleted"):
+            return jsonify(error="Restaura la entrada antes de editarla"), 410
+        if meta.get("database_locked"):
+            return jsonify(error="Desbloquea la entrada para editarla"), 423
         meta.update({key: value.strip() for key, value in data.items()})
         meta.update(updated_at=datetime.now().isoformat(timespec="microseconds"), edited_by="owner")
         conn.execute("UPDATE entries SET meta=? WHERE entry_id=?", (json.dumps(meta, ensure_ascii=False), entry_id))

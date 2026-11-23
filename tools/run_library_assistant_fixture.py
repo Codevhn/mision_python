@@ -45,6 +45,15 @@ def stream(system, messages, **kwargs):
     position = system.find(marker)
     assert position >= 0, 'Missing book context in model request'
     context, _ = json.JSONDecoder().raw_decode(system[position + len(marker):].lstrip())
+    if context['type'] in ('knowledge', 'note'):
+        import re
+        title = re.search(r'Comienza con el encabezado Markdown ## (.+?)\. No crees', messages[-1]['content'])
+        if title:
+            yield '## ' + title[1] + '\n\nAMPLIACIÓN-UV: Este apartado amplía el contenido original con un ejemplo concreto del proyecto y sus dependencias. El contenido anterior se conserva para seguir profundizando con contexto.'
+        else:
+            yield 'uv permite gestionar proyectos y dependencias de Python. Esta explicación inicial distingue los requisitos del proyecto y su entorno, y sirve como punto de partida para profundizar en un ejemplo práctico.'
+        yield ('__done__', False, None)
+        return
     if context['type'] != 'book':
         if context.get('learning_task', {}).get('action') == 'develop_lesson':
             headings = context.get('lesson_outline') or [{'level': 2, 'title': 'Tema de prueba'}]
@@ -79,6 +88,13 @@ def stream(system, messages, **kwargs):
 
 
 def call_ai(system, prompt, **kwargs):
+    if system.startswith('Clasifica una entrada'):
+        return json.dumps({'technology':'python','kind':'command','canonical':'uv','section':'packaging','keywords':['uv']}), None
+    if system.startswith('Propón hasta tres'):
+        return json.dumps({'suggestions': [
+            {'title':'Crear un proyecto con uv','prompt':'Explica cómo crear un proyecto pequeño y ejecutar su primer programa.'},
+            {'title':'Entender el archivo de bloqueo','prompt':'Explica el archivo de bloqueo y su relación con las dependencias del proyecto.'}
+        ]}), None
     if system.startswith('Eres un revisor factual') and os.environ.get('ATLAS_FIXTURE_BAD_REVIEW') == '1':
         return 'Esta revisión no es JSON válido.', None
     if system.startswith('Revisa los ejemplos del borrador'):

@@ -1090,7 +1090,7 @@ def test_initial_knowledge_is_grounded_before_display_and_saved_once(auth_client
     assert saved[-1]['documentation']['phase']=='initial'
     assert saved[-1]['documentation']['routing']['kind']=='module'
     if available:
-        assert len(calls)==3  # routing, evidence audit, final rewrite
+        assert len(calls)==4  # routing, evidence audit, final rewrite, optional follow-ups
         assert saved[-1]['content'].startswith('pathlib proporciona')
         assert saved[-1]['documentation']['audit']['claims'][0]['status']=='unconfirmed'
     else:
