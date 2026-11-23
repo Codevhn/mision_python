@@ -1408,7 +1408,7 @@ function _openSimpleMoveMenu(anchor, entryId, entryTitle) {
   _simpleMoveMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `<button data-action="rename">Renombrar en el sidebar…</button><button data-action="move">⇄ Mover a…</button>`;
+  menu.innerHTML = `<button data-action="rename">Renombrar</button><button data-action="move">⇄ Mover a…</button>`;
   const rect = anchor.getBoundingClientRect();
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${Math.max(8,Math.min(innerWidth-248,rect.right-240))}px;width:240px;z-index:9999`;
   document.body.appendChild(menu);

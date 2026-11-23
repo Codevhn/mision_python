@@ -27,8 +27,7 @@ original e insertarla. Se respetan páginas bloqueadas y eliminadas.
 
 ## Alias del sidebar
 
-En el menú de acciones de una entrada de Conocimiento o Team aparece «Renombrar
-en el sidebar…». Este campo edita `sidebar_label` (máximo 160 caracteres), sin
+En el menú de acciones de una entrada de Conocimiento o Team aparece «Renombrar». Este campo edita `sidebar_label` (máximo 160 caracteres), sin
 cambiar `title`, la ruta, el identificador, Markdown, referencias ni el título
 abierto. Dejarlo vacío vuelve a mostrar el título real. La actualización usa una
 transacción de metadatos y respeta bloqueo/papelera; los guardados ordinarios del

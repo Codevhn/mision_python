@@ -13,7 +13,7 @@ const base=process.env.ATLAS_TEST_URL||'http://127.0.0.1:8132';assert.ok(['127.0
  // Use the actual sidebar menu and existing prompt dialog.
  if(width<700){await page.locator("#sidebarToggle").click();await page.locator("#sidebar.mobile-open").waitFor();}
  await page.evaluate(id=>{const node=document.querySelector('#tree .tree-entry[data-id="'+id+'"]');for(let parent=node.parentElement;parent&&parent.id!=='tree';parent=parent.parentElement){if(parent.matches('.tree-category,.tree-topic'))parent.classList.add('open');}},id);
- await page.locator(`#tree .tree-entry[data-id="${id}"] .tree-page-menu-btn`).click();await page.getByRole('button',{name:'Renombrar en el sidebar…',exact:true}).click();
+ await page.locator(`#tree .tree-entry[data-id="${id}"] .tree-page-menu-btn`).click();await page.getByRole('button',{name:'Renombrar',exact:true}).click();
  await page.locator('#promptInput').fill('uv breve');await page.locator('#promptOk').click();
  await page.waitForFunction(id=>document.querySelector('#tree .tree-entry[data-id="'+id+'"] .tree-entry-title')?.textContent==='uv breve',id);
  assert.equal(await page.locator('#inlineTitle').innerText(),before.meta.title);assert.equal((await get(id)).markdown,before.markdown);
