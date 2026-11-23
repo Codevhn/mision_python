@@ -1402,16 +1402,17 @@ function _openMindmapActionsMenu(anchor, map) {
 }
 
 // Sidebar actions for Teamspace and Conocimiento. A display alias is stored
-// separately from the canonical title; delete flows remain in their own menus.
+// separately from the canonical title. All deletes use the shared confirmation.
 let _simpleMoveMenuEl = null;
 function _openSimpleMoveMenu(anchor, entryId, entryTitle) {
   _simpleMoveMenuEl?.remove();
   const menu = document.createElement('div');
   menu.className = 'course-actions-menu';
-  menu.innerHTML = `<button data-action="rename">Renombrar</button><button data-action="move">⇄ Mover a…</button>`;
+  menu.innerHTML = `<button data-action="rename">Renombrar</button><button data-action="move">⇄ Mover a…</button><button data-action="delete" class="danger">Eliminar</button>`;
   const rect = anchor.getBoundingClientRect();
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${Math.max(8,Math.min(innerWidth-248,rect.right-240))}px;width:240px;z-index:9999`;
   document.body.appendChild(menu);
+  menu.style.top = `${Math.max(8,Math.min(innerHeight-menu.offsetHeight-8,rect.bottom+4))}px`;
   _simpleMoveMenuEl = menu;
   menu.querySelector('[data-action="move"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -1433,6 +1434,10 @@ function _openSimpleMoveMenu(anchor, entryId, entryTitle) {
       if (currentEntryId === entryId && currentEntryMeta) currentEntryMeta.sidebar_label=result.sidebar_label;
       showToast('Nombre del sidebar guardado');
     } catch(error) { showToast(error.message, 'error'); }
+  });
+  menu.querySelector('[data-action="delete"]').addEventListener('click', e => {
+    e.stopPropagation(); menu.remove(); _simpleMoveMenuEl = null;
+    deleteEntry(entryId);
   });
   const onOutside = e => {
     if (!menu.contains(e.target)) { menu.remove(); _simpleMoveMenuEl = null; document.removeEventListener('mousedown', onOutside); }
@@ -3152,24 +3157,33 @@ async function saveEntry() {
   }
 }
 
-async function deleteEntry() {
-  if (!currentEntryId) return;
-  const isNote = currentEntryMeta && (currentEntryMeta.category || "").toLowerCase().replace(" ", "-") === "quick-notes";
-  const label = isNote ? "nota" : "entrada";
-  const ok = await showConfirm(`rm -f ${label}`, `¿Eliminar esta ${label}? Esta acción no se puede deshacer.`);
+async function deleteEntry(target) {
+  // Buttons pass a MouseEvent; sidebar actions pass the captured entry ID.
+  const id = typeof target === 'string' ? target : currentEntryId;
+  if (!id) return;
+  const meta = id === currentEntryId ? currentEntryMeta : _entriesById[id];
+  const title = meta?.title || 'esta entrada';
+  const ok = await showConfirm('Eliminar entrada', `¿Eliminar «${title}»? También se eliminarán sus subpáginas, si las tiene. Esta acción no se puede deshacer.`);
   if (!ok) return;
-  const res = await fetch(`/api/entry/${currentEntryId}`, { method: "DELETE" });
-  if (res.ok) {
-    currentEntryId = null;
-    $("entryView").classList.add("hidden");
-    $("entryCover").classList.add("hidden"); $("entryAddCover").classList.add("hidden");
-    $("kanbanArea").classList.add("hidden");
-    if ($("ctxBar")) $("ctxBar").classList.add("hidden");
-    $("welcome").classList.remove("hidden");
-    renderHome();
-    showToast("Entrada eliminada");
+  try {
+    if (_peekEntryId === id && !(await _closePagePeek())) return;
+    await _pageSaveQueues.get(id)?.flush();
+    const res = await fetch(`/api/entry/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res.ok) { const error=await res.json().catch(()=>({})); throw new Error(error.error || 'No se pudo eliminar la entrada'); }
+    const result=await res.json(),deleted=new Set(result.deleted_ids || [id]);
+    if (deleted.has(currentEntryId)) {
+      clearTimeout(_autoSaveTimer);
+      exitFocusMode({restoreFocus:false,preservePosition:false});
+      currentEntryId = null; currentEntryMeta = null; window._currentEntryId = null;
+      $('entryView').classList.add('hidden');
+      $('entryCover').classList.add('hidden'); $('entryAddCover').classList.add('hidden');
+      $('kanbanArea').classList.add('hidden'); $('ctxBar')?.classList.add('hidden');
+      $('welcome').classList.remove('hidden'); renderHome();
+    }
+    for (const key of deleted) _pageSaveQueues.delete(key);
+    showToast('Entrada eliminada');
     await loadTree();
-  }
+  } catch(error) { showToast(error.message || 'No se pudo eliminar la entrada. Revisa la conexión.', 'error'); }
 }
 
 function showConfirm(title, msg, okLabel) {

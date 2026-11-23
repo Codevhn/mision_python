@@ -47,3 +47,16 @@ título o contenido conservan el alias. Los árboles lo exponen como campo apart
 
 Las comprobaciones no llaman a proveedores reales ni utilizan contenido personal.
 La pertinencia de cada propuesta sigue dependiendo de la respuesta del modelo.
+
+## Eliminar desde el sidebar
+
+El menú de Conocimiento y Team incluye «Renombrar», «Mover a…» y «Eliminar».
+Eliminar usa la confirmación compartida y el identificador capturado de esa fila,
+aunque otra entrada esté abierta. Advierte que se eliminan también subpáginas.
+Al borrar la página actual (o su padre), limpia la vista y la navegación activa;
+al borrar otra, conserva el editor abierto. Un error conserva la entrada visible.
+El menú se ajusta al alto disponible para mantener accesible la última opción.
+
+`tools/check_sidebar_delete.cjs` comprueba cancelar, objetivo inactivo frente a
+página abierta, descendientes, eliminación de la página activa, acción previa del
+encabezado y error de servidor, a 1440 y 412 px con datos desechables.
