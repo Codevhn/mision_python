@@ -14,3 +14,35 @@ body {font-weight:var(--atlas-weight-regular);}
 /* Avoid theme-specific 600 / bolder rules narrowing the difference again.
    Fixed 700 also prevents nested strong/b elements escalating unpredictably. */
 :root body :is(strong,b) {font-weight:var(--atlas-weight-bold)!important;}
+
+/* Audited opt-in: dark atmospheres, OpenCode/editor palettes, language themes
+   and Silver. Native Notion, light palettes and already-colored Aero/Hyprland
+   headings keep their presentation. Accents always come from the active theme. */
+@media screen {
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) {
+  --atlas-reading-accent:var(--accent);
+  --atlas-reading-h2:color-mix(in srgb,var(--atlas-reading-accent) 90%,var(--text));
+  --atlas-reading-h3:color-mix(in srgb,var(--atlas-reading-accent) 80%,var(--text));
+  --atlas-reading-h4:color-mix(in srgb,var(--atlas-reading-accent) 65%,var(--text));
+  --atlas-reading-bold:color-mix(in srgb,var(--atlas-reading-accent) 85%,var(--text));
+  --atlas-reading-marker:color-mix(in srgb,var(--atlas-reading-accent) 80%,var(--text));
+  --atlas-reading-glow:0 0 7px color-mix(in srgb,var(--atlas-reading-accent) 18%,transparent);
+}
+:root[data-theme="dark"]:is([data-palette="atmosphere-gray"],[data-palette="atmosphere-charcoal"],[data-palette="atmosphere-black"],[data-palette="silver"],[data-theme-id="language-cpp-dark"]) {
+  --atlas-reading-accent:#9bc7ef;
+}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) > h2,
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) h2:not([style*="color"]) {color:var(--atlas-reading-h2)!important;text-shadow:none!important;}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) > h3,
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) h3:not([style*="color"]) {color:var(--atlas-reading-h3)!important;text-shadow:none!important;}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) > h4,
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) h4:not([style*="color"]) {color:var(--atlas-reading-h4)!important;text-shadow:none!important;}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor :is(strong,b):not([data-text-color]:not([data-text-color="default"]) *):not([data-style-type="textColor"] *):not([data-text-color]:not([data-text-color="default"])):not(pre *):not(code *):not([data-content-type="codeBlock"] *),
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) :is(strong,b):not([style*="color"]):not(pre *):not(code *):not([data-content-type="codeBlock"] *) {color:var(--atlas-reading-bold)!important;text-shadow:none!important;}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor :is([data-content-type="bulletListItem"],[data-content-type="numberedListItem"]):where(:not([data-text-color]),[data-text-color="default"])::before,
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) li::marker {color:var(--atlas-reading-marker)!important;font-weight:700;text-shadow:var(--atlas-reading-glow);}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="checkListItem"] input[type="checkbox"],
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(.assistant-message-content,.entry-body:not(:has(.bn-editor))) li input[type="checkbox"] {accent-color:var(--atlas-reading-marker);}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) > h2::before {background:var(--atlas-reading-h2)!important;box-shadow:var(--atlas-reading-glow);}
+:root[data-theme="dark"]:is([data-palette^="atmosphere-"],[data-palette="terracotta"],[data-style="opencode"],[data-theme-id^="language-"],[data-theme-id="aero-silver"]) :is(#entryBody,#pagePeekEditor) .bn-editor [data-content-type="heading"]:where(:not([data-text-color]),[data-text-color="default"]) > h3::before {background:var(--atlas-reading-h3)!important;box-shadow:var(--atlas-reading-glow);}
+}
